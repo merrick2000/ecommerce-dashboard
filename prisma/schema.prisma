@@ -31,14 +31,17 @@ model Store {
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  price       Float
-  fileUrl     String?  // URL du fichier stocké en sécurité sur S3 ou R2
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  stores      StoreProduct[]
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  price            Float
+  currency         String   @default("USD") // EUR, USD, GBP
+  coverImage       String?  // Image de couverture
+  fileUrl          String?  // Fichier digital (ZIP, PDF...)
+  thankYouMessage  String?  // Message personnalisé post-achat
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  stores           StoreProduct[]
 }
 
 model StoreProduct {
