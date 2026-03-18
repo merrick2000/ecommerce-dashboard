@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { uploadFileLocally } from "@/lib/upload";
+import { uploadFile } from "@/lib/upload";
 
 export default function NewProductPage() {
 
@@ -29,13 +29,13 @@ export default function NewProductPage() {
     // Handle Cover Image Upload
     const coverImage = formData.get("coverImage") as File | null;
     if (coverImage && coverImage.size > 0) {
-      coverImageUrl = await uploadFileLocally(coverImage);
+      coverImageUrl = await uploadFile(coverImage);
     }
 
     // Handle Digital File Upload
     const fileUrl = formData.get("fileUrl") as File | null;
     if (fileUrl && fileUrl.size > 0) {
-      fileUrlUrl = await uploadFileLocally(fileUrl);
+      fileUrlUrl = await uploadFile(fileUrl);
     }
 
     if (!name || isNaN(price)) {
