@@ -306,6 +306,9 @@ export function ClassicCheckout({ data, trackEvent }: { data: CheckoutPageData; 
 
       <StickyMobileCTA
         price={product.has_promo ? product.formatted_effective_price : product.formatted_price}
+        originalPrice={product.formatted_price}
+        hasPromo={product.has_promo}
+        promoLabel={product.promo_label}
         ctaText={config.cta_text}
         color={config.primary_color}
         onCtaClick={scrollToForm}
