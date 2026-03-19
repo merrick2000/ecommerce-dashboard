@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\Storage;
 class CheckoutController extends Controller
 {
     /**
-     * GET /api/v1/checkout/{store_slug}
+     * GET /api/v1/checkout/{store_slug}/{product_id}
      *
-     * Retourne le produit principal, la config du checkout et les infos de la boutique.
+     * Retourne un produit spécifique, la config du checkout et les infos de la boutique.
      */
-    public function show(string $storeSlug): JsonResponse
+    public function show(string $storeSlug, int $productId): JsonResponse
     {
         $store = Store::where('slug', $storeSlug)
             ->with(['products', 'checkoutConfig'])
@@ -26,11 +26,11 @@ class CheckoutController extends Controller
             ], 404);
         }
 
-        $product = $store->products->first();
+        $product = $store->products->firstWhere('id', $productId);
 
         if (! $product) {
             return response()->json([
-                'error' => 'Aucun produit disponible dans cette boutique.',
+                'error' => 'Produit introuvable dans cette boutique.',
             ], 404);
         }
 
@@ -42,6 +42,7 @@ class CheckoutController extends Controller
                 'name' => $store->name,
                 'slug' => $store->slug,
                 'currency' => $store->currency,
+                'locale' => $store->locale ?? 'fr',
             ],
             'product' => [
                 'id' => $product->id,
@@ -49,6 +50,13 @@ class CheckoutController extends Controller
                 'description' => $this->signDescriptionImages($product->description),
                 'price' => $product->price,
                 'formatted_price' => number_format($product->price, 0, ',', ' ') . ' ' . $store->currency,
+                'effective_price' => $product->effective_price,
+                'formatted_effective_price' => number_format($product->effective_price, 0, ',', ' ') . ' ' . $store->currency,
+                'has_promo' => $product->hasPromo(),
+                'promo_type' => $product->promo_type,
+                'promo_value' => $product->promo_value,
+                'promo_label' => $product->promo_label,
+                'promo_display_style' => $product->promo_display_style ?? 'strikethrough',
                 'cover_image' => $product->cover_image
                     ? Storage::disk('s3')->temporaryUrl($product->cover_image, now()->addMinutes(60))
                     : null,
@@ -57,6 +65,7 @@ class CheckoutController extends Controller
                 'faqs' => $product->faqs ?? [],
                 'testimonials' => $product->testimonials ?? [],
                 'testimonials_style' => $product->testimonials_style ?? 'cards',
+                'description_ctas' => $product->description_ctas ?? [],
                 'video_url' => $product->video_url,
                 'video_title' => $product->video_title,
                 'video_position' => $product->video_position ?? 'below_description',

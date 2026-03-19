@@ -5,6 +5,7 @@ export interface StoreData {
   name: string;
   slug: string;
   currency: string;
+  locale?: 'fr' | 'en';
 }
 
 export interface ProductData {
@@ -13,6 +14,20 @@ export interface ProductData {
   description: string | null;
   price: number;
   formatted_price: string;
+  effective_price: number;
+  formatted_effective_price: string;
+  has_promo: boolean;
+  promo_type: 'none' | 'percentage' | 'fixed' | null;
+  promo_value: number | null;
+  promo_label: string | null;
+  promo_display_style: 'strikethrough' | 'strikethrough_text' | 'text_only';
+  description_ctas: {
+    text: string;
+    action: 'scroll_to_form' | 'custom_url';
+    url?: string;
+    alignment: 'left' | 'center';
+    after_paragraph: number;
+  }[];
   cover_image: string | null;
   features: string[];
   features_position: 'above_description' | 'below_description' | 'above_form';
@@ -34,6 +49,7 @@ export interface UrgencyConfig {
 export interface SalesPopupConfig {
   enabled?: boolean;
   interval_seconds?: number;
+  show_name?: boolean;
   entries?: { name: string; city: string }[];
 }
 
@@ -92,19 +108,57 @@ export interface OrderDetailsResponse {
   store: {
     name: string;
     slug: string;
+    locale?: 'fr' | 'en';
   };
   download_url: string | null;
   is_external: boolean;
   tracking: TrackingConfig | null;
 }
 
-export async function fetchCheckoutData(storeSlug: string): Promise<CheckoutPageData> {
-  const res = await fetch(`${API_BASE}/v1/checkout/${storeSlug}`, {
+export interface StoreCatalogProduct {
+  id: number;
+  name: string;
+  description: string | null;
+  price: number;
+  formatted_price: string;
+  effective_price: number;
+  formatted_effective_price: string;
+  has_promo: boolean;
+  promo_type: 'none' | 'percentage' | 'fixed' | null;
+  promo_value: number | null;
+  promo_label: string | null;
+  promo_display_style: 'strikethrough' | 'strikethrough_text' | 'text_only';
+  cover_image: string | null;
+}
+
+export interface StoreCatalogData {
+  store: StoreData;
+  products: StoreCatalogProduct[];
+  checkout_config: {
+    primary_color: string;
+    template_type: string;
+  };
+}
+
+export async function fetchStoreCatalog(storeSlug: string): Promise<StoreCatalogData> {
+  const res = await fetch(`${API_BASE}/v1/stores/${storeSlug}`, {
     next: { revalidate: 60 },
   });
 
   if (!res.ok) {
     throw new Error('Boutique introuvable');
+  }
+
+  return res.json();
+}
+
+export async function fetchCheckoutData(storeSlug: string, productId: number): Promise<CheckoutPageData> {
+  const res = await fetch(`${API_BASE}/v1/checkout/${storeSlug}/${productId}`, {
+    next: { revalidate: 60 },
+  });
+
+  if (!res.ok) {
+    throw new Error('Produit introuvable');
   }
 
   return res.json();

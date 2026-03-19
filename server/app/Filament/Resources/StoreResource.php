@@ -43,16 +43,28 @@ class StoreResource extends Resource
                             ->maxLength(255)
                             ->helperText('URL publique : /votre-slug'),
 
-                        Forms\Components\Select::make('currency')
-                            ->label('Devise')
-                            ->options([
-                                'XOF' => 'XOF (FCFA)',
-                                'XAF' => 'XAF (FCFA Central)',
-                                'EUR' => 'EUR (€)',
-                                'USD' => 'USD ($)',
-                            ])
-                            ->default('XOF')
-                            ->required(),
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Select::make('currency')
+                                    ->label('Devise')
+                                    ->options([
+                                        'XOF' => 'XOF (FCFA)',
+                                        'XAF' => 'XAF (FCFA Central)',
+                                        'EUR' => 'EUR (€)',
+                                        'USD' => 'USD ($)',
+                                    ])
+                                    ->default('XOF')
+                                    ->required(),
+
+                                Forms\Components\Select::make('locale')
+                                    ->label('Langue de la boutique')
+                                    ->options([
+                                        'fr' => 'Français',
+                                        'en' => 'English',
+                                    ])
+                                    ->default('fr')
+                                    ->required(),
+                            ]),
 
                         Forms\Components\Hidden::make('user_id')
                             ->default(fn () => auth()->id()),
@@ -76,6 +88,12 @@ class StoreResource extends Resource
                 Tables\Columns\TextColumn::make('currency')
                     ->label('Devise')
                     ->badge(),
+
+                Tables\Columns\TextColumn::make('locale')
+                    ->label('Langue')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state) => $state === 'fr' ? 'FR' : 'EN')
+                    ->color(fn (string $state) => $state === 'fr' ? 'info' : 'warning'),
 
                 Tables\Columns\TextColumn::make('products_count')
                     ->label('Produits')

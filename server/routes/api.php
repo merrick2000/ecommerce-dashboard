@@ -13,11 +13,12 @@ Route::get('/user', function (Request $request) {
 
 // ─── API V1 (Public — consommée par le storefront Next.js) ──────────
 Route::prefix('v1')->group(function () {
-    // Liste des boutiques
+    // Boutiques
     Route::get('/stores', [StoreController::class, 'index']);
+    Route::get('/stores/{slug}', [StoreController::class, 'show']);
 
-    // Checkout : récupère la config de la boutique + produit principal
-    Route::get('/checkout/{storeSlug}', [CheckoutController::class, 'show']);
+    // Checkout : récupère la config de la boutique + un produit spécifique
+    Route::get('/checkout/{storeSlug}/{productId}', [CheckoutController::class, 'show']);
 
     // Commandes
     Route::post('/orders/create', [OrderController::class, 'create']);

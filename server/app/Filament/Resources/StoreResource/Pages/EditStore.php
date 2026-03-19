@@ -10,6 +10,8 @@ class EditStore extends EditRecord
 {
     protected static string $resource = StoreResource::class;
 
+    public static bool $formActionsAreSticky = true;
+
     protected function getHeaderActions(): array
     {
         return [

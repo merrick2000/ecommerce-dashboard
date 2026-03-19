@@ -10,6 +10,8 @@ class EditCheckoutConfig extends EditRecord
 {
     protected static string $resource = CheckoutConfigResource::class;
 
+    public static bool $formActionsAreSticky = true;
+
     protected function getHeaderActions(): array
     {
         return [

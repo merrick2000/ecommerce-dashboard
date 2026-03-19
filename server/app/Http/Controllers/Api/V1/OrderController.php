@@ -47,7 +47,7 @@ class OrderController extends Controller
             'customer_email' => $request->customer_email,
             'customer_name' => $request->customer_name,
             'customer_phone' => $request->customer_phone,
-            'amount' => $product->price,
+            'amount' => $product->effective_price,
             'currency' => $store->currency,
             'status' => 'pending',
             'payment_method' => $request->payment_method,
@@ -153,6 +153,7 @@ class OrderController extends Controller
             'store' => [
                 'name' => $order->store->name,
                 'slug' => $order->store->slug,
+                'locale' => $order->store->locale ?? 'fr',
             ],
             'download_url' => $downloadUrl,
             'is_external' => $isExternal,
