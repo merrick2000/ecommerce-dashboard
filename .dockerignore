@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.github
+.env
+.env.*
+*.md
+docker
+server/vendor
+server/node_modules
+server/.env
+server/.env.*
+server/storage/logs/*.log
+server/database/database.sqlite

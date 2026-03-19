@@ -1,0 +1,57 @@
+FROM php:8.3-fpm-alpine AS base
+
+# System deps
+RUN apk add --no-cache \
+    nginx \
+    supervisor \
+    libpq-dev \
+    libzip-dev \
+    icu-dev \
+    oniguruma-dev \
+    && docker-php-ext-install \
+    pdo_pgsql \
+    pgsql \
+    zip \
+    intl \
+    mbstring \
+    bcmath \
+    opcache
+
+# Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# ─── Dependencies ──────────────────────────────────────────
+FROM base AS deps
+WORKDIR /app
+COPY server/composer.json server/composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+
+# ─── Production ────────────────────────────────────────────
+FROM base AS runner
+WORKDIR /var/www/html
+
+COPY server/ .
+COPY --from=deps /app/vendor ./vendor
+
+RUN composer dump-autoload --optimize --no-dev
+
+# Storage directories
+RUN mkdir -p storage/framework/{sessions,views,cache/data} \
+    storage/logs \
+    bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
+
+# Nginx config
+RUN rm -f /etc/nginx/http.d/default.conf
+COPY docker/nginx.conf /etc/nginx/http.d/app.conf
+
+# Supervisor config
+COPY docker/supervisord.conf /etc/supervisord.conf
+
+# PHP production config
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+COPY docker/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+
+EXPOSE 8000
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]

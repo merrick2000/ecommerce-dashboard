@@ -1,0 +1,90 @@
+"use client";
+
+import type { CheckoutPageData } from "@/lib/api";
+import { CheckoutForm, type TrackEventFn } from "./CheckoutForm";
+import { UrgencyWidgets } from "./UrgencyWidgets";
+import { StickyMobileCTA } from "./StickyMobileCTA";
+import { SalesPopup } from "./SalesPopup";
+import { PaymentLogos } from "./PaymentLogos";
+import { StoreFooter } from "./StoreFooter";
+
+export function MinimalistCardCheckout({ data, trackEvent }: { data: CheckoutPageData; trackEvent?: TrackEventFn }) {
+  const { store, product, checkout_config: config } = data;
+
+  const scrollToForm = () => {
+    document.getElementById("checkout-form")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 pb-20 md:pb-4">
+      <div className="w-full max-w-md">
+        <UrgencyWidgets urgencyConfig={config.urgency_config} color={config.primary_color} />
+
+        <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
+          {product.cover_image && (
+            <img
+              src={product.cover_image}
+              alt={product.name}
+              className="w-full h-48 object-cover"
+            />
+          )}
+
+          <div className="p-6 space-y-5">
+            <p className="text-xs font-medium text-gray-400 tracking-wider uppercase">
+              {store.name}
+            </p>
+
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>
+              <p className="text-3xl font-black mt-1" style={{ color: config.primary_color }}>
+                {product.formatted_price}
+              </p>
+            </div>
+
+            {product.description && (
+              <p className="text-sm text-gray-500 leading-relaxed line-clamp-3">
+                {product.description}
+              </p>
+            )}
+
+            {config.trust_badges.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {config.trust_badges.map((badge, i) => (
+                  <span
+                    key={i}
+                    className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 font-medium"
+                  >
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <hr className="border-gray-100" />
+
+            <div id="checkout-form">
+              <CheckoutForm data={data} compact onTrackEvent={trackEvent} />
+            </div>
+
+            <PaymentLogos />
+          </div>
+        </div>
+
+        <p className="text-center text-xs text-gray-400 mt-4">
+          Paiement sécurisé — {store.currency}
+        </p>
+      </div>
+
+      <StickyMobileCTA
+        price={product.formatted_price}
+        ctaText={config.cta_text}
+        color={config.primary_color}
+        onCtaClick={scrollToForm}
+      />
+
+      <StoreFooter storeName={store.name} />
+
+      <SalesPopup config={config.sales_popup} productName={product.name} />
+    </div>
+  );
+}
