@@ -10,6 +10,8 @@ class EditProduct extends EditRecord
 {
     protected static string $resource = ProductResource::class;
 
+    public static bool $formActionsAreSticky = true;
+
     protected function getHeaderActions(): array
     {
         return [

@@ -7,9 +7,12 @@ import { StickyMobileCTA } from "./StickyMobileCTA";
 import { SalesPopup } from "./SalesPopup";
 import { PaymentLogos } from "./PaymentLogos";
 import { StoreFooter } from "./StoreFooter";
+import PriceDisplay from "./PriceDisplay";
+import { t, type Locale } from "@/lib/i18n";
 
 export function MinimalistCardCheckout({ data, trackEvent }: { data: CheckoutPageData; trackEvent?: TrackEventFn }) {
   const { store, product, checkout_config: config } = data;
+  const locale: Locale = store.locale || 'fr';
 
   const scrollToForm = () => {
     document.getElementById("checkout-form")?.scrollIntoView({ behavior: "smooth" });
@@ -18,7 +21,7 @@ export function MinimalistCardCheckout({ data, trackEvent }: { data: CheckoutPag
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 pb-20 md:pb-4">
       <div className="w-full max-w-md">
-        <UrgencyWidgets urgencyConfig={config.urgency_config} color={config.primary_color} />
+        <UrgencyWidgets urgencyConfig={config.urgency_config} color={config.primary_color} locale={locale} />
 
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
           {product.cover_image && (
@@ -36,9 +39,9 @@ export function MinimalistCardCheckout({ data, trackEvent }: { data: CheckoutPag
 
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>
-              <p className="text-3xl font-black mt-1" style={{ color: config.primary_color }}>
-                {product.formatted_price}
-              </p>
+              <div className="mt-1">
+                <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} />
+              </div>
             </div>
 
             {product.description && (
@@ -71,20 +74,20 @@ export function MinimalistCardCheckout({ data, trackEvent }: { data: CheckoutPag
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          Paiement sécurisé — {store.currency}
+          {t('checkout.secure', locale)} — {store.currency}
         </p>
       </div>
 
       <StickyMobileCTA
-        price={product.formatted_price}
+        price={product.has_promo ? product.formatted_effective_price : product.formatted_price}
         ctaText={config.cta_text}
         color={config.primary_color}
         onCtaClick={scrollToForm}
       />
 
-      <StoreFooter storeName={store.name} />
+      <StoreFooter storeName={store.name} locale={locale} />
 
-      <SalesPopup config={config.sales_popup} productName={product.name} />
+      <SalesPopup config={config.sales_popup} productName={product.name} locale={locale} />
     </div>
   );
 }

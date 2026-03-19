@@ -27,7 +27,7 @@ class CheckoutConfigResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Boutique')
+                Forms\Components\Section::make()
                     ->schema([
                         Forms\Components\Select::make('store_id')
                             ->label('Boutique')
@@ -39,236 +39,237 @@ class CheckoutConfigResource extends Resource
                             ->helperText('Chaque boutique ne peut avoir qu\'une seule configuration.'),
                     ]),
 
-                Forms\Components\Section::make('Style du tunnel de vente')
-                    ->description('Template et couleurs de votre page checkout.')
-                    ->schema([
-                        Forms\Components\Radio::make('template_type')
-                            ->label('Template')
-                            ->options([
-                                TemplateType::CLASSIC->value => 'Classic — Layout épuré, fond blanc, conversion maximale',
-                                TemplateType::DARK_PREMIUM->value => 'Dark Premium — Fond sombre, effet luxe, formations haut de gamme',
-                                TemplateType::MINIMALIST_CARD->value => 'Minimalist Card — Carte centrée, ultra-simple, parfait mobile',
-                            ])
-                            ->default(TemplateType::CLASSIC->value)
-                            ->required()
-                            ->columns(1),
-
-                        Forms\Components\ColorPicker::make('primary_color')
-                            ->label('Couleur principale')
-                            ->default('#E67E22')
-                            ->required(),
-                    ]),
-
-                Forms\Components\Section::make('Contenu & CTA')
-                    ->schema([
-                        Forms\Components\TextInput::make('cta_text')
-                            ->label('Texte du bouton CTA')
-                            ->default('Acheter maintenant')
-                            ->required()
-                            ->maxLength(100)
-                            ->placeholder('Ex: Débloquer mon accès'),
-
-                        Forms\Components\TagsInput::make('trust_badges')
-                            ->label('Badges de confiance')
-                            ->placeholder('Ajouter un badge...')
-                            ->helperText('Ex: Paiement sécurisé, Accès immédiat, Satisfait ou remboursé')
-                            ->default([]),
-                    ]),
-
-                // ─── TIMERS D'URGENCE & MARKETING ────────────────────
-                Forms\Components\Section::make('Timers d\'urgence & Social Proof')
-                    ->description('Widgets de conversion ultra-orientés marketing. Activez ceux que vous voulez.')
-                    ->collapsible()
-                    ->schema([
-
-                        // Compte à rebours
-                        Forms\Components\Fieldset::make('Compte à rebours')
+                Forms\Components\Tabs::make('Configuration')
+                    ->tabs([
+                        // ─── TAB 1 : STYLE ──────────────────────────────
+                        Forms\Components\Tabs\Tab::make('Style & CTA')
+                            ->icon('heroicon-o-paint-brush')
                             ->schema([
-                                Forms\Components\Toggle::make('urgency_config.countdown_timer.enabled')
-                                    ->label('Activer le compte à rebours')
-                                    ->default(false)
-                                    ->live(),
-                                Forms\Components\Select::make('urgency_config.countdown_timer.duration_minutes')
-                                    ->label('Durée')
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\Radio::make('template_type')
+                                            ->label('Template')
+                                            ->options([
+                                                TemplateType::CLASSIC->value => 'Classic — Épuré, fond blanc',
+                                                TemplateType::DARK_PREMIUM->value => 'Dark Premium — Effet luxe',
+                                                TemplateType::MINIMALIST_CARD->value => 'Minimalist — Ultra-simple',
+                                            ])
+                                            ->default(TemplateType::CLASSIC->value)
+                                            ->required()
+                                            ->columns(1),
+
+                                        Forms\Components\Group::make([
+                                            Forms\Components\ColorPicker::make('primary_color')
+                                                ->label('Couleur principale')
+                                                ->default('#E67E22')
+                                                ->required(),
+
+                                            Forms\Components\TextInput::make('cta_text')
+                                                ->label('Texte du bouton CTA')
+                                                ->default('Acheter maintenant')
+                                                ->required()
+                                                ->maxLength(100)
+                                                ->placeholder('Ex: Débloquer mon accès'),
+
+                                            Forms\Components\TagsInput::make('trust_badges')
+                                                ->label('Badges de confiance')
+                                                ->placeholder('Ajouter un badge...')
+                                                ->helperText('Ex: Paiement sécurisé, Accès immédiat')
+                                                ->default([]),
+                                        ]),
+                                    ]),
+                            ]),
+
+                        // ─── TAB 2 : URGENCE & CONVERSION ───────────────
+                        Forms\Components\Tabs\Tab::make('Urgence & Conversion')
+                            ->icon('heroicon-o-fire')
+                            ->schema([
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        // Compte à rebours
+                                        Forms\Components\Fieldset::make('Compte à rebours')
+                                            ->schema([
+                                                Forms\Components\Toggle::make('urgency_config.countdown_timer.enabled')
+                                                    ->label('Activer')
+                                                    ->default(false)
+                                                    ->live(),
+                                                Forms\Components\Select::make('urgency_config.countdown_timer.duration_minutes')
+                                                    ->label('Durée')
+                                                    ->options([5 => '5 min', 10 => '10 min', 15 => '15 min', 30 => '30 min', 60 => '1h'])
+                                                    ->default(15)
+                                                    ->visible(fn (Forms\Get $get) => $get('urgency_config.countdown_timer.enabled')),
+                                                Forms\Components\TextInput::make('urgency_config.countdown_timer.label')
+                                                    ->label('Texte')
+                                                    ->default('Offre expire dans')
+                                                    ->visible(fn (Forms\Get $get) => $get('urgency_config.countdown_timer.enabled')),
+                                            ]),
+
+                                        // Places limitées
+                                        Forms\Components\Fieldset::make('Places limitées')
+                                            ->schema([
+                                                Forms\Components\Toggle::make('urgency_config.limited_spots.enabled')
+                                                    ->label('Activer')
+                                                    ->default(false)
+                                                    ->live(),
+                                                Forms\Components\TextInput::make('urgency_config.limited_spots.total_spots')
+                                                    ->label('Total places')
+                                                    ->numeric()
+                                                    ->minValue(1)
+                                                    ->default(50)
+                                                    ->visible(fn (Forms\Get $get) => $get('urgency_config.limited_spots.enabled')),
+                                                Forms\Components\TextInput::make('urgency_config.limited_spots.remaining_spots')
+                                                    ->label('Restantes affichées')
+                                                    ->numeric()
+                                                    ->minValue(1)
+                                                    ->default(12)
+                                                    ->visible(fn (Forms\Get $get) => $get('urgency_config.limited_spots.enabled')),
+                                            ]),
+
+                                        // Offre flash
+                                        Forms\Components\Fieldset::make('Offre flash')
+                                            ->schema([
+                                                Forms\Components\Toggle::make('urgency_config.flash_sale.enabled')
+                                                    ->label('Activer')
+                                                    ->default(false)
+                                                    ->live(),
+                                                Forms\Components\TextInput::make('urgency_config.flash_sale.discount_percent')
+                                                    ->label('Réduction')
+                                                    ->numeric()
+                                                    ->minValue(1)
+                                                    ->maxValue(99)
+                                                    ->suffix('%')
+                                                    ->default(30)
+                                                    ->visible(fn (Forms\Get $get) => $get('urgency_config.flash_sale.enabled')),
+                                                Forms\Components\Select::make('urgency_config.flash_sale.duration_minutes')
+                                                    ->label('Durée')
+                                                    ->options([5 => '5 min', 10 => '10 min', 15 => '15 min', 30 => '30 min', 60 => '1h'])
+                                                    ->default(30)
+                                                    ->visible(fn (Forms\Get $get) => $get('urgency_config.flash_sale.enabled')),
+                                            ]),
+
+                                        // Social proof
+                                        Forms\Components\Fieldset::make('Preuve sociale')
+                                            ->schema([
+                                                Forms\Components\Toggle::make('urgency_config.social_proof.enabled')
+                                                    ->label('Afficher "X personnes regardent"')
+                                                    ->default(false)
+                                                    ->live(),
+                                                Forms\Components\TextInput::make('urgency_config.social_proof.viewer_count')
+                                                    ->label('Nombre affiché')
+                                                    ->numeric()
+                                                    ->minValue(1)
+                                                    ->default(24)
+                                                    ->visible(fn (Forms\Get $get) => $get('urgency_config.social_proof.enabled')),
+                                            ]),
+                                    ]),
+                            ]),
+
+                        // ─── TAB 3 : PAIEMENT ───────────────────────────
+                        Forms\Components\Tabs\Tab::make('Paiement')
+                            ->icon('heroicon-o-credit-card')
+                            ->schema([
+                                Forms\Components\CheckboxList::make('payment_logos')
+                                    ->label('Moyens de paiement affichés')
                                     ->options([
-                                        5 => '5 minutes',
-                                        10 => '10 minutes',
-                                        15 => '15 minutes',
-                                        30 => '30 minutes',
-                                        60 => '1 heure',
+                                        'wave' => 'Wave',
+                                        'orange_money' => 'Orange Money',
+                                        'mtn_momo' => 'MTN Mobile Money',
+                                        'moov_money' => 'Moov Money',
+                                        'free_money' => 'Free Money',
+                                        'celtiis' => 'Celtiis Cash',
+                                        'visa' => 'Visa',
+                                        'mastercard' => 'Mastercard',
+                                        'paypal' => 'PayPal',
+                                        'stripe' => 'Stripe',
+                                        'fedapay' => 'FedaPay',
+                                        'paydunya' => 'PayDunya',
                                     ])
-                                    ->default(15)
-                                    ->visible(fn (Forms\Get $get) => $get('urgency_config.countdown_timer.enabled')),
-                                Forms\Components\TextInput::make('urgency_config.countdown_timer.label')
-                                    ->label('Texte personnalisé')
-                                    ->placeholder('Offre expire dans')
-                                    ->default('Offre expire dans')
-                                    ->visible(fn (Forms\Get $get) => $get('urgency_config.countdown_timer.enabled')),
+                                    ->columns(3)
+                                    ->default([]),
                             ]),
 
-                        // Places limitées
-                        Forms\Components\Fieldset::make('Places limitées')
+                        // ─── TAB 4 : SALES POPUP ────────────────────────
+                        Forms\Components\Tabs\Tab::make('Sales Popup')
+                            ->icon('heroicon-o-bell-alert')
                             ->schema([
-                                Forms\Components\Toggle::make('urgency_config.limited_spots.enabled')
-                                    ->label('Afficher "Plus que X places"')
+                                Forms\Components\Toggle::make('sales_popup.enabled')
+                                    ->label('Activer les notifications de vente')
                                     ->default(false)
                                     ->live(),
-                                Forms\Components\TextInput::make('urgency_config.limited_spots.total_spots')
-                                    ->label('Total de places')
-                                    ->numeric()
-                                    ->minValue(1)
-                                    ->default(50)
-                                    ->visible(fn (Forms\Get $get) => $get('urgency_config.limited_spots.enabled')),
-                                Forms\Components\TextInput::make('urgency_config.limited_spots.remaining_spots')
-                                    ->label('Places restantes affichées')
-                                    ->numeric()
-                                    ->minValue(1)
-                                    ->default(12)
-                                    ->visible(fn (Forms\Get $get) => $get('urgency_config.limited_spots.enabled')),
-                            ]),
 
-                        // Offre flash
-                        Forms\Components\Fieldset::make('Offre flash')
-                            ->schema([
-                                Forms\Components\Toggle::make('urgency_config.flash_sale.enabled')
-                                    ->label('Bannière offre flash')
-                                    ->default(false)
-                                    ->live(),
-                                Forms\Components\TextInput::make('urgency_config.flash_sale.discount_percent')
-                                    ->label('Réduction affichée')
-                                    ->numeric()
-                                    ->minValue(1)
-                                    ->maxValue(99)
-                                    ->suffix('%')
-                                    ->default(30)
-                                    ->visible(fn (Forms\Get $get) => $get('urgency_config.flash_sale.enabled')),
-                                Forms\Components\Select::make('urgency_config.flash_sale.duration_minutes')
-                                    ->label('Durée du timer flash')
-                                    ->options([
-                                        5 => '5 min',
-                                        10 => '10 min',
-                                        15 => '15 min',
-                                        30 => '30 min',
-                                        60 => '1 heure',
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('sales_popup.interval_seconds')
+                                            ->label('Intervalle entre notifications')
+                                            ->numeric()
+                                            ->minValue(5)
+                                            ->maxValue(120)
+                                            ->default(8)
+                                            ->suffix('sec'),
+
+                                        Forms\Components\Toggle::make('sales_popup.show_name')
+                                            ->label('Afficher le prénom')
+                                            ->helperText('Si désactivé : "Quelqu\'un de Dakar vient d\'acheter..."')
+                                            ->default(true),
                                     ])
-                                    ->default(30)
-                                    ->visible(fn (Forms\Get $get) => $get('urgency_config.flash_sale.enabled')),
+                                    ->visible(fn (Forms\Get $get) => $get('sales_popup.enabled')),
+
+                                Forms\Components\Repeater::make('sales_popup.entries')
+                                    ->label('Acheteurs simulés')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('name')
+                                            ->label('Prénom')
+                                            ->required()
+                                            ->placeholder('Mohamed'),
+                                        Forms\Components\TextInput::make('city')
+                                            ->label('Ville')
+                                            ->required()
+                                            ->placeholder('Dakar'),
+                                    ])
+                                    ->columns(2)
+                                    ->addActionLabel('Ajouter un acheteur')
+                                    ->reorderable()
+                                    ->defaultItems(0)
+                                    ->visible(fn (Forms\Get $get) => $get('sales_popup.enabled')),
                             ]),
 
-                        // Preuve sociale
-                        Forms\Components\Fieldset::make('Preuve sociale')
+                        // ─── TAB 5 : TRACKING ───────────────────────────
+                        Forms\Components\Tabs\Tab::make('Tracking')
+                            ->icon('heroicon-o-chart-bar')
                             ->schema([
-                                Forms\Components\Toggle::make('urgency_config.social_proof.enabled')
-                                    ->label('Afficher "X personnes regardent"')
-                                    ->default(false)
-                                    ->live(),
-                                Forms\Components\TextInput::make('urgency_config.social_proof.viewer_count')
-                                    ->label('Nombre de viewers affiché')
-                                    ->numeric()
-                                    ->minValue(1)
-                                    ->default(24)
-                                    ->helperText('Un léger aléa sera ajouté côté client pour un effet réaliste.')
-                                    ->visible(fn (Forms\Get $get) => $get('urgency_config.social_proof.enabled')),
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\Fieldset::make('Facebook Pixel')
+                                            ->schema([
+                                                Forms\Components\TextInput::make('tracking_config.facebook_pixel_id')
+                                                    ->label('Pixel ID')
+                                                    ->placeholder('123456789012345')
+                                                    ->maxLength(50),
+
+                                                Forms\Components\TextInput::make('tracking_config.facebook_access_token')
+                                                    ->label('Token Conversion API')
+                                                    ->password()
+                                                    ->revealable()
+                                                    ->maxLength(500),
+
+                                                Forms\Components\TextInput::make('tracking_config.facebook_test_event_code')
+                                                    ->label('Code test (optionnel)')
+                                                    ->placeholder('TEST12345')
+                                                    ->maxLength(50),
+                                            ]),
+
+                                        Forms\Components\Fieldset::make('TikTok Pixel')
+                                            ->schema([
+                                                Forms\Components\TextInput::make('tracking_config.tiktok_pixel_id')
+                                                    ->label('Pixel ID')
+                                                    ->placeholder('ABCDEFGH12345678')
+                                                    ->maxLength(50),
+                                            ]),
+                                    ]),
                             ]),
-                    ]),
-
-                Forms\Components\Section::make('Logos de paiement')
-                    ->description('Sélectionnez les moyens de paiement à afficher sur la page checkout.')
-                    ->schema([
-                        Forms\Components\CheckboxList::make('payment_logos')
-                            ->label('')
-                            ->options([
-                                'wave' => 'Wave',
-                                'orange_money' => 'Orange Money',
-                                'mtn_momo' => 'MTN Mobile Money',
-                                'moov_money' => 'Moov Money',
-                                'free_money' => 'Free Money',
-                                'celtiis' => 'Celtiis Cash',
-                                'visa' => 'Visa',
-                                'mastercard' => 'Mastercard',
-                                'paypal' => 'PayPal',
-                                'stripe' => 'Stripe',
-                                'fedapay' => 'FedaPay',
-                                'paydunya' => 'PayDunya',
-                            ])
-                            ->columns(3)
-                            ->default([]),
-                    ]),
-
-                // ─── SALES POPUP ────────────────────────────────────────
-                Forms\Components\Section::make('Sales Popup (Preuve sociale)')
-                    ->description('Notifications "X de Y vient d\'acheter" qui apparaissent en bas de page.')
-                    ->collapsible()
-                    ->schema([
-                        Forms\Components\Toggle::make('sales_popup.enabled')
-                            ->label('Activer les notifications de vente')
-                            ->default(false)
-                            ->live(),
-
-                        Forms\Components\TextInput::make('sales_popup.interval_seconds')
-                            ->label('Intervalle entre chaque notification (secondes)')
-                            ->numeric()
-                            ->minValue(5)
-                            ->maxValue(120)
-                            ->default(8)
-                            ->suffix('sec')
-                            ->visible(fn (Forms\Get $get) => $get('sales_popup.enabled')),
-
-                        Forms\Components\Repeater::make('sales_popup.entries')
-                            ->label('Acheteurs simulés')
-                            ->schema([
-                                Forms\Components\TextInput::make('name')
-                                    ->label('Prénom')
-                                    ->required()
-                                    ->placeholder('Mohamed'),
-                                Forms\Components\TextInput::make('city')
-                                    ->label('Ville')
-                                    ->required()
-                                    ->placeholder('Dakar'),
-                            ])
-                            ->columns(2)
-                            ->addActionLabel('Ajouter un acheteur')
-                            ->reorderable()
-                            ->defaultItems(0)
-                            ->visible(fn (Forms\Get $get) => $get('sales_popup.enabled')),
-                    ]),
-
-                // ─── TRACKING PIXELS ──────────────────────────────────────
-                Forms\Components\Section::make('Tracking & Pixels')
-                    ->description('Configurez vos pixels de tracking pour mesurer les conversions.')
-                    ->collapsible()
-                    ->schema([
-                        Forms\Components\Fieldset::make('Facebook Pixel')
-                            ->schema([
-                                Forms\Components\TextInput::make('tracking_config.facebook_pixel_id')
-                                    ->label('Pixel ID')
-                                    ->placeholder('123456789012345')
-                                    ->maxLength(50)
-                                    ->helperText('Votre ID de pixel Facebook (15 chiffres).'),
-
-                                Forms\Components\TextInput::make('tracking_config.facebook_access_token')
-                                    ->label('Token Conversion API')
-                                    ->password()
-                                    ->revealable()
-                                    ->maxLength(500)
-                                    ->helperText('Token d\'accès pour l\'API de conversions côté serveur. Ne sera jamais exposé au frontend.'),
-
-                                Forms\Components\TextInput::make('tracking_config.facebook_test_event_code')
-                                    ->label('Code événement test (optionnel)')
-                                    ->placeholder('TEST12345')
-                                    ->maxLength(50)
-                                    ->helperText('Utilisez un code test pour valider vos événements dans le gestionnaire d\'événements Facebook.'),
-                            ]),
-
-                        Forms\Components\Fieldset::make('TikTok Pixel')
-                            ->schema([
-                                Forms\Components\TextInput::make('tracking_config.tiktok_pixel_id')
-                                    ->label('Pixel ID')
-                                    ->placeholder('ABCDEFGH12345678')
-                                    ->maxLength(50)
-                                    ->helperText('Votre ID de pixel TikTok.'),
-                            ]),
-                    ]),
+                    ])
+                    ->columnSpanFull()
+                    ->persistTabInQueryString(),
             ]);
     }
 

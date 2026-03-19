@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createOrder, type CheckoutPageData } from "@/lib/api";
+import type { Locale } from "@/lib/i18n";
 
 export type TrackEventFn = (eventName: string, params?: Record<string, unknown>) => void;
 
@@ -12,6 +13,19 @@ interface CheckoutFormProps {
   compact?: boolean;
   onTrackEvent?: TrackEventFn;
 }
+
+const formTxt = {
+  name: { fr: 'Nom', en: 'Name' },
+  optional: { fr: '(optionnel)', en: '(optional)' },
+  name_placeholder: { fr: 'Votre nom', en: 'Your name' },
+  email: { fr: 'Email', en: 'Email' },
+  phone: { fr: 'WhatsApp / Téléphone', en: 'WhatsApp / Phone' },
+  phone_hint: { fr: 'De préférence votre numéro WhatsApp', en: 'Preferably your WhatsApp number' },
+  search_country: { fr: 'Rechercher un pays...', en: 'Search country...' },
+  no_country: { fr: 'Aucun pays trouvé', en: 'No country found' },
+  processing: { fr: 'Traitement...', en: 'Processing...' },
+  error: { fr: 'Une erreur est survenue', en: 'An error occurred' },
+};
 
 const COUNTRIES = [
   // ─── Afrique de l'Ouest (UEMOA/CEDEAO) ───
@@ -100,6 +114,7 @@ const COUNTRIES = [
 
 export function CheckoutForm({ data, dark, compact, onTrackEvent }: CheckoutFormProps) {
   const { store, product, checkout_config: config } = data;
+  const locale: Locale = store.locale || 'fr';
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -126,7 +141,7 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent }: CheckoutForm
     if (initiateCheckoutFired.current || !onTrackEvent) return;
     initiateCheckoutFired.current = true;
     onTrackEvent("InitiateCheckout", {
-      value: product.price,
+      value: product.effective_price,
       currency: store.currency,
       content_name: product.name,
       content_ids: [String(product.id)],
@@ -162,7 +177,7 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent }: CheckoutForm
 
       router.push(successUrl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Une erreur est survenue");
+      setError(err instanceof Error ? err.message : formTxt.error[locale]);
       setLoading(false);
     }
   };
@@ -198,7 +213,7 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent }: CheckoutForm
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label htmlFor="name" className={labelClass}>
-          Nom {compact ? "" : "(optionnel)"}
+          {formTxt.name[locale]} {compact ? "" : formTxt.optional[locale]}
         </label>
         <input
           type="text"
@@ -206,7 +221,7 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent }: CheckoutForm
           value={name}
           onChange={(e) => setName(e.target.value)}
           onFocus={fireInitiateCheckout}
-          placeholder="Votre nom"
+          placeholder={formTxt.name_placeholder[locale]}
           className={inputClass}
           style={{ "--tw-ring-color": config.primary_color } as React.CSSProperties}
         />
@@ -232,7 +247,7 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent }: CheckoutForm
       {/* Phone with country selector */}
       <div>
         <label htmlFor="phone" className={labelClass}>
-          WhatsApp / Téléphone
+          {formTxt.phone[locale]}
         </label>
         <div className="flex gap-2">
           {/* Country selector */}
@@ -272,7 +287,7 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent }: CheckoutForm
                     type="text"
                     value={countrySearch}
                     onChange={(e) => setCountrySearch(e.target.value)}
-                    placeholder="Rechercher un pays..."
+                    placeholder={formTxt.search_country[locale]}
                     autoFocus
                     className={`w-full rounded-md px-3 py-2 text-sm focus:outline-none ${
                       dark
@@ -301,7 +316,7 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent }: CheckoutForm
                   ))}
                   {filteredCountries.length === 0 && (
                     <p className={`px-3 py-2 text-sm ${dark ? "text-gray-500" : "text-gray-400"}`}>
-                      Aucun pays trouvé
+                      {formTxt.no_country[locale]}
                     </p>
                   )}
                 </div>
@@ -324,7 +339,7 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent }: CheckoutForm
           />
         </div>
         <p className={`text-xs mt-1 ${dark ? "text-gray-500" : "text-gray-400"}`}>
-          De préférence votre numéro WhatsApp
+          {formTxt.phone_hint[locale]}
         </p>
       </div>
 
@@ -344,7 +359,7 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent }: CheckoutForm
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            Traitement...
+            {formTxt.processing[locale]}
           </span>
         ) : (
           config.cta_text

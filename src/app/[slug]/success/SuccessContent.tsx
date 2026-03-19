@@ -6,9 +6,11 @@ import { trackDownload } from "@/lib/api";
 import { useTracking } from "@/hooks/useTracking";
 import Link from "next/link";
 import { StoreFooter } from "@/components/checkout/StoreFooter";
+import { t, type Locale } from "@/lib/i18n";
 
 export function SuccessContent({ data, eventId }: { data: OrderDetailsResponse; eventId?: string }) {
   const { order, product, store, download_url, is_external, tracking } = data;
+  const locale: Locale = store.locale || 'fr';
   const isPaid = order.status === "paid";
   const [downloading, setDownloading] = useState(false);
   const { trackEvent } = useTracking(tracking);
@@ -58,9 +60,9 @@ export function SuccessContent({ data, eventId }: { data: OrderDetailsResponse; 
                 />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold">Paiement confirmé !</h1>
+            <h1 className="text-2xl font-bold">{t('success.payment_confirmed', locale)}</h1>
             <p className="text-green-100 mt-1">
-              Merci pour votre achat, {order.customer_name || order.customer_email}
+              {t('success.thanks', locale)}, {order.customer_name || order.customer_email}
             </p>
           </div>
 
@@ -87,13 +89,13 @@ export function SuccessContent({ data, eventId }: { data: OrderDetailsResponse; 
               <hr className="border-gray-200" />
 
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Montant payé</span>
+                <span className="text-gray-500">{t('success.amount_paid', locale)}</span>
                 <span className="font-bold text-gray-900">
                   {order.formatted_amount}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Commande</span>
+                <span className="text-gray-500">{t('success.order', locale)}</span>
                 <span className="font-mono text-gray-600">#{order.id}</span>
               </div>
               <div className="flex justify-between text-sm">
@@ -131,7 +133,7 @@ export function SuccessContent({ data, eventId }: { data: OrderDetailsResponse; 
                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                         />
                       </svg>
-                      Téléchargement en cours...
+                      {t('success.downloading', locale)}
                     </>
                   ) : (
                     <>
@@ -148,27 +150,27 @@ export function SuccessContent({ data, eventId }: { data: OrderDetailsResponse; 
                           d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                         />
                       </svg>
-                      {is_external ? "Accéder à mon contenu" : "Télécharger mon fichier"}
+                      {is_external ? t('success.access', locale) : t('success.download', locale)}
                     </>
                   )}
                 </button>
                 <p className="text-xs text-center text-gray-400">
-                  Le lien expire dans 30 minutes. Téléchargez votre fichier maintenant.
+                  {t('success.link_expires', locale)}
                 </p>
               </div>
             ) : isPaid ? (
               <div className="text-center py-4 bg-yellow-50 rounded-xl">
                 <p className="text-yellow-700 font-medium">
-                  Aucun fichier disponible pour le moment.
+                  {t('success.no_file', locale)}
                 </p>
               </div>
             ) : (
               <div className="text-center py-4 bg-yellow-50 rounded-xl">
                 <p className="text-yellow-700 font-medium">
-                  Paiement en cours de vérification...
+                  {t('success.verifying', locale)}
                 </p>
                 <p className="text-yellow-600 text-sm mt-1">
-                  Vous recevrez un email dès que le paiement sera confirmé.
+                  {t('success.verifying_detail', locale)}
                 </p>
               </div>
             )}
@@ -190,10 +192,10 @@ export function SuccessContent({ data, eventId }: { data: OrderDetailsResponse; 
               </svg>
               <div>
                 <p className="text-sm font-medium text-blue-900">
-                  Confirmation envoyée
+                  {t('success.confirmation_sent', locale)}
                 </p>
                 <p className="text-xs text-blue-700 mt-0.5">
-                  Un récapitulatif a été envoyé à {order.customer_email}
+                  {t('success.recap_sent', locale)} {order.customer_email}
                 </p>
               </div>
             </div>
@@ -204,7 +206,7 @@ export function SuccessContent({ data, eventId }: { data: OrderDetailsResponse; 
                 href={`/${store.slug}`}
                 className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
               >
-                &larr; Retour à la boutique
+                &larr; {t('success.back_to_store', locale)}
               </Link>
             </div>
           </div>
@@ -212,7 +214,7 @@ export function SuccessContent({ data, eventId }: { data: OrderDetailsResponse; 
       </div>
       </div>
 
-      <StoreFooter storeName={store.name} />
+      <StoreFooter storeName={store.name} locale={locale} />
     </div>
   );
 }

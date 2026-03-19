@@ -10,6 +10,9 @@ import { PaymentLogos } from "./PaymentLogos";
 import { StoreFooter } from "./StoreFooter";
 import { Testimonials } from "./Testimonials";
 import { VideoSection } from "./VideoSection";
+import PriceDisplay from "./PriceDisplay";
+import { DescriptionWithCTAs } from "./DescriptionWithCTAs";
+import { t, type Locale } from "@/lib/i18n";
 
 function FeaturesBlock({ features, color }: { features: string[]; color: string }) {
   if (!features || features.length === 0) return null;
@@ -81,6 +84,7 @@ function FAQSection({ faqs, color }: { faqs: { question: string; answer: string 
 
 export function ClassicCheckout({ data, trackEvent }: { data: CheckoutPageData; trackEvent?: TrackEventFn }) {
   const { store, product, checkout_config: config } = data;
+  const locale: Locale = store.locale || 'fr';
 
   const scrollToForm = () => {
     document.getElementById("checkout-form")?.scrollIntoView({ behavior: "smooth" });
@@ -110,13 +114,13 @@ export function ClassicCheckout({ data, trackEvent }: { data: CheckoutPageData; 
                 clipRule="evenodd"
               />
             </svg>
-            Paiement sécurisé
+            {t('checkout.secure', locale)}
           </div>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8">
-        <UrgencyWidgets urgencyConfig={config.urgency_config} color={config.primary_color} />
+        <UrgencyWidgets urgencyConfig={config.urgency_config} color={config.primary_color} locale={locale} />
 
         <div className="grid gap-8 lg:grid-cols-5">
           {/* Left column — product info */}
@@ -136,12 +140,9 @@ export function ClassicCheckout({ data, trackEvent }: { data: CheckoutPageData; 
                 {product.name}
               </h1>
               {/* Mobile price */}
-              <p
-                className="text-3xl font-black mt-2 lg:hidden"
-                style={{ color: config.primary_color }}
-              >
-                {product.formatted_price}
-              </p>
+              <div className="mt-2 lg:hidden">
+                <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} />
+              </div>
             </div>
 
             {/* Video: below_image */}
@@ -154,9 +155,11 @@ export function ClassicCheckout({ data, trackEvent }: { data: CheckoutPageData; 
             {product.video_position === "above_description" && videoBlock}
 
             {product.description && (
-              <div
+              <DescriptionWithCTAs
+                description={product.description}
+                ctas={product.description_ctas}
+                primaryColor={config.primary_color}
                 className="prose prose-gray prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: product.description }}
               />
             )}
 
@@ -196,7 +199,7 @@ export function ClassicCheckout({ data, trackEvent }: { data: CheckoutPageData; 
                 />
               </svg>
               <div>
-                <p className="text-sm font-bold text-blue-800">Accès instantané garanti</p>
+                <p className="text-sm font-bold text-blue-800">{t('checkout.instant_guaranteed', locale)}</p>
                 <p className="text-xs text-blue-600 mt-0.5">
                   Recevez votre produit immédiatement après le paiement. Satisfaction garantie.
                 </p>
@@ -225,14 +228,11 @@ export function ClassicCheckout({ data, trackEvent }: { data: CheckoutPageData; 
                 style={{ backgroundColor: config.primary_color + "08" }}
               >
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
-                  Total à payer
+                  {t('checkout.total', locale)}
                 </p>
-                <p
-                  className="text-4xl font-black mt-1"
-                  style={{ color: config.primary_color }}
-                >
-                  {product.formatted_price}
-                </p>
+                <div className="mt-1 flex justify-center">
+                  <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} />
+                </div>
                 <p className="text-xs text-gray-400 mt-1">{store.currency}</p>
               </div>
 
@@ -296,7 +296,7 @@ export function ClassicCheckout({ data, trackEvent }: { data: CheckoutPageData; 
                   <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM4 11a1 1 0 100-2H3a1 1 0 000 2h1zM10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z" />
                   </svg>
-                  Accès instant
+                  {t('checkout.instant', locale)}
                 </span>
               </div>
             </div>
@@ -305,15 +305,15 @@ export function ClassicCheckout({ data, trackEvent }: { data: CheckoutPageData; 
       </main>
 
       <StickyMobileCTA
-        price={product.formatted_price}
+        price={product.has_promo ? product.formatted_effective_price : product.formatted_price}
         ctaText={config.cta_text}
         color={config.primary_color}
         onCtaClick={scrollToForm}
       />
 
-      <StoreFooter storeName={store.name} />
+      <StoreFooter storeName={store.name} locale={locale} />
 
-      <SalesPopup config={config.sales_popup} productName={product.name} />
+      <SalesPopup config={config.sales_popup} productName={product.name} locale={locale} />
     </div>
   );
 }

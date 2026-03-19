@@ -2,20 +2,31 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { SalesPopupConfig } from "@/lib/api";
+import type { Locale } from "@/lib/i18n";
 
 interface SalesPopupProps {
   config: SalesPopupConfig;
   productName: string;
   dark?: boolean;
+  locale?: Locale;
 }
 
-export function SalesPopup({ config, productName, dark }: SalesPopupProps) {
+const txt = {
+  someone: { fr: "Quelqu'un", en: "Someone" },
+  from: { fr: "de", en: "from" },
+  just_bought: { fr: "vient d'acheter", en: "just bought" },
+  ago: { fr: "il y a", en: "" },
+  min: { fr: "min", en: "min ago" },
+};
+
+export function SalesPopup({ config, productName, dark, locale = 'fr' }: SalesPopupProps) {
   const [visible, setVisible] = useState(false);
   const [currentEntry, setCurrentEntry] = useState<{ name: string; city: string } | null>(null);
   const [minutesAgo, setMinutesAgo] = useState(0);
 
   const entries = config.entries;
   const interval = (Number(config.interval_seconds) || 8) * 1000;
+  const showName = config.show_name !== false;
 
   const showNext = useCallback(() => {
     if (!entries || entries.length === 0) return;
@@ -27,17 +38,13 @@ export function SalesPopup({ config, productName, dark }: SalesPopupProps) {
     setMinutesAgo(randomMinutes);
     setVisible(true);
 
-    // Hide after 4 seconds
     setTimeout(() => setVisible(false), 4000);
   }, [entries]);
 
   useEffect(() => {
     if (!config.enabled || !entries || entries.length === 0) return;
 
-    // First popup after 3 seconds
     const initialTimeout = setTimeout(showNext, 3000);
-
-    // Then repeat
     const loop = setInterval(showNext, interval + 4000);
 
     return () => {
@@ -49,43 +56,43 @@ export function SalesPopup({ config, productName, dark }: SalesPopupProps) {
   if (!config.enabled || !entries || entries.length === 0) return null;
   if (!currentEntry) return null;
 
+  const displayName = showName ? currentEntry.name : txt.someone[locale];
+  const truncatedProduct = productName.length > 30 ? productName.slice(0, 30) + "..." : productName;
+  const timeAgo = locale === 'en'
+    ? `${minutesAgo} ${txt.min[locale]}`
+    : `${txt.ago[locale]} ${minutesAgo} ${txt.min[locale]}`;
+
   return (
     <div
       className={`fixed bottom-20 md:bottom-4 left-4 z-40 transition-all duration-500 max-w-xs ${
-        visible
-          ? "translate-y-0 opacity-100"
-          : "translate-y-4 opacity-0 pointer-events-none"
+        visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
       }`}
     >
       <div
         className={`rounded-xl px-4 py-3 shadow-2xl flex items-start gap-3 ${
-          dark
-            ? "bg-gray-800 border border-white/10 text-white"
-            : "bg-white border border-gray-200 text-gray-800"
+          dark ? "bg-gray-800 border border-white/10 text-white" : "bg-white border border-gray-200 text-gray-800"
         }`}
       >
-        {/* Avatar */}
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
-          {currentEntry.name.charAt(0).toUpperCase()}
+          {showName ? currentEntry.name.charAt(0).toUpperCase() : "?"}
         </div>
 
         <div className="min-w-0">
           <p className="text-sm font-semibold leading-tight">
-            {currentEntry.name}{" "}
+            {displayName}{" "}
             <span className={dark ? "text-gray-400 font-normal" : "text-gray-500 font-normal"}>
-              de {currentEntry.city}
+              {txt.from[locale]} {currentEntry.city}
             </span>
           </p>
           <p className={`text-xs mt-0.5 ${dark ? "text-gray-400" : "text-gray-500"}`}>
-            vient d&apos;acheter{" "}
-            <span className="font-medium">{productName.length > 30 ? productName.slice(0, 30) + "..." : productName}</span>
+            {txt.just_bought[locale]}{" "}
+            <span className="font-medium">{truncatedProduct}</span>
           </p>
           <p className={`text-xs mt-1 ${dark ? "text-gray-500" : "text-gray-400"}`}>
-            il y a {minutesAgo} min
+            {timeAgo}
           </p>
         </div>
 
-        {/* Green dot */}
         <span className="relative flex h-2 w-2 shrink-0 mt-1">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />

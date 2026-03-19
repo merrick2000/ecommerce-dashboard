@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 
+import type { Locale } from "@/lib/i18n";
+
 interface StoreFooterProps {
   storeName: string;
   dark?: boolean;
+  locale?: Locale;
 }
 
 const TRANSLATIONS = {
@@ -22,8 +25,8 @@ const TRANSLATIONS = {
   },
 };
 
-export function StoreFooter({ storeName, dark }: StoreFooterProps) {
-  const [lang, setLang] = useState<"fr" | "en">("fr");
+export function StoreFooter({ storeName, dark, locale: initialLocale }: StoreFooterProps) {
+  const [lang, setLang] = useState<"fr" | "en">(initialLocale || "fr");
   const t = TRANSLATIONS[lang];
   const year = new Date().getFullYear();
 

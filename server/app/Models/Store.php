@@ -14,6 +14,7 @@ class Store extends Model
         'name',
         'slug',
         'currency',
+        'locale',
     ];
 
     public function user(): BelongsTo

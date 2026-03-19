@@ -22,7 +22,7 @@ export function CheckoutSwitcher({ data }: CheckoutSwitcherProps) {
     viewContentFired.current = true;
 
     trackEvent("ViewContent", {
-      value: data.product.price,
+      value: data.product.effective_price,
       currency: data.store.currency,
       content_name: data.product.name,
       content_ids: [String(data.product.id)],

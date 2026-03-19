@@ -17,7 +17,12 @@ class Product extends Model implements HasMedia
         'store_id',
         'name',
         'description',
+        'description_ctas',
         'price',
+        'promo_type',
+        'promo_value',
+        'promo_label',
+        'promo_display_style',
         'features',
         'features_position',
         'faqs',
@@ -37,6 +42,7 @@ class Product extends Model implements HasMedia
         return [
             'price' => 'integer',
             'features' => 'array',
+            'description_ctas' => 'array',
             'faqs' => 'array',
             'testimonials' => 'array',
         ];
@@ -71,6 +77,29 @@ class Product extends Model implements HasMedia
     public function getFormattedPriceAttribute(): string
     {
         return number_format($this->price, 0, ',', ' ') . ' FCFA';
+    }
+
+    /**
+     * Calcule le prix final après promo.
+     */
+    public function getEffectivePriceAttribute(): int
+    {
+        if ($this->promo_type === 'percentage' && $this->promo_value > 0) {
+            return (int) round($this->price * (1 - $this->promo_value / 100));
+        }
+
+        if ($this->promo_type === 'fixed' && $this->promo_value > 0) {
+            return max(0, $this->price - $this->promo_value);
+        }
+
+        return $this->price;
+    }
+
+    public function hasPromo(): bool
+    {
+        return $this->promo_type !== 'none'
+            && $this->promo_type !== null
+            && $this->promo_value > 0;
     }
 
     /**

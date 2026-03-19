@@ -8,4 +8,6 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateCheckoutConfig extends CreateRecord
 {
     protected static string $resource = CheckoutConfigResource::class;
+
+    public static bool $formActionsAreSticky = true;
 }
