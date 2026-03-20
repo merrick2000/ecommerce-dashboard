@@ -19,6 +19,19 @@ class CheckoutConfig extends Model
         'sales_popup',
         'payment_logos',
         'tracking_config',
+        'page_layout',
+    ];
+
+    public const DEFAULT_PAGE_LAYOUT = [
+        ['key' => 'hero_image', 'label' => 'Image de couverture', 'visible' => true],
+        ['key' => 'product_name', 'label' => 'Nom du produit', 'visible' => true],
+        ['key' => 'video', 'label' => 'Vidéo', 'visible' => true],
+        ['key' => 'description', 'label' => 'Description', 'visible' => true],
+        ['key' => 'features', 'label' => 'Avantages', 'visible' => true],
+        ['key' => 'trust_badges', 'label' => 'Badges de confiance', 'visible' => true],
+        ['key' => 'guarantee', 'label' => 'Garantie', 'visible' => true],
+        ['key' => 'testimonials', 'label' => 'Avis clients', 'visible' => true],
+        ['key' => 'faq', 'label' => 'FAQ', 'visible' => true],
     ];
 
     protected function casts(): array
@@ -31,6 +44,7 @@ class CheckoutConfig extends Model
             'sales_popup' => 'array',
             'payment_logos' => 'array',
             'tracking_config' => 'array',
+            'page_layout' => 'array',
         ];
     }
 

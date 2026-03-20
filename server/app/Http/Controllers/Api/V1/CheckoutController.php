@@ -79,6 +79,7 @@ class CheckoutController extends Controller
                 'sales_popup' => $config->sales_popup ?? [],
                 'payment_logos' => $config->payment_logos ?? [],
                 'tracking' => $this->buildTrackingConfig($config->tracking_config),
+                'page_layout' => $config->page_layout ?? \App\Models\CheckoutConfig::DEFAULT_PAGE_LAYOUT,
             ] : [
                 'template_type' => 'CLASSIC',
                 'primary_color' => '#E67E22',
@@ -88,6 +89,7 @@ class CheckoutController extends Controller
                 'sales_popup' => [],
                 'payment_logos' => [],
                 'tracking' => null,
+                'page_layout' => \App\Models\CheckoutConfig::DEFAULT_PAGE_LAYOUT,
             ],
         ]);
     }

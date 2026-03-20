@@ -27,11 +27,6 @@ class OrderResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Détails commande')
                     ->schema([
-                        Forms\Components\Select::make('store_id')
-                            ->label('Boutique')
-                            ->relationship('store', 'name')
-                            ->disabled(),
-
                         Forms\Components\Select::make('product_id')
                             ->label('Produit')
                             ->relationship('product', 'name')
@@ -117,8 +112,6 @@ class OrderResource extends Resource
                     ->options(collect(OrderStatus::cases())->mapWithKeys(
                         fn (OrderStatus $status) => [$status->value => $status->label()]
                     )),
-                Tables\Filters\SelectFilter::make('store')
-                    ->relationship('store', 'name'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

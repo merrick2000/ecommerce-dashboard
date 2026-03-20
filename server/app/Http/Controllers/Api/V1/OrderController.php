@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\SendFacebookConversionEvent;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Store;
@@ -11,7 +10,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 
 class OrderController extends Controller
 {
@@ -26,7 +24,6 @@ class OrderController extends Controller
             'customer_email' => 'required|email',
             'customer_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:30',
-            'payment_method' => 'nullable|string|in:fedapay,paydunya',
         ]);
 
         if ($validator->fails()) {
@@ -50,60 +47,17 @@ class OrderController extends Controller
             'amount' => $product->effective_price,
             'currency' => $store->currency,
             'status' => 'pending',
-            'payment_method' => $request->payment_method,
         ]);
-
-        // -----------------------------------------------------------
-        // POINT D'INTÉGRATION PAIEMENT (FedaPay / Paydunya)
-        // -----------------------------------------------------------
-        // if ($request->payment_method === 'fedapay') {
-        //     $transaction = \FedaPay\Transaction::create([...]);
-        //     $paymentUrl = $transaction->generateToken()->url;
-        // }
-        // -----------------------------------------------------------
-
-        // Mode demo : on passe directement la commande en "paid"
-        $order->update(['status' => 'paid']);
-
-        // Générer un event_id unique pour la déduplication Pixel/CAPI
-        $eventId = Str::uuid()->toString();
-
-        // Dispatch Facebook CAPI si configuré
-        $trackingConfig = $store->checkoutConfig?->tracking_config;
-        if (
-            $trackingConfig &&
-            ! empty($trackingConfig['facebook_pixel_id']) &&
-            ! empty($trackingConfig['facebook_access_token'])
-        ) {
-            SendFacebookConversionEvent::dispatch(
-                $trackingConfig['facebook_pixel_id'],
-                $trackingConfig['facebook_access_token'],
-                $trackingConfig['facebook_test_event_code'] ?? null,
-                'Purchase',
-                $eventId,
-                [
-                    'value' => $order->amount,
-                    'currency' => $order->currency,
-                    'content_name' => $product->name,
-                    'content_ids' => [(string) $product->id],
-                    'content_type' => 'product',
-                ],
-                $request->customer_email,
-                $request->ip(),
-                $request->userAgent(),
-            );
-        }
 
         return response()->json([
             'order' => [
                 'id' => $order->id,
                 'amount' => $order->amount,
                 'currency' => $order->currency,
-                'status' => $order->fresh()->status->value,
+                'status' => 'pending',
                 'formatted_amount' => number_format($order->amount, 0, ',', ' ') . ' ' . $order->currency,
             ],
-            'event_id' => $eventId,
-            'message' => 'Commande créée avec succès.',
+            'message' => 'Commande créée. Procédez au paiement.',
         ], 201);
     }
 

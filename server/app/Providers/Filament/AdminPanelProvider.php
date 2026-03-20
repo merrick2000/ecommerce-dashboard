@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\Register;
 use App\Filament\Pages\Auth\EditProfile;
+use App\Models\Store;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -12,7 +13,6 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -32,6 +32,9 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->registration(Register::class)
             ->profile(EditProfile::class)
+            ->tenant(Store::class, slugAttribute: 'slug')
+            ->tenantRegistration(\App\Filament\Pages\Tenancy\RegisterStore::class)
+            ->tenantProfile(\App\Filament\Pages\Tenancy\EditStore::class)
             ->colors([
                 'primary' => Color::Amber,
             ])

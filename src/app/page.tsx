@@ -12,7 +12,7 @@ interface Store {
 async function getStores(): Promise<Store[]> {
   try {
     const res = await fetch(`${API_BASE}/v1/stores`, {
-      next: { revalidate: 60 },
+      cache: 'no-store',
     });
     if (!res.ok) return [];
     return res.json();

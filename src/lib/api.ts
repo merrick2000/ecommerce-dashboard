@@ -58,6 +58,12 @@ export interface TrackingConfig {
   tiktok_pixel_id?: string;
 }
 
+export interface PageSection {
+  key: string;
+  label: string;
+  visible: boolean;
+}
+
 export interface CheckoutConfigData {
   template_type: 'CLASSIC' | 'DARK_PREMIUM' | 'MINIMALIST_CARD';
   primary_color: string;
@@ -67,6 +73,7 @@ export interface CheckoutConfigData {
   sales_popup: SalesPopupConfig;
   payment_logos: string[];
   tracking: TrackingConfig | null;
+  page_layout: PageSection[];
 }
 
 export interface CheckoutPageData {
@@ -142,7 +149,7 @@ export interface StoreCatalogData {
 
 export async function fetchStoreCatalog(storeSlug: string): Promise<StoreCatalogData> {
   const res = await fetch(`${API_BASE}/v1/stores/${storeSlug}`, {
-    next: { revalidate: 60 },
+    cache: 'no-store',
   });
 
   if (!res.ok) {
@@ -154,7 +161,7 @@ export async function fetchStoreCatalog(storeSlug: string): Promise<StoreCatalog
 
 export async function fetchCheckoutData(storeSlug: string, productId: number): Promise<CheckoutPageData> {
   const res = await fetch(`${API_BASE}/v1/checkout/${storeSlug}/${productId}`, {
-    next: { revalidate: 60 },
+    cache: 'no-store',
   });
 
   if (!res.ok) {
@@ -170,7 +177,6 @@ export async function createOrder(data: {
   customer_email: string;
   customer_name?: string;
   customer_phone?: string;
-  payment_method?: string;
 }): Promise<OrderResponse> {
   const res = await fetch(`${API_BASE}/v1/orders/create`, {
     method: 'POST',
@@ -200,4 +206,92 @@ export async function fetchOrder(orderId: number): Promise<OrderDetailsResponse>
 
 export async function trackDownload(orderId: number): Promise<void> {
   fetch(`${API_BASE}/v1/download/${orderId}/track`, { method: 'POST' }).catch(() => {});
+}
+
+// ─── Payment API ──────────────────────────────────────────────────────
+
+export interface PaymentCountry {
+  name: string;
+  networks: Record<string, string>; // { mtn: "MTN Mobile Money", wave: "Wave", ... }
+}
+
+export interface PaymentCountriesResponse {
+  countries: Record<string, PaymentCountry>; // { BJ: {...}, SN: {...}, ... }
+}
+
+export interface PaymentInitiateResponse {
+  status: 'processing' | 'redirect' | 'otp_required';
+  provider: string;
+  redirect_url: string | null;
+  order_id: number;
+  message: string;
+  otp_flow?: 'ussd_pre_otp';
+  ussd_instruction?: string;
+}
+
+export interface PaymentStatusResponse {
+  status: 'pending' | 'processing' | 'paid' | 'failed';
+  order_id: number;
+}
+
+export async function fetchPaymentCountries(): Promise<PaymentCountriesResponse> {
+  const res = await fetch(`${API_BASE}/v1/payments/countries`, {
+    next: { revalidate: 3600 },
+  });
+
+  if (!res.ok) {
+    throw new Error('Impossible de charger les pays');
+  }
+
+  return res.json();
+}
+
+export async function initiatePayment(data: {
+  order_id: number;
+  country: string;
+  network: string;
+  phone: string;
+}): Promise<PaymentInitiateResponse> {
+  const res = await fetch(`${API_BASE}/v1/payments/initiate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Le paiement a échoué');
+  }
+
+  return res.json();
+}
+
+export async function confirmPaymentOtp(data: {
+  order_id: number;
+  otp_code: string;
+}): Promise<PaymentStatusResponse> {
+  const res = await fetch(`${API_BASE}/v1/payments/confirm-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Code incorrect');
+  }
+
+  return res.json();
+}
+
+export async function checkPaymentStatus(orderId: number): Promise<PaymentStatusResponse> {
+  const res = await fetch(`${API_BASE}/v1/payments/${orderId}/status`, {
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    throw new Error('Impossible de vérifier le statut');
+  }
+
+  return res.json();
 }

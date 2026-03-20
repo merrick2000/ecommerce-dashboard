@@ -28,15 +28,8 @@ class ProductResource extends Resource
             ->schema([
                 Forms\Components\Section::make()
                     ->schema([
-                        Forms\Components\Grid::make(3)
+                        Forms\Components\Grid::make(2)
                             ->schema([
-                                Forms\Components\Select::make('store_id')
-                                    ->label('Boutique')
-                                    ->relationship('store', 'name')
-                                    ->required()
-                                    ->searchable()
-                                    ->preload(),
-
                                 Forms\Components\TextInput::make('price')
                                     ->label('Prix original (FCFA)')
                                     ->required()
@@ -81,7 +74,7 @@ class ProductResource extends Resource
                                         'fixed' => 'Réduction fixe (FCFA)',
                                     ])
                                     ->default('none')
-                                    ->live(),
+                                    ->live(onBlur: true),
 
                                 Forms\Components\TextInput::make('promo_value')
                                     ->label(fn (Forms\Get $get) => $get('promo_type') === 'percentage' ? 'Réduction (%)' : 'Réduction (FCFA)')
@@ -145,7 +138,7 @@ class ProductResource extends Resource
                                                     ])
                                                     ->default('scroll_to_form')
                                                     ->required()
-                                                    ->live(),
+                                                    ->live(onBlur: true),
 
                                                 Forms\Components\TextInput::make('url')
                                                     ->label('URL')
@@ -248,7 +241,7 @@ class ProductResource extends Resource
                                             ])
                                             ->default('file')
                                             ->required()
-                                            ->live()
+                                            ->live(onBlur: true)
                                             ->inline(),
 
                                         Forms\Components\FileUpload::make('digital_file_path')
@@ -373,9 +366,6 @@ class ProductResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('store.name')
-                    ->label('Boutique')
-                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('price')
                     ->label('Prix')
