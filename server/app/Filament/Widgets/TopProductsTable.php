@@ -4,7 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Enums\OrderStatus;
 use App\Models\Product;
-use App\Models\Store;
+use Filament\Facades\Filament;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -19,13 +19,12 @@ class TopProductsTable extends BaseWidget
 
     public function table(Table $table): Table
     {
-        $user = auth()->user();
-        $storeIds = Store::where('user_id', $user->id)->pluck('id');
+        $store = Filament::getTenant();
 
         return $table
             ->query(
                 Product::query()
-                    ->whereIn('store_id', $storeIds)
+                    ->where('store_id', $store->id)
                     ->withCount(['orders' => fn ($q) => $q->where('status', OrderStatus::PAID)])
                     ->withSum(['orders' => fn ($q) => $q->where('status', OrderStatus::PAID)], 'amount')
                     ->orderByDesc('orders_count')
@@ -36,14 +35,9 @@ class TopProductsTable extends BaseWidget
                     ->limit(40)
                     ->searchable(),
 
-                Tables\Columns\TextColumn::make('store.name')
-                    ->label('Boutique')
-                    ->badge()
-                    ->color('info'),
-
                 Tables\Columns\TextColumn::make('price')
                     ->label('Prix')
-                    ->formatStateUsing(fn ($state) => number_format($state) . ' FCFA')
+                    ->formatStateUsing(fn ($state) => number_format($state) . ' ' . $store->currency)
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('orders_count')
@@ -54,7 +48,7 @@ class TopProductsTable extends BaseWidget
 
                 Tables\Columns\TextColumn::make('orders_sum_amount')
                     ->label('Revenus')
-                    ->formatStateUsing(fn ($state) => number_format($state ?? 0) . ' FCFA')
+                    ->formatStateUsing(fn ($state) => number_format($state ?? 0) . ' ' . $store->currency)
                     ->sortable(),
             ])
             ->defaultPaginationPageOption(5);

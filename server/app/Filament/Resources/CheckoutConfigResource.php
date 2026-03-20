@@ -7,6 +7,7 @@ use App\Filament\Resources\CheckoutConfigResource\Pages;
 use App\Models\CheckoutConfig;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -27,17 +28,6 @@ class CheckoutConfigResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make()
-                    ->schema([
-                        Forms\Components\Select::make('store_id')
-                            ->label('Boutique')
-                            ->relationship('store', 'name')
-                            ->required()
-                            ->searchable()
-                            ->preload()
-                            ->unique(ignoreRecord: true)
-                            ->helperText('Chaque boutique ne peut avoir qu\'une seule configuration.'),
-                    ]),
 
                 Forms\Components\Tabs::make('Configuration')
                     ->tabs([
@@ -92,7 +82,7 @@ class CheckoutConfigResource extends Resource
                                                 Forms\Components\Toggle::make('urgency_config.countdown_timer.enabled')
                                                     ->label('Activer')
                                                     ->default(false)
-                                                    ->live(),
+                                                    ->live(onBlur: true),
                                                 Forms\Components\Select::make('urgency_config.countdown_timer.duration_minutes')
                                                     ->label('Durée')
                                                     ->options([5 => '5 min', 10 => '10 min', 15 => '15 min', 30 => '30 min', 60 => '1h'])
@@ -110,7 +100,7 @@ class CheckoutConfigResource extends Resource
                                                 Forms\Components\Toggle::make('urgency_config.limited_spots.enabled')
                                                     ->label('Activer')
                                                     ->default(false)
-                                                    ->live(),
+                                                    ->live(onBlur: true),
                                                 Forms\Components\TextInput::make('urgency_config.limited_spots.total_spots')
                                                     ->label('Total places')
                                                     ->numeric()
@@ -131,7 +121,7 @@ class CheckoutConfigResource extends Resource
                                                 Forms\Components\Toggle::make('urgency_config.flash_sale.enabled')
                                                     ->label('Activer')
                                                     ->default(false)
-                                                    ->live(),
+                                                    ->live(onBlur: true),
                                                 Forms\Components\TextInput::make('urgency_config.flash_sale.discount_percent')
                                                     ->label('Réduction')
                                                     ->numeric()
@@ -153,7 +143,7 @@ class CheckoutConfigResource extends Resource
                                                 Forms\Components\Toggle::make('urgency_config.social_proof.enabled')
                                                     ->label('Afficher "X personnes regardent"')
                                                     ->default(false)
-                                                    ->live(),
+                                                    ->live(onBlur: true),
                                                 Forms\Components\TextInput::make('urgency_config.social_proof.viewer_count')
                                                     ->label('Nombre affiché')
                                                     ->numeric()
@@ -195,7 +185,7 @@ class CheckoutConfigResource extends Resource
                                 Forms\Components\Toggle::make('sales_popup.enabled')
                                     ->label('Activer les notifications de vente')
                                     ->default(false)
-                                    ->live(),
+                                    ->live(onBlur: true),
 
                                 Forms\Components\Grid::make(2)
                                     ->schema([
@@ -233,7 +223,42 @@ class CheckoutConfigResource extends Resource
                                     ->visible(fn (Forms\Get $get) => $get('sales_popup.enabled')),
                             ]),
 
-                        // ─── TAB 5 : TRACKING ───────────────────────────
+                        // ─── TAB 5 : PAGE LAYOUT ───────────────────────
+                        Forms\Components\Tabs\Tab::make('Ordre des sections')
+                            ->icon('heroicon-o-queue-list')
+                            ->schema([
+                                Forms\Components\Placeholder::make('layout_help')
+                                    ->content('Glissez-déposez les sections pour réorganiser la page de vente. Désactivez les sections que vous ne souhaitez pas afficher.')
+                                    ->columnSpanFull(),
+
+                                Forms\Components\Repeater::make('page_layout')
+                                    ->label('')
+                                    ->schema([
+                                        Forms\Components\Grid::make(3)
+                                            ->schema([
+                                                Forms\Components\Toggle::make('visible')
+                                                    ->label('Afficher')
+                                                    ->default(true)
+                                                    ->inline(false),
+
+                                                Forms\Components\TextInput::make('label')
+                                                    ->label('Section')
+                                                    ->disabled()
+                                                    ->dehydrated(),
+
+                                                Forms\Components\Hidden::make('key'),
+                                            ]),
+                                    ])
+                                    ->default(CheckoutConfig::DEFAULT_PAGE_LAYOUT)
+                                    ->reorderable()
+                                    ->reorderableWithDragAndDrop()
+                                    ->addable(false)
+                                    ->deletable(false)
+                                    ->collapsible(false)
+                                    ->itemLabel(fn (array $state): ?string => $state['label'] ?? null),
+                            ]),
+
+                        // ─── TAB 6 : TRACKING ───────────────────────────
                         Forms\Components\Tabs\Tab::make('Tracking')
                             ->icon('heroicon-o-chart-bar')
                             ->schema([
@@ -279,6 +304,7 @@ class CheckoutConfigResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('store.name')
                     ->label('Boutique')
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->searchable()
                     ->sortable(),
 

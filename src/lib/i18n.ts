@@ -68,6 +68,29 @@ const translations = {
   // Sticky CTA
   'sticky.secure': { fr: 'Paiement sécurisé', en: 'Secure payment' },
 
+  // Payment page
+  'payment.title': { fr: 'Paiement', en: 'Payment' },
+  'payment.summary': { fr: 'Récapitulatif', en: 'Summary' },
+  'payment.select_country': { fr: 'Choisissez votre pays', en: 'Select your country' },
+  'payment.select_network': { fr: 'Choisissez votre réseau', en: 'Select your network' },
+  'payment.phone': { fr: 'Numéro de téléphone', en: 'Phone number' },
+  'payment.phone_placeholder': { fr: 'Ex: 97 00 00 00', en: 'Ex: 97 00 00 00' },
+  'payment.phone_hint': { fr: 'Le numéro associé à votre compte mobile money', en: 'The number linked to your mobile money account' },
+  'payment.pay': { fr: 'Payer', en: 'Pay' },
+  'payment.processing': { fr: 'Traitement en cours...', en: 'Processing...' },
+  'payment.confirm_phone': { fr: 'Confirmez le paiement sur votre téléphone', en: 'Confirm payment on your phone' },
+  'payment.confirm_detail': { fr: 'Vous allez recevoir une demande de confirmation sur votre téléphone. Entrez votre code PIN pour valider.', en: 'You will receive a confirmation request on your phone. Enter your PIN to validate.' },
+  'payment.waiting': { fr: 'En attente de confirmation...', en: 'Waiting for confirmation...' },
+  'payment.failed': { fr: 'Le paiement a échoué. Veuillez réessayer.', en: 'Payment failed. Please try again.' },
+  'payment.retry': { fr: 'Réessayer', en: 'Try again' },
+  'payment.secure': { fr: 'Paiement sécurisé et chiffré', en: 'Secure and encrypted payment' },
+  'payment.no_country': { fr: 'Votre pays n\'est pas encore supporté', en: 'Your country is not yet supported' },
+  'payment.otp_title': { fr: 'Code de confirmation', en: 'Confirmation code' },
+  'payment.otp_detail': { fr: 'Entrez le code reçu par SMS sur votre téléphone.', en: 'Enter the code received by SMS on your phone.' },
+  'payment.otp_placeholder': { fr: 'Ex: 1234', en: 'Ex: 1234' },
+  'payment.otp_submit': { fr: 'Confirmer le paiement', en: 'Confirm payment' },
+  'payment.otp_resend': { fr: 'Renvoyer le code', en: 'Resend code' },
+
   // Footer
   'footer.powered_by': { fr: 'Propulsé par', en: 'Powered by' },
 } as const;

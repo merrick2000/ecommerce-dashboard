@@ -4,9 +4,8 @@ namespace App\Filament\Widgets;
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
-use App\Models\Store;
+use Filament\Facades\Filament;
 use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Carbon;
 
 class RevenueChart extends ChartWidget
 {
@@ -16,15 +15,14 @@ class RevenueChart extends ChartWidget
 
     protected function getData(): array
     {
-        $user = auth()->user();
-        $storeIds = Store::where('user_id', $user->id)->pluck('id');
+        $store = Filament::getTenant();
 
-        $data = collect(range(6, 0))->map(function ($daysAgo) use ($storeIds) {
+        $data = collect(range(6, 0))->map(function ($daysAgo) use ($store) {
             $date = now()->subDays($daysAgo);
 
             return [
                 'date' => $date->format('D d'),
-                'revenue' => Order::whereIn('store_id', $storeIds)
+                'revenue' => Order::where('store_id', $store->id)
                     ->where('status', OrderStatus::PAID)
                     ->whereDate('created_at', $date)
                     ->sum('amount'),
@@ -34,7 +32,7 @@ class RevenueChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Revenus (FCFA)',
+                    'label' => 'Revenus (' . $store->currency . ')',
                     'data' => $data->pluck('revenue')->toArray(),
                     'backgroundColor' => 'rgba(245, 158, 11, 0.1)',
                     'borderColor' => 'rgb(245, 158, 11)',

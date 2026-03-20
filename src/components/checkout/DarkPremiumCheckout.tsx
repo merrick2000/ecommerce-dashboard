@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { CheckoutPageData } from "@/lib/api";
+import { useState, useMemo } from "react";
+import type { CheckoutPageData, PageSection } from "@/lib/api";
 import { CheckoutForm, type TrackEventFn } from "./CheckoutForm";
 import { UrgencyWidgets } from "./UrgencyWidgets";
 import { StickyMobileCTA } from "./StickyMobileCTA";
@@ -85,6 +85,18 @@ function FAQSection({ faqs, color }: { faqs: { question: string; answer: string 
   );
 }
 
+const DEFAULT_LAYOUT: PageSection[] = [
+  { key: 'hero_image', label: 'Image de couverture', visible: true },
+  { key: 'product_name', label: 'Nom du produit', visible: true },
+  { key: 'video', label: 'Vidéo', visible: true },
+  { key: 'description', label: 'Description', visible: true },
+  { key: 'features', label: 'Avantages', visible: true },
+  { key: 'trust_badges', label: 'Badges de confiance', visible: true },
+  { key: 'guarantee', label: 'Garantie', visible: true },
+  { key: 'testimonials', label: 'Avis clients', visible: true },
+  { key: 'faq', label: 'FAQ', visible: true },
+];
+
 export function DarkPremiumCheckout({ data, trackEvent }: { data: CheckoutPageData; trackEvent?: TrackEventFn }) {
   const { store, product, checkout_config: config } = data;
   const locale: Locale = store.locale || 'fr';
@@ -93,13 +105,130 @@ export function DarkPremiumCheckout({ data, trackEvent }: { data: CheckoutPageDa
     document.getElementById("checkout-form")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const featuresBlock = (
-    <FeaturesBlock features={product.features} color={config.primary_color} />
-  );
+  const layout = useMemo(() => {
+    const sections = config.page_layout?.length ? config.page_layout : DEFAULT_LAYOUT;
+    return sections.filter((s) => s.visible);
+  }, [config.page_layout]);
 
-  const videoBlock = product.video_url ? (
-    <VideoSection url={product.video_url} title={product.video_title} dark />
-  ) : null;
+  const sectionRenderers: Record<string, () => React.ReactNode> = {
+    hero_image: () =>
+      product.cover_image ? (
+        <div key="hero_image" className="relative group">
+          <div
+            className="absolute -inset-1 rounded-2xl opacity-40 blur-xl transition-opacity duration-500 group-hover:opacity-60"
+            style={{ backgroundColor: config.primary_color }}
+          />
+          <img
+            src={product.cover_image}
+            alt={product.name}
+            className="relative w-full rounded-2xl object-cover aspect-video shadow-2xl shadow-black/50 transition-transform duration-500 group-hover:scale-[1.02]"
+          />
+        </div>
+      ) : null,
+
+    product_name: () => (
+      <div key="product_name">
+        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
+          {product.name}
+        </h1>
+        <div className="mt-3 lg:hidden">
+          <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} />
+        </div>
+      </div>
+    ),
+
+    video: () =>
+      product.video_url ? (
+        <div key="video">
+          <VideoSection url={product.video_url} title={product.video_title} dark />
+        </div>
+      ) : null,
+
+    description: () =>
+      product.description ? (
+        <div key="description">
+          <DescriptionWithCTAs
+            description={product.description}
+            ctas={product.description_ctas}
+            primaryColor={config.primary_color}
+            dark
+            className="prose prose-invert prose-lg max-w-none prose-p:text-gray-400 prose-headings:text-white prose-strong:text-gray-200 prose-a:text-blue-400"
+          />
+        </div>
+      ) : null,
+
+    features: () => (
+      <div key="features">
+        <FeaturesBlock features={product.features} color={config.primary_color} />
+      </div>
+    ),
+
+    trust_badges: () =>
+      config.trust_badges.length > 0 ? (
+        <div key="trust_badges" className="flex flex-wrap gap-2.5">
+          {config.trust_badges.map((badge, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium"
+              style={{
+                backgroundColor: config.primary_color + "15",
+                color: config.primary_color,
+                border: `1px solid ${config.primary_color}30`,
+              }}
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              {badge}
+            </span>
+          ))}
+        </div>
+      ) : null,
+
+    guarantee: () => (
+      <div key="guarantee" className="flex items-start gap-3 rounded-xl p-4 bg-white/5 border border-white/10">
+        <svg
+          className="w-6 h-6 shrink-0 mt-0.5"
+          style={{ color: config.primary_color }}
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path
+            fillRule="evenodd"
+            d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+            clipRule="evenodd"
+          />
+        </svg>
+        <div>
+          <p className="text-sm font-bold text-white">{t('checkout.instant_guaranteed', locale)}</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Recevez votre produit immédiatement après le paiement. Satisfaction garantie.
+          </p>
+        </div>
+      </div>
+    ),
+
+    testimonials: () => (
+      <div key="testimonials">
+        <Testimonials
+          testimonials={product.testimonials}
+          style={product.testimonials_style}
+          color={config.primary_color}
+          dark
+        />
+      </div>
+    ),
+
+    faq: () => (
+      <div key="faq">
+        <FAQSection faqs={product.faqs} color={config.primary_color} />
+      </div>
+    ),
+  };
 
   return (
     <div className="min-h-screen bg-gray-950 text-white pb-20 md:pb-0 relative overflow-x-hidden">
@@ -135,114 +264,12 @@ export function DarkPremiumCheckout({ data, trackEvent }: { data: CheckoutPageDa
         <UrgencyWidgets urgencyConfig={config.urgency_config} color={config.primary_color} dark locale={locale} />
 
         <div className="grid gap-10 lg:grid-cols-5">
-          {/* Left column — product showcase */}
+          {/* Left column — product showcase (dynamic section order) */}
           <div className="lg:col-span-3 space-y-8">
-            {product.cover_image && (
-              <div className="relative group">
-                <div
-                  className="absolute -inset-1 rounded-2xl opacity-40 blur-xl transition-opacity duration-500 group-hover:opacity-60"
-                  style={{ backgroundColor: config.primary_color }}
-                />
-                <img
-                  src={product.cover_image}
-                  alt={product.name}
-                  className="relative w-full rounded-2xl object-cover aspect-video shadow-2xl shadow-black/50 transition-transform duration-500 group-hover:scale-[1.02]"
-                />
-              </div>
-            )}
-
-            <div>
-              <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
-                {product.name}
-              </h1>
-              {/* Mobile price */}
-              <div className="mt-3 lg:hidden">
-                <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} />
-              </div>
-            </div>
-
-            {/* Video: below_image */}
-            {product.video_position === "below_image" && videoBlock}
-
-            {/* Features: above_description */}
-            {product.features_position === "above_description" && featuresBlock}
-
-            {/* Video: above_description */}
-            {product.video_position === "above_description" && videoBlock}
-
-            {product.description && (
-              <DescriptionWithCTAs
-                description={product.description}
-                ctas={product.description_ctas}
-                primaryColor={config.primary_color}
-                dark
-                className="prose prose-invert prose-lg max-w-none prose-p:text-gray-400 prose-headings:text-white prose-strong:text-gray-200 prose-a:text-blue-400"
-              />
-            )}
-
-            {/* Video: below_description (default) */}
-            {(product.video_position === "below_description" || !product.video_position) && videoBlock}
-
-            {/* Features: below_description (default) */}
-            {(product.features_position === "below_description" || !product.features_position) && featuresBlock}
-
-            {config.trust_badges.length > 0 && (
-              <div className="flex flex-wrap gap-2.5">
-                {config.trust_badges.map((badge, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium"
-                    style={{
-                      backgroundColor: config.primary_color + "15",
-                      color: config.primary_color,
-                      border: `1px solid ${config.primary_color}30`,
-                    }}
-                  >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    {badge}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Guarantee */}
-            <div className="flex items-start gap-3 rounded-xl p-4 bg-white/5 border border-white/10">
-              <svg
-                className="w-6 h-6 shrink-0 mt-0.5"
-                style={{ color: config.primary_color }}
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <div>
-                <p className="text-sm font-bold text-white">{t('checkout.instant_guaranteed', locale)}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Recevez votre produit immédiatement après le paiement. Satisfaction garantie.
-                </p>
-              </div>
-            </div>
-
-            {/* Testimonials */}
-            <Testimonials
-              testimonials={product.testimonials}
-              style={product.testimonials_style}
-              color={config.primary_color}
-              dark
-            />
-
-            {/* FAQ at bottom */}
-            <FAQSection faqs={product.faqs} color={config.primary_color} />
+            {layout.map((section) => {
+              const render = sectionRenderers[section.key];
+              return render ? render() : null;
+            })}
           </div>
 
           {/* Right column — checkout form */}
