@@ -37,6 +37,9 @@ export interface ProductData {
   video_url: string | null;
   video_title: string | null;
   video_position: 'above_description' | 'below_description' | 'below_image';
+  payment_mode: 'native' | 'external_link';
+  payment_link: string | null;
+  external_platform: 'selar' | 'chariow' | null;
 }
 
 export interface UrgencyConfig {

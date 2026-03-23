@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Lead;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Store;
@@ -47,7 +48,20 @@ class OrderController extends Controller
             'amount' => $product->effective_price,
             'currency' => $store->currency,
             'status' => 'pending',
+            'payment_method' => $product->payment_mode === 'external_link' ? $product->external_platform : null,
         ]);
+
+        // Enregistrer le lead si paiement externe
+        if ($product->payment_mode === 'external_link') {
+            Lead::create([
+                'store_id' => $store->id,
+                'product_id' => $product->id,
+                'customer_email' => $request->customer_email,
+                'customer_name' => $request->customer_name,
+                'customer_phone' => $request->customer_phone,
+                'source' => $product->external_platform ?? 'external_link',
+            ]);
+        }
 
         return response()->json([
             'order' => [

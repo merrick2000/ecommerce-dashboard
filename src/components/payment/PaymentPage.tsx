@@ -463,6 +463,20 @@ const FLAGS: Record<string, string> = {
   BF: "\u{1F1E7}\u{1F1EB}",
   CM: "\u{1F1E8}\u{1F1F2}",
   CG: "\u{1F1E8}\u{1F1EC}",
+  GH: "\u{1F1EC}\u{1F1ED}",
+  NG: "\u{1F1F3}\u{1F1EC}",
+  SL: "\u{1F1F8}\u{1F1F1}",
+  GA: "\u{1F1EC}\u{1F1E6}",
+  CD: "\u{1F1E8}\u{1F1E9}",
+  ET: "\u{1F1EA}\u{1F1F9}",
+  KE: "\u{1F1F0}\u{1F1EA}",
+  RW: "\u{1F1F7}\u{1F1FC}",
+  TZ: "\u{1F1F9}\u{1F1FF}",
+  UG: "\u{1F1FA}\u{1F1EC}",
+  LS: "\u{1F1F1}\u{1F1F8}",
+  MW: "\u{1F1F2}\u{1F1FC}",
+  MZ: "\u{1F1F2}\u{1F1FF}",
+  ZM: "\u{1F1FF}\u{1F1F2}",
 };
 
 function getFlag(code: string): string {

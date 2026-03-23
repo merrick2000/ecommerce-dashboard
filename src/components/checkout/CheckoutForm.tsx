@@ -15,17 +15,36 @@ interface CheckoutFormProps {
 }
 
 const COUNTRIES = [
+  // Afrique de l'Ouest
   { code: 'BJ', dial: '+229', flag: '🇧🇯', name: 'Bénin' },
   { code: 'BF', dial: '+226', flag: '🇧🇫', name: 'Burkina Faso' },
   { code: 'CI', dial: '+225', flag: '🇨🇮', name: "Côte d'Ivoire" },
-  { code: 'CM', dial: '+237', flag: '🇨🇲', name: 'Cameroun' },
-  { code: 'CG', dial: '+242', flag: '🇨🇬', name: 'Congo' },
-  { code: 'FR', dial: '+33', flag: '🇫🇷', name: 'France' },
+  { code: 'GH', dial: '+233', flag: '🇬🇭', name: 'Ghana' },
   { code: 'GN', dial: '+224', flag: '🇬🇳', name: 'Guinée' },
   { code: 'ML', dial: '+223', flag: '🇲🇱', name: 'Mali' },
   { code: 'NE', dial: '+227', flag: '🇳🇪', name: 'Niger' },
+  { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
   { code: 'SN', dial: '+221', flag: '🇸🇳', name: 'Sénégal' },
+  { code: 'SL', dial: '+232', flag: '🇸🇱', name: 'Sierra Leone' },
   { code: 'TG', dial: '+228', flag: '🇹🇬', name: 'Togo' },
+  // Afrique Centrale
+  { code: 'CM', dial: '+237', flag: '🇨🇲', name: 'Cameroun' },
+  { code: 'CG', dial: '+242', flag: '🇨🇬', name: 'Congo' },
+  { code: 'CD', dial: '+243', flag: '🇨🇩', name: 'RD Congo' },
+  { code: 'GA', dial: '+241', flag: '🇬🇦', name: 'Gabon' },
+  // Afrique de l'Est
+  { code: 'ET', dial: '+251', flag: '🇪🇹', name: 'Éthiopie' },
+  { code: 'KE', dial: '+254', flag: '🇰🇪', name: 'Kenya' },
+  { code: 'RW', dial: '+250', flag: '🇷🇼', name: 'Rwanda' },
+  { code: 'TZ', dial: '+255', flag: '🇹🇿', name: 'Tanzanie' },
+  { code: 'UG', dial: '+256', flag: '🇺🇬', name: 'Ouganda' },
+  // Afrique Australe
+  { code: 'LS', dial: '+266', flag: '🇱🇸', name: 'Lesotho' },
+  { code: 'MW', dial: '+265', flag: '🇲🇼', name: 'Malawi' },
+  { code: 'MZ', dial: '+258', flag: '🇲🇿', name: 'Mozambique' },
+  { code: 'ZM', dial: '+260', flag: '🇿🇲', name: 'Zambie' },
+  // Autres
+  { code: 'FR', dial: '+33', flag: '🇫🇷', name: 'France' },
 ];
 
 const formTxt = {
@@ -63,10 +82,30 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent }: CheckoutForm
     });
   };
 
+  const isExternalLink = product.payment_mode === 'external_link' && product.payment_link;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    if (isExternalLink) {
+      // Mode lien externe : on crée la commande pour le tracking puis on redirige
+      try {
+        await createOrder({
+          store_id: store.id,
+          product_id: product.id,
+          customer_email: email,
+          customer_name: name || undefined,
+          customer_phone: phone ? `${dialCode}${phone}` : undefined,
+        });
+      } catch {
+        // On redirige quand même, la commande est optionnelle en mode externe
+      }
+      window.open(product.payment_link!, '_blank');
+      setLoading(false);
+      return;
+    }
 
     try {
       const result = await createOrder({

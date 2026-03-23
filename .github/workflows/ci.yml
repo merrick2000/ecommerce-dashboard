@@ -165,28 +165,19 @@ jobs:
           cache-from: type=gha,scope=worker
           cache-to: type=gha,mode=max,scope=worker
 
-  # ─── Redeploy Railway ─────────────────────────────────
+  # ─── Redeploy Dokploy ─────────────────────────────────
   deploy:
-    name: Redeploy Railway
+    name: Redeploy Dokploy
     runs-on: ubuntu-latest
     needs: [docker]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
+      - name: Deploy backend
+        run: curl -sSf -X POST "${{ secrets.DOKPLOY_WEBHOOK_BACKEND }}"
 
-      - name: Redeploy backend
-        run: railway redeploy -s 47eadcc0-d843-4499-a09c-f5a34aa88144 -y
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Deploy worker
+        run: curl -sSf -X POST "${{ secrets.DOKPLOY_WEBHOOK_WORKER }}"
 
-      - name: Redeploy worker
-        run: railway redeploy -s e3ace0ce-551a-45b4-ac74-60bdb84e3f6a -y
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      - name: Redeploy frontend
-        run: railway redeploy -s 223bf848-90e8-4365-84bd-e8aec113e11e -y
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Deploy frontend
+        run: curl -sSf -X POST "${{ secrets.DOKPLOY_WEBHOOK_FRONTEND }}"

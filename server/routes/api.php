@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\DownloadController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\StoreController;
+use App\Http\Controllers\Api\V1\ExternalWebhookController;
 use App\Http\Controllers\Api\V1\WebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +38,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/webhooks/fedapay', [WebhookController::class, 'fedapay']);
     Route::post('/webhooks/paydunya', [WebhookController::class, 'paydunya']);
     Route::post('/webhooks/pawapay', [WebhookController::class, 'pawapay']);
+    Route::post('/webhooks/external', [ExternalWebhookController::class, 'handle']);
 
     // Téléchargement sécurisé (URL temporaire S3)
     Route::get('/download/{orderId}', DownloadController::class);

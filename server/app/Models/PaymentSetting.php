@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class PaymentSetting extends Model
 {
-    protected $fillable = ['mode', 'providers'];
+    protected $fillable = ['mode', 'providers', 'webhook_secret'];
 
     protected function casts(): array
     {
