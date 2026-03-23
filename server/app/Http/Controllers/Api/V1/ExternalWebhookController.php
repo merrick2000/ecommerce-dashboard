@@ -16,23 +16,20 @@ class ExternalWebhookController extends Controller
     /**
      * POST /api/v1/webhooks/external
      *
-     * Reçoit les notifications de paiement depuis n8n (Selar via Zapier → Sheet → n8n).
+     * Sync des ventes externes (Selar via Zapier → Sheet → n8n).
      *
      * Payload attendu :
      * {
      *   "platform": "selar",
-     *   "external_product_id": "abc123",
-     *   "customer_email": "client@mail.com",
-     *   "customer_name": "Fatou Diallo",
-     *   "amount": 5000,
-     *   "currency": "XOF"
+     *   "status": "paid",
+     *   "metadata": { ... données brutes Selar ... }
      * }
      *
      * Header : X-Webhook-Secret
      */
     public function handle(Request $request): JsonResponse
     {
-        // Vérifier le secret (stocké en DB, géré depuis le dashboard)
+        // Vérifier le secret
         $secret = PaymentSetting::instance()->webhook_secret;
 
         if (! $secret || $request->header('X-Webhook-Secret') !== $secret) {
@@ -45,62 +42,98 @@ class ExternalWebhookController extends Controller
 
         $data = $request->validate([
             'platform' => 'required|string|in:selar',
-            'external_product_id' => 'required|string',
-            'customer_email' => 'required|email',
-            'customer_name' => 'nullable|string|max:255',
-            'amount' => 'nullable|numeric',
-            'currency' => 'nullable|string|max:10',
-            'metadata' => 'nullable|array',
+            'status' => 'required|string|in:paid,failed,refunded',
+            'metadata' => 'required|array',
         ]);
 
-        PaymentLogger::webhook('external', $data['external_product_id'], 'received', $data);
+        $meta = $data['metadata'];
+        $platform = $data['platform'];
+        $status = $data['status'];
+
+        // Extraire les infos depuis les metadata Selar
+        $productCode = $meta['product_code']
+            ?? $meta['all_product_codes']
+            ?? null;
+        $customerEmail = $meta['buyer_email'] ?? null;
+        $customerName = $meta['buyer_full_name'] ?? null;
+        $customerPhone = $meta['buyer_mobile'] ?? null;
+        $amount = $meta['total_amount'] ?? $meta['product_amount'] ?? 0;
+        $currency = $meta['currency'] ?? 'XOF';
+        $productName = $meta['product_name']
+            ?? $meta['all_product_names']
+            ?? null;
+
+        if (! $productCode) {
+            PaymentLogger::error('external', 'Code produit manquant dans metadata', $meta);
+
+            return response()->json(['error' => 'Missing product code in metadata'], 422);
+        }
+
+        if (! $customerEmail) {
+            PaymentLogger::error('external', 'Email client manquant dans metadata', $meta);
+
+            return response()->json(['error' => 'Missing buyer email in metadata'], 422);
+        }
+
+        PaymentLogger::webhook('external', $productCode, 'received', $data);
 
         // Trouver le produit Sellit par son code externe
-        $product = Product::where('external_product_id', $data['external_product_id'])->first();
+        $product = Product::where('external_product_id', $productCode)->first();
 
         if (! $product) {
             PaymentLogger::error('external', 'Produit introuvable', [
-                'external_product_id' => $data['external_product_id'],
+                'external_product_id' => $productCode,
             ]);
 
-            return response()->json(['error' => 'Product not found'], 404);
+            return response()->json(['error' => 'Product not found', 'product_code' => $productCode], 404);
         }
 
-        // Chercher la commande pending la plus récente pour ce produit + email
-        $order = Order::where('product_id', $product->id)
-            ->where('customer_email', $data['customer_email'])
-            ->where('status', OrderStatus::PENDING)
-            ->orderBy('created_at', 'desc')
-            ->first();
+        // Éviter les doublons par receipt_url (identifiant unique de facture Selar)
+        $receiptUrl = $meta['receipt_url'] ?? null;
 
-        if (! $order) {
-            PaymentLogger::error('external', 'Aucune commande pending trouvée', [
-                'product_id' => $product->id,
-                'email' => $data['customer_email'],
+        if ($receiptUrl && Order::where('payment_ref', $receiptUrl)->exists()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Order already synced',
             ]);
-
-            return response()->json(['error' => 'No pending order found'], 404);
         }
 
-        // Passer la commande en paid
-        $order->update([
-            'status' => OrderStatus::PAID,
-            'payment_method' => $data['platform'],
-            'payment_ref' => 'ext_' . $data['platform'] . '_' . now()->timestamp,
-            'metadata' => $data['metadata'] ?? null,
+        // Mapper le status
+        $orderStatus = match ($status) {
+            'paid' => OrderStatus::PAID,
+            'failed' => OrderStatus::FAILED,
+            'refunded' => OrderStatus::REFUNDED,
+            default => OrderStatus::PENDING,
+        };
+
+        // Créer la commande
+        $order = Order::create([
+            'store_id' => $product->store_id,
+            'product_id' => $product->id,
+            'customer_email' => $customerEmail,
+            'customer_name' => $customerName,
+            'customer_phone' => $customerPhone,
+            'amount' => $amount,
+            'currency' => $currency,
+            'status' => $orderStatus,
+            'payment_method' => $platform,
+            'payment_ref' => $receiptUrl ?? 'ext_' . $platform . '_' . now()->timestamp,
+            'source' => $platform,
+            'metadata' => $meta,
         ]);
 
-        PaymentLogger::webhook('external', $data['external_product_id'], 'paid', [
+        PaymentLogger::webhook('external', $productCode, $status, [
             'order_id' => $order->id,
             'product' => $product->name,
-            'store_id' => $order->store_id,
-            'email' => $data['customer_email'],
+            'store_id' => $product->store_id,
+            'email' => $customerEmail,
+            'selar_product' => $productName,
         ]);
 
         return response()->json([
             'success' => true,
             'order_id' => $order->id,
-            'status' => 'paid',
+            'status' => $status,
         ]);
     }
 }

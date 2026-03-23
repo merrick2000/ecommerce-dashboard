@@ -49,6 +49,7 @@ class OrderController extends Controller
             'currency' => $store->currency,
             'status' => 'pending',
             'payment_method' => $product->payment_mode === 'external_link' ? $product->external_platform : null,
+            'source' => $product->payment_mode === 'external_link' ? ($product->external_platform ?? 'external') : 'native',
         ]);
 
         // Enregistrer le lead si paiement externe
