@@ -50,6 +50,7 @@ class ExternalWebhookController extends Controller
             'customer_name' => 'nullable|string|max:255',
             'amount' => 'nullable|numeric',
             'currency' => 'nullable|string|max:10',
+            'metadata' => 'nullable|array',
         ]);
 
         PaymentLogger::webhook('external', $data['external_product_id'], 'received', $data);
@@ -86,6 +87,7 @@ class ExternalWebhookController extends Controller
             'status' => OrderStatus::PAID,
             'payment_method' => $data['platform'],
             'payment_ref' => 'ext_' . $data['platform'] . '_' . now()->timestamp,
+            'metadata' => $data['metadata'] ?? null,
         ]);
 
         PaymentLogger::webhook('external', $data['external_product_id'], 'paid', [

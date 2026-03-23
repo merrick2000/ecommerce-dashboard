@@ -20,6 +20,7 @@ class Order extends Model
         'status',
         'payment_method',
         'payment_ref',
+        'metadata',
     ];
 
     protected function casts(): array
@@ -27,6 +28,7 @@ class Order extends Model
         return [
             'amount' => 'integer',
             'status' => OrderStatus::class,
+            'metadata' => 'array',
         ];
     }
 

@@ -16,6 +16,8 @@ class CheckoutConfigResource extends Resource
 {
     protected static ?string $model = CheckoutConfig::class;
 
+    protected static ?string $tenantRelationshipName = 'checkoutConfig';
+
     protected static ?string $navigationIcon = 'heroicon-o-paint-brush';
 
     protected static ?string $navigationLabel = 'Checkout Config';
