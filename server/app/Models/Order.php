@@ -6,10 +6,12 @@ use App\Enums\OrderStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Order extends Model
 {
     protected $fillable = [
+        'order_number',
         'store_id',
         'product_id',
         'customer_email',
@@ -20,6 +22,7 @@ class Order extends Model
         'status',
         'payment_method',
         'payment_ref',
+        'source',
         'metadata',
     ];
 
@@ -30,6 +33,24 @@ class Order extends Model
             'status' => OrderStatus::class,
             'metadata' => 'array',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Order $order) {
+            if (! $order->order_number) {
+                $order->order_number = self::generateOrderNumber();
+            }
+        });
+    }
+
+    public static function generateOrderNumber(): string
+    {
+        do {
+            $number = 'SLT-' . strtoupper(Str::random(8));
+        } while (self::where('order_number', $number)->exists());
+
+        return $number;
     }
 
     public function store(): BelongsTo
