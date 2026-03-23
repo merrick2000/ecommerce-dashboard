@@ -110,13 +110,31 @@ class PaymentOrchestrator
         $countries = [];
 
         $countryNames = [
+            // Afrique de l'Ouest
             'BJ' => 'Bénin',
-            'TG' => 'Togo',
-            'SN' => 'Sénégal',
-            'CI' => 'Côte d\'Ivoire',
             'BF' => 'Burkina Faso',
+            'CI' => 'Côte d\'Ivoire',
+            'GH' => 'Ghana',
+            'NG' => 'Nigeria',
+            'SN' => 'Sénégal',
+            'SL' => 'Sierra Leone',
+            'TG' => 'Togo',
+            // Afrique Centrale
             'CM' => 'Cameroun',
-            'CG' => 'Congo',
+            'CG' => 'Congo-Brazzaville',
+            'GA' => 'Gabon',
+            'CD' => 'RD Congo',
+            // Afrique de l'Est
+            'ET' => 'Éthiopie',
+            'KE' => 'Kenya',
+            'RW' => 'Rwanda',
+            'TZ' => 'Tanzanie',
+            'UG' => 'Ouganda',
+            // Afrique Australe
+            'LS' => 'Lesotho',
+            'MW' => 'Malawi',
+            'MZ' => 'Mozambique',
+            'ZM' => 'Zambie',
         ];
 
         $networkNames = [
@@ -128,6 +146,17 @@ class PaymentOrchestrator
             'orange' => 'Orange Money',
             'free' => 'Free Money',
             'airtel' => 'Airtel Money',
+            'airteltigo' => 'AirtelTigo',
+            'telecel' => 'Telecel',
+            'africell' => 'Africell',
+            'vodacom' => 'Vodacom M-Pesa',
+            'mpesa' => 'M-Pesa',
+            'telebirr' => 'Telebirr',
+            'tigo' => 'Tigo Pesa',
+            'halopesa' => 'Halopesa',
+            'tnm' => 'TNM Mpamba',
+            'movitel' => 'Movitel e-Mola',
+            'zamtel' => 'Zamtel',
         ];
 
         foreach ($routing as $code => $networks) {

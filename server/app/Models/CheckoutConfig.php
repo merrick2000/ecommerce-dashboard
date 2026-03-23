@@ -23,15 +23,16 @@ class CheckoutConfig extends Model
     ];
 
     public const DEFAULT_PAGE_LAYOUT = [
-        ['key' => 'hero_image', 'label' => 'Image de couverture', 'visible' => true],
-        ['key' => 'product_name', 'label' => 'Nom du produit', 'visible' => true],
-        ['key' => 'video', 'label' => 'Vidéo', 'visible' => true],
-        ['key' => 'description', 'label' => 'Description', 'visible' => true],
-        ['key' => 'features', 'label' => 'Avantages', 'visible' => true],
-        ['key' => 'trust_badges', 'label' => 'Badges de confiance', 'visible' => true],
-        ['key' => 'guarantee', 'label' => 'Garantie', 'visible' => true],
-        ['key' => 'testimonials', 'label' => 'Avis clients', 'visible' => true],
-        ['key' => 'faq', 'label' => 'FAQ', 'visible' => true],
+        ['key' => 'hero_image', 'label' => 'Image de couverture', 'icon' => 'photo', 'visible' => true],
+        ['key' => 'product_name', 'label' => 'Nom du produit', 'icon' => 'tag', 'visible' => true],
+        ['key' => 'price_cta', 'label' => 'Prix & bouton achat (mobile)', 'icon' => 'currency-dollar', 'visible' => true],
+        ['key' => 'video', 'label' => 'Vidéo', 'icon' => 'play-circle', 'visible' => true],
+        ['key' => 'description', 'label' => 'Description', 'icon' => 'document-text', 'visible' => true],
+        ['key' => 'features', 'label' => 'Avantages', 'icon' => 'check-badge', 'visible' => true],
+        ['key' => 'trust_badges', 'label' => 'Badges de confiance', 'icon' => 'shield-check', 'visible' => true],
+        ['key' => 'guarantee', 'label' => 'Garantie', 'icon' => 'hand-thumb-up', 'visible' => true],
+        ['key' => 'testimonials', 'label' => 'Avis clients', 'icon' => 'chat-bubble-left-right', 'visible' => true],
+        ['key' => 'faq', 'label' => 'FAQ', 'icon' => 'question-mark-circle', 'visible' => true],
     ];
 
     protected function casts(): array

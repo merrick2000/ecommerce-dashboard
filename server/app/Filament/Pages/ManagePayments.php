@@ -17,6 +17,7 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Support\Str;
 
 class ManagePayments extends Page implements HasActions, HasForms
 {
@@ -40,8 +41,15 @@ class ManagePayments extends Page implements HasActions, HasForms
         $settings = PaymentSetting::instance();
         $providers = $settings->providers ?? [];
 
+        // Générer un secret webhook si absent
+        if (! $settings->webhook_secret) {
+            $settings->update(['webhook_secret' => 'whsec_' . Str::random(40)]);
+            $settings->refresh();
+        }
+
         $this->form->fill([
             'mode' => $settings->mode,
+            'webhook_secret' => $settings->webhook_secret,
             // FeexPay
             'feexpay_enabled' => $providers['feexpay']['enabled'] ?? false,
             'feexpay_sandbox_api_key' => $providers['feexpay']['sandbox']['api_key'] ?? '',
@@ -98,6 +106,45 @@ class ManagePayments extends Page implements HasActions, HasForms
                             ->inline()
                             ->required()
                             ->live(),
+                    ]),
+
+                // ─── WEBHOOK EXTERNE ────────────────────────────
+                Forms\Components\Section::make('Webhook externe (Selar, etc.)')
+                    ->description('Configurez le webhook pour recevoir les notifications de paiement depuis n8n.')
+                    ->icon('heroicon-o-link')
+                    ->collapsible()
+                    ->schema([
+                        Forms\Components\Placeholder::make('webhook_url_display')
+                            ->label('URL du webhook')
+                            ->content(fn () => config('app.url') . '/api/v1/webhooks/external'),
+
+                        Forms\Components\TextInput::make('webhook_secret')
+                            ->label('Secret du webhook')
+                            ->password()
+                            ->revealable()
+                            ->readOnly()
+                            ->helperText('Copiez ce secret dans n8n (header X-Webhook-Secret). Régénérez-le si compromis.'),
+                    ])
+                    ->headerActions([
+                        Forms\Components\Actions\Action::make('regenerate_webhook_secret')
+                            ->label('Régénérer le secret')
+                            ->icon('heroicon-o-arrow-path')
+                            ->color('warning')
+                            ->requiresConfirmation()
+                            ->modalHeading('Régénérer le secret webhook')
+                            ->modalDescription('L\'ancien secret sera invalidé. Pensez à mettre à jour n8n avec le nouveau secret.')
+                            ->action(function (Forms\Set $set): void {
+                                $newSecret = 'whsec_' . Str::random(40);
+                                $settings = PaymentSetting::instance();
+                                $settings->update(['webhook_secret' => $newSecret]);
+                                $set('webhook_secret', $newSecret);
+
+                                Notification::make()
+                                    ->title('Secret régénéré')
+                                    ->body('Copiez le nouveau secret et mettez à jour votre configuration n8n.')
+                                    ->success()
+                                    ->send();
+                            }),
                     ]),
 
                 // ─── FEEXPAY ─────────────────────────────────────

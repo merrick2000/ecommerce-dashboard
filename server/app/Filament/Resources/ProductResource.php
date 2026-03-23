@@ -269,7 +269,53 @@ class ProductResource extends Resource
                                     ]),
                             ]),
 
-                        // ─── TAB 3 : SOCIAL PROOF ───────────────────────
+                        // ─── TAB 3 : PAIEMENT ──────────────────────────
+                        Forms\Components\Tabs\Tab::make('Paiement')
+                            ->icon('heroicon-o-credit-card')
+                            ->schema([
+                                Forms\Components\Radio::make('payment_mode')
+                                    ->label('Comment le client paye')
+                                    ->options([
+                                        'native' => 'Paiement intégré — Mobile Money, Wave, etc. (configuré dans Paiements)',
+                                        'external_link' => 'Lien externe — Selar, Chariow, ou autre plateforme',
+                                    ])
+                                    ->default('native')
+                                    ->required()
+                                    ->live(onBlur: true)
+                                    ->inline(false),
+
+                                Forms\Components\Select::make('external_platform')
+                                    ->label('Plateforme')
+                                    ->options([
+                                        'selar' => 'Selar',
+                                        'chariow' => 'Chariow',
+                                    ])
+                                    ->required()
+                                    ->live(onBlur: true)
+                                    ->visible(fn (Forms\Get $get) => $get('payment_mode') === 'external_link'),
+
+                                Forms\Components\TextInput::make('payment_link')
+                                    ->label('Lien de paiement')
+                                    ->url()
+                                    ->required()
+                                    ->placeholder(fn (Forms\Get $get) => match ($get('external_platform')) {
+                                        'selar' => 'https://selar.co/...',
+                                        'chariow' => 'https://chariow.com/...',
+                                        default => 'https://...',
+                                    })
+                                    ->helperText('Le bouton "Acheter" redirigera le client vers ce lien.')
+                                    ->visible(fn (Forms\Get $get) => $get('payment_mode') === 'external_link'),
+
+                                Forms\Components\TextInput::make('external_product_id')
+                                    ->label('Code produit Selar')
+                                    ->required()
+                                    ->placeholder('Ex: abc123')
+                                    ->unique(ignoreRecord: true)
+                                    ->helperText('Le code unique du produit sur Selar. Permet de synchroniser les ventes via webhook.')
+                                    ->visible(fn (Forms\Get $get) => $get('payment_mode') === 'external_link' && $get('external_platform') === 'selar'),
+                            ]),
+
+                        // ─── TAB 4 : SOCIAL PROOF ───────────────────────
                         Forms\Components\Tabs\Tab::make('Avis & FAQ')
                             ->icon('heroicon-o-chat-bubble-left-right')
                             ->schema([

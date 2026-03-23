@@ -228,25 +228,34 @@ class CheckoutConfigResource extends Resource
                             ->icon('heroicon-o-queue-list')
                             ->schema([
                                 Forms\Components\Placeholder::make('layout_help')
-                                    ->content('Glissez-déposez les sections pour réorganiser la page de vente. Désactivez les sections que vous ne souhaitez pas afficher.')
+                                    ->content('Glissez-déposez pour réorganiser la page de vente. Le toggle active/désactive chaque section.')
                                     ->columnSpanFull(),
 
                                 Forms\Components\Repeater::make('page_layout')
                                     ->label('')
                                     ->schema([
-                                        Forms\Components\Grid::make(3)
+                                        Forms\Components\Grid::make(2)
                                             ->schema([
                                                 Forms\Components\Toggle::make('visible')
-                                                    ->label('Afficher')
+                                                    ->label(fn (Forms\Get $get): string => match ($get('icon')) {
+                                                        'photo' => '🖼️',
+                                                        'tag' => '🏷️',
+                                                        'currency-dollar' => '💰',
+                                                        'play-circle' => '🎬',
+                                                        'document-text' => '📝',
+                                                        'check-badge' => '✅',
+                                                        'shield-check' => '🛡️',
+                                                        'hand-thumb-up' => '👍',
+                                                        'chat-bubble-left-right' => '💬',
+                                                        'question-mark-circle' => '❓',
+                                                        default => '📦',
+                                                    } . ' ' . ($get('label') ?? 'Section'))
                                                     ->default(true)
-                                                    ->inline(false),
+                                                    ->inline(),
 
-                                                Forms\Components\TextInput::make('label')
-                                                    ->label('Section')
-                                                    ->disabled()
-                                                    ->dehydrated(),
-
+                                                Forms\Components\Hidden::make('label'),
                                                 Forms\Components\Hidden::make('key'),
+                                                Forms\Components\Hidden::make('icon'),
                                             ]),
                                     ])
                                     ->default(CheckoutConfig::DEFAULT_PAGE_LAYOUT)
@@ -255,7 +264,21 @@ class CheckoutConfigResource extends Resource
                                     ->addable(false)
                                     ->deletable(false)
                                     ->collapsible(false)
-                                    ->itemLabel(fn (array $state): ?string => $state['label'] ?? null),
+                                    ->itemLabel(fn (array $state): ?string =>
+                                        match ($state['icon'] ?? '') {
+                                            'photo' => '🖼️',
+                                            'tag' => '🏷️',
+                                            'currency-dollar' => '💰',
+                                            'play-circle' => '🎬',
+                                            'document-text' => '📝',
+                                            'check-badge' => '✅',
+                                            'shield-check' => '🛡️',
+                                            'hand-thumb-up' => '👍',
+                                            'chat-bubble-left-right' => '💬',
+                                            'question-mark-circle' => '❓',
+                                            default => '📦',
+                                        } . '  ' . ($state['label'] ?? 'Section')
+                                    ),
                             ]),
 
                         // ─── TAB 6 : TRACKING ───────────────────────────

@@ -69,6 +69,9 @@ class CheckoutController extends Controller
                 'video_url' => $product->video_url,
                 'video_title' => $product->video_title,
                 'video_position' => $product->video_position ?? 'below_description',
+                'payment_mode' => $product->payment_mode ?? 'native',
+                'payment_link' => $product->payment_link,
+                'external_platform' => $product->external_platform,
             ],
             'checkout_config' => $config ? [
                 'template_type' => $config->template_type->value,

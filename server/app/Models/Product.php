@@ -35,6 +35,10 @@ class Product extends Model implements HasMedia
         'cover_image',
         'delivery_type',
         'external_url',
+        'payment_mode',
+        'payment_link',
+        'external_platform',
+        'external_product_id',
     ];
 
     protected function casts(): array
@@ -61,6 +65,11 @@ class Product extends Model implements HasMedia
     public function downloadClicks(): HasMany
     {
         return $this->hasMany(DownloadClick::class);
+    }
+
+    public function leads(): HasMany
+    {
+        return $this->hasMany(Lead::class);
     }
 
     public function registerMediaCollections(): void

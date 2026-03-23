@@ -85,6 +85,7 @@ function FAQSection({ faqs, color }: { faqs: { question: string; answer: string 
 const DEFAULT_LAYOUT: PageSection[] = [
   { key: 'hero_image', label: 'Image de couverture', visible: true },
   { key: 'product_name', label: 'Nom du produit', visible: true },
+  { key: 'price_cta', label: 'Prix & bouton achat (mobile)', visible: true },
   { key: 'video', label: 'Vidéo', visible: true },
   { key: 'description', label: 'Description', visible: true },
   { key: 'features', label: 'Avantages', visible: true },
@@ -124,9 +125,12 @@ export function ClassicCheckout({ data, trackEvent }: { data: CheckoutPageData; 
         <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">
           {product.name}
         </h1>
-        <div className="mt-2 lg:hidden">
-          <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} />
-        </div>
+      </div>
+    ),
+
+    price_cta: () => (
+      <div key="price_cta" className="lg:hidden">
+        <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} />
       </div>
     ),
 
