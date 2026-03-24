@@ -13,6 +13,8 @@ class Store extends Model
         'user_id',
         'name',
         'slug',
+        'subdomain',
+        'custom_domain',
         'currency',
         'locale',
     ];

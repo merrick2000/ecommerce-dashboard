@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Store;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class StoreController extends Controller
@@ -79,6 +80,40 @@ class StoreController extends Controller
                 'primary_color' => '#E67E22',
                 'template_type' => 'CLASSIC',
             ],
+        ]);
+    }
+
+    /**
+     * GET /api/v1/stores/resolve/domain?host=xxx
+     *
+     * Résout un domaine/sous-domaine en slug de boutique.
+     */
+    public function resolveByDomain(Request $request): JsonResponse
+    {
+        $host = $request->query('host');
+
+        if (! $host) {
+            return response()->json(['error' => 'Host required'], 422);
+        }
+
+        // 1. Custom domain exact match (shop.monbrand.com)
+        $store = Store::where('custom_domain', $host)->first();
+
+        // 2. Subdomain match (maboutique.sellit.com → maboutique)
+        if (! $store) {
+            $baseDomain = config('app.base_domain', 'sellit.com');
+            if (str_ends_with($host, '.' . $baseDomain)) {
+                $subdomain = str_replace('.' . $baseDomain, '', $host);
+                $store = Store::where('subdomain', $subdomain)->first();
+            }
+        }
+
+        if (! $store) {
+            return response()->json(['error' => 'Store not found'], 404);
+        }
+
+        return response()->json([
+            'slug' => $store->slug,
         ]);
     }
 }
