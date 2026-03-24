@@ -95,7 +95,7 @@ const DEFAULT_LAYOUT: PageSection[] = [
   { key: 'faq', label: 'FAQ', visible: true },
 ];
 
-export function ClassicCheckout({ data, trackEvent }: { data: CheckoutPageData; trackEvent?: TrackEventFn }) {
+export function ClassicCheckout({ data, trackEvent, onTrackInternal }: { data: CheckoutPageData; trackEvent?: TrackEventFn; onTrackInternal?: (eventType: string) => void }) {
   const { store, product, checkout_config: config } = data;
   const locale: Locale = store.locale || 'fr';
 
@@ -294,7 +294,7 @@ export function ClassicCheckout({ data, trackEvent }: { data: CheckoutPageData; 
               )}
 
               <div className="p-6">
-                <CheckoutForm data={data} onTrackEvent={trackEvent} />
+                <CheckoutForm data={data} onTrackEvent={trackEvent} onTrackInternal={onTrackInternal} />
               </div>
 
               <div className="px-6">

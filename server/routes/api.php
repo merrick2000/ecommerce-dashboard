@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\StoreController;
 use App\Http\Controllers\Api\V1\ExternalWebhookController;
+use App\Http\Controllers\Api\V1\TrackController;
 use App\Http\Controllers\Api\V1\WebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -16,6 +17,9 @@ Route::get('/user', function (Request $request) {
 
 // ─── API V1 (Public — consommée par le storefront Next.js) ──────────
 Route::prefix('v1')->group(function () {
+    // Tracking
+    Route::post('/track', [TrackController::class, 'store'])->middleware('throttle:120,1');
+
     // Boutiques
     Route::get('/stores', [StoreController::class, 'index']);
     Route::get('/stores/{slug}', [StoreController::class, 'show']);

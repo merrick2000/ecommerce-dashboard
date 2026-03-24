@@ -98,7 +98,7 @@ const DEFAULT_LAYOUT: PageSection[] = [
   { key: 'faq', label: 'FAQ', visible: true },
 ];
 
-export function DarkPremiumCheckout({ data, trackEvent }: { data: CheckoutPageData; trackEvent?: TrackEventFn }) {
+export function DarkPremiumCheckout({ data, trackEvent, onTrackInternal }: { data: CheckoutPageData; trackEvent?: TrackEventFn; onTrackInternal?: (eventType: string) => void }) {
   const { store, product, checkout_config: config } = data;
   const locale: Locale = store.locale || 'fr';
 
@@ -324,7 +324,7 @@ export function DarkPremiumCheckout({ data, trackEvent }: { data: CheckoutPageDa
               )}
 
               <div className="p-6">
-                <CheckoutForm data={data} dark onTrackEvent={trackEvent} />
+                <CheckoutForm data={data} dark onTrackEvent={trackEvent} onTrackInternal={onTrackInternal} />
               </div>
 
               <div className="px-6">

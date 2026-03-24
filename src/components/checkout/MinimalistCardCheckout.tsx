@@ -10,7 +10,7 @@ import { StoreFooter } from "./StoreFooter";
 import PriceDisplay from "./PriceDisplay";
 import { t, type Locale } from "@/lib/i18n";
 
-export function MinimalistCardCheckout({ data, trackEvent }: { data: CheckoutPageData; trackEvent?: TrackEventFn }) {
+export function MinimalistCardCheckout({ data, trackEvent, onTrackInternal }: { data: CheckoutPageData; trackEvent?: TrackEventFn; onTrackInternal?: (eventType: string) => void }) {
   const { store, product, checkout_config: config } = data;
   const locale: Locale = store.locale || 'fr';
 
@@ -66,7 +66,7 @@ export function MinimalistCardCheckout({ data, trackEvent }: { data: CheckoutPag
             <hr className="border-gray-100" />
 
             <div id="checkout-form">
-              <CheckoutForm data={data} compact onTrackEvent={trackEvent} />
+              <CheckoutForm data={data} compact onTrackEvent={trackEvent} onTrackInternal={onTrackInternal} />
             </div>
 
             <PaymentLogos />
