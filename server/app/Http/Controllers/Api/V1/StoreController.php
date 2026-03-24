@@ -32,7 +32,7 @@ class StoreController extends Controller
     public function show(string $slug): JsonResponse
     {
         $store = Store::where('slug', $slug)
-            ->with(['products', 'checkoutConfig'])
+            ->with(['products' => fn ($q) => $q->where('is_active', true), 'checkoutConfig'])
             ->first();
 
         if (! $store) {
