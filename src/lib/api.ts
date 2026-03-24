@@ -211,6 +211,24 @@ export async function trackDownload(orderId: number): Promise<void> {
   fetch(`${API_BASE}/v1/download/${orderId}/track`, { method: 'POST' }).catch(() => {});
 }
 
+export function sendTrackEvent(data: {
+  store_id: number;
+  product_id?: number;
+  event_type: string;
+  session_id: string;
+  referrer?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+}): void {
+  fetch(`${API_BASE}/v1/track`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+    keepalive: true,
+  }).catch(() => {});
+}
+
 // ─── Payment API ──────────────────────────────────────────────────────
 
 export interface PaymentCountry {

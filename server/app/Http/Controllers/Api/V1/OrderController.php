@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Models\Order;
+use App\Models\PageEvent;
 use App\Models\Product;
 use App\Models\Store;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class OrderController extends Controller
 {
@@ -50,6 +52,17 @@ class OrderController extends Controller
             'status' => 'pending',
             'payment_method' => $product->payment_mode === 'external_link' ? $product->external_platform : null,
             'source' => $product->payment_mode === 'external_link' ? ($product->external_platform ?? 'external') : 'native',
+        ]);
+
+        // Tracking interne
+        PageEvent::create([
+            'store_id' => $store->id,
+            'product_id' => $product->id,
+            'event_type' => 'order_created',
+            'session_id' => $request->header('X-Session-Id', Str::random(32)),
+            'ip_hash' => hash('sha256', $request->ip()),
+            'device_type' => preg_match('/Mobile|Android|iPhone/i', $request->userAgent() ?? '') ? 'mobile' : 'desktop',
+            'user_agent' => Str::limit($request->userAgent() ?? '', 512),
         ]);
 
         // Enregistrer le lead si paiement externe

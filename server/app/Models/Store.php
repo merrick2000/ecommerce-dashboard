@@ -36,4 +36,9 @@ class Store extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    public function pageEvents(): HasMany
+    {
+        return $this->hasMany(PageEvent::class);
+    }
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { CheckoutPageData } from "@/lib/api";
 import { useTracking } from "@/hooks/useTracking";
+import { usePageTracking } from "@/hooks/usePageTracking";
 import { ClassicCheckout } from "./ClassicCheckout";
 import { DarkPremiumCheckout } from "./DarkPremiumCheckout";
 import { MinimalistCardCheckout } from "./MinimalistCardCheckout";
@@ -15,6 +16,7 @@ export function CheckoutSwitcher({ data }: CheckoutSwitcherProps) {
   const templateType = data.checkout_config.template_type;
   const tracking = data.checkout_config.tracking;
   const { trackEvent } = useTracking(tracking);
+  const { trackEvent: trackInternal } = usePageTracking(data.store.id, data.product.id);
   const viewContentFired = useRef(false);
 
   useEffect(() => {
@@ -32,11 +34,11 @@ export function CheckoutSwitcher({ data }: CheckoutSwitcherProps) {
 
   switch (templateType) {
     case "DARK_PREMIUM":
-      return <DarkPremiumCheckout data={data} trackEvent={trackEvent} />;
+      return <DarkPremiumCheckout data={data} trackEvent={trackEvent} onTrackInternal={trackInternal} />;
     case "MINIMALIST_CARD":
-      return <MinimalistCardCheckout data={data} trackEvent={trackEvent} />;
+      return <MinimalistCardCheckout data={data} trackEvent={trackEvent} onTrackInternal={trackInternal} />;
     case "CLASSIC":
     default:
-      return <ClassicCheckout data={data} trackEvent={trackEvent} />;
+      return <ClassicCheckout data={data} trackEvent={trackEvent} onTrackInternal={trackInternal} />;
   }
 }

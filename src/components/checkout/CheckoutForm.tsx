@@ -12,6 +12,7 @@ interface CheckoutFormProps {
   dark?: boolean;
   compact?: boolean;
   onTrackEvent?: TrackEventFn;
+  onTrackInternal?: (eventType: string) => void;
 }
 
 const COUNTRIES = [
@@ -58,7 +59,7 @@ const formTxt = {
   error: { fr: 'Une erreur est survenue', en: 'An error occurred' },
 };
 
-export function CheckoutForm({ data, dark, compact, onTrackEvent }: CheckoutFormProps) {
+export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInternal }: CheckoutFormProps) {
   const { store, product, checkout_config: config } = data;
   const locale: Locale = store.locale || 'fr';
   const router = useRouter();
@@ -71,8 +72,10 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent }: CheckoutForm
   const initiateCheckoutFired = useRef(false);
 
   const fireInitiateCheckout = () => {
-    if (initiateCheckoutFired.current || !onTrackEvent) return;
+    if (initiateCheckoutFired.current) return;
     initiateCheckoutFired.current = true;
+    onTrackInternal?.("checkout_initiate");
+    if (!onTrackEvent) return;
     onTrackEvent("InitiateCheckout", {
       value: product.effective_price,
       currency: store.currency,

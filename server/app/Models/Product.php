@@ -72,6 +72,11 @@ class Product extends Model implements HasMedia
         return $this->hasMany(Lead::class);
     }
 
+    public function pageEvents(): HasMany
+    {
+        return $this->hasMany(PageEvent::class);
+    }
+
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('digital_files')
