@@ -56,12 +56,12 @@ export default async function StoreCatalogPage({
                 href={`/${store.slug}/p/${product.id}`}
                 className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg hover:border-gray-300 transition-all"
               >
-                {product.cover_image ? (
-                  <div className="aspect-video overflow-hidden">
+                {(product.thumbnail || product.cover_image) ? (
+                  <div className="aspect-square overflow-hidden bg-gray-50">
                     <img
-                      src={product.cover_image}
+                      src={product.thumbnail || product.cover_image!}
                       alt={product.name}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
                     />
                   </div>
                 ) : (

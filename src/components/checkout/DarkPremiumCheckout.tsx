@@ -122,7 +122,7 @@ export function DarkPremiumCheckout({ data, trackEvent, onTrackInternal }: { dat
           <img
             src={product.cover_image}
             alt={product.name}
-            className="relative w-full rounded-2xl object-cover aspect-video shadow-2xl shadow-black/50 transition-transform duration-500 group-hover:scale-[1.02]"
+            className="relative w-full rounded-2xl object-contain aspect-video shadow-2xl shadow-black/50 transition-transform duration-500 group-hover:scale-[1.02]"
           />
         </div>
       ) : null,

@@ -111,11 +111,11 @@ export function ClassicCheckout({ data, trackEvent, onTrackInternal }: { data: C
   const sectionRenderers: Record<string, () => React.ReactNode> = {
     hero_image: () =>
       product.cover_image ? (
-        <div key="hero_image" className="relative group overflow-hidden rounded-2xl shadow-lg">
+        <div key="hero_image" className="relative group overflow-hidden rounded-2xl shadow-lg bg-gray-100 aspect-video">
           <img
             src={product.cover_image}
             alt={product.name}
-            className="w-full object-cover aspect-video transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
           />
         </div>
       ) : null,
