@@ -27,16 +27,8 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-6 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900">Storefront</h1>
-          <a
-            href={`${process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:8000/admin"}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
-          >
-            Admin Panel &rarr;
-          </a>
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <h1 className="text-xl font-bold text-gray-900">Sellit</h1>
         </div>
       </header>
 
@@ -71,17 +63,6 @@ export default async function Home() {
         ) : (
           <div className="text-center py-16 text-gray-400">
             <p className="text-lg">Aucune boutique pour le moment.</p>
-            <p className="text-sm mt-2">
-              Créez une boutique depuis le{" "}
-              <a
-                href={`${process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:8000/admin"}`}
-                className="text-orange-500 underline"
-                target="_blank"
-              >
-                panel admin
-              </a>
-              .
-            </p>
           </div>
         )}
       </main>

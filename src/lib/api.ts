@@ -139,6 +139,7 @@ export interface StoreCatalogProduct {
   promo_label: string | null;
   promo_display_style: 'strikethrough' | 'strikethrough_text' | 'text_only';
   cover_image: string | null;
+  thumbnail: string | null;
 }
 
 export interface StoreCatalogData {
