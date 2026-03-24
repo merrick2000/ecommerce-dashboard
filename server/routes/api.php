@@ -22,6 +22,7 @@ Route::prefix('v1')->group(function () {
 
     // Boutiques
     Route::get('/stores', [StoreController::class, 'index']);
+    Route::get('/stores/resolve/domain', [StoreController::class, 'resolveByDomain']);
     Route::get('/stores/{slug}', [StoreController::class, 'show']);
 
     // Checkout : récupère la config de la boutique + un produit spécifique

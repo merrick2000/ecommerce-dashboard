@@ -57,6 +57,26 @@ class EditStore extends EditTenantProfile
                                     ->required(),
                             ]),
                     ]),
+
+                Forms\Components\Section::make('Domaine personnalisé')
+                    ->description('Configurez un sous-domaine Sellit ou votre propre domaine.')
+                    ->schema([
+                        Forms\Components\TextInput::make('subdomain')
+                            ->label('Sous-domaine Sellit')
+                            ->prefix('https://')
+                            ->suffix('.sellit.com')
+                            ->unique('stores', 'subdomain', ignoreRecord: true)
+                            ->maxLength(63)
+                            ->alphaNum()
+                            ->helperText('Ex: maboutique → maboutique.sellit.com'),
+
+                        Forms\Components\TextInput::make('custom_domain')
+                            ->label('Domaine personnalisé')
+                            ->placeholder('shop.monbrand.com')
+                            ->unique('stores', 'custom_domain', ignoreRecord: true)
+                            ->maxLength(255)
+                            ->helperText('Ajoutez un CNAME vers votre serveur Sellit. SSL automatique.'),
+                    ])->columns(2),
             ]);
     }
 }
