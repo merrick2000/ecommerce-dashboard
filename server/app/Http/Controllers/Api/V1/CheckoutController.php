@@ -26,7 +26,7 @@ class CheckoutController extends Controller
             ], 404);
         }
 
-        $product = $store->products->firstWhere('id', $productId);
+        $product = $store->products->where('id', $productId)->where('is_active', true)->first();
 
         if (! $product) {
             return response()->json([

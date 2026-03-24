@@ -64,6 +64,11 @@ class ProductResource extends Resource
                             ->maxLength(255)
                             ->placeholder('Ex: Formation React Avancé'),
 
+                        Forms\Components\Toggle::make('is_active')
+                            ->label('Produit actif')
+                            ->helperText('Désactivé = invisible sur la boutique')
+                            ->default(false),
+
                         Forms\Components\Grid::make(3)
                             ->schema([
                                 Forms\Components\Select::make('promo_type')
@@ -424,6 +429,10 @@ class ProductResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                Tables\Columns\IconColumn::make('is_active')
+                    ->label('Actif')
+                    ->boolean()
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('price')
                     ->label('Prix')
@@ -486,6 +495,20 @@ class ProductResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('activate')
+                        ->label('Activer')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->action(fn ($records) => $records->each->update(['is_active' => true]))
+                        ->deselectRecordsAfterCompletion()
+                        ->requiresConfirmation(),
+                    Tables\Actions\BulkAction::make('deactivate')
+                        ->label('Désactiver')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('warning')
+                        ->action(fn ($records) => $records->each->update(['is_active' => false]))
+                        ->deselectRecordsAfterCompletion()
+                        ->requiresConfirmation(),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);

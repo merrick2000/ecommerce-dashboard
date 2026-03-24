@@ -16,6 +16,7 @@ class Product extends Model implements HasMedia
     protected $fillable = [
         'store_id',
         'name',
+        'is_active',
         'description',
         'description_ctas',
         'price',
@@ -46,6 +47,7 @@ class Product extends Model implements HasMedia
     {
         return [
             'price' => 'integer',
+            'is_active' => 'boolean',
             'features' => 'array',
             'description_ctas' => 'array',
             'faqs' => 'array',
