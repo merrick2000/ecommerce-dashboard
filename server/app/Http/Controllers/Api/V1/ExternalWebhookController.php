@@ -7,9 +7,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\PaymentSetting;
 use App\Models\Product;
+use App\Jobs\SendFacebookConversionEvent;
 use App\Services\Payment\PaymentLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ExternalWebhookController extends Controller
 {
@@ -122,6 +124,11 @@ class ExternalWebhookController extends Controller
             'metadata' => $meta,
         ]);
 
+        // Envoyer l'événement Purchase à Facebook CAPI si commande payée
+        if ($orderStatus === OrderStatus::PAID) {
+            $this->dispatchTrackingEvent($order, $product);
+        }
+
         PaymentLogger::webhook('external', $productCode, $status, [
             'order_id' => $order->id,
             'product' => $product->name,
@@ -135,5 +142,36 @@ class ExternalWebhookController extends Controller
             'order_id' => $order->id,
             'status' => $status,
         ]);
+    }
+
+    private function dispatchTrackingEvent(Order $order, Product $product): void
+    {
+        $trackingConfig = $product->store->checkoutConfig?->tracking_config;
+
+        if (
+            ! $trackingConfig ||
+            empty($trackingConfig['facebook_pixel_id']) ||
+            empty($trackingConfig['facebook_access_token'])
+        ) {
+            return;
+        }
+
+        SendFacebookConversionEvent::dispatch(
+            $trackingConfig['facebook_pixel_id'],
+            $trackingConfig['facebook_access_token'],
+            $trackingConfig['facebook_test_event_code'] ?? null,
+            'Purchase',
+            Str::uuid()->toString(),
+            [
+                'value' => $order->amount,
+                'currency' => $order->currency,
+                'content_name' => $product->name,
+                'content_ids' => [(string) $product->id],
+                'content_type' => 'product',
+            ],
+            $order->customer_email,
+            request()->ip(),
+            request()->userAgent(),
+        );
     }
 }

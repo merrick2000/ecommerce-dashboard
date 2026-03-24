@@ -27,6 +27,7 @@ class CheckoutConfig extends Model
         ['key' => 'product_name', 'label' => 'Nom du produit', 'icon' => 'tag', 'visible' => true],
         ['key' => 'price_cta', 'label' => 'Prix & bouton achat (mobile)', 'icon' => 'currency-dollar', 'visible' => true],
         ['key' => 'video', 'label' => 'Vidéo', 'icon' => 'play-circle', 'visible' => true],
+        ['key' => 'custom_text', 'label' => 'Bloc texte libre', 'icon' => 'pencil-square', 'visible' => false],
         ['key' => 'description', 'label' => 'Description', 'icon' => 'document-text', 'visible' => true],
         ['key' => 'features', 'label' => 'Avantages', 'icon' => 'check-badge', 'visible' => true],
         ['key' => 'trust_badges', 'label' => 'Badges de confiance', 'icon' => 'shield-check', 'visible' => true],

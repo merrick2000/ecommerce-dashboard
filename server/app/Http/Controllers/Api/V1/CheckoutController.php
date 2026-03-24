@@ -48,6 +48,7 @@ class CheckoutController extends Controller
                 'id' => $product->id,
                 'name' => $product->name,
                 'description' => $this->signDescriptionImages($product->description),
+                'custom_text' => $product->custom_text,
                 'price' => $product->price,
                 'formatted_price' => number_format($product->price, 0, ',', ' ') . ' ' . $store->currency,
                 'effective_price' => $product->effective_price,

@@ -18,6 +18,7 @@ class Product extends Model implements HasMedia
         'name',
         'is_active',
         'description',
+        'custom_text',
         'description_ctas',
         'price',
         'promo_type',
