@@ -10,6 +10,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class OrderResource extends Resource
 {
@@ -27,6 +28,10 @@ class OrderResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Détails commande')
                     ->schema([
+                        Forms\Components\TextInput::make('order_number')
+                            ->label('N° commande')
+                            ->disabled(),
+
                         Forms\Components\Select::make('product_id')
                             ->label('Produit')
                             ->relationship('product', 'name')
@@ -38,6 +43,10 @@ class OrderResource extends Resource
 
                         Forms\Components\TextInput::make('customer_name')
                             ->label('Nom client')
+                            ->disabled(),
+
+                        Forms\Components\TextInput::make('customer_phone')
+                            ->label('Téléphone')
                             ->disabled(),
 
                         Forms\Components\TextInput::make('amount')
@@ -56,10 +65,35 @@ class OrderResource extends Resource
                             ->label('Méthode de paiement')
                             ->disabled(),
 
-                        Forms\Components\TextInput::make('payment_ref')
-                            ->label('Référence paiement')
+                        Forms\Components\TextInput::make('source')
+                            ->label('Source')
                             ->disabled(),
+
+                        Forms\Components\Placeholder::make('payment_ref_link')
+                            ->label('Référence paiement')
+                            ->content(function (Order $record): HtmlString {
+                                $ref = $record->payment_ref;
+                                if (! $ref) {
+                                    return new HtmlString('<span class="text-gray-400">—</span>');
+                                }
+                                if (str_starts_with($ref, 'http')) {
+                                    return new HtmlString(
+                                        '<a href="' . e($ref) . '" target="_blank" class="text-primary-600 hover:underline">'
+                                        . e($ref) . ' ↗</a>'
+                                    );
+                                }
+                                return new HtmlString(e($ref));
+                            }),
                     ])->columns(2),
+
+                Forms\Components\Section::make('Metadata')
+                    ->schema([
+                        Forms\Components\KeyValue::make('metadata')
+                            ->label('')
+                            ->disabled(),
+                    ])
+                    ->collapsed()
+                    ->visible(fn (?Order $record): bool => ! empty($record?->metadata)),
             ]);
     }
 
@@ -67,8 +101,9 @@ class OrderResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')
-                    ->label('#')
+                Tables\Columns\TextColumn::make('order_number')
+                    ->label('N°')
+                    ->searchable()
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('customer_email')
@@ -86,6 +121,16 @@ class OrderResource extends Resource
                     )
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('source')
+                    ->label('Source')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'native' => 'info',
+                        'selar' => 'warning',
+                        'chariow' => 'success',
+                        default => 'gray',
+                    }),
+
                 Tables\Columns\TextColumn::make('status')
                     ->label('Statut')
                     ->badge()
@@ -94,6 +139,7 @@ class OrderResource extends Resource
                         OrderStatus::PENDING => 'warning',
                         OrderStatus::PAID => 'success',
                         OrderStatus::FAILED => 'danger',
+                        OrderStatus::REFUNDED => 'gray',
                     }),
 
                 Tables\Columns\TextColumn::make('payment_method')
@@ -112,6 +158,12 @@ class OrderResource extends Resource
                     ->options(collect(OrderStatus::cases())->mapWithKeys(
                         fn (OrderStatus $status) => [$status->value => $status->label()]
                     )),
+                Tables\Filters\SelectFilter::make('source')
+                    ->options([
+                        'native' => 'Native',
+                        'selar' => 'Selar',
+                        'chariow' => 'Chariow',
+                    ]),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
