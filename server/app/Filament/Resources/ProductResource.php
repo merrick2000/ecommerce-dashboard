@@ -453,6 +453,15 @@ class ProductResource extends Resource
                     ->relationship('store', 'name'),
             ])
             ->actions([
+                Tables\Actions\Action::make('preview')
+                    ->label('Voir')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->url(fn (Product $record): string =>
+                        (config('app.frontend_url', env('NEXT_PUBLIC_APP_URL', 'http://localhost:3000')))
+                        . '/' . $record->store->slug . '/p/' . $record->id
+                    )
+                    ->openUrlInNewTab(),
                 Tables\Actions\ReplicateAction::make()
                     ->label('Dupliquer')
                     ->icon('heroicon-o-document-duplicate')
