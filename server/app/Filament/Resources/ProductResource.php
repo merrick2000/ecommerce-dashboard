@@ -178,6 +178,13 @@ class ProductResource extends Resource
                                     ->defaultItems(0)
                                     ->itemLabel(fn (array $state): ?string => ($state['text'] ?? 'CTA') . ' — après §' . ($state['after_paragraph'] ?? '?')),
 
+                                Forms\Components\Textarea::make('custom_text')
+                                    ->label('Bloc texte libre')
+                                    ->helperText('Texte personnalisé à afficher sur la page produit. Activez-le et positionnez-le dans "Ordre des sections" de la config checkout.')
+                                    ->rows(4)
+                                    ->placeholder('Ex: Offre spéciale, introduction courte, arguments clés...')
+                                    ->columnSpanFull(),
+
                                 Forms\Components\Radio::make('features_position')
                                     ->label('Position des avantages')
                                     ->options([
