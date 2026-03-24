@@ -201,12 +201,24 @@ class ProductResource extends Resource
                             ->icon('heroicon-o-photo')
                             ->schema([
                                 Forms\Components\FileUpload::make('cover_image')
-                                    ->label('Image de couverture')
+                                    ->label('Image de couverture (page produit)')
+                                    ->helperText('Taille recommandée : 1280x720px (ratio 16:9). Formats : JPG, PNG, WebP.')
                                     ->image()
                                     ->disk('s3')
                                     ->directory('covers')
                                     ->visibility('private')
-                                    ->imageEditor(),
+                                    ->imageEditor()
+                                    ->imageEditorAspectRatios(['16:9']),
+
+                                Forms\Components\FileUpload::make('thumbnail')
+                                    ->label('Miniature (liste des produits)')
+                                    ->helperText('Taille recommandée : 600x600px (carré). Si vide, la couverture sera utilisée.')
+                                    ->image()
+                                    ->disk('s3')
+                                    ->directory('thumbnails')
+                                    ->visibility('private')
+                                    ->imageEditor()
+                                    ->imageEditorAspectRatios(['1:1']),
 
                                 Forms\Components\Grid::make(2)
                                     ->schema([

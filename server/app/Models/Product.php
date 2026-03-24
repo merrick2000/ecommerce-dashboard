@@ -33,6 +33,7 @@ class Product extends Model implements HasMedia
         'video_position',
         'digital_file_path',
         'cover_image',
+        'thumbnail',
         'delivery_type',
         'external_url',
         'payment_mode',

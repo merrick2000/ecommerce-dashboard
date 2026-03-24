@@ -57,6 +57,9 @@ class StoreController extends Controller
                 'cover_image' => $product->cover_image
                     ? Storage::disk('s3')->temporaryUrl($product->cover_image, now()->addMinutes(60))
                     : null,
+                'thumbnail' => $product->thumbnail
+                    ? Storage::disk('s3')->temporaryUrl($product->thumbnail, now()->addMinutes(60))
+                    : null,
             ];
         });
 
