@@ -21,6 +21,7 @@ class Product extends Model implements HasMedia
         'custom_text',
         'description_ctas',
         'price',
+        'currency_prices',
         'promo_type',
         'promo_value',
         'promo_label',
@@ -49,6 +50,7 @@ class Product extends Model implements HasMedia
         return [
             'price' => 'integer',
             'is_active' => 'boolean',
+            'currency_prices' => 'array',
             'features' => 'array',
             'description_ctas' => 'array',
             'faqs' => 'array',
@@ -111,6 +113,35 @@ class Product extends Model implements HasMedia
         }
 
         return $this->price;
+    }
+
+    /**
+     * Retourne les prix alternatifs avec le prix effectif après promo (% uniquement).
+     */
+    public function getFormattedCurrencyPricesAttribute(): array
+    {
+        if (! $this->currency_prices || ! is_array($this->currency_prices)) {
+            return [];
+        }
+
+        return array_map(function ($entry) {
+            $price = (int) ($entry['price'] ?? 0);
+            $currency = $entry['currency'] ?? '';
+            $effectivePrice = $price;
+
+            // Appliquer la promo pourcentage aux devises alternatives
+            if ($this->promo_type === 'percentage' && $this->promo_value > 0) {
+                $effectivePrice = (int) round($price * (1 - $this->promo_value / 100));
+            }
+
+            return [
+                'currency' => $currency,
+                'price' => $price,
+                'formatted_price' => number_format($price, 0, ',', ' ') . ' ' . $currency,
+                'effective_price' => $effectivePrice,
+                'formatted_effective_price' => number_format($effectivePrice, 0, ',', ' ') . ' ' . $currency,
+            ];
+        }, $this->currency_prices);
     }
 
     public function hasPromo(): bool

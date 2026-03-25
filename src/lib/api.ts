@@ -8,10 +8,19 @@ export interface StoreData {
   locale?: 'fr' | 'en';
 }
 
+export interface CurrencyPrice {
+  currency: string;
+  price: number;
+  formatted_price: string;
+  effective_price: number;
+  formatted_effective_price: string;
+}
+
 export interface ProductData {
   id: number;
   name: string;
   description: string | null;
+  custom_text: string | null;
   price: number;
   formatted_price: string;
   effective_price: number;
@@ -37,6 +46,7 @@ export interface ProductData {
   video_url: string | null;
   video_title: string | null;
   video_position: 'above_description' | 'below_description' | 'below_image';
+  currency_prices: CurrencyPrice[];
   payment_mode: 'native' | 'external_link';
   payment_link: string | null;
   external_platform: 'selar' | 'chariow' | null;
@@ -138,6 +148,7 @@ export interface StoreCatalogProduct {
   promo_value: number | null;
   promo_label: string | null;
   promo_display_style: 'strikethrough' | 'strikethrough_text' | 'text_only';
+  currency_prices: CurrencyPrice[];
   cover_image: string | null;
   thumbnail: string | null;
 }

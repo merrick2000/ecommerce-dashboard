@@ -96,40 +96,60 @@ export default async function StoreCatalogPage({
                     </p>
                   )}
 
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex items-baseline gap-2">
-                      {product.has_promo ? (
-                        <>
+                  <div className="space-y-1 pt-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-baseline gap-2">
+                        {product.has_promo ? (
+                          <>
+                            <span
+                              className="text-xl font-extrabold"
+                              style={{ color }}
+                            >
+                              {product.formatted_effective_price}
+                            </span>
+                            <span className="text-sm text-gray-400 line-through">
+                              {product.formatted_price}
+                            </span>
+                          </>
+                        ) : (
                           <span
                             className="text-xl font-extrabold"
                             style={{ color }}
                           >
-                            {product.formatted_effective_price}
-                          </span>
-                          <span className="text-sm text-gray-400 line-through">
                             {product.formatted_price}
                           </span>
-                        </>
-                      ) : (
+                        )}
+                      </div>
+
+                      {product.has_promo && product.promo_label && (
                         <span
-                          className="text-xl font-extrabold"
-                          style={{ color }}
+                          className="text-xs font-bold px-2 py-0.5 rounded-full"
+                          style={{
+                            backgroundColor: color + "15",
+                            color,
+                          }}
                         >
-                          {product.formatted_price}
+                          {product.promo_label}
                         </span>
                       )}
                     </div>
 
-                    {product.has_promo && product.promo_label && (
-                      <span
-                        className="text-xs font-bold px-2 py-0.5 rounded-full"
-                        style={{
-                          backgroundColor: color + "15",
-                          color,
-                        }}
-                      >
-                        {product.promo_label}
-                      </span>
+                    {product.currency_prices?.length > 0 && (
+                      <div className="flex flex-wrap gap-x-2 text-xs text-gray-400">
+                        {product.currency_prices.map((cp) => (
+                          <span key={cp.currency}>
+                            {product.has_promo && cp.effective_price !== cp.price ? (
+                              <>
+                                <span className="font-semibold text-gray-500">{cp.formatted_effective_price}</span>
+                                {' '}
+                                <span className="line-through">{cp.formatted_price}</span>
+                              </>
+                            ) : (
+                              <span className="font-semibold text-gray-500">{cp.formatted_price}</span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
 
