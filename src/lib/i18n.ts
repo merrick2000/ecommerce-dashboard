@@ -62,6 +62,12 @@ const translations = {
   'catalog.view_product': { fr: 'Voir le produit', en: 'View product' },
   'catalog.no_products': { fr: 'Aucun produit disponible pour le moment.', en: 'No products available at the moment.' },
 
+  // Sections
+  'section.faq_title': { fr: 'Questions fréquentes', en: 'Frequently asked questions' },
+  'section.testimonials_title': { fr: 'Ce que nos clients disent', en: 'What our customers say' },
+  'section.features_title': { fr: 'Ce que vous obtenez', en: 'What you get' },
+  'section.guarantee_detail': { fr: 'Recevez votre produit immédiatement après le paiement. Satisfaction garantie.', en: 'Receive your product immediately after payment. Satisfaction guaranteed.' },
+
   // Price
   'price.instead_of': { fr: 'au lieu de', en: 'instead of' },
 

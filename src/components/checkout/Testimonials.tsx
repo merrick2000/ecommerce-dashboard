@@ -12,6 +12,7 @@ interface TestimonialsProps {
   style: "cards" | "minimal" | "highlight";
   color: string;
   dark?: boolean;
+  locale?: "fr" | "en";
 }
 
 function Stars({ count, color }: { count: number; color: string }) {
@@ -242,7 +243,7 @@ function HighlightStyle({ testimonials, color, dark }: Omit<TestimonialsProps, "
   );
 }
 
-export function Testimonials({ testimonials, style, color, dark }: TestimonialsProps) {
+export function Testimonials({ testimonials, style, color, dark, locale = "fr" }: TestimonialsProps) {
   if (!testimonials || testimonials.length === 0) return null;
 
   const titleClass = dark
@@ -251,7 +252,7 @@ export function Testimonials({ testimonials, style, color, dark }: TestimonialsP
 
   return (
     <div>
-      <h2 className={titleClass}>Ce que nos clients disent</h2>
+      <h2 className={titleClass}>{locale === 'en' ? 'What our customers say' : 'Ce que nos clients disent'}</h2>
       {style === "cards" && (
         <CardsStyle testimonials={testimonials} color={color} dark={dark} />
       )}

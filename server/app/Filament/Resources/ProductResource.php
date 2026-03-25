@@ -58,6 +58,45 @@ class ProductResource extends Resource
                                     }),
                             ]),
 
+                        Forms\Components\Repeater::make('currency_prices')
+                            ->label('Prix dans d\'autres devises')
+                            ->helperText('Ajoutez le prix dans d\'autres devises. La promo en % s\'applique automatiquement.')
+                            ->schema([
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\Select::make('currency')
+                                            ->label('Devise')
+                                            ->options([
+                                                'USD' => 'USD ($)',
+                                                'EUR' => 'EUR (€)',
+                                                'XOF' => 'XOF (FCFA)',
+                                                'XAF' => 'XAF (FCFA)',
+                                                'NGN' => 'NGN (₦)',
+                                                'GHS' => 'GHS (₵)',
+                                                'KES' => 'KES (KSh)',
+                                                'MAD' => 'MAD (DH)',
+                                                'TND' => 'TND (DT)',
+                                                'GBP' => 'GBP (£)',
+                                                'CAD' => 'CAD ($)',
+                                            ])
+                                            ->required()
+                                            ->searchable(),
+
+                                        Forms\Components\TextInput::make('price')
+                                            ->label('Prix')
+                                            ->required()
+                                            ->numeric()
+                                            ->minValue(0),
+                                    ]),
+                            ])
+                            ->addActionLabel('Ajouter une devise')
+                            ->reorderable(false)
+                            ->collapsible()
+                            ->defaultItems(0)
+                            ->itemLabel(fn (array $state): ?string =>
+                                ($state['currency'] ?? '?') . ' — ' . number_format((int) ($state['price'] ?? 0), 0, ',', ' ')
+                            ),
+
                         Forms\Components\TextInput::make('name')
                             ->label('Nom du produit')
                             ->required()

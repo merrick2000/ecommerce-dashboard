@@ -14,7 +14,7 @@ import PriceDisplay from "./PriceDisplay";
 import { DescriptionWithCTAs } from "./DescriptionWithCTAs";
 import { t, type Locale } from "@/lib/i18n";
 
-function FeaturesBlock({ features, color }: { features: string[]; color: string }) {
+function FeaturesBlock({ features, color, locale = 'fr' }: { features: string[]; color: string; locale?: Locale }) {
   if (!features || features.length === 0) return null;
 
   return (
@@ -23,7 +23,7 @@ function FeaturesBlock({ features, color }: { features: string[]; color: string 
         className="text-sm font-bold uppercase tracking-widest mb-4"
         style={{ color }}
       >
-        Ce que vous obtenez
+        {t('section.features_title', locale)}
       </h3>
       <ul className="space-y-3">
         {features.map((f, i) => (
@@ -48,14 +48,14 @@ function FeaturesBlock({ features, color }: { features: string[]; color: string 
   );
 }
 
-function FAQSection({ faqs, color }: { faqs: { question: string; answer: string }[]; color: string }) {
+function FAQSection({ faqs, color, locale = 'fr' }: { faqs: { question: string; answer: string }[]; color: string; locale?: Locale }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   if (!faqs || faqs.length === 0) return null;
 
   return (
     <div className="mt-10">
-      <h2 className="text-xl font-bold text-white mb-4">Questions fréquentes</h2>
+      <h2 className="text-xl font-bold text-white mb-4">{t('section.faq_title', locale)}</h2>
       <div className="space-y-2">
         {faqs.map((faq, i) => (
           <div key={i} className="border border-white/10 rounded-xl overflow-hidden bg-white/5">
@@ -90,6 +90,7 @@ const DEFAULT_LAYOUT: PageSection[] = [
   { key: 'product_name', label: 'Nom du produit', visible: true },
   { key: 'price_cta', label: 'Prix & bouton achat (mobile)', visible: true },
   { key: 'video', label: 'Vidéo', visible: true },
+  { key: 'custom_text', label: 'Bloc texte libre', visible: false },
   { key: 'description', label: 'Description', visible: true },
   { key: 'features', label: 'Avantages', visible: true },
   { key: 'trust_badges', label: 'Badges de confiance', visible: true },
@@ -137,9 +138,16 @@ export function DarkPremiumCheckout({ data, trackEvent, onTrackInternal }: { dat
 
     price_cta: () => (
       <div key="price_cta" className="lg:hidden">
-        <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} />
+        <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} currency={store.currency} locale={locale} />
       </div>
     ),
+
+    custom_text: () =>
+      product.custom_text ? (
+        <div key="custom_text" className="rounded-xl p-5 bg-white/5 border border-white/10">
+          <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">{product.custom_text}</p>
+        </div>
+      ) : null,
 
     video: () =>
       product.video_url ? (
@@ -163,7 +171,7 @@ export function DarkPremiumCheckout({ data, trackEvent, onTrackInternal }: { dat
 
     features: () => (
       <div key="features">
-        <FeaturesBlock features={product.features} color={config.primary_color} />
+        <FeaturesBlock features={product.features} color={config.primary_color} locale={locale} />
       </div>
     ),
 
@@ -210,7 +218,7 @@ export function DarkPremiumCheckout({ data, trackEvent, onTrackInternal }: { dat
         <div>
           <p className="text-sm font-bold text-white">{t('checkout.instant_guaranteed', locale)}</p>
           <p className="text-xs text-gray-400 mt-0.5">
-            Recevez votre produit immédiatement après le paiement. Satisfaction garantie.
+            {t('section.guarantee_detail', locale)}
           </p>
         </div>
       </div>
@@ -223,13 +231,14 @@ export function DarkPremiumCheckout({ data, trackEvent, onTrackInternal }: { dat
           style={product.testimonials_style}
           color={config.primary_color}
           dark
+          locale={locale}
         />
       </div>
     ),
 
     faq: () => (
       <div key="faq">
-        <FAQSection faqs={product.faqs} color={config.primary_color} />
+        <FAQSection faqs={product.faqs} color={config.primary_color} locale={locale} />
       </div>
     ),
   };
@@ -292,7 +301,7 @@ export function DarkPremiumCheckout({ data, trackEvent, onTrackInternal }: { dat
                   {t('checkout.total', locale)}
                 </p>
                 <div className="mt-1 flex justify-center">
-                  <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} />
+                  <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} currency={store.currency} locale={locale} />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">{store.currency}</p>
               </div>
