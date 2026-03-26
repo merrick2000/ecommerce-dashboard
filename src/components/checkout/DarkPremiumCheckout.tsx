@@ -138,7 +138,7 @@ export function DarkPremiumCheckout({ data, trackEvent, onTrackInternal }: { dat
 
     price_cta: () => (
       <div key="price_cta" className="lg:hidden">
-        <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} currency={store.currency} locale={locale} />
+        <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} currency={product.currency} locale={locale} />
       </div>
     ),
 
@@ -301,9 +301,9 @@ export function DarkPremiumCheckout({ data, trackEvent, onTrackInternal }: { dat
                   {t('checkout.total', locale)}
                 </p>
                 <div className="mt-1 flex justify-center">
-                  <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} currency={store.currency} locale={locale} />
+                  <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} currency={product.currency} locale={locale} />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">{store.currency}</p>
+                <p className="text-xs text-gray-500 mt-1">{product.currency}</p>
               </div>
 
               {/* Features: above_form */}

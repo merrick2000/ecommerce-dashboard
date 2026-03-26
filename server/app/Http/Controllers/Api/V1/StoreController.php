@@ -42,20 +42,18 @@ class StoreController extends Controller
         $config = $store->checkoutConfig;
 
         $products = $store->products->map(function ($product) use ($store) {
+            $displayPrice = $product->resolveDisplayPrice($store->currency);
+
             return [
                 'id' => $product->id,
                 'name' => $product->name,
                 'description' => $product->description,
-                'price' => $product->price,
-                'formatted_price' => number_format($product->price, 0, ',', ' ') . ' ' . $store->currency,
-                'effective_price' => $product->effective_price,
-                'formatted_effective_price' => number_format($product->effective_price, 0, ',', ' ') . ' ' . $store->currency,
+                ...$displayPrice,
                 'has_promo' => $product->hasPromo(),
                 'promo_type' => $product->promo_type,
                 'promo_value' => $product->promo_value,
                 'promo_label' => $product->promo_label,
                 'promo_display_style' => $product->promo_display_style ?? 'strikethrough',
-                'currency_prices' => $product->formatted_currency_prices,
                 'cover_image' => $product->cover_image
                     ? Storage::disk('s3')->temporaryUrl($product->cover_image, now()->addMinutes(60))
                     : null,
