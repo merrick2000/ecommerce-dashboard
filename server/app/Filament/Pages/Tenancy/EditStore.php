@@ -43,9 +43,17 @@ class EditStore extends EditTenantProfile
                                     ->options([
                                         'XOF' => 'XOF (FCFA)',
                                         'XAF' => 'XAF (FCFA Central)',
-                                        'EUR' => 'EUR',
-                                        'USD' => 'USD',
+                                        'USD' => 'USD ($)',
+                                        'EUR' => 'EUR (€)',
+                                        'NGN' => 'NGN (₦)',
+                                        'GHS' => 'GHS (₵)',
+                                        'KES' => 'KES (KSh)',
+                                        'MAD' => 'MAD (DH)',
+                                        'TND' => 'TND (DT)',
+                                        'GBP' => 'GBP (£)',
+                                        'CAD' => 'CAD ($)',
                                     ])
+                                    ->searchable()
                                     ->required(),
 
                                 Forms\Components\Select::make('locale')

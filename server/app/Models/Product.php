@@ -22,6 +22,7 @@ class Product extends Model implements HasMedia
         'description_ctas',
         'price',
         'currency_prices',
+        'base_currency',
         'promo_type',
         'promo_value',
         'promo_label',
@@ -58,6 +59,131 @@ class Product extends Model implements HasMedia
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::creating(function (Product $product) {
+            if (! $product->base_currency) {
+                $product->base_currency = $product->store?->currency ?? 'XOF';
+            }
+        });
+    }
+
+    /**
+     * Résout le prix principal et les prix alternatifs en fonction de la devise de la boutique.
+     *
+     * Si la boutique a changé de devise et qu'un prix existe pour cette devise,
+     * il devient le prix principal. L'ancien prix de base rejoint les prix alternatifs.
+     */
+    public function resolveDisplayPrice(string $storeCurrency): array
+    {
+        $basePrice = $this->price;
+        $currencyPrices = $this->currency_prices ?? [];
+
+        // Déterminer la devise d'origine du prix de base
+        // Si base_currency n'est pas set, on le déduit : si un prix existe pour
+        // la devise actuelle de la boutique dans currency_prices, alors le prix de base
+        // est forcément dans une AUTRE devise (l'ancienne devise boutique).
+        // Sinon, le prix de base est dans la devise actuelle de la boutique.
+        $baseCurrency = $this->base_currency;
+
+        if (! $baseCurrency) {
+            $hasStoreCurrencyInAlt = false;
+            foreach ($currencyPrices as $entry) {
+                if (($entry['currency'] ?? '') === $storeCurrency) {
+                    $hasStoreCurrencyInAlt = true;
+                    break;
+                }
+            }
+            // Si la devise boutique est dans les alt, le prix de base n'est PAS dans cette devise
+            // On ne sait pas exactement laquelle c'est, mais on sait que c'est != storeCurrency
+            // ce qui suffit pour déclencher le swap
+            $baseCurrency = $hasStoreCurrencyInAlt ? '__original__' : $storeCurrency;
+        }
+
+        // Chercher un prix correspondant à la devise de la boutique
+        $matchIndex = null;
+        foreach ($currencyPrices as $i => $entry) {
+            if (($entry['currency'] ?? '') === $storeCurrency) {
+                $matchIndex = $i;
+                break;
+            }
+        }
+
+        if ($matchIndex !== null && $storeCurrency !== $baseCurrency) {
+            // Swap: le prix de la devise boutique devient le prix principal
+            $mainPrice = (int) $currencyPrices[$matchIndex]['price'];
+            $mainCurrency = $storeCurrency;
+
+            // Construire les prix alternatifs (autres devises)
+            $altPrices = [];
+            // Ajouter le prix de base en alt seulement si on connaît sa devise
+            if ($baseCurrency !== '__original__') {
+                $altPrices[] = ['currency' => $baseCurrency, 'price' => $basePrice];
+            }
+            foreach ($currencyPrices as $i => $entry) {
+                if ($i !== $matchIndex) {
+                    $altPrices[] = $entry;
+                }
+            }
+        } else {
+            // Pas de swap, garder le prix de base
+            $mainPrice = $basePrice;
+            $mainCurrency = ($baseCurrency === '__original__') ? $storeCurrency : $baseCurrency;
+            $altPrices = $currencyPrices;
+        }
+
+        // Calculer les prix effectifs (promo)
+        $mainEffective = $this->applyPromo($mainPrice, $mainCurrency);
+        $formattedAlt = array_map(function ($entry) {
+            $price = (int) ($entry['price'] ?? 0);
+            $currency = $entry['currency'] ?? '';
+            $effective = $this->applyPromo($price, $currency);
+
+            return [
+                'currency' => $currency,
+                'price' => $price,
+                'formatted_price' => number_format($price, 0, ',', ' ') . ' ' . $currency,
+                'effective_price' => $effective,
+                'formatted_effective_price' => number_format($effective, 0, ',', ' ') . ' ' . $currency,
+            ];
+        }, $altPrices);
+
+        // Calcul des infos promo pour le badge
+        $promoPercent = null;
+        $promoDiscount = null;
+        if ($this->hasPromo() && $mainPrice > 0) {
+            $promoPercent = (int) round((1 - $mainEffective / $mainPrice) * 100);
+            $promoDiscount = $mainPrice - $mainEffective;
+        }
+
+        return [
+            'price' => $mainPrice,
+            'currency' => $mainCurrency,
+            'formatted_price' => number_format($mainPrice, 0, ',', ' ') . ' ' . $mainCurrency,
+            'effective_price' => $mainEffective,
+            'formatted_effective_price' => number_format($mainEffective, 0, ',', ' ') . ' ' . $mainCurrency,
+            'promo_percent' => $promoPercent,
+            'promo_discount' => $promoDiscount,
+            'currency_prices' => $formattedAlt,
+        ];
+    }
+
+    private function applyPromo(int $price, string $currency): int
+    {
+        if ($this->promo_type === 'percentage' && $this->promo_value > 0) {
+            return (int) round($price * (1 - $this->promo_value / 100));
+        }
+
+        if ($this->promo_type === 'fixed' && $this->promo_value > 0 && $this->price > 0) {
+            // Calculer le % de réduction sur le prix de base, puis l'appliquer à toutes les devises
+            $discountRatio = $this->promo_value / $this->price;
+
+            return max(0, (int) round($price * (1 - $discountRatio)));
+        }
+
+        return $price;
+    }
+
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);
@@ -92,56 +218,6 @@ class Product extends Model implements HasMedia
         $this->addMediaCollection('cover_images')
             ->singleFile()
             ->useDisk('s3');
-    }
-
-    public function getFormattedPriceAttribute(): string
-    {
-        return number_format($this->price, 0, ',', ' ') . ' FCFA';
-    }
-
-    /**
-     * Calcule le prix final après promo.
-     */
-    public function getEffectivePriceAttribute(): int
-    {
-        if ($this->promo_type === 'percentage' && $this->promo_value > 0) {
-            return (int) round($this->price * (1 - $this->promo_value / 100));
-        }
-
-        if ($this->promo_type === 'fixed' && $this->promo_value > 0) {
-            return max(0, $this->price - $this->promo_value);
-        }
-
-        return $this->price;
-    }
-
-    /**
-     * Retourne les prix alternatifs avec le prix effectif après promo (% uniquement).
-     */
-    public function getFormattedCurrencyPricesAttribute(): array
-    {
-        if (! $this->currency_prices || ! is_array($this->currency_prices)) {
-            return [];
-        }
-
-        return array_map(function ($entry) {
-            $price = (int) ($entry['price'] ?? 0);
-            $currency = $entry['currency'] ?? '';
-            $effectivePrice = $price;
-
-            // Appliquer la promo pourcentage aux devises alternatives
-            if ($this->promo_type === 'percentage' && $this->promo_value > 0) {
-                $effectivePrice = (int) round($price * (1 - $this->promo_value / 100));
-            }
-
-            return [
-                'currency' => $currency,
-                'price' => $price,
-                'formatted_price' => number_format($price, 0, ',', ' ') . ' ' . $currency,
-                'effective_price' => $effectivePrice,
-                'formatted_effective_price' => number_format($effectivePrice, 0, ',', ' ') . ' ' . $currency,
-            ];
-        }, $this->currency_prices);
     }
 
     public function hasPromo(): bool

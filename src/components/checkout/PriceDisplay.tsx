@@ -56,14 +56,23 @@ export default function PriceDisplay({ product, size = 'md', primaryColor = '#E6
 
   const style = product.promo_display_style || 'strikethrough';
 
+  const badgeText = (() => {
+    if (product.promo_type === 'percentage') {
+      return `-${product.promo_percent ?? product.promo_value}%`;
+    }
+    // Promo fixe : afficher le montant dans la devise courante
+    if (product.promo_discount != null) {
+      return `-${product.promo_discount.toLocaleString()} ${currency}`;
+    }
+    return `-${product.promo_value?.toLocaleString()} ${currency}`;
+  })();
+
   const discountBadge = (
     <span
       className={`${s.badge} rounded-full font-semibold text-white`}
       style={{ backgroundColor: primaryColor }}
     >
-      {product.promo_type === 'percentage'
-        ? `-${product.promo_value}%`
-        : `-${product.promo_value?.toLocaleString()} ${currency}`}
+      {badgeText}
     </span>
   );
 

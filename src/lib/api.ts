@@ -21,6 +21,7 @@ export interface ProductData {
   name: string;
   description: string | null;
   custom_text: string | null;
+  currency: string;
   price: number;
   formatted_price: string;
   effective_price: number;
@@ -30,6 +31,8 @@ export interface ProductData {
   promo_value: number | null;
   promo_label: string | null;
   promo_display_style: 'strikethrough' | 'strikethrough_text' | 'text_only';
+  promo_percent: number | null;
+  promo_discount: number | null;
   description_ctas: {
     text: string;
     action: 'scroll_to_form' | 'custom_url';
@@ -139,6 +142,7 @@ export interface StoreCatalogProduct {
   id: number;
   name: string;
   description: string | null;
+  currency: string;
   price: number;
   formatted_price: string;
   effective_price: number;
@@ -148,6 +152,8 @@ export interface StoreCatalogProduct {
   promo_value: number | null;
   promo_label: string | null;
   promo_display_style: 'strikethrough' | 'strikethrough_text' | 'text_only';
+  promo_percent: number | null;
+  promo_discount: number | null;
   currency_prices: CurrencyPrice[];
   cover_image: string | null;
   thumbnail: string | null;

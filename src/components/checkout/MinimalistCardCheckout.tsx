@@ -40,7 +40,7 @@ export function MinimalistCardCheckout({ data, trackEvent, onTrackInternal }: { 
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>
               <div className="mt-1">
-                <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} currency={store.currency} />
+                <PriceDisplay product={product} size="lg" primaryColor={config.primary_color} currency={product.currency} />
               </div>
             </div>
 
