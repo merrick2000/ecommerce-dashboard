@@ -102,7 +102,7 @@ jobs:
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
 
-  # ─── Docker Images ──────────────────────────────────────
+  # ─── Docker Images ─────────────────
   docker:
     name: Build & Push Docker Images
     runs-on: ubuntu-latest
