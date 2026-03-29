@@ -68,7 +68,7 @@ const translations = {
   'section.features_title': { fr: 'Ce que vous obtenez', en: 'What you get ?' },
   'section.guarantee_detail': { fr: 'Recevez votre produit immédiatement après le paiement. Satisfaction garantie.', en: 'Receive your product immediately after payment. Satisfaction guaranteed.' },
 
-  // Price
+  // Price.........
   'price.instead_of': { fr: 'au lieu de', en: 'instead of' },
 
   // Sticky CTA
