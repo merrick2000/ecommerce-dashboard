@@ -485,5 +485,19 @@ class PaymentOrchestrator
                 request()->userAgent(),
             );
         }
+
+        // PostHog server-side
+        \App\Services\PostHogService::capture(
+            $order->customer_email,
+            'payment_completed',
+            [
+                'source' => 'native',
+                'store_id' => $order->store_id,
+                'product_id' => $order->product_id,
+                'product_name' => $order->product->name,
+                'amount' => $order->amount,
+                'currency' => $order->currency,
+            ]
+        );
     }
 }

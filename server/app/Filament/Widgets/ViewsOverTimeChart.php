@@ -3,12 +3,17 @@
 namespace App\Filament\Widgets;
 
 use App\Models\PageEvent;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Filament\Facades\Filament;
 use Filament\Widgets\ChartWidget;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 
 class ViewsOverTimeChart extends ChartWidget
 {
-    protected static ?string $heading = 'Visites des 14 derniers jours';
+    use InteractsWithPageFilters;
+
+    protected static ?string $heading = 'Visites sur la période';
 
     protected static ?int $sort = 4;
 
@@ -16,9 +21,12 @@ class ViewsOverTimeChart extends ChartWidget
     {
         $store = Filament::getTenant();
 
-        $data = collect(range(13, 0))->map(function ($daysAgo) use ($store) {
-            $date = now()->subDays($daysAgo);
+        $startDate = Carbon::parse($this->filters['start_date'] ?? now()->subDays(14));
+        $endDate = Carbon::parse($this->filters['end_date'] ?? now());
 
+        $period = CarbonPeriod::create($startDate, $endDate);
+
+        $data = collect($period)->map(function ($date) use ($store) {
             $views = PageEvent::where('store_id', $store->id)
                 ->where('event_type', 'page_view')
                 ->whereDate('created_at', $date)

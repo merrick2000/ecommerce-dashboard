@@ -2,15 +2,19 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\PageEvent;
 use App\Models\Product;
+use Carbon\Carbon;
 use Filament\Facades\Filament;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget as BaseWidget;
+use Illuminate\Support\Facades\DB;
 
 class TopProductsByViews extends BaseWidget
 {
+    use InteractsWithPageFilters;
+
     protected static ?int $sort = 5;
 
     protected int | string | array $columnSpan = 'full';
@@ -19,27 +23,25 @@ class TopProductsByViews extends BaseWidget
     {
         $store = Filament::getTenant();
 
+        $startDate = Carbon::parse($this->filters['start_date'] ?? now()->subDays(30));
+        $endDate = Carbon::parse($this->filters['end_date'] ?? now())->endOfDay();
+
         return $table
-            ->heading('Top produits par visites (30 jours)')
+            ->heading('Top produits par visites')
             ->query(
                 Product::query()
                     ->where('store_id', $store->id)
-                    ->withCount(['pageEvents as views_count' => function ($q) {
+                    ->withCount(['pageEvents as views_count' => function ($q) use ($startDate, $endDate) {
                         $q->where('event_type', 'page_view')
-                            ->where('created_at', '>=', now()->subDays(30));
+                            ->whereBetween('created_at', [$startDate, $endDate]);
                     }])
-                    ->withCount(['pageEvents as unique_visitors' => function ($q) {
-                        $q->where('event_type', 'page_view')
-                            ->where('created_at', '>=', now()->subDays(30))
-                            ->select(\Illuminate\Support\Facades\DB::raw('count(distinct session_id)'));
-                    }])
-                    ->withCount(['pageEvents as checkouts_count' => function ($q) {
+                    ->withCount(['pageEvents as checkouts_count' => function ($q) use ($startDate, $endDate) {
                         $q->where('event_type', 'checkout_initiate')
-                            ->where('created_at', '>=', now()->subDays(30));
+                            ->whereBetween('created_at', [$startDate, $endDate]);
                     }])
-                    ->withCount(['orders as paid_orders_count' => function ($q) {
+                    ->withCount(['orders as paid_orders_count' => function ($q) use ($startDate, $endDate) {
                         $q->where('status', 'paid')
-                            ->where('created_at', '>=', now()->subDays(30));
+                            ->whereBetween('created_at', [$startDate, $endDate]);
                     }])
                     ->orderByDesc('views_count')
             )

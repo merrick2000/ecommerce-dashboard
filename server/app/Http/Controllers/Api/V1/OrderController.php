@@ -109,10 +109,7 @@ class OrderController extends Controller
         }
 
         if ($order->product->cover_image) {
-            $coverUrl = Storage::disk('s3')->temporaryUrl(
-                $order->product->cover_image,
-                now()->addMinutes(60)
-            );
+            $coverUrl = Storage::disk('s3')->url($order->product->cover_image);
         }
 
         return response()->json([

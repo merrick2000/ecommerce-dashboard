@@ -20,7 +20,7 @@ const translations = {
   'checkout.secure': { fr: 'Paiement sécurisé', en: 'Secure payment' },
   'checkout.instant': { fr: 'Accès instant', en: 'Instant access' },
   'checkout.instant_guaranteed': { fr: 'Accès instantané garanti', en: 'Instant access guaranteed' },
-  'checkout.features_title': { fr: 'Ce que vous obtenez', en: 'What you get' },
+  'checkout.features_title': { fr: 'Ce que vous obtenez', en: 'What you get ?' },
 
   // Urgency / Social proof
   'urgency.viewers': { fr: 'personnes regardent ce produit', en: 'people are viewing this product' },
@@ -65,7 +65,7 @@ const translations = {
   // Sections
   'section.faq_title': { fr: 'Questions fréquentes', en: 'Frequently asked questions' },
   'section.testimonials_title': { fr: 'Ce que nos clients disent', en: 'What our customers say' },
-  'section.features_title': { fr: 'Ce que vous obtenez', en: 'What you get' },
+  'section.features_title': { fr: 'Ce que vous obtenez', en: 'What you get ?' },
   'section.guarantee_detail': { fr: 'Recevez votre produit immédiatement après le paiement. Satisfaction garantie.', en: 'Receive your product immediately after payment. Satisfaction guaranteed.' },
 
   // Price

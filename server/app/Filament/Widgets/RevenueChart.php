@@ -4,12 +4,17 @@ namespace App\Filament\Widgets;
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Filament\Facades\Filament;
 use Filament\Widgets\ChartWidget;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 
 class RevenueChart extends ChartWidget
 {
-    protected static ?string $heading = 'Ventes des 7 derniers jours';
+    use InteractsWithPageFilters;
+
+    protected static ?string $heading = 'Revenus sur la période';
 
     protected static ?int $sort = 2;
 
@@ -17,11 +22,14 @@ class RevenueChart extends ChartWidget
     {
         $store = Filament::getTenant();
 
-        $data = collect(range(6, 0))->map(function ($daysAgo) use ($store) {
-            $date = now()->subDays($daysAgo);
+        $startDate = Carbon::parse($this->filters['start_date'] ?? now()->subDays(7));
+        $endDate = Carbon::parse($this->filters['end_date'] ?? now());
 
+        $period = CarbonPeriod::create($startDate, $endDate);
+
+        $data = collect($period)->map(function ($date) use ($store) {
             return [
-                'date' => $date->format('D d'),
+                'date' => $date->format('d/m'),
                 'revenue' => Order::where('store_id', $store->id)
                     ->where('status', OrderStatus::PAID)
                     ->whereDate('created_at', $date)

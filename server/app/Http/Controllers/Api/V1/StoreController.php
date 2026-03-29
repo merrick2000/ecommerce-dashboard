@@ -55,10 +55,10 @@ class StoreController extends Controller
                 'promo_label' => $product->promo_label,
                 'promo_display_style' => $product->promo_display_style ?? 'strikethrough',
                 'cover_image' => $product->cover_image
-                    ? Storage::disk('s3')->temporaryUrl($product->cover_image, now()->addMinutes(60))
+                    ? Storage::disk('s3')->url($product->cover_image)
                     : null,
                 'thumbnail' => $product->thumbnail
-                    ? Storage::disk('s3')->temporaryUrl($product->thumbnail, now()->addMinutes(60))
+                    ? Storage::disk('s3')->url($product->thumbnail)
                     : null,
             ];
         });
