@@ -4,13 +4,17 @@ namespace App\Filament\Widgets;
 
 use App\Enums\OrderStatus;
 use App\Models\Product;
+use Carbon\Carbon;
 use Filament\Facades\Filament;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget as BaseWidget;
 
 class TopProductsTable extends BaseWidget
 {
+    use InteractsWithPageFilters;
+
     protected static ?string $heading = 'Produits les plus vendus';
 
     protected static ?int $sort = 3;
@@ -21,12 +25,17 @@ class TopProductsTable extends BaseWidget
     {
         $store = Filament::getTenant();
 
+        $startDate = Carbon::parse($this->filters['start_date'] ?? now()->subDays(30));
+        $endDate = Carbon::parse($this->filters['end_date'] ?? now())->endOfDay();
+
         return $table
             ->query(
                 Product::query()
                     ->where('store_id', $store->id)
-                    ->withCount(['orders' => fn ($q) => $q->where('status', OrderStatus::PAID)])
-                    ->withSum(['orders' => fn ($q) => $q->where('status', OrderStatus::PAID)], 'amount')
+                    ->withCount(['orders' => fn ($q) => $q->where('status', OrderStatus::PAID)
+                        ->whereBetween('created_at', [$startDate, $endDate])])
+                    ->withSum(['orders' => fn ($q) => $q->where('status', OrderStatus::PAID)
+                        ->whereBetween('created_at', [$startDate, $endDate])], 'amount')
                     ->orderByDesc('orders_count')
             )
             ->columns([

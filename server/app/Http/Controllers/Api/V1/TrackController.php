@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\PageEvent;
+use App\Services\PostHogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -53,6 +54,18 @@ class TrackController extends Controller
             'country' => $country,
             'user_agent' => Str::limit($ua, 512),
         ]);
+
+        // PostHog server-side (session_id as distinct_id for anonymous users)
+        PostHogService::capture($data['session_id'], $data['event_type'], array_filter([
+            'store_id' => $data['store_id'],
+            'product_id' => $data['product_id'] ?? null,
+            'referrer' => $data['referrer'] ?? null,
+            'utm_source' => $data['utm_source'] ?? null,
+            'utm_medium' => $data['utm_medium'] ?? null,
+            'utm_campaign' => $data['utm_campaign'] ?? null,
+            'device_type' => $deviceType,
+            'country' => $country,
+        ]));
 
         return response()->json(['tracked' => true], 202);
     }

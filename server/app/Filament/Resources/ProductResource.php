@@ -257,7 +257,7 @@ class ProductResource extends Resource
                                     ->image()
                                     ->disk('s3')
                                     ->directory('covers')
-                                    ->visibility('private')
+                                    ->visibility('public')
                                     ->imageEditor()
                                     ->imageEditorAspectRatios(['16:9']),
 
@@ -267,7 +267,7 @@ class ProductResource extends Resource
                                     ->image()
                                     ->disk('s3')
                                     ->directory('thumbnails')
-                                    ->visibility('private')
+                                    ->visibility('public')
                                     ->imageEditor()
                                     ->imageEditorAspectRatios(['1:1']),
 
@@ -464,10 +464,7 @@ class ProductResource extends Resource
                         if (! $record->cover_image) {
                             return null;
                         }
-                        return Storage::disk('s3')->temporaryUrl(
-                            $record->cover_image,
-                            now()->addMinutes(60)
-                        );
+                        return Storage::disk('s3')->url($record->cover_image);
                     }),
 
                 Tables\Columns\TextColumn::make('name')

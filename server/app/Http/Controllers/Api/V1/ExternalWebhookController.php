@@ -9,6 +9,7 @@ use App\Models\PaymentSetting;
 use App\Models\Product;
 use App\Jobs\SendFacebookConversionEvent;
 use App\Services\Payment\PaymentLogger;
+use App\Services\PostHogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -127,6 +128,28 @@ class ExternalWebhookController extends Controller
         // Envoyer l'événement Purchase à Facebook CAPI si commande payée
         if ($orderStatus === OrderStatus::PAID) {
             $this->dispatchTrackingEvent($order, $product);
+        }
+
+        // PostHog server-side tracking
+        PostHogService::capture($customerEmail, 'order_created', [
+            'source' => $platform,
+            'store_id' => $product->store_id,
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'amount' => $amount,
+            'currency' => $currency,
+            'status' => $status,
+        ]);
+
+        if ($orderStatus === OrderStatus::PAID) {
+            PostHogService::capture($customerEmail, 'payment_completed', [
+                'source' => $platform,
+                'store_id' => $product->store_id,
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'amount' => $amount,
+                'currency' => $currency,
+            ]);
         }
 
         PaymentLogger::webhook('external', $productCode, $status, [

@@ -56,7 +56,7 @@ class CheckoutController extends Controller
                 'promo_label' => $product->promo_label,
                 'promo_display_style' => $product->promo_display_style ?? 'strikethrough',
                 'cover_image' => $product->cover_image
-                    ? Storage::disk('s3')->temporaryUrl($product->cover_image, now()->addMinutes(60))
+                    ? Storage::disk('s3')->url($product->cover_image)
                     : null,
                 'features' => $product->features ?? [],
                 'features_position' => $product->features_position ?? 'below_description',
@@ -146,7 +146,7 @@ class CheckoutController extends Controller
             $path = $matches[2];
 
             try {
-                return Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(60));
+                return Storage::disk('s3')->url($path);
             } catch (\Exception $e) {
                 return $matches[0]; // Retourner l'URL originale en cas d'erreur
             }
