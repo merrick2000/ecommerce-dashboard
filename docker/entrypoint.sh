@@ -12,6 +12,7 @@ fi
 
 # Publish assets & cache
 php artisan filament:assets 2>/dev/null || true
+php artisan filament:optimize 2>/dev/null || true
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
