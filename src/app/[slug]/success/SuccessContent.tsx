@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import posthog from "posthog-js";
+import { captureEvent } from "@/lib/posthog";
 import type { OrderDetailsResponse } from "@/lib/api";
 import { trackDownload } from "@/lib/api";
 import { useTracking } from "@/hooks/useTracking";
@@ -30,7 +30,7 @@ export function SuccessContent({ data, eventId }: { data: OrderDetailsResponse; 
       event_id: eventId,
     });
 
-    posthog.capture("purchase_completed", {
+    captureEvent("purchase_completed", {
       order_id: order.id,
       product_id: product.id,
       product_name: product.name,
@@ -44,7 +44,7 @@ export function SuccessContent({ data, eventId }: { data: OrderDetailsResponse; 
     if (!download_url) return;
     setDownloading(true);
     trackDownload(order.id);
-    posthog.capture("product_downloaded", {
+    captureEvent("product_downloaded", {
       order_id: order.id,
       product_id: product.id,
       store_id: store.id,

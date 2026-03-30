@@ -6,7 +6,7 @@ export function ClarityProvider() {
   useEffect(() => {
     const id = process.env.NEXT_PUBLIC_CLARITY_ID;
 
-    if (!id || process.env.NODE_ENV !== "production") return;
+    if (!id) return;
 
     // Microsoft Clarity script
     (function (c: any, l: any, a: any, r: string, i: string) {
