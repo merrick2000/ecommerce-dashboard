@@ -30,7 +30,13 @@ export function CheckoutSwitcher({ data }: CheckoutSwitcherProps) {
       content_ids: [String(data.product.id)],
       content_type: "product",
     });
-  }, [trackEvent, data]);
+
+    trackInternal("product_viewed", data.product.id, {
+      product_name: data.product.name,
+      price: data.product.effective_price,
+      currency: data.store.currency,
+    });
+  }, [trackEvent, trackInternal, data]);
 
   switch (templateType) {
     case "DARK_PREMIUM":

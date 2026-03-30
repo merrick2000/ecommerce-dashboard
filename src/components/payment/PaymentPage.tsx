@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import {
   initiatePayment,
   checkPaymentStatus,
@@ -79,13 +80,17 @@ export function PaymentPage({ data, countries, orderId }: PaymentPageProps) {
           router.push(`/${store.slug}/success?order=${orderId}`);
         } else if (result.status === "failed") {
           if (pollingRef.current) clearInterval(pollingRef.current);
+          posthog.capture("payment_failed", {
+            store_id: store.id,
+            product_id: product.id,
+          });
           setStep("failed");
         }
       } catch {
         // Silently retry
       }
     }, 5000);
-  }, [orderId, router, store.slug]);
+  }, [orderId, router, store.slug, store.id, product.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,6 +103,13 @@ export function PaymentPage({ data, countries, orderId }: PaymentPageProps) {
         country: selectedCountry,
         network: selectedNetwork,
         phone,
+      });
+
+      posthog.capture("payment_initiated", {
+        store_id: store.id,
+        product_id: product.id,
+        country: selectedCountry,
+        network: selectedNetwork,
       });
 
       if (result.status === "otp_required") {
@@ -119,6 +131,7 @@ export function PaymentPage({ data, countries, orderId }: PaymentPageProps) {
         startPolling();
       }
     } catch (err) {
+      posthog.captureException(err);
       setError(err instanceof Error ? err.message : t("payment.failed", locale));
     } finally {
       setLoading(false);
@@ -136,6 +149,11 @@ export function PaymentPage({ data, countries, orderId }: PaymentPageProps) {
         otp_code: otpCode,
       });
 
+      posthog.capture("payment_otp_submitted", {
+        store_id: store.id,
+        product_id: product.id,
+      });
+
       if (result.status === "paid") {
         router.push(`/${store.slug}/success?order=${orderId}`);
       } else {
@@ -144,6 +162,7 @@ export function PaymentPage({ data, countries, orderId }: PaymentPageProps) {
         startPolling();
       }
     } catch (err) {
+      posthog.captureException(err);
       setError(err instanceof Error ? err.message : t("payment.failed", locale));
       setLoading(false);
     }

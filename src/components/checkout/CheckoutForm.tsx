@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { createOrder, type CheckoutPageData } from "@/lib/api";
 import type { Locale } from "@/lib/i18n";
 
@@ -119,9 +120,12 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInterna
         customer_phone: phone ? `${dialCode}${phone}` : undefined,
       });
 
+      onTrackInternal?.("checkout_form_submitted");
       // Rediriger vers la page de paiement
       router.push(`/${store.slug}/p/${product.id}/pay?order=${result.order.id}`);
     } catch (err) {
+      posthog.captureException(err);
+      onTrackInternal?.("checkout_error");
       setError(err instanceof Error ? err.message : formTxt.error[locale]);
       setLoading(false);
     }
