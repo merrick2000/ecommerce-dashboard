@@ -33,11 +33,16 @@ class TrackController extends Controller
             $deviceType = 'tablet';
         }
 
-        // Pays depuis Accept-Language (heuristique)
-        $country = null;
-        $acceptLang = $request->header('Accept-Language', '');
-        if (preg_match('/[a-z]{2}-([A-Z]{2})/', $acceptLang, $m)) {
-            $country = $m[1];
+        // Pays depuis Cloudflare (précis, basé sur IP) ou Accept-Language en fallback
+        $country = $request->header('CF-IPCountry')
+            ?? $request->header('X-Vercel-IP-Country')
+            ?? null;
+
+        if (! $country || $country === 'XX') {
+            $acceptLang = $request->header('Accept-Language', '');
+            if (preg_match('/[a-z]{2}-([A-Z]{2})/', $acceptLang, $m)) {
+                $country = $m[1];
+            }
         }
 
         PageEvent::create([

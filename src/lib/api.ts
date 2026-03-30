@@ -129,6 +129,7 @@ export interface OrderDetailsResponse {
     cover_image: string | null;
   };
   store: {
+    id: number;
     name: string;
     slug: string;
     locale?: 'fr' | 'en';
