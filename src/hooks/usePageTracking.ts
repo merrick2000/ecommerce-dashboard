@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
-import posthog from "posthog-js";
+import { captureEvent } from "@/lib/posthog";
 import { sendTrackEvent } from "@/lib/api";
 
 function getSessionId(): string {
@@ -60,14 +60,12 @@ export function usePageTracking(storeId: number, productId?: number) {
       });
 
       // Send to PostHog in parallel
-      if (typeof window !== "undefined" && posthog.__loaded) {
-        posthog.capture(eventType, {
-          store_id: storeId,
-          product_id: overrideProductId ?? productId,
-          ...getUtmParams(),
-          ...extraProps,
-        });
-      }
+      captureEvent(eventType, {
+        store_id: storeId,
+        product_id: overrideProductId ?? productId,
+        ...getUtmParams(),
+        ...extraProps,
+      });
     },
     [storeId, productId]
   );
