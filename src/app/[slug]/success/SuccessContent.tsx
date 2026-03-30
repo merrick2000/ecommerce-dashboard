@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import posthog from "posthog-js";
 import type { OrderDetailsResponse } from "@/lib/api";
 import { trackDownload } from "@/lib/api";
 import { useTracking } from "@/hooks/useTracking";
@@ -28,12 +29,26 @@ export function SuccessContent({ data, eventId }: { data: OrderDetailsResponse; 
       content_type: "product",
       event_id: eventId,
     });
-  }, [trackEvent, isPaid, order, product, eventId]);
+
+    posthog.capture("purchase_completed", {
+      order_id: order.id,
+      product_id: product.id,
+      product_name: product.name,
+      store_id: store.id,
+      amount: order.amount,
+      currency: order.currency,
+    });
+  }, [trackEvent, isPaid, order, product, store, eventId]);
 
   const handleDownload = () => {
     if (!download_url) return;
     setDownloading(true);
     trackDownload(order.id);
+    posthog.capture("product_downloaded", {
+      order_id: order.id,
+      product_id: product.id,
+      store_id: store.id,
+    });
     window.open(download_url, "_blank");
     setTimeout(() => setDownloading(false), 2000);
   };
