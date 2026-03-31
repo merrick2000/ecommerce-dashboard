@@ -78,6 +78,9 @@ class ManagePayments extends Page implements HasActions, HasForms
             'pawapay_sandbox_signing_key' => $providers['pawapay']['sandbox']['signing_key'] ?? '',
             'pawapay_live_api_key' => $providers['pawapay']['live']['api_key'] ?? '',
             'pawapay_live_signing_key' => $providers['pawapay']['live']['signing_key'] ?? '',
+            // Maketou
+            'maketou_enabled' => $providers['maketou']['enabled'] ?? false,
+            'maketou_live_api_key' => $providers['maketou']['live']['api_key'] ?? '',
         ]);
     }
 
@@ -334,6 +337,24 @@ class ManagePayments extends Page implements HasActions, HasForms
                             ])
                             ->visible(fn (Forms\Get $get) => $get('pawapay_enabled')),
                     ]),
+
+                // ─── MAKETOU ────────────────────────────────────
+                Forms\Components\Section::make('Maketou')
+                    ->description('Checkout hébergé — Paiement via Moneroo (tous réseaux). Utilisé en fallback si les autres providers échouent.')
+                    ->icon('heroicon-o-shopping-bag')
+                    ->collapsible()
+                    ->schema([
+                        Forms\Components\Toggle::make('maketou_enabled')
+                            ->label('Activer Maketou')
+                            ->live(),
+
+                        Forms\Components\TextInput::make('maketou_live_api_key')
+                            ->label('Clé API')
+                            ->password()
+                            ->revealable()
+                            ->helperText('Votre clé API Maketou. L\'identifiant produit se configure sur chaque produit (onglet Paiement).')
+                            ->visible(fn (Forms\Get $get) => $get('maketou_enabled')),
+                    ]),
             ])
             ->statePath('data');
     }
@@ -574,6 +595,12 @@ class ManagePayments extends Page implements HasActions, HasForms
                     'live' => [
                         'api_key' => $data['pawapay_live_api_key'] ?? '',
                         'signing_key' => $data['pawapay_live_signing_key'] ?? '',
+                    ],
+                ],
+                'maketou' => [
+                    'enabled' => $data['maketou_enabled'] ?? false,
+                    'live' => [
+                        'api_key' => $data['maketou_live_api_key'] ?? '',
                     ],
                 ],
             ],

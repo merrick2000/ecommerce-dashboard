@@ -7,6 +7,7 @@ use App\Models\PaymentSetting;
 use App\Models\PaymentTransaction;
 use App\Services\Payment\Providers\FedaPayProvider;
 use App\Services\Payment\Providers\FeexPayProvider;
+use App\Services\Payment\Providers\MaketouProvider;
 use App\Services\Payment\Providers\PawaPayProvider;
 use App\Services\Payment\Providers\PayDunyaProvider;
 use Illuminate\Support\Facades\Log;
@@ -83,6 +84,14 @@ class PaymentOrchestrator
             $this->registerProvider(new PawaPayProvider(
                 apiKey: $cfg['api_key'] ?? '',
                 baseUrl: $baseUrl,
+            ));
+        }
+
+        // Maketou
+        if ($this->settings->isProviderEnabled('maketou')) {
+            $cfg = $this->settings->getProviderConfig('maketou');
+            $this->registerProvider(new MaketouProvider(
+                apiKey: $cfg['api_key'] ?? '',
             ));
         }
     }

@@ -376,6 +376,12 @@ class ProductResource extends Resource
                                     ->unique(ignoreRecord: true)
                                     ->helperText('Le code unique du produit sur Selar. Permet de synchroniser les ventes via webhook.')
                                     ->visible(fn (Forms\Get $get) => $get('payment_mode') === 'external_link' && $get('external_platform') === 'selar'),
+
+                                Forms\Components\TextInput::make('maketou_product_id')
+                                    ->label('Identifiant Maketou (Product Document ID)')
+                                    ->placeholder('550e8400-e29b-41d4-a716-446655440000')
+                                    ->helperText('L\'identifiant public du produit sur Maketou. Requis si Maketou est activé dans Paiements.')
+                                    ->visible(fn () => \App\Models\PaymentSetting::instance()->isProviderEnabled('maketou')),
                             ]),
 
                         // ─── TAB 4 : SOCIAL PROOF ───────────────────────

@@ -44,6 +44,7 @@ class Product extends Model implements HasMedia
         'payment_link',
         'external_platform',
         'external_product_id',
+        'maketou_product_id',
     ];
 
     protected function casts(): array
