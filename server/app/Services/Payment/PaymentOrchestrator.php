@@ -88,18 +88,18 @@ class PaymentOrchestrator
             ));
         }
 
-        // Chariow
+        // Chariow (pas de sandbox — toujours la config live)
         if ($this->settings->isProviderEnabled('chariow')) {
-            $cfg = $this->settings->getProviderConfig('chariow');
+            $cfg = ($this->settings->providers ?? [])['chariow']['live'] ?? [];
             $this->registerProvider(new ChariowProvider(
                 apiKey: $cfg['api_key'] ?? '',
                 webhookSecret: $cfg['webhook_secret'] ?? '',
             ));
         }
 
-        // Maketou
+        // Maketou (pas de sandbox — toujours la config live)
         if ($this->settings->isProviderEnabled('maketou')) {
-            $cfg = $this->settings->getProviderConfig('maketou');
+            $cfg = ($this->settings->providers ?? [])['maketou']['live'] ?? [];
             $this->registerProvider(new MaketouProvider(
                 apiKey: $cfg['api_key'] ?? '',
             ));
@@ -139,26 +139,57 @@ class PaymentOrchestrator
             'BF' => 'Burkina Faso',
             'CI' => 'Côte d\'Ivoire',
             'GH' => 'Ghana',
+            'GN' => 'Guinée',
+            'GW' => 'Guinée-Bissau',
+            'LR' => 'Libéria',
+            'ML' => 'Mali',
+            'MR' => 'Mauritanie',
+            'NE' => 'Niger',
             'NG' => 'Nigeria',
             'SN' => 'Sénégal',
             'SL' => 'Sierra Leone',
             'TG' => 'Togo',
             // Afrique Centrale
             'CM' => 'Cameroun',
+            'CF' => 'Centrafrique',
             'CG' => 'Congo-Brazzaville',
             'GA' => 'Gabon',
+            'GQ' => 'Guinée équatoriale',
+            'TD' => 'Tchad',
             'CD' => 'RD Congo',
             // Afrique de l'Est
+            'BI' => 'Burundi',
+            'DJ' => 'Djibouti',
             'ET' => 'Éthiopie',
             'KE' => 'Kenya',
+            'MG' => 'Madagascar',
+            'MU' => 'Maurice',
             'RW' => 'Rwanda',
+            'SO' => 'Somalie',
             'TZ' => 'Tanzanie',
             'UG' => 'Ouganda',
             // Afrique Australe
+            'AO' => 'Angola',
+            'BW' => 'Botswana',
             'LS' => 'Lesotho',
             'MW' => 'Malawi',
             'MZ' => 'Mozambique',
+            'NA' => 'Namibie',
+            'ZA' => 'Afrique du Sud',
             'ZM' => 'Zambie',
+            'ZW' => 'Zimbabwe',
+            // Afrique du Nord
+            'DZ' => 'Algérie',
+            'EG' => 'Égypte',
+            'LY' => 'Libye',
+            'MA' => 'Maroc',
+            'TN' => 'Tunisie',
+            // Autres
+            'FR' => 'France',
+            'BE' => 'Belgique',
+            'CA' => 'Canada',
+            'US' => 'États-Unis',
+            'GB' => 'Royaume-Uni',
         ];
 
         $networkNames = [
@@ -183,17 +214,23 @@ class PaymentOrchestrator
             'zamtel' => 'Zamtel',
         ];
 
+        $hasUniversalProvider = isset($this->providers['chariow']) || isset($this->providers['maketou']);
+
         foreach ($routing as $code => $networks) {
             $availableNetworks = [];
 
             foreach ($networks as $network => $providerList) {
-                // Vérifier qu'au moins un provider de la liste est activé
                 foreach ($providerList as $providerName) {
                     if (isset($this->providers[$providerName])) {
                         $availableNetworks[$network] = $networkNames[$network] ?? $network;
                         break;
                     }
                 }
+            }
+
+            // Ajouter le réseau "redirect" si des providers universels sont actifs
+            if ($hasUniversalProvider) {
+                $availableNetworks['redirect'] = 'Paiement en ligne';
             }
 
             if (! empty($availableNetworks)) {
@@ -203,6 +240,21 @@ class PaymentOrchestrator
                 ];
             }
         }
+
+        // Ajouter les pays qui ne sont pas dans le routing mais sont dans la liste
+        if ($hasUniversalProvider) {
+            foreach ($countryNames as $code => $name) {
+                if (! isset($countries[$code])) {
+                    $countries[$code] = [
+                        'name' => $name,
+                        'networks' => ['redirect' => 'Paiement en ligne'],
+                    ];
+                }
+            }
+        }
+
+        // Trier par nom
+        uasort($countries, fn ($a, $b) => strcmp($a['name'], $b['name']));
 
         return $countries;
     }
@@ -476,8 +528,17 @@ class PaymentOrchestrator
     private function resolveProviders(string $country, string $network): array
     {
         $routing = config('payment.routing', []);
+        $providers = $routing[$country][$network] ?? [];
 
-        return $routing[$country][$network] ?? [];
+        // Chariow et Maketou sont des checkouts hébergés universels (pas de limite de pays).
+        // On les ajoute automatiquement en fallback s'ils sont activés et pas déjà dans la liste.
+        foreach (['chariow', 'maketou'] as $universal) {
+            if (isset($this->providers[$universal]) && ! in_array($universal, $providers)) {
+                $providers[] = $universal;
+            }
+        }
+
+        return $providers;
     }
 
     private function dispatchTrackingEvent(Order $order): void

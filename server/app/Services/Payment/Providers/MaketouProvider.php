@@ -21,9 +21,6 @@ class MaketouProvider implements PaymentProviderInterface
         return 'maketou';
     }
 
-    /**
-     * Maketou supporte tous les pays/réseaux — c'est un checkout hébergé.
-     */
     public function supports(string $country, string $network): bool
     {
         return true;
@@ -36,10 +33,14 @@ class MaketouProvider implements PaymentProviderInterface
         $productDocumentId = $order->product->maketou_product_id;
 
         if (! $productDocumentId) {
+            PaymentLogger::error('maketou', 'Product missing maketou_product_id', [
+                'product_id' => $order->product_id,
+                'product_name' => $order->product->name,
+            ]);
+
             return PaymentResult::failed('maketou', 'Identifiant Maketou non configuré pour ce produit.');
         }
 
-        // Construire la redirectURL vers la page de succès
         $store = $order->store ?? $order->load('store')->store;
         $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
         $redirectUrl = $frontendUrl . '/' . $store->slug . '/success?order=' . $order->id;
@@ -59,57 +60,70 @@ class MaketouProvider implements PaymentProviderInterface
             ],
         ];
 
-        PaymentLogger::info('maketou', 'Creating cart', $payload);
+        $url = self::BASE_URL . '/api/v1/stores/cart/checkout';
+
+        PaymentLogger::apiRequest('maketou', 'POST', $url, $payload);
 
         try {
             $response = Http::withToken($this->apiKey)
                 ->timeout(30)
-                ->post(self::BASE_URL . '/api/v1/stores/cart/checkout', $payload);
+                ->post($url, $payload);
 
             $data = $response->json();
 
-            PaymentLogger::info('maketou', 'Response', ['status' => $response->status(), 'body' => $data]);
+            PaymentLogger::apiResponse('maketou', $response->status(), $data ?? [], $url);
 
             if ($response->status() === 201 && isset($data['cart']['id'], $data['redirectUrl'])) {
-                return PaymentResult::redirect(
+                $result = PaymentResult::redirect(
                     providerName: 'maketou',
                     providerRef: $data['cart']['id'],
                     redirectUrl: $data['redirectUrl'],
                 );
+                PaymentLogger::result($result);
+
+                return $result;
             }
 
-            $errorMessage = $data['message'] ?? 'Erreur Maketou inconnue';
+            $errorMessage = $data['message'] ?? $data['code'] ?? 'HTTP ' . $response->status();
+            $result = PaymentResult::failed('maketou', $errorMessage);
+            PaymentLogger::result($result);
 
-            return PaymentResult::failed('maketou', $errorMessage);
+            return $result;
         } catch (\Exception $e) {
-            PaymentLogger::error('maketou', 'Exception: ' . $e->getMessage());
+            PaymentLogger::error('maketou', 'Exception: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
 
             return PaymentResult::failed('maketou', 'Erreur de connexion à Maketou: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Vérifie le statut d'un panier Maketou.
-     */
     public function checkStatus(string $providerRef): string
     {
+        $url = self::BASE_URL . '/api/v1/stores/cart/' . $providerRef;
+
+        PaymentLogger::apiRequest('maketou', 'GET', $url);
+
         try {
             $response = Http::withToken($this->apiKey)
                 ->timeout(15)
-                ->get(self::BASE_URL . '/api/v1/stores/cart/' . $providerRef);
+                ->get($url);
 
             $data = $response->json();
 
-            PaymentLogger::info('maketou', 'Status check', ['cart_id' => $providerRef, 'data' => $data]);
+            PaymentLogger::apiResponse('maketou', $response->status(), $data ?? [], $url);
 
             $status = $data['status'] ?? 'unknown';
-
-            return match ($status) {
+            $mapped = match ($status) {
                 'completed' => 'paid',
                 'payment_failed', 'abandoned' => 'failed',
                 'waiting_payment' => 'pending',
                 default => 'pending',
             };
+
+            PaymentLogger::statusCheck('maketou', $providerRef, $mapped);
+
+            return $mapped;
         } catch (\Exception $e) {
             PaymentLogger::error('maketou', 'Status check failed: ' . $e->getMessage());
 
@@ -117,9 +131,6 @@ class MaketouProvider implements PaymentProviderInterface
         }
     }
 
-    /**
-     * Maketou n'a pas de webhook pour le moment — on utilise le polling via checkStatus.
-     */
     public function parseWebhook(array $payload, array $headers): ?array
     {
         return null;

@@ -42,6 +42,14 @@ export function PaymentPage({ data, countries, orderId }: PaymentPageProps) {
   const networks = selectedCountry ? countries[selectedCountry]?.networks || {} : {};
   const networkList = Object.entries(networks);
 
+  // Detect if only redirect providers (no MoMo networks)
+  const isRedirectOnly = networkList.length === 1 && networkList[0][0] === "redirect";
+  const hasRedirect = networkList.some(([key]) => key === "redirect");
+  // Filter out "redirect" from visible networks when there are also real networks
+  const visibleNetworks = hasRedirect && !isRedirectOnly
+    ? networkList.filter(([key]) => key !== "redirect")
+    : networkList;
+
   // Auto-select first country
   useEffect(() => {
     if (countryList.length > 0 && !selectedCountry) {
@@ -54,12 +62,46 @@ export function PaymentPage({ data, countries, orderId }: PaymentPageProps) {
     setSelectedNetwork("");
   }, [selectedCountry]);
 
-  // Auto-select first network
+  // Auto-select first network (or "redirect" if only option)
   useEffect(() => {
     if (networkList.length > 0 && !selectedNetwork) {
-      setSelectedNetwork(networkList[0][0]);
+      if (isRedirectOnly) {
+        setSelectedNetwork("redirect");
+      } else {
+        // Select first non-redirect network
+        const first = networkList.find(([key]) => key !== "redirect");
+        if (first) setSelectedNetwork(first[0]);
+        else setSelectedNetwork(networkList[0][0]);
+      }
     }
-  }, [networkList, selectedNetwork]);
+  }, [networkList, selectedNetwork, isRedirectOnly]);
+
+  // Auto-initiate for redirect-only countries
+  const autoInitiatedRef = useRef(false);
+  useEffect(() => {
+    if (isRedirectOnly && selectedCountry && selectedNetwork === "redirect" && !autoInitiatedRef.current) {
+      autoInitiatedRef.current = true;
+      setLoading(true);
+      initiatePayment({
+        order_id: orderId,
+        country: selectedCountry,
+        network: "redirect",
+        phone: "0000000000",
+      }).then((result) => {
+        if (result.status === "redirect" && result.redirect_url) {
+          window.location.href = result.redirect_url;
+        } else {
+          setLoading(false);
+          setError(result.message || t("payment.failed", locale));
+          autoInitiatedRef.current = false;
+        }
+      }).catch((err) => {
+        setLoading(false);
+        setError(err instanceof Error ? err.message : t("payment.failed", locale));
+        autoInitiatedRef.current = false;
+      });
+    }
+  }, [isRedirectOnly, selectedCountry, selectedNetwork, orderId, locale]);
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -121,10 +163,8 @@ export function PaymentPage({ data, countries, orderId }: PaymentPageProps) {
         }
         setStep("otp");
       } else if (result.status === "redirect" && result.redirect_url) {
-        // Ouvrir dans un nouvel onglet + polling
-        window.open(result.redirect_url, "_blank");
-        setStep("confirming");
-        startPolling();
+        // Rediriger vers la page de paiement
+        window.location.href = result.redirect_url;
       } else {
         // Direct push (USSD)
         setStep("confirming");
@@ -247,14 +287,14 @@ export function PaymentPage({ data, countries, orderId }: PaymentPageProps) {
                 </div>
               </div>
 
-              {/* Network selector */}
-              {networkList.length > 0 && (
+              {/* Network selector — hidden for redirect-only */}
+              {visibleNetworks.length > 0 && !isRedirectOnly && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     {t("payment.select_network", locale)}
                   </label>
                   <div className="grid grid-cols-2 gap-2">
-                    {networkList.map(([key, label]) => (
+                    {visibleNetworks.map(([key, label]) => (
                       <button
                         key={key}
                         type="button"
@@ -279,43 +319,55 @@ export function PaymentPage({ data, countries, orderId }: PaymentPageProps) {
                 </div>
               )}
 
-              {/* Phone input */}
-              <div>
-                <label htmlFor="pay-phone" className="block text-sm font-medium text-gray-700 mb-1.5">
-                  {t("payment.phone", locale)}
-                </label>
-                <input
-                  type="tel"
-                  id="pay-phone"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/[^\d\s]/g, ""))}
-                  placeholder={t("payment.phone_placeholder", locale)}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:border-transparent"
-                  style={{ "--tw-ring-color": color } as React.CSSProperties}
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  {t("payment.phone_hint", locale)}
-                </p>
-              </div>
+              {/* Phone input — hidden for redirect-only */}
+              {!isRedirectOnly && (
+                <div>
+                  <label htmlFor="pay-phone" className="block text-sm font-medium text-gray-700 mb-1.5">
+                    {t("payment.phone", locale)}
+                  </label>
+                  <input
+                    type="tel"
+                    id="pay-phone"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/[^\d\s]/g, ""))}
+                    placeholder={t("payment.phone_placeholder", locale)}
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:border-transparent"
+                    style={{ "--tw-ring-color": color } as React.CSSProperties}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    {t("payment.phone_hint", locale)}
+                  </p>
+                </div>
+              )}
 
               {error && <p className="text-red-500 text-sm font-medium">{error}</p>}
 
-              <button
-                type="submit"
-                disabled={loading || !selectedCountry || !selectedNetwork || !phone}
-                className="w-full rounded-xl py-3.5 text-white font-bold text-lg transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: color }}
-              >
-                {loading ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Spinner />
-                    {t("payment.processing", locale)}
-                  </span>
-                ) : (
-                  `${t("payment.pay", locale)} ${product.formatted_effective_price}`
-                )}
-              </button>
+              {/* Redirect-only: show loading state */}
+              {isRedirectOnly ? (
+                <div className="text-center py-4">
+                  <Spinner />
+                  <p className="text-sm text-gray-500 mt-3">
+                    {locale === "fr" ? "Redirection vers la page de paiement..." : "Redirecting to payment page..."}
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={loading || !selectedCountry || !selectedNetwork || !phone}
+                  className="w-full rounded-xl py-3.5 text-white font-bold text-lg transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: color }}
+                >
+                  {loading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Spinner />
+                      {t("payment.processing", locale)}
+                    </span>
+                  ) : (
+                    `${t("payment.pay", locale)} ${product.formatted_effective_price}`
+                  )}
+                </button>
+              )}
 
               <SecurityBadge locale={locale} />
             </form>

@@ -61,16 +61,17 @@ class ChariowProvider implements PaymentProviderInterface
             ],
         ];
 
-        PaymentLogger::info('chariow', 'Creating checkout', $payload);
+        $url = self::BASE_URL . '/checkout';
+        PaymentLogger::apiRequest('chariow', 'POST', $url, $payload);
 
         try {
             $response = Http::withToken($this->apiKey)
                 ->timeout(30)
-                ->post(self::BASE_URL . '/checkout', $payload);
+                ->post($url, $payload);
 
             $data = $response->json();
 
-            PaymentLogger::info('chariow', 'Response', ['status' => $response->status(), 'body' => $data]);
+            PaymentLogger::apiResponse('chariow', $response->status(), $data ?? [], $url);
 
             if (! $response->successful()) {
                 $errorMessage = $data['message'] ?? 'Erreur Chariow HTTP ' . $response->status();
