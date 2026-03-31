@@ -49,7 +49,7 @@ class ChariowProvider implements PaymentProviderInterface
             'first_name' => $nameParts[0],
             'last_name' => $nameParts[1] ?? '',
             'phone' => [
-                'number' => preg_replace('/\D/', '', $phone),
+                'number' => preg_replace('/\D/', '', $order->customer_phone ?: $phone),
                 'country_code' => $country,
             ],
             'redirect_url' => $redirectUrl,

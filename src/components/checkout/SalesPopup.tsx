@@ -85,10 +85,10 @@ export function SalesPopup({ config, productName, dark, locale = 'fr' }: SalesPo
               <span className={dark ? "text-gray-400" : "text-gray-500"}>
                 {txt.from[locale]} {currentEntry.city}
               </span>
-              {" · "}
-              <span className={dark ? "text-gray-500" : "text-gray-400"}>
-                {timeAgo}
-              </span>
+            </p>
+            <p className={`text-[11px] leading-tight mt-0.5 ${dark ? "text-gray-400" : "text-gray-500"}`}>
+              {txt.just_bought[locale]} <span className="font-medium">{truncatedProduct}</span>
+              {" · "}{timeAgo}
             </p>
           </div>
 

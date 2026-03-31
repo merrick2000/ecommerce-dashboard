@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { captureEvent } from "@/lib/posthog";
-import { createOrder, type CheckoutPageData } from "@/lib/api";
+import { createOrder, initiatePayment, type CheckoutPageData } from "@/lib/api";
 import type { Locale } from "@/lib/i18n";
 
 export type TrackEventFn = (eventName: string, params?: Record<string, unknown>) => void;
@@ -121,7 +121,27 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInterna
       });
 
       onTrackInternal?.("checkout_form_submitted");
-      // Rediriger vers la page de paiement
+
+      // Si seuls les providers redirect sont activés, initier le paiement directement
+      if (product.redirect_only_payment) {
+        try {
+          const payResult = await initiatePayment({
+            order_id: result.order.id,
+            country: "XX",
+            network: "redirect",
+            phone: phone ? `${dialCode}${phone}` : "0000000000",
+          });
+
+          if (payResult.status === "redirect" && payResult.redirect_url) {
+            window.location.href = payResult.redirect_url;
+            return;
+          }
+        } catch {
+          // Fallback: aller sur la page de paiement classique
+        }
+      }
+
+      // Sinon, rediriger vers la page de sélection pays/réseau
       router.push(`/${store.slug}/p/${product.id}/pay?order=${result.order.id}`);
     } catch (err) {
       captureEvent("exception", { error: String(err) });

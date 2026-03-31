@@ -53,6 +53,7 @@ export interface ProductData {
   payment_mode: 'native' | 'external_link';
   payment_link: string | null;
   external_platform: 'selar' | 'chariow' | null;
+  redirect_only_payment: boolean;
 }
 
 export interface UrgencyConfig {

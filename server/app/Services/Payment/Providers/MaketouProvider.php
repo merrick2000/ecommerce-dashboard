@@ -50,7 +50,7 @@ class MaketouProvider implements PaymentProviderInterface
             'email' => $order->customer_email,
             'firstName' => $order->customer_name ? explode(' ', $order->customer_name)[0] : 'Client',
             'lastName' => $order->customer_name ? (explode(' ', $order->customer_name, 2)[1] ?? '') : '',
-            'phone' => $phone,
+            'phone' => $order->customer_phone ?: $phone,
             'redirectURL' => $redirectUrl,
             'customerPrice' => $order->amount,
             'meta' => [
