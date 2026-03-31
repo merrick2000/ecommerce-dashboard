@@ -79,6 +79,11 @@ class PaymentLogger
         self::log('debug', '🔍', "STATUS CHECK [{$provider}] ref={$ref} → {$status}");
     }
 
+    public static function info(string $provider, string $message, array $context = []): void
+    {
+        self::log('info', 'ℹ️', "[{$provider}] {$message}", $context);
+    }
+
     public static function error(string $provider, string $message, array $context = []): void
     {
         self::log('error', '🔥', "ERROR [{$provider}] {$message}", $context);
