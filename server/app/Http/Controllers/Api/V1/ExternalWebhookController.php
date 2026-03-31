@@ -202,6 +202,7 @@ class ExternalWebhookController extends Controller
     private function dispatchOrderEmails(Order $order, Product $product): void
     {
         $store = $product->store;
+        $locale = $store->locale ?? 'fr';
         $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
         $downloadUrl = $frontendUrl . '/' . $store->slug . '/success?order=' . $order->id;
 
@@ -211,6 +212,7 @@ class ExternalWebhookController extends Controller
                 downloadUrl: $downloadUrl,
                 storeName: $store->name,
                 productName: $product->name,
+                locale: $locale,
             ));
 
         $sellerEmail = $store->user?->email;

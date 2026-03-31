@@ -18,13 +18,16 @@ class OrderConfirmationMail extends Mailable
         public string $downloadUrl,
         public string $storeName,
         public string $productName,
+        public string $locale = 'fr',
     ) {}
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: "Votre achat : {$this->productName}",
-        );
+        $subject = $this->locale === 'en'
+            ? "Your purchase: {$this->productName}"
+            : "Votre achat : {$this->productName}";
+
+        return new Envelope(subject: $subject);
     }
 
     public function content(): Content

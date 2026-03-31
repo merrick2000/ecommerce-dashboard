@@ -2,34 +2,40 @@
 
 namespace App\Mail;
 
-use App\Models\Order;
+use App\Models\Lead;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class NewSaleNotificationMail extends Mailable
+class AbandonedCartMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public function __construct(
-        public Order $order,
+        public Lead $lead,
         public string $productName,
+        public string $formattedPrice,
+        public string $checkoutUrl,
         public string $storeName,
+        public string $locale = 'fr',
+        public ?string $coverImage = null,
     ) {}
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: "Nouvelle vente : {$this->productName} — " . number_format($this->order->amount, 0, ',', ' ') . " {$this->order->currency}",
-        );
+        $subject = $this->locale === 'en'
+            ? "You didn't finish your purchase — {$this->productName}"
+            : "Vous n'avez pas terminé votre achat — {$this->productName}";
+
+        return new Envelope(subject: $subject);
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'emails.new-sale-notification',
+            view: 'emails.abandoned-cart',
         );
     }
 

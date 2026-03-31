@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { captureEvent } from "@/lib/posthog";
 import type { OrderDetailsResponse } from "@/lib/api";
-import { trackDownload } from "@/lib/api";
+import { trackDownload, checkPaymentStatus } from "@/lib/api";
 import { useTracking } from "@/hooks/useTracking";
 import Link from "next/link";
 import { StoreFooter } from "@/components/checkout/StoreFooter";
@@ -12,10 +12,36 @@ import { t, type Locale } from "@/lib/i18n";
 export function SuccessContent({ data, eventId }: { data: OrderDetailsResponse; eventId?: string }) {
   const { order, product, store, download_url, is_external, tracking } = data;
   const locale: Locale = store.locale || 'fr';
-  const isPaid = order.status === "paid";
+  const [status, setStatus] = useState(order.status);
+  const [dlUrl, setDlUrl] = useState(download_url);
+  const isPaid = status === "paid";
   const [downloading, setDownloading] = useState(false);
   const { trackEvent } = useTracking(tracking);
   const purchaseFired = useRef(false);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Poll payment status if not yet paid (e.g. returning from Maketou/Chariow)
+  useEffect(() => {
+    if (isPaid) return;
+
+    pollingRef.current = setInterval(async () => {
+      try {
+        const result = await checkPaymentStatus(order.id);
+        if (result.status === "paid") {
+          setStatus("paid");
+          // Reload to get download_url
+          window.location.reload();
+        } else if (result.status === "failed") {
+          setStatus("failed");
+          if (pollingRef.current) clearInterval(pollingRef.current);
+        }
+      } catch {}
+    }, 4000);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [isPaid, order.id]);
 
   useEffect(() => {
     if (purchaseFired.current || !isPaid) return;
