@@ -256,36 +256,14 @@ export function PaymentPage({ data, countries, orderId }: PaymentPageProps) {
           {/* ─── STEP: FORM ─────────────────────────────────── */}
           {step === "form" && (
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Country selector */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t("payment.select_country", locale)}
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {countryList.map(([code, country]) => (
-                    <button
-                      key={code}
-                      type="button"
-                      onClick={() => setSelectedCountry(code)}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
-                        selectedCountry === code
-                          ? "border-current bg-opacity-5"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                      style={
-                        selectedCountry === code
-                          ? { borderColor: color, backgroundColor: color + "08", color }
-                          : undefined
-                      }
-                    >
-                      <span className="text-base">{getFlag(code)}</span>
-                      <span className={selectedCountry === code ? "" : "text-gray-700"}>
-                        {country.name}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {/* Country selector — searchable dropdown */}
+              <CountrySelect
+                countries={countryList}
+                selected={selectedCountry}
+                onSelect={setSelectedCountry}
+                color={color}
+                locale={locale}
+              />
 
               {/* Network selector — hidden for redirect-only */}
               {visibleNetworks.length > 0 && !isRedirectOnly && (
@@ -506,6 +484,110 @@ export function PaymentPage({ data, countries, orderId }: PaymentPageProps) {
   );
 }
 
+function CountrySelect({
+  countries,
+  selected,
+  onSelect,
+  color,
+  locale,
+}: {
+  countries: [string, PaymentCountry][];
+  selected: string;
+  onSelect: (code: string) => void;
+  color: string;
+  locale: Locale;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = search
+    ? countries.filter(([code, c]) =>
+        c.name.toLowerCase().includes(search.toLowerCase()) || code.toLowerCase().includes(search.toLowerCase())
+      )
+    : countries;
+
+  const selectedCountry = countries.find(([c]) => c === selected);
+
+  // Close on click outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        {t("payment.select_country", locale)}
+      </label>
+      <button
+        type="button"
+        onClick={() => { setOpen(!open); setSearch(""); }}
+        className="w-full flex items-center gap-2 px-4 py-3 rounded-xl border-2 text-sm font-medium text-left transition-all"
+        style={
+          selected
+            ? { borderColor: color, backgroundColor: color + "08" }
+            : { borderColor: "#e5e7eb" }
+        }
+      >
+        {selectedCountry ? (
+          <>
+            <span className="text-base">{getFlag(selected)}</span>
+            <span className="flex-1 text-gray-900">{selectedCountry[1].name}</span>
+          </>
+        ) : (
+          <span className="flex-1 text-gray-400">
+            {locale === "fr" ? "Choisir un pays..." : "Select a country..."}
+          </span>
+        )}
+        <svg className={`w-4 h-4 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+          <div className="p-2">
+            <input
+              type="text"
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={locale === "fr" ? "Rechercher un pays..." : "Search country..."}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1"
+              style={{ "--tw-ring-color": color } as React.CSSProperties}
+            />
+          </div>
+          <div className="max-h-52 overflow-y-auto">
+            {filtered.length > 0 ? (
+              filtered.map(([code, country]) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => { onSelect(code); setOpen(false); }}
+                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-gray-50 transition-colors ${
+                    selected === code ? "bg-gray-50 font-semibold" : ""
+                  }`}
+                >
+                  <span className="text-base">{getFlag(code)}</span>
+                  <span className="text-gray-900">{country.name}</span>
+                </button>
+              ))
+            ) : (
+              <p className="px-4 py-3 text-sm text-gray-400 text-center">
+                {locale === "fr" ? "Aucun pays trouvé" : "No country found"}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Spinner() {
   return (
     <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
@@ -526,30 +608,12 @@ function SecurityBadge({ locale }: { locale: Locale }) {
   );
 }
 
-const FLAGS: Record<string, string> = {
-  BJ: "\u{1F1E7}\u{1F1EF}",
-  TG: "\u{1F1F9}\u{1F1EC}",
-  SN: "\u{1F1F8}\u{1F1F3}",
-  CI: "\u{1F1E8}\u{1F1EE}",
-  BF: "\u{1F1E7}\u{1F1EB}",
-  CM: "\u{1F1E8}\u{1F1F2}",
-  CG: "\u{1F1E8}\u{1F1EC}",
-  GH: "\u{1F1EC}\u{1F1ED}",
-  NG: "\u{1F1F3}\u{1F1EC}",
-  SL: "\u{1F1F8}\u{1F1F1}",
-  GA: "\u{1F1EC}\u{1F1E6}",
-  CD: "\u{1F1E8}\u{1F1E9}",
-  ET: "\u{1F1EA}\u{1F1F9}",
-  KE: "\u{1F1F0}\u{1F1EA}",
-  RW: "\u{1F1F7}\u{1F1FC}",
-  TZ: "\u{1F1F9}\u{1F1FF}",
-  UG: "\u{1F1FA}\u{1F1EC}",
-  LS: "\u{1F1F1}\u{1F1F8}",
-  MW: "\u{1F1F2}\u{1F1FC}",
-  MZ: "\u{1F1F2}\u{1F1FF}",
-  ZM: "\u{1F1FF}\u{1F1F2}",
-};
-
 function getFlag(code: string): string {
-  return FLAGS[code] || code;
+  // Convert country code to flag emoji (A=🇦, B=🇧, etc.)
+  if (code.length !== 2) return code;
+  const offset = 0x1F1E6 - 65; // 'A' = 65
+  return String.fromCodePoint(
+    code.charCodeAt(0) + offset,
+    code.charCodeAt(1) + offset,
+  );
 }

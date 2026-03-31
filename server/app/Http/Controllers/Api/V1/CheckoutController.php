@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\PaymentSetting;
 use App\Models\Store;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
@@ -70,6 +71,7 @@ class CheckoutController extends Controller
                 'payment_mode' => $product->payment_mode ?? 'native',
                 'payment_link' => $product->payment_link,
                 'external_platform' => $product->external_platform,
+                'redirect_only_payment' => $this->isRedirectOnlyPayment(),
             ],
             'checkout_config' => $config ? [
                 'template_type' => $config->template_type->value,
@@ -115,6 +117,25 @@ class CheckoutController extends Controller
         }
 
         return ! empty($tracking) ? $tracking : null;
+    }
+
+    /**
+     * Vérifie si seuls des providers de type redirect (Maketou/Chariow) sont activés.
+     * Dans ce cas, pas besoin de la page de sélection pays/réseau.
+     */
+    private function isRedirectOnlyPayment(): bool
+    {
+        $settings = PaymentSetting::instance();
+        $directProviders = ['feexpay', 'fedapay', 'paydunya', 'pawapay'];
+
+        foreach ($directProviders as $provider) {
+            if ($settings->isProviderEnabled($provider)) {
+                return false;
+            }
+        }
+
+        // Au moins un provider redirect est activé
+        return $settings->isProviderEnabled('maketou') || $settings->isProviderEnabled('chariow');
     }
 
     /**
