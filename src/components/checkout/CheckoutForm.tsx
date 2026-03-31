@@ -165,11 +165,12 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInterna
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label htmlFor="name" className={labelClass}>
-          {formTxt.name[locale]} {compact ? "" : formTxt.optional[locale]}
+          {formTxt.name[locale]}
         </label>
         <input
           type="text"
           id="name"
+          required
           value={name}
           onChange={(e) => setName(e.target.value)}
           onFocus={fireInitiateCheckout}
@@ -221,6 +222,7 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInterna
           <input
             type="tel"
             id="phone"
+            required
             value={phone}
             onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
             onFocus={fireInitiateCheckout}
