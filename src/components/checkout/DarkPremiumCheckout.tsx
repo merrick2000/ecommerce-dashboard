@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Image from "next/image";
 import type { CheckoutPageData, PageSection } from "@/lib/api";
 import { CheckoutForm, type TrackEventFn } from "./CheckoutForm";
 import { UrgencyWidgets } from "./UrgencyWidgets";
@@ -120,11 +121,16 @@ export function DarkPremiumCheckout({ data, trackEvent, onTrackInternal }: { dat
             className="absolute -inset-1 rounded-2xl opacity-40 blur-xl transition-opacity duration-500 group-hover:opacity-60"
             style={{ backgroundColor: config.primary_color }}
           />
-          <img
-            src={product.cover_image}
-            alt={product.name}
-            className="relative w-full rounded-2xl object-contain aspect-video shadow-2xl shadow-black/50 transition-transform duration-500 group-hover:scale-[1.02]"
-          />
+          <div className="relative w-full rounded-2xl aspect-video shadow-2xl shadow-black/50 overflow-hidden">
+            <Image
+              src={product.cover_image}
+              alt={product.name}
+              fill
+              sizes="(max-width: 768px) 100vw, 720px"
+              className="object-contain transition-transform duration-500 group-hover:scale-[1.02]"
+              priority
+            />
+          </div>
         </div>
       ) : null,
 

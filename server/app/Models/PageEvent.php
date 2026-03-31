@@ -23,12 +23,14 @@ class PageEvent extends Model
         'device_type',
         'country',
         'user_agent',
+        'metadata',
     ];
 
     protected function casts(): array
     {
         return [
             'event_type' => PageEventType::class,
+            'metadata' => 'array',
         ];
     }
 

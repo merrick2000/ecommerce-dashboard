@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { CheckoutPageData } from "@/lib/api";
 import { CheckoutForm, type TrackEventFn } from "./CheckoutForm";
 import { UrgencyWidgets } from "./UrgencyWidgets";
@@ -25,11 +26,16 @@ export function MinimalistCardCheckout({ data, trackEvent, onTrackInternal }: { 
 
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
           {product.cover_image && (
-            <img
-              src={product.cover_image}
-              alt={product.name}
-              className="w-full h-48 object-cover"
-            />
+            <div className="relative w-full h-48">
+              <Image
+                src={product.cover_image}
+                alt={product.name}
+                fill
+                sizes="(max-width: 768px) 100vw, 448px"
+                className="object-cover"
+                priority
+              />
+            </div>
           )}
 
           <div className="p-6 space-y-5">

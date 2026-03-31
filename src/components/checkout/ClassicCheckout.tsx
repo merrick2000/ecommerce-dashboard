@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Image from "next/image";
 import type { CheckoutPageData, PageSection } from "@/lib/api";
 import { CheckoutForm, type TrackEventFn } from "./CheckoutForm";
 import { UrgencyWidgets } from "./UrgencyWidgets";
@@ -113,10 +114,13 @@ export function ClassicCheckout({ data, trackEvent, onTrackInternal }: { data: C
     hero_image: () =>
       product.cover_image ? (
         <div key="hero_image" className="relative group overflow-hidden rounded-2xl shadow-lg bg-gray-100 aspect-video">
-          <img
+          <Image
             src={product.cover_image}
             alt={product.name}
-            className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+            fill
+            sizes="(max-width: 768px) 100vw, 720px"
+            className="object-contain transition-transform duration-500 group-hover:scale-105"
+            priority
           />
         </div>
       ) : null,

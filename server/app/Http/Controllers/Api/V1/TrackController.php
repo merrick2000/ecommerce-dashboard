@@ -16,12 +16,13 @@ class TrackController extends Controller
         $data = $request->validate([
             'store_id' => 'required|integer|exists:stores,id',
             'product_id' => 'nullable|integer',
-            'event_type' => 'required|string|in:page_view,checkout_initiate,order_created,payment_started,payment_completed,download',
+            'event_type' => 'required|string|in:page_view,scroll_depth,cta_click,form_focus,form_abandon,checkout_initiate,order_created,payment_started,payment_completed,page_leave,js_error,download',
             'session_id' => 'required|string|max:64',
             'referrer' => 'nullable|string|max:2048',
             'utm_source' => 'nullable|string|max:255',
             'utm_medium' => 'nullable|string|max:255',
             'utm_campaign' => 'nullable|string|max:255',
+            'metadata' => 'nullable|array',
         ]);
 
         // Détection device depuis User-Agent
@@ -58,6 +59,7 @@ class TrackController extends Controller
             'device_type' => $deviceType,
             'country' => $country,
             'user_agent' => Str::limit($ua, 512),
+            'metadata' => $data['metadata'] ?? null,
         ]);
 
         // PostHog server-side (session_id as distinct_id for anonymous users)

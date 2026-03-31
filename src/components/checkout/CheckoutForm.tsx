@@ -219,6 +219,7 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInterna
       <button
         type="submit"
         disabled={loading}
+        data-track-cta="checkout_submit"
         className="w-full rounded-xl py-3.5 text-white font-bold text-lg transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
         style={{ backgroundColor: config.primary_color }}
       >
