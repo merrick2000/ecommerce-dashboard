@@ -19,13 +19,13 @@ class AbandonedCartMail extends Mailable
         public string $formattedPrice,
         public string $checkoutUrl,
         public string $storeName,
-        public string $locale = 'fr',
+        public string $storeLocale = 'fr',
         public ?string $coverImage = null,
     ) {}
 
     public function envelope(): Envelope
     {
-        $subject = $this->locale === 'en'
+        $subject = $this->storeLocale === 'en'
             ? "You didn't finish your purchase — {$this->productName}"
             : "Vous n'avez pas terminé votre achat — {$this->productName}";
 

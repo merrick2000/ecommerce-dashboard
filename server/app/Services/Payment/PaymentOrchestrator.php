@@ -317,6 +317,15 @@ class PaymentOrchestrator
                     'payment_ref' => $result->providerRef,
                 ]);
 
+                // Tracker l'initiation du paiement
+                \App\Models\PageEvent::create([
+                    'store_id' => $order->store_id,
+                    'product_id' => $order->product_id,
+                    'event_type' => 'payment_started',
+                    'session_id' => 'server_' . $order->id,
+                    'ip_hash' => hash('sha256', request()->ip() ?? ''),
+                ]);
+
                 return $result;
             }
 
@@ -545,6 +554,15 @@ class PaymentOrchestrator
     {
         $order->load(['store.checkoutConfig', 'product']);
 
+        // Tracker le paiement complété dans page_events
+        \App\Models\PageEvent::create([
+            'store_id' => $order->store_id,
+            'product_id' => $order->product_id,
+            'event_type' => 'payment_completed',
+            'session_id' => 'server_' . $order->id,
+            'ip_hash' => hash('sha256', request()->ip() ?? ''),
+        ]);
+
         $trackingConfig = $order->store->checkoutConfig?->tracking_config;
 
         if (
@@ -608,7 +626,7 @@ class PaymentOrchestrator
                     downloadUrl: $downloadUrl,
                     storeName: $store->name,
                     productName: $product->name,
-                    locale: $locale,
+                    storeLocale: $locale,
                 ));
 
             PaymentLogger::info('email', "OrderConfirmationMail queued for {$order->customer_email}");

@@ -21,10 +21,10 @@ $t = [
         'via' => 'via Sellit',
     ],
 ];
-$l = $t[$locale] ?? $t['fr'];
+$l = $t[$storeLocale] ?? $t['fr'];
 @endphp
 <!DOCTYPE html>
-<html lang="{{ $locale }}">
+<html lang="{{ $storeLocale }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
