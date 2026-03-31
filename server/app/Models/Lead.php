@@ -14,7 +14,15 @@ class Lead extends Model
         'customer_name',
         'customer_phone',
         'source',
+        'reminded_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'reminded_at' => 'datetime',
+        ];
+    }
 
     public function store(): BelongsTo
     {

@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { captureEvent } from "@/lib/posthog";
-import { createOrder, initiatePayment, type CheckoutPageData } from "@/lib/api";
+import { createOrder, initiatePayment, captureLeadEmail, type CheckoutPageData } from "@/lib/api";
 import type { Locale } from "@/lib/i18n";
 
 export type TrackEventFn = (eventName: string, params?: Record<string, unknown>) => void;
@@ -64,10 +64,23 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInterna
   const { store, product, checkout_config: config } = data;
   const locale: Locale = store.locale || 'fr';
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [dialCode, setDialCode] = useState(COUNTRIES[0].dial);
+  // Pré-remplir depuis localStorage si le visiteur revient
+  const [email, setEmail] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("_slt_email") || "";
+  });
+  const [name, setName] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("_slt_name") || "";
+  });
+  const [phone, setPhone] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("_slt_phone") || "";
+  });
+  const [dialCode, setDialCode] = useState(() => {
+    if (typeof window === "undefined") return COUNTRIES[0].dial;
+    return localStorage.getItem("_slt_dial") || COUNTRIES[0].dial;
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const initiateCheckoutFired = useRef(false);
@@ -119,6 +132,12 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInterna
         customer_name: name || undefined,
         customer_phone: phone ? `${dialCode}${phone}` : undefined,
       });
+
+      // Sauvegarder pour pré-remplir au prochain achat
+      localStorage.setItem("_slt_email", email);
+      localStorage.setItem("_slt_name", name);
+      if (phone) localStorage.setItem("_slt_phone", phone);
+      if (dialCode) localStorage.setItem("_slt_dial", dialCode);
 
       onTrackInternal?.("checkout_form_submitted");
 
@@ -191,6 +210,17 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInterna
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onFocus={fireInitiateCheckout}
+          onBlur={() => {
+            if (email && email.includes("@")) {
+              captureLeadEmail({
+                store_id: store.id,
+                product_id: product.id,
+                email,
+                name: name || undefined,
+                phone: phone ? `${dialCode}${phone}` : undefined,
+              });
+            }
+          }}
           placeholder="vous@email.com"
           className={inputClass}
           style={{ "--tw-ring-color": config.primary_color } as React.CSSProperties}

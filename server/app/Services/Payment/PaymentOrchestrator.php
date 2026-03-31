@@ -596,6 +596,8 @@ class PaymentOrchestrator
         $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
         $downloadUrl = $frontendUrl . '/' . $store->slug . '/success?order=' . $order->id;
 
+        $locale = $store->locale ?? 'fr';
+
         // Email de confirmation au client
         \Illuminate\Support\Facades\Mail::to($order->customer_email)
             ->queue(new \App\Mail\OrderConfirmationMail(
@@ -603,6 +605,7 @@ class PaymentOrchestrator
                 downloadUrl: $downloadUrl,
                 storeName: $store->name,
                 productName: $product->name,
+                locale: $locale,
             ));
 
         // Notification de vente au vendeur

@@ -28,6 +28,9 @@ Route::prefix('v1')->group(function () {
     // Checkout : récupère la config de la boutique + un produit spécifique
     Route::get('/checkout/{storeSlug}/{productId}', [CheckoutController::class, 'show']);
 
+    // Capture leads (panier abandonné)
+    Route::post('/leads/capture', [\App\Http\Controllers\Api\V1\LeadController::class, 'capture'])->middleware('throttle:30,1');
+
     // Commandes
     Route::post('/orders/create', [OrderController::class, 'create']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);

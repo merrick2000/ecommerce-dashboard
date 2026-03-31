@@ -231,6 +231,21 @@ export async function trackDownload(orderId: number): Promise<void> {
   fetch(`${API_BASE}/v1/download/${orderId}/track`, { method: 'POST' }).catch(() => {});
 }
 
+export function captureLeadEmail(data: {
+  store_id: number;
+  product_id: number;
+  email: string;
+  name?: string;
+  phone?: string;
+}): void {
+  fetch(`${API_BASE}/v1/leads/capture`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+    keepalive: true,
+  }).catch(() => {});
+}
+
 export function sendTrackEvent(data: {
   store_id: number;
   product_id?: number;
