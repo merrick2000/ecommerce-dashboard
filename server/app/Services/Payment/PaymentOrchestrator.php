@@ -7,6 +7,8 @@ use App\Models\PaymentSetting;
 use App\Models\PaymentTransaction;
 use App\Services\Payment\Providers\FedaPayProvider;
 use App\Services\Payment\Providers\FeexPayProvider;
+use App\Services\Payment\Providers\ChariowProvider;
+use App\Services\Payment\Providers\MaketouProvider;
 use App\Services\Payment\Providers\PawaPayProvider;
 use App\Services\Payment\Providers\PayDunyaProvider;
 use Illuminate\Support\Facades\Log;
@@ -85,11 +87,33 @@ class PaymentOrchestrator
                 baseUrl: $baseUrl,
             ));
         }
+
+        // Chariow
+        if ($this->settings->isProviderEnabled('chariow')) {
+            $cfg = $this->settings->getProviderConfig('chariow');
+            $this->registerProvider(new ChariowProvider(
+                apiKey: $cfg['api_key'] ?? '',
+                webhookSecret: $cfg['webhook_secret'] ?? '',
+            ));
+        }
+
+        // Maketou
+        if ($this->settings->isProviderEnabled('maketou')) {
+            $cfg = $this->settings->getProviderConfig('maketou');
+            $this->registerProvider(new MaketouProvider(
+                apiKey: $cfg['api_key'] ?? '',
+            ));
+        }
     }
 
     private function registerProvider(PaymentProviderInterface $provider): void
     {
         $this->providers[$provider->name()] = $provider;
+    }
+
+    public function getProvider(string $name): ?PaymentProviderInterface
+    {
+        return $this->providers[$name] ?? null;
     }
 
     /**

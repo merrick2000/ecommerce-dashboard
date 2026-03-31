@@ -61,6 +61,34 @@ class WebhookController extends Controller
     }
 
     /**
+     * POST /api/v1/webhooks/chariow
+     */
+    public function chariow(Request $request): Response
+    {
+        // Vérifier la signature HMAC si configurée
+        $provider = $this->orchestrator->getProvider('chariow');
+
+        if ($provider instanceof \App\Services\Payment\Providers\ChariowProvider) {
+            $signature = $request->header('X-Chariow-Signature', '');
+            $rawPayload = $request->getContent();
+
+            if (! $provider->verifyWebhookSignature($rawPayload, $signature)) {
+                \App\Services\Payment\PaymentLogger::error('chariow', 'Invalid webhook signature');
+
+                return response('Invalid signature', 401);
+            }
+        }
+
+        $this->orchestrator->handleWebhook(
+            'chariow',
+            $request->all(),
+            $request->headers->all(),
+        );
+
+        return response('OK', 200);
+    }
+
+    /**
      * POST /api/v1/webhooks/pawapay
      */
     public function pawapay(Request $request): Response

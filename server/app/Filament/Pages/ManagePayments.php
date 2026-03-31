@@ -78,6 +78,13 @@ class ManagePayments extends Page implements HasActions, HasForms
             'pawapay_sandbox_signing_key' => $providers['pawapay']['sandbox']['signing_key'] ?? '',
             'pawapay_live_api_key' => $providers['pawapay']['live']['api_key'] ?? '',
             'pawapay_live_signing_key' => $providers['pawapay']['live']['signing_key'] ?? '',
+            // Chariow
+            'chariow_enabled' => $providers['chariow']['enabled'] ?? false,
+            'chariow_live_api_key' => $providers['chariow']['live']['api_key'] ?? '',
+            'chariow_live_webhook_secret' => $providers['chariow']['live']['webhook_secret'] ?? '',
+            // Maketou
+            'maketou_enabled' => $providers['maketou']['enabled'] ?? false,
+            'maketou_live_api_key' => $providers['maketou']['live']['api_key'] ?? '',
         ]);
     }
 
@@ -334,6 +341,49 @@ class ManagePayments extends Page implements HasActions, HasForms
                             ])
                             ->visible(fn (Forms\Get $get) => $get('pawapay_enabled')),
                     ]),
+
+                // ─── CHARIOW ────────────────────────────────────
+                Forms\Components\Section::make('Chariow')
+                    ->description('Checkout hébergé — Vente de produits digitaux avec paiement intégré. L\'ID produit se configure par produit.')
+                    ->icon('heroicon-o-shopping-cart')
+                    ->collapsible()
+                    ->schema([
+                        Forms\Components\Toggle::make('chariow_enabled')
+                            ->label('Activer Chariow')
+                            ->live(),
+
+                        Forms\Components\Group::make([
+                            Forms\Components\TextInput::make('chariow_live_api_key')
+                                ->label('Clé API')
+                                ->password()
+                                ->revealable()
+                                ->helperText('Clé API Chariow (Bearer token). Créée dans app.chariow.com > Settings > API Keys.'),
+                            Forms\Components\TextInput::make('chariow_live_webhook_secret')
+                                ->label('Webhook Secret')
+                                ->password()
+                                ->revealable()
+                                ->helperText('Secret HMAC pour vérifier les webhooks (Pulses). Configurez le webhook vers : ' . config('app.url') . '/api/v1/webhooks/chariow'),
+                        ])
+                            ->visible(fn (Forms\Get $get) => $get('chariow_enabled')),
+                    ]),
+
+                // ─── MAKETOU ────────────────────────────────────
+                Forms\Components\Section::make('Maketou')
+                    ->description('Checkout hébergé — Paiement via Moneroo (tous réseaux). Utilisé en fallback si les autres providers échouent.')
+                    ->icon('heroicon-o-shopping-bag')
+                    ->collapsible()
+                    ->schema([
+                        Forms\Components\Toggle::make('maketou_enabled')
+                            ->label('Activer Maketou')
+                            ->live(),
+
+                        Forms\Components\TextInput::make('maketou_live_api_key')
+                            ->label('Clé API')
+                            ->password()
+                            ->revealable()
+                            ->helperText('Votre clé API Maketou. L\'identifiant produit se configure sur chaque produit (onglet Paiement).')
+                            ->visible(fn (Forms\Get $get) => $get('maketou_enabled')),
+                    ]),
             ])
             ->statePath('data');
     }
@@ -574,6 +624,19 @@ class ManagePayments extends Page implements HasActions, HasForms
                     'live' => [
                         'api_key' => $data['pawapay_live_api_key'] ?? '',
                         'signing_key' => $data['pawapay_live_signing_key'] ?? '',
+                    ],
+                ],
+                'chariow' => [
+                    'enabled' => $data['chariow_enabled'] ?? false,
+                    'live' => [
+                        'api_key' => $data['chariow_live_api_key'] ?? '',
+                        'webhook_secret' => $data['chariow_live_webhook_secret'] ?? '',
+                    ],
+                ],
+                'maketou' => [
+                    'enabled' => $data['maketou_enabled'] ?? false,
+                    'live' => [
+                        'api_key' => $data['maketou_live_api_key'] ?? '',
                     ],
                 ],
             ],
