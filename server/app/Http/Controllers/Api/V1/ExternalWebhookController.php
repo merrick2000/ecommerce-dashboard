@@ -125,9 +125,10 @@ class ExternalWebhookController extends Controller
             'metadata' => $meta,
         ]);
 
-        // Envoyer l'événement Purchase à Facebook CAPI si commande payée
+        // Envoyer l'événement Purchase à Facebook CAPI + emails si commande payée
         if ($orderStatus === OrderStatus::PAID) {
             $this->dispatchTrackingEvent($order, $product);
+            $this->dispatchOrderEmails($order, $product);
         }
 
         // PostHog server-side tracking
@@ -196,5 +197,30 @@ class ExternalWebhookController extends Controller
             request()->ip(),
             request()->userAgent(),
         );
+    }
+
+    private function dispatchOrderEmails(Order $order, Product $product): void
+    {
+        $store = $product->store;
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+        $downloadUrl = $frontendUrl . '/' . $store->slug . '/success?order=' . $order->id;
+
+        \Illuminate\Support\Facades\Mail::to($order->customer_email)
+            ->queue(new \App\Mail\OrderConfirmationMail(
+                order: $order,
+                downloadUrl: $downloadUrl,
+                storeName: $store->name,
+                productName: $product->name,
+            ));
+
+        $sellerEmail = $store->user?->email;
+        if ($sellerEmail) {
+            \Illuminate\Support\Facades\Mail::to($sellerEmail)
+                ->queue(new \App\Mail\NewSaleNotificationMail(
+                    order: $order,
+                    productName: $product->name,
+                    storeName: $store->name,
+                ));
+        }
     }
 }

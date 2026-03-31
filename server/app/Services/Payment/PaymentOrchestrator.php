@@ -584,5 +584,36 @@ class PaymentOrchestrator
                 'currency' => $order->currency,
             ]
         );
+
+        // Email notifications (queued, non-bloquant)
+        $this->dispatchOrderEmails($order);
+    }
+
+    private function dispatchOrderEmails(Order $order): void
+    {
+        $store = $order->store;
+        $product = $order->product;
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+        $downloadUrl = $frontendUrl . '/' . $store->slug . '/success?order=' . $order->id;
+
+        // Email de confirmation au client
+        \Illuminate\Support\Facades\Mail::to($order->customer_email)
+            ->queue(new \App\Mail\OrderConfirmationMail(
+                order: $order,
+                downloadUrl: $downloadUrl,
+                storeName: $store->name,
+                productName: $product->name,
+            ));
+
+        // Notification de vente au vendeur
+        $sellerEmail = $store->user?->email;
+        if ($sellerEmail) {
+            \Illuminate\Support\Facades\Mail::to($sellerEmail)
+                ->queue(new \App\Mail\NewSaleNotificationMail(
+                    order: $order,
+                    productName: $product->name,
+                    storeName: $store->name,
+                ));
+        }
     }
 }
