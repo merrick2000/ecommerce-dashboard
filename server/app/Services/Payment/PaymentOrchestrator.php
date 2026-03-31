@@ -591,32 +591,45 @@ class PaymentOrchestrator
 
     private function dispatchOrderEmails(Order $order): void
     {
-        $store = $order->store;
-        $product = $order->product;
-        $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
-        $downloadUrl = $frontendUrl . '/' . $store->slug . '/success?order=' . $order->id;
+        try {
+            $store = $order->store;
+            $product = $order->product;
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+            $downloadUrl = $frontendUrl . '/' . $store->slug . '/success?order=' . $order->id;
 
-        $locale = $store->locale ?? 'fr';
+            $locale = $store->locale ?? 'fr';
 
-        // Email de confirmation au client
-        \Illuminate\Support\Facades\Mail::to($order->customer_email)
-            ->queue(new \App\Mail\OrderConfirmationMail(
-                order: $order,
-                downloadUrl: $downloadUrl,
-                storeName: $store->name,
-                productName: $product->name,
-                locale: $locale,
-            ));
+            PaymentLogger::info('email', "Dispatching order emails for order #{$order->id} to {$order->customer_email}");
 
-        // Notification de vente au vendeur
-        $sellerEmail = $store->user?->email;
-        if ($sellerEmail) {
-            \Illuminate\Support\Facades\Mail::to($sellerEmail)
-                ->queue(new \App\Mail\NewSaleNotificationMail(
+            // Email de confirmation au client
+            \Illuminate\Support\Facades\Mail::to($order->customer_email)
+                ->queue(new \App\Mail\OrderConfirmationMail(
                     order: $order,
-                    productName: $product->name,
+                    downloadUrl: $downloadUrl,
                     storeName: $store->name,
+                    productName: $product->name,
+                    locale: $locale,
                 ));
+
+            PaymentLogger::info('email', "OrderConfirmationMail queued for {$order->customer_email}");
+
+            // Notification de vente au vendeur
+            $sellerEmail = $store->user?->email;
+            if ($sellerEmail) {
+                \Illuminate\Support\Facades\Mail::to($sellerEmail)
+                    ->queue(new \App\Mail\NewSaleNotificationMail(
+                        order: $order,
+                        productName: $product->name,
+                        storeName: $store->name,
+                    ));
+
+                PaymentLogger::info('email', "NewSaleNotificationMail queued for {$sellerEmail}");
+            }
+        } catch (\Exception $e) {
+            PaymentLogger::error('email', 'Failed to dispatch order emails: ' . $e->getMessage(), [
+                'order_id' => $order->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
         }
     }
 }
