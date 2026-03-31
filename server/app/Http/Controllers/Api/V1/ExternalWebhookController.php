@@ -127,6 +127,14 @@ class ExternalWebhookController extends Controller
 
         // Envoyer l'événement Purchase à Facebook CAPI + emails si commande payée
         if ($orderStatus === OrderStatus::PAID) {
+            \App\Models\PageEvent::create([
+                'store_id' => $product->store_id,
+                'product_id' => $product->id,
+                'event_type' => 'payment_completed',
+                'session_id' => 'external_' . $order->id,
+                'ip_hash' => hash('sha256', request()->ip() ?? ''),
+            ]);
+
             $this->dispatchTrackingEvent($order, $product);
             $this->dispatchOrderEmails($order, $product);
         }
@@ -212,7 +220,7 @@ class ExternalWebhookController extends Controller
                 downloadUrl: $downloadUrl,
                 storeName: $store->name,
                 productName: $product->name,
-                locale: $locale,
+                storeLocale: $locale,
             ));
 
         $sellerEmail = $store->user?->email;

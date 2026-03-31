@@ -62,7 +62,7 @@ class SendAbandonedCartReminders extends Command
                 formattedPrice: $displayPrice['formatted_effective_price'] ?? $displayPrice['formatted_price'],
                 checkoutUrl: $checkoutUrl,
                 storeName: $store->name,
-                locale: $locale,
+                storeLocale: $locale,
                 coverImage: $coverImage,
             ));
 
