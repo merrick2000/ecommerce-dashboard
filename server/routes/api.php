@@ -42,6 +42,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/webhooks/feexpay', [WebhookController::class, 'feexpay']);
     Route::post('/webhooks/fedapay', [WebhookController::class, 'fedapay']);
     Route::post('/webhooks/paydunya', [WebhookController::class, 'paydunya']);
+    Route::post('/webhooks/chariow', [WebhookController::class, 'chariow']);
     Route::post('/webhooks/pawapay', [WebhookController::class, 'pawapay']);
     Route::post('/webhooks/external', [ExternalWebhookController::class, 'handle']);
 

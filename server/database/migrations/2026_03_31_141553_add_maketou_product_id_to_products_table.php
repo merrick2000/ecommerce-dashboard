@@ -12,14 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            $table->string('maketou_product_id')->nullable()->after('external_product_id');
+            $table->string('chariow_product_id')->nullable()->after('external_product_id');
+            $table->string('maketou_product_id')->nullable()->after('chariow_product_id');
         });
     }
 
     public function down(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            $table->dropColumn('maketou_product_id');
+            $table->dropColumn(['chariow_product_id', 'maketou_product_id']);
         });
     }
 };

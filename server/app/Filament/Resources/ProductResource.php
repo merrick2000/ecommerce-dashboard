@@ -377,10 +377,16 @@ class ProductResource extends Resource
                                     ->helperText('Le code unique du produit sur Selar. Permet de synchroniser les ventes via webhook.')
                                     ->visible(fn (Forms\Get $get) => $get('payment_mode') === 'external_link' && $get('external_platform') === 'selar'),
 
+                                Forms\Components\TextInput::make('chariow_product_id')
+                                    ->label('Identifiant Chariow (Product ID ou slug)')
+                                    ->placeholder('prd_abc123 ou mon-produit')
+                                    ->helperText('L\'ID public ou le slug du produit sur Chariow.')
+                                    ->visible(fn () => \App\Models\PaymentSetting::instance()->isProviderEnabled('chariow')),
+
                                 Forms\Components\TextInput::make('maketou_product_id')
                                     ->label('Identifiant Maketou (Product Document ID)')
                                     ->placeholder('550e8400-e29b-41d4-a716-446655440000')
-                                    ->helperText('L\'identifiant public du produit sur Maketou. Requis si Maketou est activé dans Paiements.')
+                                    ->helperText('L\'identifiant public du produit sur Maketou.')
                                     ->visible(fn () => \App\Models\PaymentSetting::instance()->isProviderEnabled('maketou')),
                             ]),
 

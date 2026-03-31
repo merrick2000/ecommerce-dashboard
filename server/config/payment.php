@@ -7,7 +7,7 @@ return [
     | Providers actifs (dans l'ordre de priorité)
     |--------------------------------------------------------------------------
     */
-    'providers' => ['feexpay', 'fedapay', 'paydunya', 'pawapay', 'maketou'],
+    'providers' => ['feexpay', 'fedapay', 'paydunya', 'pawapay', 'chariow', 'maketou'],
 
     /*
     |--------------------------------------------------------------------------
@@ -41,9 +41,13 @@ return [
         'signing_key' => env('PAWAPAY_SIGNING_KEY'),
     ],
 
+    'chariow' => [
+        'api_key' => env('CHARIOW_API_KEY'),
+        'webhook_secret' => env('CHARIOW_WEBHOOK_SECRET'),
+    ],
+
     'maketou' => [
         'api_key' => env('MAKETOU_API_KEY'),
-        'product_document_id' => env('MAKETOU_PRODUCT_DOCUMENT_ID'),
     ],
 
     /*
@@ -56,45 +60,45 @@ return [
     */
     'routing' => [
         'BJ' => [ // Bénin
-            'mtn' => ['feexpay', 'fedapay', 'paydunya', 'pawapay', 'maketou'],
-            'moov' => ['feexpay', 'fedapay', 'paydunya', 'pawapay', 'maketou'],
-            'celtiis' => ['feexpay', 'maketou'],
+            'mtn' => ['feexpay', 'fedapay', 'paydunya', 'pawapay', 'chariow', 'maketou'],
+            'moov' => ['feexpay', 'fedapay', 'paydunya', 'pawapay', 'chariow', 'maketou'],
+            'celtiis' => ['feexpay', 'chariow', 'maketou'],
         ],
         'TG' => [ // Togo
-            'tmoney' => ['feexpay', 'paydunya', 'maketou'],
-            'moov' => ['feexpay', 'fedapay', 'paydunya', 'pawapay', 'maketou'],
+            'tmoney' => ['feexpay', 'paydunya', 'chariow', 'maketou'],
+            'moov' => ['feexpay', 'fedapay', 'paydunya', 'pawapay', 'chariow', 'maketou'],
         ],
         'SN' => [ // Sénégal
-            'wave' => ['paydunya', 'pawapay', 'maketou'],
-            'orange' => ['feexpay', 'paydunya', 'pawapay', 'maketou'],
-            'free' => ['feexpay', 'paydunya', 'pawapay', 'maketou'],
+            'wave' => ['paydunya', 'pawapay', 'chariow', 'maketou'],
+            'orange' => ['feexpay', 'paydunya', 'pawapay', 'chariow', 'maketou'],
+            'free' => ['feexpay', 'paydunya', 'pawapay', 'chariow', 'maketou'],
         ],
         'CI' => [ // Côte d'Ivoire
-            'mtn' => ['feexpay', 'fedapay', 'paydunya', 'pawapay', 'maketou'],
-            'moov' => ['feexpay', 'fedapay', 'paydunya', 'pawapay', 'maketou'],
-            'orange' => ['feexpay', 'paydunya', 'pawapay', 'maketou'],
-            'wave' => ['feexpay', 'paydunya', 'pawapay', 'maketou'],
+            'mtn' => ['feexpay', 'fedapay', 'paydunya', 'pawapay', 'chariow', 'maketou'],
+            'moov' => ['feexpay', 'fedapay', 'paydunya', 'pawapay', 'chariow', 'maketou'],
+            'orange' => ['feexpay', 'paydunya', 'pawapay', 'chariow', 'maketou'],
+            'wave' => ['feexpay', 'paydunya', 'pawapay', 'chariow', 'maketou'],
         ],
         'BF' => [ // Burkina Faso
-            'orange' => ['paydunya', 'pawapay', 'maketou'],
-            'moov' => ['paydunya', 'pawapay', 'maketou'],
+            'orange' => ['paydunya', 'pawapay', 'chariow', 'maketou'],
+            'moov' => ['paydunya', 'pawapay', 'chariow', 'maketou'],
         ],
         'CM' => [ // Cameroun
-            'mtn' => ['paydunya', 'pawapay', 'maketou'],
-            'orange' => ['pawapay', 'maketou'],
+            'mtn' => ['paydunya', 'pawapay', 'chariow', 'maketou'],
+            'orange' => ['pawapay', 'chariow', 'maketou'],
         ],
         'CG' => [ // Congo-Brazzaville
-            'mtn' => ['feexpay', 'pawapay', 'maketou'],
-            'airtel' => ['pawapay', 'maketou'],
+            'mtn' => ['feexpay', 'pawapay', 'chariow', 'maketou'],
+            'airtel' => ['pawapay', 'chariow', 'maketou'],
         ],
         'GH' => [ // Ghana
-            'mtn' => ['pawapay'],
-            'airteltigo' => ['pawapay'],
-            'telecel' => ['pawapay'],
+            'mtn' => ['pawapay', 'chariow', 'maketou'],
+            'airteltigo' => ['pawapay', 'chariow', 'maketou'],
+            'telecel' => ['pawapay', 'chariow', 'maketou'],
         ],
         'NG' => [ // Nigeria
-            'mtn' => ['pawapay'],
-            'airtel' => ['pawapay'],
+            'mtn' => ['pawapay', 'chariow', 'maketou'],
+            'airtel' => ['pawapay', 'chariow', 'maketou'],
         ],
         'SL' => [ // Sierra Leone
             'orange' => ['pawapay'],
