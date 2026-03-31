@@ -253,23 +253,39 @@ class ProductResource extends Resource
                             ->schema([
                                 Forms\Components\FileUpload::make('cover_image')
                                     ->label('Image de couverture (page produit)')
-                                    ->helperText('Taille recommandée : 1280x720px (ratio 16:9). Formats : JPG, PNG, WebP.')
+                                    ->helperText('Auto-optimisée en WebP (max 1280px, ~80% qualité). Formats acceptés : JPG, PNG, WebP.')
                                     ->image()
                                     ->disk('s3')
                                     ->directory('covers')
                                     ->visibility('public')
                                     ->imageEditor()
-                                    ->imageEditorAspectRatios(['16:9']),
+                                    ->imageEditorAspectRatios(['16:9'])
+                                    ->saveUploadedFileUsing(function (\Livewire\Features\SupportFileUploads\TemporaryUploadedFile $file): string {
+                                        return \App\Services\ImageOptimizer::optimizeAndUpload(
+                                            $file,
+                                            'covers',
+                                            maxWidth: 1280,
+                                            quality: 80,
+                                        );
+                                    }),
 
                                 Forms\Components\FileUpload::make('thumbnail')
                                     ->label('Miniature (liste des produits)')
-                                    ->helperText('Taille recommandée : 600x600px (carré). Si vide, la couverture sera utilisée.')
+                                    ->helperText('Auto-optimisée en WebP (max 600px). Si vide, la couverture sera utilisée.')
                                     ->image()
                                     ->disk('s3')
                                     ->directory('thumbnails')
                                     ->visibility('public')
                                     ->imageEditor()
-                                    ->imageEditorAspectRatios(['1:1']),
+                                    ->imageEditorAspectRatios(['1:1'])
+                                    ->saveUploadedFileUsing(function (\Livewire\Features\SupportFileUploads\TemporaryUploadedFile $file): string {
+                                        return \App\Services\ImageOptimizer::optimizeAndUpload(
+                                            $file,
+                                            'thumbnails',
+                                            maxWidth: 600,
+                                            quality: 80,
+                                        );
+                                    }),
 
                                 Forms\Components\Grid::make(2)
                                     ->schema([

@@ -1,16 +1,31 @@
 import { fetchStoreCatalog } from "@/lib/api";
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { StoreFooter } from "@/components/checkout/StoreFooter";
 import { t, type Locale } from "@/lib/i18n";
+import type { Metadata } from "next";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
-export default async function StoreCatalogPage({
-  params,
-}: {
+type Props = {
   params: Promise<{ slug: string }>;
-}) {
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  try {
+    const data = await fetchStoreCatalog(slug);
+    return {
+      title: `${data.store.name} — Boutique`,
+      description: `Découvrez les produits de ${data.store.name}`,
+    };
+  } catch {
+    return {};
+  }
+}
+
+export default async function StoreCatalogPage({ params }: Props) {
   const { slug } = await params;
 
   let data;
@@ -57,11 +72,14 @@ export default async function StoreCatalogPage({
                 className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg hover:border-gray-300 transition-all"
               >
                 {(product.thumbnail || product.cover_image) ? (
-                  <div className="aspect-square overflow-hidden bg-gray-50">
-                    <img
+                  <div className="aspect-square overflow-hidden bg-gray-50 relative">
+                    <Image
                       src={product.thumbnail || product.cover_image!}
                       alt={product.name}
-                      className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      className="object-contain transition-transform duration-500 group-hover:scale-105"
+                      priority={false}
                     />
                   </div>
                 ) : (

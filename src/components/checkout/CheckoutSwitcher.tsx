@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import type { CheckoutPageData } from "@/lib/api";
 import { useTracking } from "@/hooks/useTracking";
 import { usePageTracking } from "@/hooks/usePageTracking";
+import { useFrictionTracker } from "@/hooks/useFrictionTracker";
 import { ClassicCheckout } from "./ClassicCheckout";
 import { DarkPremiumCheckout } from "./DarkPremiumCheckout";
 import { MinimalistCardCheckout } from "./MinimalistCardCheckout";
@@ -17,6 +18,7 @@ export function CheckoutSwitcher({ data }: CheckoutSwitcherProps) {
   const tracking = data.checkout_config.tracking;
   const { trackEvent } = useTracking(tracking);
   const { trackEvent: trackInternal } = usePageTracking(data.store.id, data.product.id);
+  useFrictionTracker(data.store.id, data.product.id);
   const viewContentFired = useRef(false);
 
   useEffect(() => {

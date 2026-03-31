@@ -171,7 +171,7 @@ export interface StoreCatalogData {
 
 export async function fetchStoreCatalog(storeSlug: string): Promise<StoreCatalogData> {
   const res = await fetch(`${API_BASE}/v1/stores/${storeSlug}`, {
-    cache: 'no-store',
+    next: { revalidate: 60 },
   });
 
   if (!res.ok) {
@@ -183,7 +183,7 @@ export async function fetchStoreCatalog(storeSlug: string): Promise<StoreCatalog
 
 export async function fetchCheckoutData(storeSlug: string, productId: number): Promise<CheckoutPageData> {
   const res = await fetch(`${API_BASE}/v1/checkout/${storeSlug}/${productId}`, {
-    cache: 'no-store',
+    next: { revalidate: 60 },
   });
 
   if (!res.ok) {
@@ -239,6 +239,7 @@ export function sendTrackEvent(data: {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+  metadata?: Record<string, any>;
 }): void {
   fetch(`${API_BASE}/v1/track`, {
     method: 'POST',
