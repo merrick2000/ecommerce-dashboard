@@ -3,6 +3,7 @@
 import Image from "next/image";
 import type { CheckoutPageData } from "@/lib/api";
 import { CheckoutForm, type TrackEventFn } from "./CheckoutForm";
+import { PromoBanner } from "./PromoBanner";
 import { UrgencyWidgets } from "./UrgencyWidgets";
 import { StickyMobileCTA } from "./StickyMobileCTA";
 import { SalesPopup } from "./SalesPopup";
@@ -11,7 +12,7 @@ import { StoreFooter } from "./StoreFooter";
 import PriceDisplay from "./PriceDisplay";
 import { t, type Locale } from "@/lib/i18n";
 
-export function MinimalistCardCheckout({ data, trackEvent, onTrackInternal }: { data: CheckoutPageData; trackEvent?: TrackEventFn; onTrackInternal?: (eventType: string) => void }) {
+export function MinimalistCardCheckout({ data, trackEvent, onTrackInternal, promoCode }: { data: CheckoutPageData; trackEvent?: TrackEventFn; onTrackInternal?: (eventType: string) => void; promoCode?: string }) {
   const { store, product, checkout_config: config } = data;
   const locale: Locale = store.locale || 'fr';
 
@@ -20,7 +21,9 @@ export function MinimalistCardCheckout({ data, trackEvent, onTrackInternal }: { 
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 pb-20 md:pb-4">
+    <div className="min-h-screen bg-gray-100 flex flex-col pb-20 md:pb-4">
+      {promoCode && <PromoBanner promoCode={promoCode} locale={locale} />}
+      <div className="flex-1 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <UrgencyWidgets urgencyConfig={config.urgency_config} color={config.primary_color} locale={locale} />
 
@@ -97,6 +100,7 @@ export function MinimalistCardCheckout({ data, trackEvent, onTrackInternal }: { 
       <StoreFooter storeName={store.name} locale={locale} />
 
       <SalesPopup config={config.sales_popup} productName={product.name} locale={locale} />
+      </div>
     </div>
   );
 }

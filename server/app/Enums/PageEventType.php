@@ -14,6 +14,7 @@ enum PageEventType: string
     case PAYMENT_STARTED = 'payment_started';
     case PAYMENT_COMPLETED = 'payment_completed';
     case PAGE_LEAVE = 'page_leave';
+    case PROMO_CLICK = 'promo_click';
     case JS_ERROR = 'js_error';
     case DOWNLOAD = 'download';
 
@@ -30,6 +31,7 @@ enum PageEventType: string
             self::PAYMENT_STARTED => 'Paiement initié',
             self::PAYMENT_COMPLETED => 'Paiement complété',
             self::PAGE_LEAVE => 'Quitte la page',
+            self::PROMO_CLICK => 'Clic promo abandon',
             self::JS_ERROR => 'Erreur JS',
             self::DOWNLOAD => 'Téléchargement',
         };

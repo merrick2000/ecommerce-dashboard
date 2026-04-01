@@ -21,13 +21,19 @@ class AbandonedCartMail extends Mailable
         public string $storeName,
         public string $storeLocale = 'fr',
         public ?string $coverImage = null,
+        public ?string $promoCode = null,
+        public ?string $promoMessage = null,
     ) {}
 
     public function envelope(): Envelope
     {
-        $subject = $this->storeLocale === 'en'
-            ? "You didn't finish your purchase — {$this->productName}"
-            : "Vous n'avez pas terminé votre achat — {$this->productName}";
+        $subject = $this->promoCode
+            ? ($this->storeLocale === 'en'
+                ? "Your discount code is waiting — {$this->productName}"
+                : "Votre code promo vous attend — {$this->productName}")
+            : ($this->storeLocale === 'en'
+                ? "You didn't finish your purchase — {$this->productName}"
+                : "Vous n'avez pas terminé votre achat — {$this->productName}");
 
         return new Envelope(subject: $subject);
     }

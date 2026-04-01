@@ -7,6 +7,9 @@ $t = [
         'not_finished' => 'mais vous n\'avez pas terminé.',
         'price' => 'Prix :',
         'cta' => 'Terminer mon achat',
+        'cta_promo' => 'Utiliser mon code promo',
+        'your_code' => 'Votre code :',
+        'auto_applied' => 'Le code sera appliqué automatiquement en cliquant sur le bouton.',
         'question' => 'Si vous avez des questions, répondez directement à cet email.',
         'via' => 'via Sellit',
     ],
@@ -17,6 +20,9 @@ $t = [
         'not_finished' => 'but didn\'t complete your order.',
         'price' => 'Price:',
         'cta' => 'Complete my purchase',
+        'cta_promo' => 'Use my promo code',
+        'your_code' => 'Your code:',
+        'auto_applied' => 'The code will be applied automatically when you click the button.',
         'question' => 'If you have any questions, reply directly to this email.',
         'via' => 'via Sellit',
     ],
@@ -59,9 +65,25 @@ $l = $t[$storeLocale] ?? $t['fr'];
                     </div>
                 </div>
 
+                {{-- Promo code section --}}
+                @if($promoCode)
+                <div style="background: #ecfdf5; border: 2px dashed #10b981; border-radius: 10px; padding: 16px; margin-bottom: 20px; text-align: center;">
+                    @if($promoMessage)
+                    <p style="color: #065f46; font-size: 14px; font-weight: 600; margin: 0 0 10px;">
+                        {{ $promoMessage }}
+                    </p>
+                    @endif
+                    <p style="color: #6b7280; font-size: 12px; margin: 0 0 6px;">{{ $l['your_code'] }}</p>
+                    <div style="display: inline-block; background: white; border-radius: 8px; padding: 8px 20px; border: 1px solid #d1fae5;">
+                        <span style="color: #059669; font-size: 20px; font-weight: 800; letter-spacing: 2px;">{{ $promoCode }}</span>
+                    </div>
+                    <p style="color: #9ca3af; font-size: 11px; margin: 8px 0 0;">{{ $l['auto_applied'] }}</p>
+                </div>
+                @endif
+
                 <div style="text-align: center; margin-bottom: 14px;">
-                    <a href="{{ $checkoutUrl }}" style="display: inline-block; background: #18181b; color: white; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 10px;">
-                        {{ $l['cta'] }}
+                    <a href="{{ $checkoutUrl }}" style="display: inline-block; background: {{ $promoCode ? '#059669' : '#18181b' }}; color: white; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 10px;">
+                        {{ $promoCode ? $l['cta_promo'] : $l['cta'] }}
                     </a>
                 </div>
 

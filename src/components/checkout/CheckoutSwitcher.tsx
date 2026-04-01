@@ -12,9 +12,10 @@ import { WhatsAppChat } from "./WhatsAppChat";
 
 interface CheckoutSwitcherProps {
   data: CheckoutPageData;
+  promoCode?: string;
 }
 
-export function CheckoutSwitcher({ data }: CheckoutSwitcherProps) {
+export function CheckoutSwitcher({ data, promoCode }: CheckoutSwitcherProps) {
   const templateType = data.checkout_config.template_type;
   const tracking = data.checkout_config.tracking;
   const { trackEvent } = useTracking(tracking);
@@ -39,7 +40,11 @@ export function CheckoutSwitcher({ data }: CheckoutSwitcherProps) {
       price: data.product.effective_price,
       currency: data.store.currency,
     });
-  }, [trackEvent, trackInternal, data]);
+
+    if (promoCode) {
+      trackInternal("promo_click", data.product.id, { promo_code: promoCode });
+    }
+  }, [trackEvent, trackInternal, data, promoCode]);
 
   const locale = data.store.locale || "fr";
   const wa = data.product.whatsapp_chat;
@@ -47,14 +52,14 @@ export function CheckoutSwitcher({ data }: CheckoutSwitcherProps) {
   let checkout;
   switch (templateType) {
     case "DARK_PREMIUM":
-      checkout = <DarkPremiumCheckout data={data} trackEvent={trackEvent} onTrackInternal={trackInternal} />;
+      checkout = <DarkPremiumCheckout data={data} trackEvent={trackEvent} onTrackInternal={trackInternal} promoCode={promoCode} />;
       break;
     case "MINIMALIST_CARD":
-      checkout = <MinimalistCardCheckout data={data} trackEvent={trackEvent} onTrackInternal={trackInternal} />;
+      checkout = <MinimalistCardCheckout data={data} trackEvent={trackEvent} onTrackInternal={trackInternal} promoCode={promoCode} />;
       break;
     case "CLASSIC":
     default:
-      checkout = <ClassicCheckout data={data} trackEvent={trackEvent} onTrackInternal={trackInternal} />;
+      checkout = <ClassicCheckout data={data} trackEvent={trackEvent} onTrackInternal={trackInternal} promoCode={promoCode} />;
   }
 
   return (

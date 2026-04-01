@@ -17,18 +17,16 @@ class SendAbandonedCartReminders extends Command
 
     public function handle(): int
     {
-        // Leads de +1h, jamais relancés, pas trop vieux (max 48h)
         $leads = Lead::whereNull('reminded_at')
             ->where('created_at', '<=', now()->subHour())
             ->where('created_at', '>=', now()->subHours(48))
-            ->with(['product', 'store.user'])
+            ->with(['product', 'store.checkoutConfig', 'store.user'])
             ->limit(50)
             ->get();
 
         $sent = 0;
 
         foreach ($leads as $lead) {
-            // Vérifier qu'il n'y a pas de commande payée pour ce client + produit
             $hasPaid = Order::where('store_id', $lead->store_id)
                 ->where('product_id', $lead->product_id)
                 ->where('customer_email', $lead->customer_email)
@@ -51,6 +49,17 @@ class SendAbandonedCartReminders extends Command
             $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
             $checkoutUrl = $frontendUrl . '/' . $store->slug . '/p/' . $product->id;
 
+            // Promo abandon panier
+            $promoConfig = $store->checkoutConfig?->abandoned_cart_promo;
+            $promoCode = null;
+            $promoMessage = null;
+
+            if ($promoConfig && ($promoConfig['enabled'] ?? false) && ! empty($promoConfig['code'])) {
+                $promoCode = $promoConfig['code'];
+                $promoMessage = $promoConfig['email_message'] ?? null;
+                $checkoutUrl .= '?promo=' . urlencode($promoCode);
+            }
+
             $displayPrice = $product->resolveDisplayPrice($store->currency);
             $coverImage = $product->cover_image
                 ? Storage::disk('s3')->url($product->cover_image)
@@ -64,6 +73,8 @@ class SendAbandonedCartReminders extends Command
                 storeName: $store->name,
                 storeLocale: $locale,
                 coverImage: $coverImage,
+                promoCode: $promoCode,
+                promoMessage: $promoMessage,
             ));
 
             $lead->update(['reminded_at' => now()]);

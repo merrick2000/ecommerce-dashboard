@@ -252,7 +252,50 @@ class CheckoutConfigResource extends Resource
                                     ->visible(fn (Forms\Get $get) => $get('sales_popup.enabled')),
                             ]),
 
-                        // ─── TAB 5 : PAGE LAYOUT ───────────────────────
+                        // ─── TAB 5 : RELANCE ABANDON ────────────────────
+                        Forms\Components\Tabs\Tab::make('Relance abandon')
+                            ->icon('heroicon-o-arrow-path')
+                            ->schema([
+                                Forms\Components\Toggle::make('abandoned_cart_promo.enabled')
+                                    ->label('Inclure un code promo dans l\'email de relance')
+                                    ->default(false)
+                                    ->live(onBlur: true),
+
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('abandoned_cart_promo.code')
+                                            ->label('Code promo')
+                                            ->placeholder('RETOUR10')
+                                            ->helperText('Le code affiché dans l\'email et appliqué automatiquement via le lien'),
+
+                                        Forms\Components\Select::make('abandoned_cart_promo.type')
+                                            ->label('Type de réduction')
+                                            ->options([
+                                                'percentage' => 'Pourcentage (%)',
+                                                'fixed' => 'Montant fixe',
+                                            ])
+                                            ->default('percentage'),
+                                    ])
+                                    ->visible(fn (Forms\Get $get) => $get('abandoned_cart_promo.enabled')),
+
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('abandoned_cart_promo.value')
+                                            ->label('Valeur')
+                                            ->numeric()
+                                            ->placeholder('10')
+                                            ->suffix(fn (Forms\Get $get) => $get('abandoned_cart_promo.type') === 'percentage' ? '%' : (\Filament\Facades\Filament::getTenant()?->currency ?? 'XOF')),
+
+                                        Forms\Components\Textarea::make('abandoned_cart_promo.email_message')
+                                            ->label('Message dans l\'email')
+                                            ->placeholder('Profitez de -10% avec le code RETOUR10 !')
+                                            ->rows(2)
+                                            ->helperText('Affiché au-dessus du bouton CTA dans l\'email de relance'),
+                                    ])
+                                    ->visible(fn (Forms\Get $get) => $get('abandoned_cart_promo.enabled')),
+                            ]),
+
+                        // ─── TAB 6 : PAGE LAYOUT ───────────────────────
                         Forms\Components\Tabs\Tab::make('Ordre des sections')
                             ->icon('heroicon-o-queue-list')
                             ->schema([
