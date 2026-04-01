@@ -18,6 +18,7 @@ class Lead extends Model
         'reminder_count',
         'converted_at',
         'last_reminded_at',
+        'reminder_history',
     ];
 
     protected function casts(): array
@@ -26,7 +27,19 @@ class Lead extends Model
             'reminded_at' => 'datetime',
             'converted_at' => 'datetime',
             'last_reminded_at' => 'datetime',
+            'reminder_history' => 'array',
         ];
+    }
+
+    public function addReminderToHistory(int $reminderNumber, string $emailType): void
+    {
+        $history = $this->reminder_history ?? [];
+        $history[] = [
+            'number' => $reminderNumber,
+            'type' => $emailType,
+            'sent_at' => now()->toIso8601String(),
+        ];
+        $this->reminder_history = $history;
     }
 
     public function store(): BelongsTo

@@ -34,7 +34,7 @@ class Order extends Model
     protected function casts(): array
     {
         return [
-            'amount' => 'integer',
+            'amount' => 'float',
             'status' => OrderStatus::class,
             'metadata' => 'array',
         ];

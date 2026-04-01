@@ -135,6 +135,78 @@ class LeadResource extends Resource
                     }),
             ])
             ->actions([
+                Tables\Actions\Action::make('timeline')
+                    ->label('Details')
+                    ->icon('heroicon-o-clock')
+                    ->color('info')
+                    ->modalHeading(fn (Lead $record) => 'Parcours — ' . $record->customer_email)
+                    ->modalContent(function (Lead $record): \Illuminate\Support\HtmlString {
+                        $events = [];
+
+                        $events[] = [
+                            'date' => $record->created_at,
+                            'emoji' => '👤',
+                            'color' => 'blue',
+                            'label' => 'Lead capture',
+                            'detail' => 'Email saisi sur ' . ($record->product?->name ?? 'produit'),
+                        ];
+
+                        foreach ($record->reminder_history ?? [] as $reminder) {
+                            $typeLabels = [
+                                'forgot_something' => 'Relance 1 — Vous avez oublie quelque chose',
+                                'cart_waiting_promo' => 'Relance 2 — Votre panier vous attend + promo',
+                                'last_chance' => 'Relance 3 — Derniere chance',
+                            ];
+                            $events[] = [
+                                'date' => \Carbon\Carbon::parse($reminder['sent_at']),
+                                'emoji' => '📧',
+                                'color' => 'amber',
+                                'label' => $typeLabels[$reminder['type']] ?? 'Relance ' . $reminder['number'],
+                                'detail' => 'Email envoye',
+                            ];
+                        }
+
+                        if ($record->converted_at) {
+                            $events[] = [
+                                'date' => $record->converted_at,
+                                'emoji' => '✅',
+                                'color' => 'green',
+                                'label' => 'Converti !',
+                                'detail' => 'Commande payee',
+                            ];
+                        } elseif ($record->reminder_count >= 3) {
+                            $events[] = [
+                                'date' => $record->last_reminded_at ?? now(),
+                                'emoji' => '❌',
+                                'color' => 'red',
+                                'label' => 'Non converti',
+                                'detail' => 'Max relances atteint (3/3)',
+                            ];
+                        }
+
+                        $html = '<div style="display:flex;flex-direction:column;gap:16px;padding:8px 0;">';
+                        foreach ($events as $i => $event) {
+                            $bgColor = match ($event['color']) {
+                                'green' => '#dcfce7',
+                                'amber' => '#fef3c7',
+                                'red' => '#fee2e2',
+                                default => '#dbeafe',
+                            };
+                            $html .= '<div style="display:flex;gap:12px;align-items:flex-start;">';
+                            $html .= '<div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;background:' . $bgColor . ';flex-shrink:0;">' . $event['emoji'] . '</div>';
+                            $html .= '<div style="flex:1;">';
+                            $html .= '<div style="font-size:14px;font-weight:600;color:#111827;">' . e($event['label']) . '</div>';
+                            $html .= '<div style="font-size:12px;color:#6b7280;">' . e($event['detail']) . '</div>';
+                            $html .= '<div style="font-size:11px;color:#9ca3af;margin-top:2px;">' . $event['date']->format('d/m/Y H:i') . '</div>';
+                            $html .= '</div>';
+                            $html .= '</div>';
+                        }
+                        $html .= '</div>';
+
+                        return new \Illuminate\Support\HtmlString($html);
+                    })
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fermer'),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
