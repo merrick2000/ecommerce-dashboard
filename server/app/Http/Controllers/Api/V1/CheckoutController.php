@@ -72,6 +72,7 @@ class CheckoutController extends Controller
                 'payment_link' => $product->payment_link,
                 'external_platform' => $product->external_platform,
                 'redirect_only_payment' => $this->isRedirectOnlyPayment(),
+                'whatsapp_chat' => $product->whatsapp_chat,
             ],
             'checkout_config' => $config ? [
                 'template_type' => $config->template_type->value,

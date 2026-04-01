@@ -54,6 +54,12 @@ export interface ProductData {
   payment_link: string | null;
   external_platform: 'selar' | 'chariow' | null;
   redirect_only_payment: boolean;
+  whatsapp_chat?: {
+    enabled?: boolean;
+    phone?: string;
+    welcome_message?: string;
+    position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+  } | null;
 }
 
 export interface UrgencyConfig {
