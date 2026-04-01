@@ -8,6 +8,7 @@ import { useFrictionTracker } from "@/hooks/useFrictionTracker";
 import { ClassicCheckout } from "./ClassicCheckout";
 import { DarkPremiumCheckout } from "./DarkPremiumCheckout";
 import { MinimalistCardCheckout } from "./MinimalistCardCheckout";
+import { WhatsAppChat } from "./WhatsAppChat";
 
 interface CheckoutSwitcherProps {
   data: CheckoutPageData;
@@ -40,13 +41,34 @@ export function CheckoutSwitcher({ data }: CheckoutSwitcherProps) {
     });
   }, [trackEvent, trackInternal, data]);
 
+  const locale = data.store.locale || "fr";
+  const wa = data.product.whatsapp_chat;
+
+  let checkout;
   switch (templateType) {
     case "DARK_PREMIUM":
-      return <DarkPremiumCheckout data={data} trackEvent={trackEvent} onTrackInternal={trackInternal} />;
+      checkout = <DarkPremiumCheckout data={data} trackEvent={trackEvent} onTrackInternal={trackInternal} />;
+      break;
     case "MINIMALIST_CARD":
-      return <MinimalistCardCheckout data={data} trackEvent={trackEvent} onTrackInternal={trackInternal} />;
+      checkout = <MinimalistCardCheckout data={data} trackEvent={trackEvent} onTrackInternal={trackInternal} />;
+      break;
     case "CLASSIC":
     default:
-      return <ClassicCheckout data={data} trackEvent={trackEvent} onTrackInternal={trackInternal} />;
+      checkout = <ClassicCheckout data={data} trackEvent={trackEvent} onTrackInternal={trackInternal} />;
   }
+
+  return (
+    <>
+      {checkout}
+      {wa?.enabled && wa?.phone && (
+        <WhatsAppChat
+          phone={wa.phone}
+          welcomeMessage={wa.welcome_message}
+          productName={data.product.name}
+          locale={locale}
+          position={wa.position || "bottom-right"}
+        />
+      )}
+    </>
+  );
 }

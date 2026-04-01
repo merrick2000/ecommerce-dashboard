@@ -46,6 +46,7 @@ class Product extends Model implements HasMedia
         'external_product_id',
         'chariow_product_id',
         'maketou_product_id',
+        'whatsapp_chat',
     ];
 
     protected function casts(): array
@@ -54,6 +55,7 @@ class Product extends Model implements HasMedia
             'price' => 'integer',
             'is_active' => 'boolean',
             'currency_prices' => 'array',
+            'whatsapp_chat' => 'array',
             'features' => 'array',
             'description_ctas' => 'array',
             'faqs' => 'array',

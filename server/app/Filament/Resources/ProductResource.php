@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ProductResource\Pages;
 use App\Models\Product;
 use FilamentTiptapEditor\TiptapEditor;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -476,6 +477,41 @@ class ProductResource extends Resource
                                             ->collapsible()
                                             ->defaultItems(0),
                                     ]),
+                            ]),
+
+                        // ─── TAB 5 : WHATSAPP CHAT ─────────────────────
+                        Forms\Components\Tabs\Tab::make('WhatsApp')
+                            ->icon('heroicon-o-chat-bubble-oval-left-ellipsis')
+                            ->schema([
+                                Forms\Components\Toggle::make('whatsapp_chat.enabled')
+                                    ->label('Activer le chat WhatsApp')
+                                    ->helperText('Affiche un bouton WhatsApp flottant sur la page produit')
+                                    ->default(false)
+                                    ->live(onBlur: true),
+
+                                Forms\Components\TextInput::make('whatsapp_chat.phone')
+                                    ->label('Numéro WhatsApp')
+                                    ->placeholder('+22997000000')
+                                    ->helperText('Format international avec indicatif (ex: +229, +221, +225)')
+                                    ->visible(fn (Forms\Get $get) => $get('whatsapp_chat.enabled')),
+
+                                Forms\Components\Textarea::make('whatsapp_chat.welcome_message')
+                                    ->label('Message d\'accueil')
+                                    ->placeholder('Bonjour ! Une question sur ce produit ? N\'hésitez pas à nous écrire.')
+                                    ->helperText('Affiché dans le popup quand le visiteur clique sur le bouton WhatsApp')
+                                    ->rows(2)
+                                    ->visible(fn (Forms\Get $get) => $get('whatsapp_chat.enabled')),
+
+                                Forms\Components\Select::make('whatsapp_chat.position')
+                                    ->label('Position du bouton')
+                                    ->options([
+                                        'bottom-right' => 'Bas droite',
+                                        'bottom-left' => 'Bas gauche',
+                                        'top-right' => 'Haut droite',
+                                        'top-left' => 'Haut gauche',
+                                    ])
+                                    ->default('bottom-right')
+                                    ->visible(fn (Forms\Get $get) => $get('whatsapp_chat.enabled')),
                             ]),
                     ])
                     ->columnSpanFull()
