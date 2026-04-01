@@ -80,22 +80,34 @@ class SendAbandonedCartReminders extends Command
                 ? Storage::disk('s3')->url($product->cover_image)
                 : null;
 
+            $nextReminder = $lead->reminder_count + 1;
+
+            // Promo code uniquement a partir de la relance 2
+            $sendPromoCode = $nextReminder >= 2 ? $promoCode : null;
+            $sendPromoMessage = $nextReminder >= 2 ? $promoMessage : null;
+            $sendCheckoutUrl = $sendPromoCode ? $checkoutUrl : $frontendUrl . '/' . $store->slug . '/p/' . $product->id;
+
             Mail::to($lead->customer_email)->queue(new AbandonedCartMail(
                 lead: $lead,
                 productName: $product->name,
                 formattedPrice: $displayPrice['formatted_effective_price'] ?? $displayPrice['formatted_price'],
-                checkoutUrl: $checkoutUrl,
+                checkoutUrl: $sendCheckoutUrl,
                 storeName: $store->name,
                 storeLocale: $locale,
                 coverImage: $coverImage,
-                promoCode: $promoCode,
-                promoMessage: $promoMessage,
+                promoCode: $sendPromoCode,
+                promoMessage: $sendPromoMessage,
+                reminderNumber: $nextReminder,
             ));
 
+            $emailTypes = [1 => 'forgot_something', 2 => 'cart_waiting_promo', 3 => 'last_chance'];
+            $lead->addReminderToHistory($nextReminder, $emailTypes[$nextReminder] ?? 'reminder');
+
             $lead->update([
-                'reminder_count' => $lead->reminder_count + 1,
+                'reminder_count' => $nextReminder,
                 'last_reminded_at' => now(),
-                'reminded_at' => $lead->reminded_at ?? now(), // backward compat
+                'reminded_at' => $lead->reminded_at ?? now(),
+                'reminder_history' => $lead->reminder_history,
             ]);
 
             $sent++;

@@ -74,6 +74,44 @@ class TrackController extends Controller
             'country' => $country,
         ]));
 
+        // Check visitor milestones (50, 100, 500, 1000, 5000, 10000)
+        if ($data['event_type'] === 'page_view') {
+            $this->checkMilestone((int) $data['store_id']);
+        }
+
         return response()->json(['tracked' => true], 202);
+    }
+
+    private function checkMilestone(int $storeId): void
+    {
+        $milestones = [50, 100, 500, 1000, 5000, 10000];
+        $cacheKey = "milestone_store_{$storeId}";
+
+        $totalVisitors = PageEvent::where('store_id', $storeId)
+            ->where('event_type', 'page_view')
+            ->distinct('session_id')
+            ->count('session_id');
+
+        // Dernier milestone notifie (cache 24h)
+        $lastNotified = (int) cache()->get($cacheKey, 0);
+
+        foreach ($milestones as $milestone) {
+            if ($totalVisitors >= $milestone && $milestone > $lastNotified) {
+                cache()->put($cacheKey, $milestone, now()->addHours(24));
+
+                $store = \App\Models\Store::with('user')->find($storeId);
+                $sellerEmail = $store?->user?->email;
+
+                if ($sellerEmail) {
+                    \Illuminate\Support\Facades\Mail::to($sellerEmail)
+                        ->queue(new \App\Mail\MilestoneReachedMail(
+                            milestone: $milestone,
+                            storeName: $store->name,
+                        ));
+                }
+
+                break; // Un seul milestone a la fois
+            }
+        }
     }
 }

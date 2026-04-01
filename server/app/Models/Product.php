@@ -116,7 +116,7 @@ class Product extends Model implements HasMedia
 
         if ($matchIndex !== null && $storeCurrency !== $baseCurrency) {
             // Swap: le prix de la devise boutique devient le prix principal
-            $mainPrice = (int) $currencyPrices[$matchIndex]['price'];
+            $mainPrice = (float) $currencyPrices[$matchIndex]['price'];
             $mainCurrency = $storeCurrency;
 
             // Construire les prix alternatifs (autres devises)
@@ -140,16 +140,17 @@ class Product extends Model implements HasMedia
         // Calculer les prix effectifs (promo)
         $mainEffective = $this->applyPromo($mainPrice, $mainCurrency);
         $formattedAlt = array_map(function ($entry) {
-            $price = (int) ($entry['price'] ?? 0);
+            $price = (float) ($entry['price'] ?? 0);
             $currency = $entry['currency'] ?? '';
             $effective = $this->applyPromo($price, $currency);
+            $dec = fn ($v) => floor($v) == $v ? 0 : 2;
 
             return [
                 'currency' => $currency,
                 'price' => $price,
-                'formatted_price' => number_format($price, 0, ',', ' ') . ' ' . $currency,
+                'formatted_price' => number_format($price, $dec($price), '.', ' ') . ' ' . $currency,
                 'effective_price' => $effective,
-                'formatted_effective_price' => number_format($effective, 0, ',', ' ') . ' ' . $currency,
+                'formatted_effective_price' => number_format($effective, $dec($effective), '.', ' ') . ' ' . $currency,
             ];
         }, $altPrices);
 
@@ -161,29 +162,30 @@ class Product extends Model implements HasMedia
             $promoDiscount = $mainPrice - $mainEffective;
         }
 
+        $decimals = fn ($v) => floor($v) == $v ? 0 : 2;
+
         return [
             'price' => $mainPrice,
             'currency' => $mainCurrency,
-            'formatted_price' => number_format($mainPrice, 0, ',', ' ') . ' ' . $mainCurrency,
+            'formatted_price' => number_format($mainPrice, $decimals($mainPrice), '.', ' ') . ' ' . $mainCurrency,
             'effective_price' => $mainEffective,
-            'formatted_effective_price' => number_format($mainEffective, 0, ',', ' ') . ' ' . $mainCurrency,
+            'formatted_effective_price' => number_format($mainEffective, $decimals($mainEffective), '.', ' ') . ' ' . $mainCurrency,
             'promo_percent' => $promoPercent,
             'promo_discount' => $promoDiscount,
             'currency_prices' => $formattedAlt,
         ];
     }
 
-    private function applyPromo(int $price, string $currency): int
+    private function applyPromo(float $price, string $currency): float
     {
         if ($this->promo_type === 'percentage' && $this->promo_value > 0) {
-            return (int) round($price * (1 - $this->promo_value / 100));
+            return round($price * (1 - $this->promo_value / 100), 2);
         }
 
         if ($this->promo_type === 'fixed' && $this->promo_value > 0 && $this->price > 0) {
-            // Calculer le % de réduction sur le prix de base, puis l'appliquer à toutes les devises
             $discountRatio = $this->promo_value / $this->price;
 
-            return max(0, (int) round($price * (1 - $discountRatio)));
+            return max(0, round($price * (1 - $discountRatio), 2));
         }
 
         return $price;
