@@ -44,10 +44,13 @@ class TopProductsTable extends BaseWidget
                     ->limit(40)
                     ->searchable(),
 
-                Tables\Columns\TextColumn::make('price')
+                Tables\Columns\TextColumn::make('display_price')
                     ->label('Prix')
-                    ->formatStateUsing(fn ($state) => number_format($state) . ' ' . $store->currency)
-                    ->sortable(),
+                    ->getStateUsing(function (Product $record) use ($store): string {
+                        $resolved = $record->resolveDisplayPrice($store->currency);
+                        return $resolved['formatted_price'];
+                    })
+                    ->sortable(query: fn ($query, $direction) => $query->orderBy('price', $direction)),
 
                 Tables\Columns\TextColumn::make('orders_count')
                     ->label('Ventes')
@@ -57,7 +60,14 @@ class TopProductsTable extends BaseWidget
 
                 Tables\Columns\TextColumn::make('orders_sum_amount')
                     ->label('Revenus')
-                    ->formatStateUsing(fn ($state) => number_format($state ?? 0) . ' ' . $store->currency)
+                    ->formatStateUsing(function ($state, Product $record) use ($store): string {
+                        // Utiliser la devise de la dernière commande payée ou la devise du store
+                        $currency = $record->orders()
+                            ->where('status', OrderStatus::PAID)
+                            ->latest()
+                            ->value('currency') ?? $store->currency;
+                        return number_format($state ?? 0, 0, ',', ' ') . ' ' . $currency;
+                    })
                     ->sortable(),
             ])
             ->defaultPaginationPageOption(5);

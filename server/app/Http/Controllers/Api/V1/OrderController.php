@@ -41,14 +41,16 @@ class OrderController extends Controller
             ->where('store_id', $store->id)
             ->firstOrFail();
 
+        $resolved = $product->resolveDisplayPrice($store->currency);
+
         $order = Order::create([
             'store_id' => $store->id,
             'product_id' => $product->id,
             'customer_email' => $request->customer_email,
             'customer_name' => $request->customer_name,
             'customer_phone' => $request->customer_phone,
-            'amount' => $product->resolveDisplayPrice($store->currency)['effective_price'],
-            'currency' => $store->currency,
+            'amount' => $resolved['effective_price'],
+            'currency' => $resolved['currency'],
             'status' => 'pending',
             'payment_method' => $product->payment_mode === 'external_link' ? $product->external_platform : null,
             'source' => $product->payment_mode === 'external_link' ? ($product->external_platform ?? 'external') : 'native',

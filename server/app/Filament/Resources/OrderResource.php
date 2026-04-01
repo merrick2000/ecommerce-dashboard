@@ -51,7 +51,7 @@ class OrderResource extends Resource
 
                         Forms\Components\TextInput::make('amount')
                             ->label('Montant')
-                            ->suffix('FCFA')
+                            ->suffix(fn (?Order $record) => $record?->currency ?? 'XOF')
                             ->disabled(),
 
                         Forms\Components\Select::make('status')

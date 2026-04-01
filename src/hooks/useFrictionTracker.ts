@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { sendTrackEvent } from "@/lib/api";
+import { isNoTrack } from "@/lib/notrack";
 
 function getSessionId(): string {
   if (typeof window === "undefined") return "";
@@ -38,6 +39,7 @@ export function useFrictionTracker(storeId: number, productId?: number) {
 
   const send = useCallback(
     (eventType: string, metadata?: Record<string, any>) => {
+      if (isNoTrack()) return;
       sendTrackEvent({
         store_id: storeId,
         product_id: productId,
