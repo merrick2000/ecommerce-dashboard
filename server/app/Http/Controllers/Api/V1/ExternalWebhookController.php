@@ -137,6 +137,14 @@ class ExternalWebhookController extends Controller
 
             $this->dispatchTrackingEvent($order, $product);
             $this->dispatchOrderEmails($order, $product);
+
+            \App\Services\TelegramService::notifySale(
+                $product->name,
+                $order->amount,
+                $order->currency,
+                $order->customer_email,
+                $order->source ?? 'external',
+            );
         }
 
         // PostHog server-side tracking

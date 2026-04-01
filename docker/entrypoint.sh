@@ -17,6 +17,19 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
+# Test Telegram connection
+if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+    echo "📱 Testing Telegram..."
+    php artisan tinker --execute="
+    try {
+        \App\Services\TelegramService::send('✅ Sellit deployed successfully at ' . now()->format('d/m/Y H:i'));
+        echo 'Telegram OK';
+    } catch (\Exception \$e) {
+        echo 'Telegram FAILED: ' . \$e->getMessage();
+    }
+    " 2>/dev/null || echo "⚠️ Telegram test skipped"
+fi
+
 # Test Redis connection
 echo "🔌 Testing Redis connection..."
 php artisan tinker --execute="

@@ -630,6 +630,15 @@ class PaymentOrchestrator
 
         // Email notifications (queued, non-bloquant)
         $this->dispatchOrderEmails($order);
+
+        // Telegram notification
+        \App\Services\TelegramService::notifySale(
+            $order->product->name,
+            $order->amount,
+            $order->currency,
+            $order->customer_email,
+            $order->source ?? 'native',
+        );
     }
 
     private function dispatchOrderEmails(Order $order): void
