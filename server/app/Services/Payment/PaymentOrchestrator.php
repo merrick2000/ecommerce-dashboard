@@ -564,6 +564,13 @@ class PaymentOrchestrator
     {
         $order->load(['store.checkoutConfig', 'store.user', 'product']);
 
+        // Marquer le lead comme converti
+        \App\Models\Lead::where('store_id', $order->store_id)
+            ->where('product_id', $order->product_id)
+            ->where('customer_email', $order->customer_email)
+            ->whereNull('converted_at')
+            ->update(['converted_at' => now()]);
+
         // Skip tracking pour les commandes du propriétaire
         if ($this->isOwnerOrder($order)) {
             PaymentLogger::info('tracking', "Skipping tracking for owner order #{$order->id}");

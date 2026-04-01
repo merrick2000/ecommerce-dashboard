@@ -206,6 +206,11 @@ export async function createOrder(data: {
   customer_email: string;
   customer_name?: string;
   customer_phone?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  referrer?: string;
+  promo_code?: string;
 }): Promise<OrderResponse> {
   const res = await fetch(`${API_BASE}/v1/orders/create`, {
     method: 'POST',

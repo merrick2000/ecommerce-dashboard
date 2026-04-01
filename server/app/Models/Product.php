@@ -52,8 +52,8 @@ class Product extends Model implements HasMedia
     protected function casts(): array
     {
         return [
-            'price' => 'integer',
-            'promo_value' => 'integer',
+            'price' => 'float',
+            'promo_value' => 'float',
             'is_active' => 'boolean',
             'currency_prices' => 'array',
             'whatsapp_chat' => 'array',

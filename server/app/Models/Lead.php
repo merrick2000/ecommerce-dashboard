@@ -15,12 +15,17 @@ class Lead extends Model
         'customer_phone',
         'source',
         'reminded_at',
+        'reminder_count',
+        'converted_at',
+        'last_reminded_at',
     ];
 
     protected function casts(): array
     {
         return [
             'reminded_at' => 'datetime',
+            'converted_at' => 'datetime',
+            'last_reminded_at' => 'datetime',
         ];
     }
 

@@ -341,7 +341,7 @@ export function DarkPremiumCheckout({ data, trackEvent, onTrackInternal, promoCo
               )}
 
               <div className="p-6">
-                <CheckoutForm data={data} dark onTrackEvent={trackEvent} onTrackInternal={onTrackInternal} />
+                <CheckoutForm data={data} dark onTrackEvent={trackEvent} onTrackInternal={onTrackInternal} promoCode={promoCode} />
               </div>
 
               <div className="px-6">

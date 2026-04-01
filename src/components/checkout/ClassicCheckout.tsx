@@ -309,7 +309,7 @@ export function ClassicCheckout({ data, trackEvent, onTrackInternal, promoCode }
               )}
 
               <div className="p-6">
-                <CheckoutForm data={data} onTrackEvent={trackEvent} onTrackInternal={onTrackInternal} />
+                <CheckoutForm data={data} onTrackEvent={trackEvent} onTrackInternal={onTrackInternal} promoCode={promoCode} />
               </div>
 
               <div className="px-6">
