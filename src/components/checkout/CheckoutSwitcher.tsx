@@ -72,6 +72,10 @@ export function CheckoutSwitcher({ data, promoCode }: CheckoutSwitcherProps) {
           productName={data.product.name}
           locale={locale}
           position={wa.position || "bottom-right"}
+          paymentLink={data.product.payment_link}
+          paymentMode={data.product.payment_mode}
+          formattedPrice={data.product.formatted_effective_price}
+          features={data.product.features}
         />
       )}
     </>

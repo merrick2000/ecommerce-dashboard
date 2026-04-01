@@ -9,21 +9,17 @@ interface WhatsAppChatProps {
   productName: string;
   locale?: Locale;
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+  paymentLink?: string | null;
+  paymentMode?: 'native' | 'external_link';
+  formattedPrice?: string;
+  features?: string[];
 }
 
-const txt = {
-  placeholder: {
-    fr: "Tapez votre message...",
-    en: "Type your message...",
-  },
-  send: {
-    fr: "Envoyer via WhatsApp",
-    en: "Send via WhatsApp",
-  },
-  powered: {
-    fr: "Propulsé par WhatsApp",
-    en: "Powered by WhatsApp",
-  },
+type ChatBubble = {
+  from: 'bot' | 'user';
+  text?: string;
+  html?: string;
+  delay?: number;
 };
 
 const positionClasses = {
@@ -33,75 +29,213 @@ const positionClasses = {
   'top-left': 'top-20 left-4',
 };
 
-const popupOrigin = {
-  'bottom-right': 'origin-bottom-right',
-  'bottom-left': 'origin-bottom-left',
-  'top-right': 'origin-top-right',
-  'top-left': 'origin-top-left',
+const txt = {
+  fr: {
+    placeholder: "Tapez votre message...",
+    powered: "Propulse par WhatsApp",
+    repliesInstantly: "Repond generalement instantanement",
+    // Quick replies
+    wantToBuy: "Je veux acheter",
+    haveQuestion: "J'ai une question",
+    whatDoIGet: "J'obtiens quoi si je paye ?",
+    stillAvailable: "Encore disponible ?",
+    // Bot responses - buy
+    buyUserMsg: "Je veux acheter ce produit",
+    buyBot1: "Excellent choix ! 🔥",
+    buyBot2: (price: string) => `Le prix actuel est de <strong>${price}</strong> — mais attention, cette offre est <strong>limitee dans le temps</strong>.`,
+    buyBot3: "Ne tardez pas, les places partent vite ! Cliquez ci-dessous pour securiser votre achat 👇",
+    payNow: "Payer maintenant",
+    goToForm: "Acheter maintenant",
+    nativeBot: "Remplissez le formulaire juste en dessous et cliquez sur le bouton pour securiser votre place !",
+    // Bot responses - what do I get
+    getUserMsg: "J'obtiens quoi exactement si je paye ?",
+    getBot1: "Super question ! 😊",
+    getBot2: (name: string) => `En achetant <strong>${name}</strong>, vous recevez <strong>immediatement</strong> votre produit par email.`,
+    getBot3Features: "Voici ce qui est inclus :",
+    getBot4: "Vous avez un acces <strong>a vie</strong>, sans frais supplementaires. Et si vous n'etes pas satisfait, nous sommes la pour vous aider. 🤝",
+    // Bot responses - question
+    questionUserMsg: "J'ai une question sur ce produit",
+    questionBot: "Bien sur ! Posez votre question ici et nous vous repondrons au plus vite sur WhatsApp 👇",
+    // Bot responses - available
+    availableUserMsg: "Ce produit est toujours disponible ?",
+    availableBot1: "Oui, il est encore disponible ! ✅",
+    availableBot2: (price: string) => `Mais a ce prix de <strong>${price}</strong>, ca ne va pas durer. On a deja eu beaucoup de demandes recemment.`,
+    availableBot3: "Je vous conseille de ne pas attendre 😉",
+  },
+  en: {
+    placeholder: "Type your message...",
+    powered: "Powered by WhatsApp",
+    repliesInstantly: "Usually replies instantly",
+    wantToBuy: "I want to buy",
+    haveQuestion: "I have a question",
+    whatDoIGet: "What do I get?",
+    stillAvailable: "Still available?",
+    buyUserMsg: "I want to buy this product",
+    buyBot1: "Excellent choice! 🔥",
+    buyBot2: (price: string) => `The current price is <strong>${price}</strong> — but be quick, this offer is <strong>limited time only</strong>.`,
+    buyBot3: "Don't wait, spots are filling up fast! Click below to secure your purchase 👇",
+    payNow: "Pay now",
+    goToForm: "Buy now",
+    nativeBot: "Fill in the form below and click the buy button to secure your spot!",
+    getUserMsg: "What exactly do I get if I pay?",
+    getBot1: "Great question! 😊",
+    getBot2: (name: string) => `By purchasing <strong>${name}</strong>, you get <strong>instant</strong> access delivered to your email.`,
+    getBot3Features: "Here is what is included:",
+    getBot4: "You get <strong>lifetime access</strong>, no extra fees. And if you are not satisfied, we are here to help. 🤝",
+    questionUserMsg: "I have a question about this product",
+    questionBot: "Of course! Ask your question here and we will reply on WhatsApp as soon as possible 👇",
+    availableUserMsg: "Is this product still available?",
+    availableBot1: "Yes, it is still available! ✅",
+    availableBot2: (price: string) => `But at this price of <strong>${price}</strong>, it won't last long. We have had a lot of interest recently.`,
+    availableBot3: "I'd recommend not waiting 😉",
+  },
 };
 
-export function WhatsAppChat({ phone, welcomeMessage, productName, locale = "fr", position = "bottom-right" }: WhatsAppChatProps) {
+export function WhatsAppChat({
+  phone, welcomeMessage, productName, locale = "fr", position = "bottom-right",
+  paymentLink, paymentMode, formattedPrice, features,
+}: WhatsAppChatProps) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const [bubbles, setBubbles] = useState<ChatBubble[]>([]);
+  const [typing, setTyping] = useState(false);
+  const [quickRepliesVisible, setQuickRepliesVisible] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
+  const chatBodyRef = useRef<HTMLDivElement>(null);
+
+  const t = txt[locale] || txt.fr;
+  const cleanPhone = phone.replace(/[^0-9+]/g, "").replace(/^\+/, "");
 
   const defaultWelcome = locale === "en"
-    ? `Hi! Have a question about *${productName}*? Write to us!`
-    : `Bonjour ! Une question sur *${productName}* ? Écrivez-nous !`;
-
+    ? `Hi! Have a question about *${productName}*? I'm here to help!`
+    : `Bonjour ! Une question sur *${productName}* ? Je suis la pour vous aider !`;
   const welcome = welcomeMessage || defaultWelcome;
 
-  // Nettoyer le numéro
-  const cleanPhone = phone.replace(/[^0-9+]/g, "").replace(/^\+/, "");
+  // Scroll to bottom when new bubbles arrive
+  useEffect(() => {
+    if (chatBodyRef.current) {
+      chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+    }
+  }, [bubbles, typing]);
+
+  const addBubblesSequentially = (newBubbles: ChatBubble[]) => {
+    setQuickRepliesVisible(false);
+    let totalDelay = 0;
+
+    newBubbles.forEach((bubble, i) => {
+      const delay = bubble.delay ?? (bubble.from === 'bot' ? 800 + i * 600 : 0);
+      totalDelay += delay;
+
+      if (bubble.from === 'bot' && i > 0) {
+        setTimeout(() => setTyping(true), totalDelay - 500);
+      }
+
+      setTimeout(() => {
+        setTyping(false);
+        setBubbles(prev => [...prev, bubble]);
+      }, totalDelay);
+    });
+
+    // Show quick replies again after all bubbles
+    setTimeout(() => setQuickRepliesVisible(true), totalDelay + 300);
+  };
+
+  const handleBuy = () => {
+    const price = formattedPrice || "---";
+    const flow: ChatBubble[] = [
+      { from: 'user', text: t.buyUserMsg, delay: 0 },
+      { from: 'bot', text: t.buyBot1 },
+      { from: 'bot', html: t.buyBot2(price) },
+      { from: 'bot', text: t.buyBot3 },
+    ];
+    addBubblesSequentially(flow);
+  };
+
+  const handleWhatDoIGet = () => {
+    const flow: ChatBubble[] = [
+      { from: 'user', text: t.getUserMsg, delay: 0 },
+      { from: 'bot', text: t.getBot1 },
+      { from: 'bot', html: t.getBot2(productName) },
+    ];
+    if (features && features.length > 0) {
+      flow.push({
+        from: 'bot',
+        html: `${t.getBot3Features}<br/>${features.map(f => `✅ ${f}`).join('<br/>')}`,
+      });
+    }
+    flow.push({ from: 'bot', html: t.getBot4 });
+    addBubblesSequentially(flow);
+  };
+
+  const handleQuestion = () => {
+    addBubblesSequentially([
+      { from: 'user', text: t.questionUserMsg, delay: 0 },
+      { from: 'bot', text: t.questionBot },
+    ]);
+  };
+
+  const handleAvailable = () => {
+    const price = formattedPrice || "---";
+    addBubblesSequentially([
+      { from: 'user', text: t.availableUserMsg, delay: 0 },
+      { from: 'bot', text: t.availableBot1 },
+      { from: 'bot', html: t.availableBot2(price) },
+      { from: 'bot', text: t.availableBot3 },
+    ]);
+  };
 
   const handleSend = () => {
     const prefilledText = locale === "en"
       ? `Hi, I have a question about *${productName}*: ${message}`
       : `Bonjour, j'ai une question sur *${productName}* : ${message}`;
-
     const text = message.trim() ? prefilledText : (
       locale === "en"
         ? `Hi, I'm interested in *${productName}*`
-        : `Bonjour, je suis intéressé(e) par *${productName}*`
+        : `Bonjour, je suis interesse(e) par *${productName}*`
     );
-
-    window.open(
-      `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`,
-      "_blank"
-    );
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, "_blank");
     setMessage("");
-    setOpen(false);
   };
 
-  // Fermer au clic extérieur
+  const handleReset = () => {
+    setOpen(false);
+    setBubbles([]);
+    setTyping(false);
+    setQuickRepliesVisible(true);
+  };
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const time = new Date().toLocaleTimeString(locale === "en" ? "en" : "fr", { hour: "2-digit", minute: "2-digit" });
+
+  // Check if last bot message was the buy flow (to show CTA)
+  const lastBubble = bubbles[bubbles.length - 1];
+  const showPaymentCta = lastBubble?.from === 'bot' && lastBubble?.text === t.buyBot3;
+  const showFormCta = showPaymentCta && paymentMode !== 'external_link';
+  const showExternalCta = showPaymentCta && paymentMode === 'external_link' && paymentLink;
+
   return (
     <div ref={ref} className={`fixed ${positionClasses[position]} z-50`}>
-      {/* Popup */}
       {open && (
-        <div className="mb-3 w-[320px] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-in slide-in-from-bottom-2">
+        <div className="mb-3 w-[320px] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
           {/* Header */}
           <div className="bg-[#075E54] px-4 py-3 flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
               <WhatsAppIcon className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <p className="text-white font-semibold text-sm">{productName}</p>
-              <p className="text-green-200 text-xs">
-                {locale === "en" ? "Usually replies instantly" : "Répond généralement instantanément"}
-              </p>
+              <p className="text-white font-semibold text-sm truncate">{productName}</p>
+              <p className="text-green-200 text-xs">{t.repliesInstantly}</p>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              className="text-white/70 hover:text-white"
-            >
+            <button onClick={handleReset} className="text-white/70 hover:text-white">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -109,14 +243,88 @@ export function WhatsAppChat({ phone, welcomeMessage, productName, locale = "fr"
           </div>
 
           {/* Chat body */}
-          <div className="bg-[#ECE5DD] p-4 min-h-[120px]">
-            {/* Welcome bubble */}
+          <div ref={chatBodyRef} className="bg-[#ECE5DD] p-3 space-y-2 max-h-[320px] overflow-y-auto">
+            {/* Welcome */}
             <div className="bg-white rounded-lg rounded-tl-none p-3 shadow-sm max-w-[85%]">
               <p className="text-sm text-gray-800 whitespace-pre-line">{welcome}</p>
-              <p className="text-[10px] text-gray-400 text-right mt-1">
-                {new Date().toLocaleTimeString(locale === "en" ? "en" : "fr", { hour: "2-digit", minute: "2-digit" })}
-              </p>
+              <p className="text-[10px] text-gray-400 text-right mt-1">{time}</p>
             </div>
+
+            {/* Dynamic bubbles */}
+            {bubbles.map((b, i) => (
+              <div key={i} className={b.from === 'user' ? 'flex justify-end' : ''}>
+                <div className={`rounded-lg p-3 shadow-sm max-w-[85%] ${
+                  b.from === 'user'
+                    ? 'bg-[#DCF8C6] rounded-tr-none'
+                    : 'bg-white rounded-tl-none'
+                }`}>
+                  {b.html ? (
+                    <p className="text-sm text-gray-800" dangerouslySetInnerHTML={{ __html: b.html }} />
+                  ) : (
+                    <p className="text-sm text-gray-800">{b.text}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Payment CTAs after buy flow */}
+            {showExternalCta && (
+              <div className="pl-0 max-w-[85%]">
+                <a
+                  href={paymentLink!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block bg-[#25D366] text-white text-center text-sm font-bold py-2.5 px-4 rounded-lg hover:bg-[#20BD5A] transition-colors"
+                >
+                  {t.payNow} →
+                </a>
+              </div>
+            )}
+            {showFormCta && (
+              <div className="pl-0 max-w-[85%] space-y-2">
+                <div className="bg-white rounded-lg rounded-tl-none p-3 shadow-sm">
+                  <p className="text-sm text-gray-800">{t.nativeBot}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    document.getElementById("checkout-form")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="w-full bg-[#25D366] text-white text-center text-sm font-bold py-2.5 px-4 rounded-lg hover:bg-[#20BD5A] transition-colors"
+                >
+                  {t.goToForm} ↓
+                </button>
+              </div>
+            )}
+
+            {/* Typing indicator */}
+            {typing && (
+              <div className="bg-white rounded-lg rounded-tl-none p-3 shadow-sm max-w-[60px]">
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              </div>
+            )}
+
+            {/* Quick replies */}
+            {quickRepliesVisible && !typing && (
+              <div className="flex flex-wrap gap-1.5 justify-end pt-1">
+                <button onClick={handleBuy} className="bg-white border border-[#25D366] text-[#25D366] text-xs font-medium px-3 py-1.5 rounded-full hover:bg-[#25D366] hover:text-white transition-colors">
+                  {t.wantToBuy} 💰
+                </button>
+                <button onClick={handleWhatDoIGet} className="bg-white border border-gray-300 text-gray-600 text-xs font-medium px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors">
+                  {t.whatDoIGet} 🎁
+                </button>
+                <button onClick={handleQuestion} className="bg-white border border-gray-300 text-gray-600 text-xs font-medium px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors">
+                  {t.haveQuestion} 💬
+                </button>
+                <button onClick={handleAvailable} className="bg-white border border-gray-300 text-gray-600 text-xs font-medium px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors">
+                  {t.stillAvailable} ✅
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Input */}
@@ -127,7 +335,7 @@ export function WhatsAppChat({ phone, welcomeMessage, productName, locale = "fr"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                placeholder={txt.placeholder[locale]}
+                placeholder={t.placeholder}
                 className="flex-1 px-3 py-2.5 text-sm border border-gray-200 rounded-full focus:outline-none focus:ring-1 focus:ring-[#25D366]"
               />
               <button
@@ -139,14 +347,14 @@ export function WhatsAppChat({ phone, welcomeMessage, productName, locale = "fr"
                 </svg>
               </button>
             </div>
-            <p className="text-[10px] text-gray-400 text-center mt-2">{txt.powered[locale]}</p>
+            <p className="text-[10px] text-gray-400 text-center mt-2">{t.powered}</p>
           </div>
         </div>
       )}
 
       {/* Floating button */}
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => { if (open) handleReset(); else setOpen(true); }}
         className="w-14 h-14 bg-[#25D366] rounded-full flex items-center justify-center shadow-lg hover:bg-[#20BD5A] transition-all hover:scale-105"
         data-track-cta="whatsapp_chat"
       >
