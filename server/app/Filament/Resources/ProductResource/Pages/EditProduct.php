@@ -13,6 +13,14 @@ class EditProduct extends EditRecord
 
     public static bool $formActionsAreSticky = true;
 
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        // Mettre a jour base_currency avec la devise actuelle du store
+        $data['base_currency'] = Filament::getTenant()->currency;
+
+        return $data;
+    }
+
     protected function getHeaderActions(): array
     {
         $frontendUrl = config('app.frontend_url', env('NEXT_PUBLIC_APP_URL', 'http://localhost:3000'));

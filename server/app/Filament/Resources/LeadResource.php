@@ -73,29 +73,31 @@ class LeadResource extends Resource
                         default => 'gray',
                     }),
 
+                Tables\Columns\TextColumn::make('reminder_count')
+                    ->label('Relances')
+                    ->badge()
+                    ->color(fn (int $state): string => match (true) {
+                        $state === 0 => 'gray',
+                        $state === 1 => 'info',
+                        $state === 2 => 'warning',
+                        default => 'danger',
+                    })
+                    ->formatStateUsing(fn (int $state): string => $state . '/3'),
+
                 Tables\Columns\IconColumn::make('converted')
                     ->label('Converti')
-                    ->getStateUsing(function (Lead $record): bool {
-                        return Order::where('store_id', $record->store_id)
-                            ->where('product_id', $record->product_id)
-                            ->where('customer_email', $record->customer_email)
-                            ->where('status', 'paid')
-                            ->exists();
-                    })
+                    ->getStateUsing(fn (Lead $record): bool => $record->converted_at !== null)
                     ->boolean()
                     ->trueIcon('heroicon-o-check-circle')
                     ->falseIcon('heroicon-o-x-circle')
                     ->trueColor('success')
                     ->falseColor('danger'),
 
-                Tables\Columns\IconColumn::make('reminded')
-                    ->label('Relancé')
-                    ->getStateUsing(fn (Lead $record): bool => $record->reminded_at !== null)
-                    ->boolean()
-                    ->trueIcon('heroicon-o-envelope')
-                    ->falseIcon('heroicon-o-clock')
-                    ->trueColor('success')
-                    ->falseColor('gray'),
+                Tables\Columns\TextColumn::make('last_reminded_at')
+                    ->label('Derniere relance')
+                    ->dateTime('d/m H:i')
+                    ->sortable()
+                    ->default('—'),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Date')
@@ -112,22 +114,14 @@ class LeadResource extends Resource
                 Tables\Filters\TernaryFilter::make('converted')
                     ->label('Converti')
                     ->queries(
-                        true: fn ($query) => $query->whereIn('customer_email', function ($sub) {
-                            $sub->select('customer_email')
-                                ->from('orders')
-                                ->where('status', 'paid');
-                        }),
-                        false: fn ($query) => $query->whereNotIn('customer_email', function ($sub) {
-                            $sub->select('customer_email')
-                                ->from('orders')
-                                ->where('status', 'paid');
-                        }),
+                        true: fn ($query) => $query->whereNotNull('converted_at'),
+                        false: fn ($query) => $query->whereNull('converted_at'),
                     ),
                 Tables\Filters\TernaryFilter::make('reminded')
-                    ->label('Relancé')
+                    ->label('Relance')
                     ->queries(
-                        true: fn ($query) => $query->whereNotNull('reminded_at'),
-                        false: fn ($query) => $query->whereNull('reminded_at'),
+                        true: fn ($query) => $query->where('reminder_count', '>', 0),
+                        false: fn ($query) => $query->where('reminder_count', 0),
                     ),
                 Tables\Filters\Filter::make('created_at')
                     ->form([

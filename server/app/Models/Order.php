@@ -24,6 +24,11 @@ class Order extends Model
         'payment_ref',
         'source',
         'metadata',
+        'utm_source',
+        'utm_medium',
+        'utm_campaign',
+        'referrer',
+        'promo_code',
     ];
 
     protected function casts(): array

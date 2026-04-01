@@ -86,6 +86,64 @@ class OrderResource extends Resource
                             }),
                     ])->columns(2),
 
+                Forms\Components\Section::make('Attribution')
+                    ->schema([
+                        Forms\Components\TextInput::make('utm_source')
+                            ->label('UTM Source')
+                            ->disabled(),
+                        Forms\Components\TextInput::make('utm_medium')
+                            ->label('UTM Medium')
+                            ->disabled(),
+                        Forms\Components\TextInput::make('utm_campaign')
+                            ->label('UTM Campaign')
+                            ->disabled(),
+                        Forms\Components\TextInput::make('referrer')
+                            ->label('Referrer')
+                            ->disabled(),
+                        Forms\Components\TextInput::make('promo_code')
+                            ->label('Code promo')
+                            ->disabled(),
+                    ])
+                    ->columns(2)
+                    ->collapsed()
+                    ->visible(fn (?Order $record): bool =>
+                        $record?->utm_source || $record?->utm_medium || $record?->utm_campaign || $record?->referrer || $record?->promo_code
+                    ),
+
+                Forms\Components\Section::make('Details paiement')
+                    ->schema([
+                        Forms\Components\Placeholder::make('payment_details')
+                            ->label('')
+                            ->content(function (Order $record): HtmlString {
+                                $tx = $record->paymentTransactions()->latest()->first();
+                                if (! $tx) {
+                                    return new HtmlString('<span class="text-gray-400">Aucune transaction</span>');
+                                }
+                                $details = [
+                                    'Provider' => $tx->provider,
+                                    'Ref' => $tx->provider_ref,
+                                    'Statut' => $tx->status,
+                                    'Pays' => $tx->country,
+                                    'Reseau' => $tx->network,
+                                    'Telephone' => $tx->phone,
+                                    'Tentative' => $tx->attempt_number,
+                                ];
+                                $html = '<div class="space-y-1 text-sm">';
+                                foreach ($details as $label => $val) {
+                                    if ($val) {
+                                        $html .= '<div><span class="text-gray-500">' . e($label) . ':</span> <strong>' . e($val) . '</strong></div>';
+                                    }
+                                }
+                                if ($tx->provider_response) {
+                                    $html .= '<details class="mt-2"><summary class="text-gray-400 cursor-pointer text-xs">Response brute</summary><pre class="mt-1 text-xs bg-gray-50 p-2 rounded overflow-x-auto">' . e(json_encode($tx->provider_response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) . '</pre></details>';
+                                }
+                                $html .= '</div>';
+                                return new HtmlString($html);
+                            }),
+                    ])
+                    ->collapsed()
+                    ->visible(fn (?Order $record): bool => $record?->paymentTransactions()->exists() ?? false),
+
                 Forms\Components\Section::make('Metadata')
                     ->schema([
                         Forms\Components\KeyValue::make('metadata')
@@ -146,6 +204,25 @@ class OrderResource extends Resource
                     ->label('Paiement')
                     ->badge()
                     ->color('gray'),
+
+                Tables\Columns\TextColumn::make('utm_source')
+                    ->label('Origine')
+                    ->badge()
+                    ->color(fn (?string $state): string => match (true) {
+                        $state === null => 'gray',
+                        str_contains($state ?? '', 'facebook') || str_contains($state ?? '', 'fb') => 'info',
+                        str_contains($state ?? '', 'google') => 'success',
+                        str_contains($state ?? '', 'tiktok') => 'warning',
+                        default => 'primary',
+                    })
+                    ->default('direct')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('promo_code')
+                    ->label('Promo')
+                    ->badge()
+                    ->color('success')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Date')

@@ -27,6 +27,11 @@ class OrderController extends Controller
             'customer_email' => 'required|email',
             'customer_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:30',
+            'utm_source' => 'nullable|string|max:255',
+            'utm_medium' => 'nullable|string|max:255',
+            'utm_campaign' => 'nullable|string|max:255',
+            'referrer' => 'nullable|string|max:2048',
+            'promo_code' => 'nullable|string|max:100',
         ]);
 
         if ($validator->fails()) {
@@ -54,6 +59,11 @@ class OrderController extends Controller
             'status' => 'pending',
             'payment_method' => $product->payment_mode === 'external_link' ? $product->external_platform : null,
             'source' => $product->payment_mode === 'external_link' ? ($product->external_platform ?? 'external') : 'native',
+            'utm_source' => $request->utm_source,
+            'utm_medium' => $request->utm_medium,
+            'utm_campaign' => $request->utm_campaign,
+            'referrer' => $request->referrer,
+            'promo_code' => $request->promo_code,
         ]);
 
         // Tracking interne
