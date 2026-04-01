@@ -31,11 +31,11 @@ class ProductResource extends Resource
                         Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\TextInput::make('price')
-                                    ->label('Prix original (FCFA)')
+                                    ->label('Prix original')
                                     ->required()
                                     ->numeric()
                                     ->minValue(0)
-                                    ->suffix('FCFA')
+                                    ->suffix(fn () => Filament::getTenant()?->currency ?? 'XOF')
                                     ->placeholder('5000')
                                     ->live(onBlur: true),
 
@@ -51,10 +51,12 @@ class ProductResource extends Resource
                                         } elseif ($type === 'fixed' && $value > 0) {
                                             $final = max(0, $price - $value);
                                         } else {
-                                            return number_format($price) . ' FCFA';
+                                            $cur = \Filament\Facades\Filament::getTenant()?->currency ?? 'XOF';
+                                            return number_format($price) . ' ' . $cur;
                                         }
 
-                                        return number_format($final) . ' FCFA (au lieu de ' . number_format($price) . ')';
+                                        $cur = \Filament\Facades\Filament::getTenant()?->currency ?? 'XOF';
+                                        return number_format($final) . ' ' . $cur . ' (au lieu de ' . number_format($price) . ')';
                                     }),
                             ]),
 
@@ -115,17 +117,17 @@ class ProductResource extends Resource
                                     ->options([
                                         'none' => 'Aucune',
                                         'percentage' => 'Réduction en %',
-                                        'fixed' => 'Réduction fixe (FCFA)',
+                                        'fixed' => 'Réduction fixe',
                                     ])
                                     ->default('none')
                                     ->live(onBlur: true),
 
                                 Forms\Components\TextInput::make('promo_value')
-                                    ->label(fn (Forms\Get $get) => $get('promo_type') === 'percentage' ? 'Réduction (%)' : 'Réduction (FCFA)')
+                                    ->label(fn (Forms\Get $get) => $get('promo_type') === 'percentage' ? 'Réduction (%)' : 'Réduction')
                                     ->numeric()
                                     ->minValue(1)
                                     ->maxValue(fn (Forms\Get $get) => $get('promo_type') === 'percentage' ? 99 : null)
-                                    ->suffix(fn (Forms\Get $get) => $get('promo_type') === 'percentage' ? '%' : 'FCFA')
+                                    ->suffix(fn (Forms\Get $get) => $get('promo_type') === 'percentage' ? '%' : (Filament::getTenant()?->currency ?? 'XOF'))
                                     ->placeholder(fn (Forms\Get $get) => $get('promo_type') === 'percentage' ? '30' : '2000')
                                     ->visible(fn (Forms\Get $get) => $get('promo_type') !== 'none')
                                     ->live(onBlur: true),
@@ -507,9 +509,11 @@ class ProductResource extends Resource
 
                 Tables\Columns\TextColumn::make('price')
                     ->label('Prix')
-                    ->formatStateUsing(fn (int $state): string =>
-                        number_format($state, 0, ',', ' ') . ' FCFA'
-                    )
+                    ->formatStateUsing(function (int $state, Product $record): string {
+                        $store = Filament::getTenant();
+                        $resolved = $record->resolveDisplayPrice($store->currency);
+                        return $resolved['formatted_price'];
+                    })
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('delivery_type')
@@ -551,7 +555,7 @@ class ProductResource extends Resource
                     ->color('info')
                     ->url(fn (Product $record): string =>
                         (config('app.frontend_url', env('NEXT_PUBLIC_APP_URL', 'http://localhost:3000')))
-                        . '/' . $record->store->slug . '/p/' . $record->id
+                        . '/' . $record->store->slug . '/p/' . $record->id . '?notrack'
                     )
                     ->openUrlInNewTab(),
                 Tables\Actions\ReplicateAction::make()

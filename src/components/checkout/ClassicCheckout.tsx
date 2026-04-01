@@ -311,7 +311,7 @@ export function ClassicCheckout({ data, trackEvent, onTrackInternal }: { data: C
               </div>
 
               <div className="px-6">
-                <PaymentLogos />
+                <PaymentLogos locale={locale} />
               </div>
 
               {/* Micro-trust indicators */}

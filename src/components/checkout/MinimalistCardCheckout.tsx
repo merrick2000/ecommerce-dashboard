@@ -75,7 +75,7 @@ export function MinimalistCardCheckout({ data, trackEvent, onTrackInternal }: { 
               <CheckoutForm data={data} compact onTrackEvent={trackEvent} onTrackInternal={onTrackInternal} />
             </div>
 
-            <PaymentLogos />
+            <PaymentLogos locale={locale} />
           </div>
         </div>
 

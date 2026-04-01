@@ -217,8 +217,35 @@ class CheckoutConfigResource extends Resource
                                             ->label('Ville')
                                             ->required()
                                             ->placeholder('Dakar'),
+                                        Forms\Components\Select::make('country')
+                                            ->label('Pays (drapeau)')
+                                            ->searchable()
+                                            ->options([
+                                                'BJ' => '🇧🇯 Bénin',
+                                                'BF' => '🇧🇫 Burkina Faso',
+                                                'CI' => '🇨🇮 Côte d\'Ivoire',
+                                                'SN' => '🇸🇳 Sénégal',
+                                                'TG' => '🇹🇬 Togo',
+                                                'ML' => '🇲🇱 Mali',
+                                                'GN' => '🇬🇳 Guinée',
+                                                'NE' => '🇳🇪 Niger',
+                                                'CM' => '🇨🇲 Cameroun',
+                                                'GA' => '🇬🇦 Gabon',
+                                                'CG' => '🇨🇬 Congo',
+                                                'CD' => '🇨🇩 RD Congo',
+                                                'GH' => '🇬🇭 Ghana',
+                                                'NG' => '🇳🇬 Nigeria',
+                                                'KE' => '🇰🇪 Kenya',
+                                                'MA' => '🇲🇦 Maroc',
+                                                'TN' => '🇹🇳 Tunisie',
+                                                'FR' => '🇫🇷 France',
+                                                'BE' => '🇧🇪 Belgique',
+                                                'CA' => '🇨🇦 Canada',
+                                                'US' => '🇺🇸 États-Unis',
+                                                'GB' => '🇬🇧 Royaume-Uni',
+                                            ]),
                                     ])
-                                    ->columns(2)
+                                    ->columns(3)
                                     ->addActionLabel('Ajouter un acheteur')
                                     ->reorderable()
                                     ->defaultItems(0)
@@ -377,7 +404,7 @@ class CheckoutConfigResource extends Resource
                     ->icon('heroicon-o-eye')
                     ->color('success')
                     ->url(fn (CheckoutConfig $record): string =>
-                        (env('FRONTEND_URL', 'http://localhost:3000')) . '/' . $record->store->slug
+                        (env('FRONTEND_URL', 'http://localhost:3000')) . '/' . $record->store->slug . '?notrack'
                     )
                     ->openUrlInNewTab(),
                 Tables\Actions\EditAction::make(),

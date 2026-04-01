@@ -317,14 +317,17 @@ class PaymentOrchestrator
                     'payment_ref' => $result->providerRef,
                 ]);
 
-                // Tracker l'initiation du paiement
-                \App\Models\PageEvent::create([
-                    'store_id' => $order->store_id,
-                    'product_id' => $order->product_id,
-                    'event_type' => 'payment_started',
-                    'session_id' => 'server_' . $order->id,
-                    'ip_hash' => hash('sha256', request()->ip() ?? ''),
-                ]);
+                // Tracker l'initiation du paiement (sauf owner)
+                $order->load('store.user');
+                if (! $this->isOwnerOrder($order)) {
+                    \App\Models\PageEvent::create([
+                        'store_id' => $order->store_id,
+                        'product_id' => $order->product_id,
+                        'event_type' => 'payment_started',
+                        'session_id' => 'server_' . $order->id,
+                        'ip_hash' => hash('sha256', request()->ip() ?? ''),
+                    ]);
+                }
 
                 return $result;
             }
@@ -550,9 +553,24 @@ class PaymentOrchestrator
         return $providers;
     }
 
+    private function isOwnerOrder(Order $order): bool
+    {
+        $ownerEmail = $order->store->user?->email;
+
+        return $ownerEmail && strtolower($order->customer_email) === strtolower($ownerEmail);
+    }
+
     private function dispatchTrackingEvent(Order $order): void
     {
-        $order->load(['store.checkoutConfig', 'product']);
+        $order->load(['store.checkoutConfig', 'store.user', 'product']);
+
+        // Skip tracking pour les commandes du propriétaire
+        if ($this->isOwnerOrder($order)) {
+            PaymentLogger::info('tracking', "Skipping tracking for owner order #{$order->id}");
+            // On dispatch quand même les emails
+            $this->dispatchOrderEmails($order);
+            return;
+        }
 
         // Tracker le paiement complété dans page_events
         \App\Models\PageEvent::create([

@@ -23,14 +23,14 @@ class EditProduct extends EditRecord
                 ->label('Voir le produit')
                 ->icon('heroicon-o-eye')
                 ->color('info')
-                ->url(fn () => $frontendUrl . '/' . $tenant->slug . '/p/' . $this->record->id)
+                ->url(fn () => $frontendUrl . '/' . $tenant->slug . '/p/' . $this->record->id . '?notrack')
                 ->openUrlInNewTab(),
 
             Actions\Action::make('preview_store')
                 ->label('Voir la boutique')
                 ->icon('heroicon-o-building-storefront')
                 ->color('gray')
-                ->url(fn () => $frontendUrl . '/' . $tenant->slug)
+                ->url(fn () => $frontendUrl . '/' . $tenant->slug . '?notrack')
                 ->openUrlInNewTab(),
 
             Actions\DeleteAction::make(),

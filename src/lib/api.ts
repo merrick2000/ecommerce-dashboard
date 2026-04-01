@@ -67,7 +67,7 @@ export interface SalesPopupConfig {
   enabled?: boolean;
   interval_seconds?: number;
   show_name?: boolean;
-  entries?: { name: string; city: string }[];
+  entries?: { name: string; city: string; country?: string }[];
 }
 
 export interface TrackingConfig {
@@ -238,6 +238,7 @@ export function captureLeadEmail(data: {
   name?: string;
   phone?: string;
 }): void {
+  if (typeof window !== "undefined" && localStorage.getItem("_slt_notrack") === "1") return;
   fetch(`${API_BASE}/v1/leads/capture`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -257,6 +258,7 @@ export function sendTrackEvent(data: {
   utm_campaign?: string;
   metadata?: Record<string, any>;
 }): void {
+  if (typeof window !== "undefined" && localStorage.getItem("_slt_notrack") === "1") return;
   fetch(`${API_BASE}/v1/track`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

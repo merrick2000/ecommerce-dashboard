@@ -19,9 +19,18 @@ const txt = {
   min: { fr: "min", en: "min ago" },
 };
 
+function getFlag(code?: string): string | null {
+  if (!code || code.length !== 2) return null;
+  const offset = 0x1F1E6 - 65;
+  return String.fromCodePoint(
+    code.toUpperCase().charCodeAt(0) + offset,
+    code.toUpperCase().charCodeAt(1) + offset,
+  );
+}
+
 export function SalesPopup({ config, productName, dark, locale = 'fr' }: SalesPopupProps) {
   const [visible, setVisible] = useState(false);
-  const [currentEntry, setCurrentEntry] = useState<{ name: string; city: string } | null>(null);
+  const [currentEntry, setCurrentEntry] = useState<{ name: string; city: string; country?: string } | null>(null);
   const [minutesAgo, setMinutesAgo] = useState(0);
 
   const entries = config.entries;
@@ -75,9 +84,13 @@ export function SalesPopup({ config, productName, dark, locale = 'fr' }: SalesPo
             dark ? "bg-gray-800 border border-white/10 text-white" : "bg-white border border-gray-200 text-gray-800"
           }`}
         >
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-[10px] shrink-0">
-            {showName ? currentEntry.name.charAt(0).toUpperCase() : "?"}
-          </div>
+          {getFlag(currentEntry.country) ? (
+            <span className="text-lg shrink-0">{getFlag(currentEntry.country)}</span>
+          ) : (
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-[10px] shrink-0">
+              {showName ? currentEntry.name.charAt(0).toUpperCase() : "?"}
+            </div>
+          )}
 
           <div className="min-w-0 flex-1">
             <p className="text-xs leading-tight">
@@ -110,9 +123,13 @@ export function SalesPopup({ config, productName, dark, locale = 'fr' }: SalesPo
             dark ? "bg-gray-800 border border-white/10 text-white" : "bg-white border border-gray-200 text-gray-800"
           }`}
         >
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
-            {showName ? currentEntry.name.charAt(0).toUpperCase() : "?"}
-          </div>
+          {getFlag(currentEntry.country) ? (
+            <span className="text-2xl shrink-0">{getFlag(currentEntry.country)}</span>
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
+              {showName ? currentEntry.name.charAt(0).toUpperCase() : "?"}
+            </div>
+          )}
 
           <div className="min-w-0">
             <p className="text-sm font-semibold leading-tight">

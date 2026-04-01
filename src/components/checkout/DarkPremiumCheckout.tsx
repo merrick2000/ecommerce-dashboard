@@ -343,7 +343,7 @@ export function DarkPremiumCheckout({ data, trackEvent, onTrackInternal }: { dat
               </div>
 
               <div className="px-6">
-                <PaymentLogos dark />
+                <PaymentLogos dark locale={locale} />
               </div>
 
               {/* Micro-trust indicators */}
