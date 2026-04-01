@@ -14,6 +14,7 @@ interface CheckoutFormProps {
   compact?: boolean;
   onTrackEvent?: TrackEventFn;
   onTrackInternal?: (eventType: string) => void;
+  promoCode?: string;
 }
 
 const COUNTRIES = [
@@ -60,7 +61,14 @@ const formTxt = {
   error: { fr: 'Une erreur est survenue', en: 'An error occurred' },
 };
 
-export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInternal }: CheckoutFormProps) {
+function getUtmParams(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const cached = sessionStorage.getItem("_slt_utm");
+  if (cached) return JSON.parse(cached);
+  return {};
+}
+
+export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInternal, promoCode }: CheckoutFormProps) {
   const { store, product, checkout_config: config } = data;
   const locale: Locale = store.locale || 'fr';
   const router = useRouter();
@@ -108,6 +116,7 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInterna
 
     if (isExternalLink) {
       // Mode lien externe : on crée la commande pour le tracking puis on redirige
+      const utm = getUtmParams();
       try {
         await createOrder({
           store_id: store.id,
@@ -115,6 +124,9 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInterna
           customer_email: email,
           customer_name: name || undefined,
           customer_phone: phone ? `${dialCode}${phone}` : undefined,
+          ...utm,
+          referrer: typeof document !== "undefined" ? document.referrer || undefined : undefined,
+          promo_code: promoCode || undefined,
         });
       } catch {
         // On redirige quand même, la commande est optionnelle en mode externe
@@ -125,12 +137,16 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInterna
     }
 
     try {
+      const utm = getUtmParams();
       const result = await createOrder({
         store_id: store.id,
         product_id: product.id,
         customer_email: email,
         customer_name: name || undefined,
         customer_phone: phone ? `${dialCode}${phone}` : undefined,
+        ...utm,
+        referrer: typeof document !== "undefined" ? document.referrer || undefined : undefined,
+        promo_code: promoCode || undefined,
       });
 
       // Sauvegarder pour pré-remplir au prochain achat
