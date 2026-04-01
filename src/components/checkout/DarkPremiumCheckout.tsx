@@ -14,6 +14,7 @@ import { VideoSection } from "./VideoSection";
 import PriceDisplay from "./PriceDisplay";
 import { DescriptionWithCTAs } from "./DescriptionWithCTAs";
 import { t, type Locale } from "@/lib/i18n";
+import { PromoBanner } from "./PromoBanner";
 
 function FeaturesBlock({ features, color, locale = 'fr' }: { features: string[]; color: string; locale?: Locale }) {
   if (!features || features.length === 0) return null;
@@ -100,7 +101,7 @@ const DEFAULT_LAYOUT: PageSection[] = [
   { key: 'faq', label: 'FAQ', visible: true },
 ];
 
-export function DarkPremiumCheckout({ data, trackEvent, onTrackInternal }: { data: CheckoutPageData; trackEvent?: TrackEventFn; onTrackInternal?: (eventType: string) => void }) {
+export function DarkPremiumCheckout({ data, trackEvent, onTrackInternal, promoCode }: { data: CheckoutPageData; trackEvent?: TrackEventFn; onTrackInternal?: (eventType: string) => void; promoCode?: string }) {
   const { store, product, checkout_config: config } = data;
   const locale: Locale = store.locale || 'fr';
 
@@ -251,6 +252,7 @@ export function DarkPremiumCheckout({ data, trackEvent, onTrackInternal }: { dat
 
   return (
     <div className="min-h-screen bg-gray-950 text-white pb-20 md:pb-0 relative overflow-x-hidden">
+      {promoCode && <PromoBanner promoCode={promoCode} locale={locale} dark />}
       {/* Ambient background glow */}
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] rounded-full opacity-15 blur-[120px] pointer-events-none"

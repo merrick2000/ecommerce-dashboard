@@ -7,6 +7,7 @@ export const revalidate = 60; // Revalide toutes les 60 secondes
 
 type Props = {
   params: Promise<{ slug: string; productId: string }>;
+  searchParams: Promise<{ promo?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -34,8 +35,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function ProductCheckoutPage({ params }: Props) {
+export default async function ProductCheckoutPage({ params, searchParams }: Props) {
   const { slug, productId } = await params;
+  const { promo } = await searchParams;
 
   const id = parseInt(productId, 10);
   if (isNaN(id)) notFound();
@@ -47,5 +49,5 @@ export default async function ProductCheckoutPage({ params }: Props) {
     notFound();
   }
 
-  return <CheckoutSwitcher data={data} />;
+  return <CheckoutSwitcher data={data} promoCode={promo} />;
 }

@@ -14,6 +14,7 @@ import { VideoSection } from "./VideoSection";
 import PriceDisplay from "./PriceDisplay";
 import { DescriptionWithCTAs } from "./DescriptionWithCTAs";
 import { t, type Locale } from "@/lib/i18n";
+import { PromoBanner } from "./PromoBanner";
 
 function FeaturesBlock({ features, color, locale = 'fr' }: { features: string[]; color: string; locale?: Locale }) {
   if (!features || features.length === 0) return null;
@@ -97,7 +98,7 @@ const DEFAULT_LAYOUT: PageSection[] = [
   { key: 'faq', label: 'FAQ', visible: true },
 ];
 
-export function ClassicCheckout({ data, trackEvent, onTrackInternal }: { data: CheckoutPageData; trackEvent?: TrackEventFn; onTrackInternal?: (eventType: string) => void }) {
+export function ClassicCheckout({ data, trackEvent, onTrackInternal, promoCode }: { data: CheckoutPageData; trackEvent?: TrackEventFn; onTrackInternal?: (eventType: string) => void; promoCode?: string }) {
   const { store, product, checkout_config: config } = data;
   const locale: Locale = store.locale || 'fr';
 
@@ -230,6 +231,7 @@ export function ClassicCheckout({ data, trackEvent, onTrackInternal }: { data: C
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-20 md:pb-0">
+      {promoCode && <PromoBanner promoCode={promoCode} locale={locale} />}
       {/* Sticky header */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">

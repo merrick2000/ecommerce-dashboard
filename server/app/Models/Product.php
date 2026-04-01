@@ -53,6 +53,7 @@ class Product extends Model implements HasMedia
     {
         return [
             'price' => 'integer',
+            'promo_value' => 'integer',
             'is_active' => 'boolean',
             'currency_prices' => 'array',
             'whatsapp_chat' => 'array',

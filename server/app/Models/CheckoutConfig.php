@@ -20,6 +20,7 @@ class CheckoutConfig extends Model
         'payment_logos',
         'tracking_config',
         'page_layout',
+        'abandoned_cart_promo',
     ];
 
     public const DEFAULT_PAGE_LAYOUT = [
@@ -47,6 +48,7 @@ class CheckoutConfig extends Model
             'payment_logos' => 'array',
             'tracking_config' => 'array',
             'page_layout' => 'array',
+            'abandoned_cart_promo' => 'array',
         ];
     }
 
