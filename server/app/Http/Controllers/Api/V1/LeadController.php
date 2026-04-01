@@ -25,7 +25,7 @@ class LeadController extends Controller
             'phone' => 'nullable|string|max:50',
         ]);
 
-        Lead::updateOrCreate(
+        $lead = Lead::updateOrCreate(
             [
                 'store_id' => $data['store_id'],
                 'product_id' => $data['product_id'],
@@ -37,6 +37,12 @@ class LeadController extends Controller
                 'source' => 'checkout',
             ]
         );
+
+        // Telegram notification (seulement pour les nouveaux leads)
+        if ($lead->wasRecentlyCreated) {
+            $productName = $lead->product?->name ?? 'Produit';
+            \App\Services\TelegramService::notifyLead($productName, $data['email']);
+        }
 
         return response()->json(['captured' => true], 202);
     }
