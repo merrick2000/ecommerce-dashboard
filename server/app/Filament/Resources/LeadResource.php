@@ -97,7 +97,7 @@ class LeadResource extends Resource
                     ->label('Derniere relance')
                     ->dateTime('d/m H:i')
                     ->sortable()
-                    ->default('—'),
+                    ->placeholder('—'),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Date')
