@@ -119,10 +119,19 @@ export function useFrictionTracker(storeId: number, productId?: number) {
     });
     window.addEventListener("pagehide", handleLeave);
 
-    // --- JS Error tracking ---
+    // --- JS Error tracking (ignore third-party / Facebook webview errors) ---
+    const ignoredErrors = [
+      "Script error",
+      "webkit.messageHandlers",
+      "Java object is gone",
+      "enableButtonsClickedMetaDataLogging",
+      "postMessage",
+    ];
     const handleError = (event: ErrorEvent) => {
+      const msg = event.message || "";
+      if (ignoredErrors.some(e => msg.includes(e))) return;
       send("js_error", {
-        message: event.message?.slice(0, 200),
+        message: msg.slice(0, 200),
         source: event.filename?.slice(-100),
         line: event.lineno,
       });

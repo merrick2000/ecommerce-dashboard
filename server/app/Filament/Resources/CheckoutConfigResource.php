@@ -61,7 +61,19 @@ class CheckoutConfigResource extends Resource
                                                 ->default('Acheter maintenant')
                                                 ->required()
                                                 ->maxLength(100)
-                                                ->placeholder('Ex: Débloquer mon accès'),
+                                                ->placeholder('Ex: Debloquer mon acces'),
+
+                                            Forms\Components\Select::make('cta_style')
+                                                ->label('Style du bouton CTA')
+                                                ->options([
+                                                    'default' => 'Standard',
+                                                    'shake' => 'Tremblement',
+                                                    'pulse' => 'Pulsation',
+                                                    'glow' => 'Lumineux',
+                                                    'bounce' => 'Rebond',
+                                                    'gradient' => 'Degrade anime',
+                                                ])
+                                                ->default('default'),
 
                                             Forms\Components\TagsInput::make('trust_badges')
                                                 ->label('Badges de confiance')

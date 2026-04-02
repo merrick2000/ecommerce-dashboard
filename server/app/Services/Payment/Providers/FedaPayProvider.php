@@ -42,7 +42,7 @@ class FedaPayProvider implements PaymentProviderInterface
             $txUrl = "{$this->baseUrl}/transactions";
             $txBody = [
                 'description' => "Commande #{$order->id}",
-                'amount' => $order->amount,
+                'amount' => (int) ceil($order->amount),
                 'currency' => ['iso' => $order->currency],
                 'callback_url' => config('app.url') . '/api/v1/webhooks/fedapay',
                 'customer' => [

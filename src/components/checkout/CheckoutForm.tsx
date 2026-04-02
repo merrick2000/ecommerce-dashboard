@@ -288,8 +288,8 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInterna
         type="submit"
         disabled={loading}
         data-track-cta="checkout_submit"
-        className="w-full rounded-xl py-3.5 text-white font-bold text-lg transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-        style={{ backgroundColor: config.primary_color }}
+        className={`w-full rounded-xl py-3.5 text-white font-bold text-lg transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed ${getCtaAnimClass(config.cta_style)}`}
+        style={getCtaStyle(config.primary_color, config.cta_style)}
       >
         {loading ? (
           <span className="inline-flex items-center gap-2">
@@ -303,6 +303,47 @@ export function CheckoutForm({ data, dark, compact, onTrackEvent, onTrackInterna
           config.cta_text
         )}
       </button>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes cta-shake { 0%,100%{transform:translateX(0)} 10%,30%,50%,70%,90%{transform:translateX(-4px)} 20%,40%,60%,80%{transform:translateX(4px)} }
+        @keyframes cta-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
+        @keyframes cta-glow-anim { 0%,100%{box-shadow:0 0 5px rgba(255,255,255,0.2)} 50%{box-shadow:0 0 20px rgba(255,255,255,0.4)} }
+        @keyframes cta-bounce { 0%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} 60%{transform:translateY(-3px)} }
+        @keyframes cta-gradient-anim { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+        .cta-form-shake{animation:cta-shake 0.8s ease-in-out 2s 3}
+        .cta-form-pulse{animation:cta-pulse 2s ease-in-out infinite}
+        .cta-form-glow{animation:cta-glow-anim 2s ease-in-out infinite}
+        .cta-form-bounce{animation:cta-bounce 2s ease-in-out infinite}
+        .cta-form-gradient{background-size:200% 200%!important;animation:cta-gradient-anim 3s ease infinite}
+      `}} />
     </form>
   );
+}
+
+function getCtaAnimClass(style?: string): string {
+  return {
+    shake: 'cta-form-shake',
+    pulse: 'cta-form-pulse',
+    glow: 'cta-form-glow',
+    bounce: 'cta-form-bounce',
+    gradient: 'cta-form-gradient',
+  }[style || ''] || '';
+}
+
+function getCtaStyle(color: string, style?: string): React.CSSProperties {
+  const base: React.CSSProperties = { backgroundColor: color };
+
+  if (style === 'glow') {
+    base.boxShadow = `0 0 15px ${color}60, 0 0 30px ${color}30`;
+  } else if (style === 'gradient') {
+    const num = parseInt(color.replace('#', ''), 16);
+    const r = Math.min(255, (num >> 16) + 40);
+    const g = Math.min(255, ((num >> 8) & 0xFF) + 40);
+    const b = Math.min(255, (num & 0xFF) + 40);
+    const lighter = `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
+    base.background = `linear-gradient(135deg, ${color}, ${lighter}, ${color})`;
+    base.backgroundSize = '200% 200%';
+  }
+
+  return base;
 }
