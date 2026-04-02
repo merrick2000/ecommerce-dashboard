@@ -52,7 +52,7 @@ class MaketouProvider implements PaymentProviderInterface
             'lastName' => $order->customer_name ? (explode(' ', $order->customer_name, 2)[1] ?? '.') : '.',
             'phone' => $order->customer_phone ?: $phone,
             'redirectURL' => $redirectUrl,
-            'customerPrice' => $order->amount,
+            'customerPrice' => (int) ceil($order->amount),
             'meta' => [
                 'order_id' => (string) $order->id,
                 'store_id' => (string) $order->store_id,

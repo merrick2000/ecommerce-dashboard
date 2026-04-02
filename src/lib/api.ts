@@ -37,8 +37,10 @@ export interface ProductData {
     text: string;
     action: 'scroll_to_form' | 'custom_url';
     url?: string;
-    alignment: 'left' | 'center';
+    style?: 'default' | 'shake' | 'pulse' | 'glow' | 'bounce' | 'gradient' | 'large';
+    alignment: 'left' | 'center' | 'full';
     after_paragraph: number;
+    sub_text?: string;
   }[];
   cover_image: string | null;
   features: string[];
@@ -91,6 +93,7 @@ export interface CheckoutConfigData {
   template_type: 'CLASSIC' | 'DARK_PREMIUM' | 'MINIMALIST_CARD';
   primary_color: string;
   cta_text: string;
+  cta_style?: 'default' | 'shake' | 'pulse' | 'glow' | 'bounce' | 'gradient';
   urgency_config: UrgencyConfig;
   trust_badges: string[];
   sales_popup: SalesPopupConfig;
@@ -329,8 +332,14 @@ export async function initiatePayment(data: {
   });
 
   if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Le paiement a échoué');
+    let errorMsg = 'Le paiement a echoue';
+    try {
+      const error = await res.json();
+      errorMsg = error.error || error.message || errorMsg;
+    } catch {
+      // Response is not JSON (e.g. 500 HTML page)
+    }
+    throw new Error(errorMsg);
   }
 
   return res.json();

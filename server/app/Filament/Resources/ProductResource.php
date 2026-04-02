@@ -181,7 +181,7 @@ class ProductResource extends Resource
                                                     ->label('Action')
                                                     ->options([
                                                         'scroll_to_form' => 'Scroller vers le formulaire',
-                                                        'custom_url' => 'Lien personnalisé',
+                                                        'custom_url' => 'Lien personnalise',
                                                     ])
                                                     ->default('scroll_to_form')
                                                     ->required()
@@ -194,31 +194,52 @@ class ProductResource extends Resource
                                                     ->visible(fn (Forms\Get $get) => $get('action') === 'custom_url'),
                                             ]),
 
-                                        Forms\Components\Grid::make(2)
+                                        Forms\Components\Grid::make(3)
                                             ->schema([
+                                                Forms\Components\Select::make('style')
+                                                    ->label('Style du bouton')
+                                                    ->options([
+                                                        'default' => 'Standard',
+                                                        'shake' => 'Tremblement',
+                                                        'pulse' => 'Pulsation',
+                                                        'glow' => 'Lumineux',
+                                                        'bounce' => 'Rebond',
+                                                        'gradient' => 'Degrade anime',
+                                                        'large' => 'Extra large',
+                                                    ])
+                                                    ->default('default'),
+
                                                 Forms\Components\Select::make('alignment')
                                                     ->label('Alignement')
                                                     ->options([
                                                         'left' => 'Gauche',
-                                                        'center' => 'Centré',
+                                                        'center' => 'Centre',
+                                                        'full' => 'Pleine largeur',
                                                     ])
                                                     ->default('center')
                                                     ->required(),
 
                                                 Forms\Components\TextInput::make('after_paragraph')
-                                                    ->label('Après le paragraphe n°')
+                                                    ->label('Apres le paragraphe n')
                                                     ->numeric()
                                                     ->minValue(0)
                                                     ->default(1)
                                                     ->required()
-                                                    ->helperText('0 = tout en haut, 1 = après le 1er paragraphe, etc.'),
+                                                    ->helperText('0 = tout en haut'),
                                             ]),
+
+                                        Forms\Components\TextInput::make('sub_text')
+                                            ->label('Sous-texte (optionnel)')
+                                            ->placeholder('Ex: Offre limitee ! Plus que 3 places...')
+                                            ->helperText('Texte affiche sous le bouton pour creer l\'urgence'),
                                     ])
                                     ->addActionLabel('Ajouter un bouton CTA')
                                     ->reorderable()
                                     ->collapsible()
                                     ->defaultItems(0)
-                                    ->itemLabel(fn (array $state): ?string => ($state['text'] ?? 'CTA') . ' — après §' . ($state['after_paragraph'] ?? '?')),
+                                    ->itemLabel(fn (array $state): ?string =>
+                                        ($state['text'] ?? 'CTA') . ' [' . ($state['style'] ?? 'default') . '] — apres §' . ($state['after_paragraph'] ?? '?')
+                                    ),
 
                                 Forms\Components\Textarea::make('custom_text')
                                     ->label('Bloc texte libre')

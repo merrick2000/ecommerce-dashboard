@@ -13,6 +13,7 @@ class CheckoutConfig extends Model
         'template_type',
         'primary_color',
         'cta_text',
+        'cta_style',
         'show_urgency_timer',
         'trust_badges',
         'urgency_config',

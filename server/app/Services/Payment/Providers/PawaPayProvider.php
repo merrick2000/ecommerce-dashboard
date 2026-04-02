@@ -46,7 +46,7 @@ class PawaPayProvider implements PaymentProviderInterface
             $url = "{$this->baseUrl}/deposits";
             $body = [
                 'depositId' => $depositId,
-                'amount' => (string) $order->amount,
+                'amount' => (string) (int) ceil($order->amount),
                 'currency' => $order->currency,
                 'correspondent' => $correspondent,
                 'payer' => [
