@@ -45,7 +45,12 @@ export function DescriptionWithCTAs({
     if (remaining) blocks.push(remaining);
   }
 
-  const sortedCtas = [...ctas].sort((a, b) => a.after_paragraph - b.after_paragraph);
+  // Ensure after_paragraph is always a number (Filament stores it as string)
+  const normalizedCtas = ctas.map(cta => ({
+    ...cta,
+    after_paragraph: Number(cta.after_paragraph) || 0,
+  }));
+  const sortedCtas = [...normalizedCtas].sort((a, b) => a.after_paragraph - b.after_paragraph);
 
   const parts: string[] = [];
   let blockIndex = 0;
