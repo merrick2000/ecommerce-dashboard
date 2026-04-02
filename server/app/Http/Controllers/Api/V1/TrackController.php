@@ -16,7 +16,7 @@ class TrackController extends Controller
         $data = $request->validate([
             'store_id' => 'required|integer|exists:stores,id',
             'product_id' => 'nullable|integer',
-            'event_type' => 'required|string|in:page_view,scroll_depth,cta_click,form_focus,form_abandon,checkout_initiate,order_created,payment_started,payment_completed,promo_click,page_leave,js_error,download',
+            'event_type' => 'required|string|in:page_view,scroll_depth,cta_click,form_focus,form_abandon,checkout_initiate,order_created,payment_started,payment_completed,promo_click,page_leave,js_error,download,chatbot_open,chatbot_action,chatbot_whatsapp',
             'session_id' => 'required|string|max:64',
             'referrer' => 'nullable|string|max:2048',
             'utm_source' => 'nullable|string|max:255',

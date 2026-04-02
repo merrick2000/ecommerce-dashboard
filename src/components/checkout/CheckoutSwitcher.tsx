@@ -76,6 +76,8 @@ export function CheckoutSwitcher({ data, promoCode }: CheckoutSwitcherProps) {
           paymentMode={data.product.payment_mode}
           formattedPrice={data.product.formatted_effective_price}
           features={data.product.features}
+          storeId={data.store.id}
+          productId={data.product.id}
         />
       )}
     </>

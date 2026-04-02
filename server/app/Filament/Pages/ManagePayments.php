@@ -347,6 +347,20 @@ class ManagePayments extends Page implements HasActions, HasForms
                     ->description('Checkout hébergé — Vente de produits digitaux avec paiement intégré. L\'ID produit se configure par produit.')
                     ->icon('heroicon-o-shopping-cart')
                     ->collapsible()
+                    ->headerActions([
+                        Forms\Components\Actions\Action::make('test_chariow')
+                            ->label('Tester')
+                            ->icon('heroicon-o-play')
+                            ->color('info')
+                            ->visible(fn (Forms\Get $get) => $get('chariow_enabled'))
+                            ->requiresConfirmation()
+                            ->modalHeading('Tester Chariow')
+                            ->modalDescription('Verifie la connexion a l\'API Chariow (GET /store).')
+                            ->modalSubmitActionLabel('Lancer le test')
+                            ->action(function (): void {
+                                $this->runApiTest('chariow');
+                            }),
+                    ])
                     ->schema([
                         Forms\Components\Toggle::make('chariow_enabled')
                             ->label('Activer Chariow')
@@ -372,6 +386,20 @@ class ManagePayments extends Page implements HasActions, HasForms
                     ->description('Checkout hébergé — Paiement via Moneroo (tous réseaux). Utilisé en fallback si les autres providers échouent.')
                     ->icon('heroicon-o-shopping-bag')
                     ->collapsible()
+                    ->headerActions([
+                        Forms\Components\Actions\Action::make('test_maketou')
+                            ->label('Tester')
+                            ->icon('heroicon-o-play')
+                            ->color('info')
+                            ->visible(fn (Forms\Get $get) => $get('maketou_enabled'))
+                            ->requiresConfirmation()
+                            ->modalHeading('Tester Maketou')
+                            ->modalDescription('Verifie la connexion a l\'API Maketou en creant un panier test.')
+                            ->modalSubmitActionLabel('Lancer le test')
+                            ->action(function (): void {
+                                $this->runApiTest('maketou');
+                            }),
+                    ])
                     ->schema([
                         Forms\Components\Toggle::make('maketou_enabled')
                             ->label('Activer Maketou')
@@ -564,6 +592,88 @@ class ManagePayments extends Page implements HasActions, HasForms
             Notification::make()
                 ->title('Erreur inattendue')
                 ->body($e->getMessage())
+                ->danger()
+                ->duration(15000)
+                ->send();
+        }
+    }
+
+    public function runApiTest(string $provider): void
+    {
+        $settings = PaymentSetting::instance();
+        $cfg = ($settings->providers ?? [])[$provider]['live'] ?? [];
+        $apiKey = $cfg['api_key'] ?? '';
+
+        if (! $apiKey) {
+            Notification::make()
+                ->title('Cle API manquante')
+                ->body("Renseignez la cle API {$provider} avant de tester.")
+                ->danger()
+                ->send();
+            return;
+        }
+
+        try {
+            $startTime = microtime(true);
+
+            if ($provider === 'maketou') {
+                $response = \Illuminate\Support\Facades\Http::withToken($apiKey)
+                    ->timeout(10)
+                    ->post('https://api.maketou.net/api/v1/stores/cart/checkout', [
+                        'productDocumentId' => 'test-connectivity-check',
+                        'email' => 'test@sellit.app',
+                        'firstName' => 'Test',
+                        'lastName' => 'Connectivity',
+                    ]);
+            } elseif ($provider === 'chariow') {
+                $response = \Illuminate\Support\Facades\Http::withToken($apiKey)
+                    ->timeout(10)
+                    ->get('https://api.chariow.com/v1/store');
+            } else {
+                Notification::make()->title('Provider inconnu')->danger()->send();
+                return;
+            }
+
+            $elapsed = round((microtime(true) - $startTime) * 1000);
+            $status = $response->status();
+            $body = $response->json();
+
+            // Pour Maketou: 400/422 avec INVALID_PRODUCT = API OK (cle valide, produit test invalide = normal)
+            // Pour Chariow: 200 = OK, 401 = cle invalide
+            $isOk = match ($provider) {
+                'maketou' => in_array($status, [200, 201, 400, 422]),
+                'chariow' => $status === 200,
+                default => $status < 500,
+            };
+
+            $isAuthError = $status === 401;
+
+            if ($isAuthError) {
+                Notification::make()
+                    ->title("Cle API invalide")
+                    ->body("**{$provider}** a rejete la cle API (HTTP 401).\nVerifiez et regenerez votre cle.")
+                    ->danger()
+                    ->duration(15000)
+                    ->send();
+            } elseif ($isOk) {
+                Notification::make()
+                    ->title("Connexion OK !")
+                    ->body("**{$provider}** repond en **{$elapsed}ms** (HTTP {$status}).\nLe service est disponible.")
+                    ->success()
+                    ->duration(10000)
+                    ->send();
+            } else {
+                Notification::make()
+                    ->title("Service indisponible")
+                    ->body("**{$provider}** a retourne HTTP {$status}.\n" . ($body['message'] ?? 'Erreur inconnue'))
+                    ->danger()
+                    ->duration(15000)
+                    ->send();
+            }
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title("Connexion echouee")
+                ->body("**{$provider}** est injoignable : " . $e->getMessage())
                 ->danger()
                 ->duration(15000)
                 ->send();

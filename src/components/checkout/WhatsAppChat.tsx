@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { sendTrackEvent } from "@/lib/api";
 import type { Locale } from "@/lib/i18n";
 
 interface WhatsAppChatProps {
@@ -13,6 +14,8 @@ interface WhatsAppChatProps {
   paymentMode?: 'native' | 'external_link';
   formattedPrice?: string;
   features?: string[];
+  storeId: number;
+  productId: number;
 }
 
 type ChatBubble = {
@@ -91,9 +94,19 @@ const txt = {
   },
 };
 
+function getSessionId(): string {
+  if (typeof window === "undefined") return "";
+  let sid = sessionStorage.getItem("_slt_sid");
+  if (!sid) {
+    sid = crypto.randomUUID?.() || Math.random().toString(36).slice(2) + Date.now().toString(36);
+    sessionStorage.setItem("_slt_sid", sid);
+  }
+  return sid;
+}
+
 export function WhatsAppChat({
   phone, welcomeMessage, productName, locale = "fr", position = "bottom-right",
-  paymentLink, paymentMode, formattedPrice, features,
+  paymentLink, paymentMode, formattedPrice, features, storeId, productId,
 }: WhatsAppChatProps) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
@@ -105,6 +118,16 @@ export function WhatsAppChat({
 
   const t = txt[locale] || txt.fr;
   const cleanPhone = phone.replace(/[^0-9+]/g, "").replace(/^\+/, "");
+
+  const track = useCallback((eventType: string, metadata?: Record<string, any>) => {
+    sendTrackEvent({
+      store_id: storeId,
+      product_id: productId,
+      event_type: eventType,
+      session_id: getSessionId(),
+      metadata,
+    });
+  }, [storeId, productId]);
 
   const defaultWelcome = locale === "en"
     ? `Hi! Have a question about *${productName}*? I'm here to help!`
@@ -141,6 +164,7 @@ export function WhatsAppChat({
   };
 
   const handleBuy = () => {
+    track('chatbot_action', { action: 'want_to_buy' });
     const price = formattedPrice || "---";
     const flow: ChatBubble[] = [
       { from: 'user', text: t.buyUserMsg, delay: 0 },
@@ -152,6 +176,7 @@ export function WhatsAppChat({
   };
 
   const handleWhatDoIGet = () => {
+    track('chatbot_action', { action: 'what_do_i_get' });
     const flow: ChatBubble[] = [
       { from: 'user', text: t.getUserMsg, delay: 0 },
       { from: 'bot', text: t.getBot1 },
@@ -168,6 +193,7 @@ export function WhatsAppChat({
   };
 
   const handleQuestion = () => {
+    track('chatbot_action', { action: 'have_question' });
     addBubblesSequentially([
       { from: 'user', text: t.questionUserMsg, delay: 0 },
       { from: 'bot', text: t.questionBot },
@@ -175,6 +201,7 @@ export function WhatsAppChat({
   };
 
   const handleAvailable = () => {
+    track('chatbot_action', { action: 'still_available' });
     const price = formattedPrice || "---";
     addBubblesSequentially([
       { from: 'user', text: t.availableUserMsg, delay: 0 },
@@ -193,6 +220,7 @@ export function WhatsAppChat({
         ? `Hi, I'm interested in *${productName}*`
         : `Bonjour, je suis interesse(e) par *${productName}*`
     );
+    track('chatbot_whatsapp', { message_length: text.length });
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, "_blank");
     setMessage("");
   };
@@ -354,7 +382,7 @@ export function WhatsAppChat({
 
       {/* Floating button */}
       <button
-        onClick={() => { if (open) handleReset(); else setOpen(true); }}
+        onClick={() => { if (open) { handleReset(); } else { setOpen(true); track('chatbot_open'); } }}
         className="w-14 h-14 bg-[#25D366] rounded-full flex items-center justify-center shadow-lg hover:bg-[#20BD5A] transition-all hover:scale-105"
         data-track-cta="whatsapp_chat"
       >
