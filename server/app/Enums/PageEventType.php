@@ -15,6 +15,9 @@ enum PageEventType: string
     case PAYMENT_COMPLETED = 'payment_completed';
     case PAGE_LEAVE = 'page_leave';
     case PROMO_CLICK = 'promo_click';
+    case CHATBOT_OPEN = 'chatbot_open';
+    case CHATBOT_ACTION = 'chatbot_action';
+    case CHATBOT_WHATSAPP = 'chatbot_whatsapp';
     case JS_ERROR = 'js_error';
     case DOWNLOAD = 'download';
 
@@ -32,6 +35,9 @@ enum PageEventType: string
             self::PAYMENT_COMPLETED => 'Paiement complété',
             self::PAGE_LEAVE => 'Quitte la page',
             self::PROMO_CLICK => 'Clic promo abandon',
+            self::CHATBOT_OPEN => 'Chatbot ouvert',
+            self::CHATBOT_ACTION => 'Chatbot action',
+            self::CHATBOT_WHATSAPP => 'Chatbot → WhatsApp',
             self::JS_ERROR => 'Erreur JS',
             self::DOWNLOAD => 'Téléchargement',
         };
