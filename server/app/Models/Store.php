@@ -19,6 +19,22 @@ class Store extends Model
         'locale',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Store $store) {
+            if (! $store->subdomain && $store->slug) {
+                $store->subdomain = $store->slug;
+            }
+        });
+
+        static::updating(function (Store $store) {
+            // Si le slug change et que le subdomain etait egal a l'ancien slug, le synchroniser
+            if ($store->isDirty('slug') && $store->subdomain === $store->getOriginal('slug')) {
+                $store->subdomain = $store->slug;
+            }
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
