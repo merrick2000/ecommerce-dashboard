@@ -87,6 +87,8 @@ export const stores = pgTable('stores', {
   country: varchar('country', { length: 2 }).notNull().default('BJ'),
   supportPhone: varchar('support_phone', { length: 30 }),
   supportEmail: varchar('support_email', { length: 255 }),
+  /** Secret (chiffré) des webhooks d'intégration entrants (ventes Selar via n8n…). */
+  integrationSecretEnc: text('integration_secret_enc'),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 })

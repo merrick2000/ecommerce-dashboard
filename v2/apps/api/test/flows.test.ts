@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '../src/db/client'
 import { orders, productVariants, products, users } from '../src/db/schema'
 import { enqueued } from '../src/jobs/queue'
+import { app } from '../src/app'
 import { Client } from './helpers'
 
 const owner = new Client()
@@ -285,5 +286,43 @@ describe('stats & divers', () => {
     await db.update(orders).set({ customerName: '=HYPERLINK("x")' })
     const res = await owner.get(`/api/stores/${storeId}/orders/export.csv`)
     expect(res.body).toContain(`"'=HYPERLINK(""x"")"`)
+  })
+})
+
+describe('webhook Selar (n8n)', () => {
+  let secret = ''
+  const sale = (status: string, receipt = 'https://selar.co/r/1') => ({
+    platform: 'selar',
+    status,
+    metadata: { product_code: 'SELAR-1', buyer_email: 'Client@Test.dev', buyer_full_name: 'Jean K', total_amount: 9000, currency: 'XOF', receipt_url: receipt },
+  })
+  const hook = (body: unknown, s = secret) =>
+    app.request('/api/v1/webhooks/external', { method: 'POST', headers: { 'content-type': 'application/json', 'x-webhook-secret': s }, body: JSON.stringify(body) })
+
+  test('secret généré une fois, jamais renvoyé ensuite', async () => {
+    const p = await owner.post(`/api/stores/${storeId}/products`, { type: 'digital', name: 'Cours Selar', isActive: true, price: 9000, externalProductId: 'SELAR-1', payment: { method: 'integration', integration: { platform: 'selar', url: 'https://selar.co/x' } } })
+    expect(p.status).toBe(201)
+    const r = await owner.post(`/api/stores/${storeId}/integrations/secret`)
+    secret = r.body.secret
+    expect(secret).toStartWith('whsec_')
+    const store = await owner.get(`/api/stores/${storeId}`)
+    expect(store.body.hasIntegrationSecret).toBe(true)
+    expect(JSON.stringify(store.body)).not.toContain('integrationSecretEnc')
+  })
+
+  test('mauvais secret → 401', async () => {
+    expect((await hook(sale('paid'), 'whsec_faux')).status).toBe(401)
+  })
+
+  test('vente payée → commande payée + effets ; doublon ignoré ; remboursement met à jour', async () => {
+    const before = enqueued.filter((j) => j.name === 'order.paid').length
+    const r1 = await (await hook(sale('paid'))).json()
+    expect(r1.success).toBe(true)
+    const r2 = await (await hook(sale('paid'))).json()
+    expect(r2).toMatchObject({ duplicate: true, orderId: r1.orderId })
+    expect(enqueued.filter((j) => j.name === 'order.paid').length).toBe(before + 1)
+    await hook(sale('refunded'))
+    const [o] = await db.select().from(orders).where(eq(orders.id, r1.orderId))
+    expect(o).toMatchObject({ paymentStatus: 'refunded', fulfillmentStatus: 'returned', customerEmail: 'client@test.dev' })
   })
 })

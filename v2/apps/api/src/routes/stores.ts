@@ -16,8 +16,13 @@ import { promoRoutes } from './promos'
 import { statsRoutes } from './stats'
 import { uploadRoutes } from './uploads'
 import { zoneRoutes } from './zones'
+import { rotateIntegrationSecret } from './integrations'
+import { env } from '../lib/env'
 
 export const DEFAULT_CHECKOUT = checkoutSettingsSchema.parse({})
+
+/** Jamais de secret (même chiffré) dans une réponse. */
+const storeView = ({ integrationSecretEnc, ...rest }: typeof stores.$inferSelect) => ({ ...rest, hasIntegrationSecret: Boolean(integrationSecretEnc) })
 
 async function assertUnique(fields: { slug?: string; subdomain?: string | null; customDomain?: string | null }, exceptId?: number) {
   const conds = []
@@ -34,7 +39,7 @@ async function assertUnique(fields: { slug?: string; subdomain?: string | null; 
 }
 
 const storeScoped = new Hono<AppEnv>()
-  .get('/', (c) => c.json(c.get('store')))
+  .get('/', (c) => c.json(storeView(c.get('store'))))
   .patch('/', requireRole('admin'), v('json', storeUpdateSchema), async (c) => {
     const store = c.get('store')
     const input = c.req.valid('json')
@@ -43,7 +48,7 @@ const storeScoped = new Hono<AppEnv>()
     // Changer de domaine perso remet la vérification à zéro.
     if (input.customDomain !== undefined && input.customDomain !== store.customDomain) patch.customDomainVerifiedAt = null
     const [row] = await db.update(stores).set(patch).where(eq(stores.id, store.id)).returning()
-    return c.json(row)
+    return c.json(row ? storeView(row) : null)
   })
   .get('/checkout-settings', async (c) => {
     const [row] = await db.select().from(checkoutSettings).where(eq(checkoutSettings.storeId, c.get('store').id)).limit(1)
@@ -79,6 +84,10 @@ const storeScoped = new Hono<AppEnv>()
       .onConflictDoUpdate({ target: checkoutSettings.storeId, set: patch })
     return c.json({ ok: true })
   })
+  .get('/integrations', requireRole('owner'), (c) =>
+    c.json({ webhookUrl: `${env.APP_URL.replace(/\/$/, '')}/api/v1/webhooks/external`, hasSecret: Boolean(c.get('store').integrationSecretEnc) }),
+  )
+  .post('/integrations/secret', requireRole('owner'), async (c) => c.json({ secret: await rotateIntegrationSecret(c.get('store').id) }))
   .route('/products', productRoutes)
   .route('/orders', orderRoutes)
   .route('/customers', customerRoutes)
@@ -100,7 +109,7 @@ export const storeRoutes = new Hono<AppEnv>()
       await tx.insert(checkoutSettings).values({ storeId: s.id, settings: DEFAULT_CHECKOUT })
       return s
     })
-    return c.json(store, 201)
+    return c.json(storeView(store), 201)
   })
   .use('/:storeId/*', requireStore())
   .use('/:storeId', requireStore())
