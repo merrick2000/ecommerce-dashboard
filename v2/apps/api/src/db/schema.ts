@@ -475,3 +475,4 @@ export type OrderItem = typeof orderItems.$inferSelect
 export type DeliveryZone = typeof deliveryZones.$inferSelect
 export type PromoCode = typeof promoCodes.$inferSelect
 export type Customer = typeof customers.$inferSelect
+export type PaymentAccount = typeof paymentAccounts.$inferSelect
