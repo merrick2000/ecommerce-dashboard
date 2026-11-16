@@ -1,0 +1,12 @@
+{
+  "name": "sellit",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:api": "bun --cwd apps/api dev",
+    "dev:dashboard": "bun --cwd apps/dashboard dev",
+    "typecheck": "bun --filter '*' typecheck",
+    "test": "bun --cwd apps/api test"
+  }
+}
