@@ -2,7 +2,7 @@
  * API publique consommée par le storefront (/api/v1). Aucune authentification :
  * chaque route ne renvoie que ce qu'un visiteur a le droit de voir.
  */
-import { publicOrderCreateSchema } from '@sellit/shared'
+import { NATIVE_PROVIDERS, publicOrderCreateSchema } from '@sellit/shared'
 import { and, asc, desc, eq, gte, isNull, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
@@ -77,8 +77,7 @@ export const publicRoutes = new Hono<AppEnv>()
         : [],
       db.select({ provider: paymentAccounts.provider }).from(paymentAccounts).where(and(eq(paymentAccounts.storeId, store.id), eq(paymentAccounts.enabled, true))),
     ])
-    const enabled = providers.map((p) => p.provider)
-    const redirectOnly = enabled.length > 0 && enabled.every((p) => p === 'chariow' || p === 'maketou')
+    const onlinePaymentEnabled = providers.some((p) => (NATIVE_PROVIDERS as readonly string[]).includes(p.provider))
     c.header('Cache-Control', 'public, max-age=30, stale-while-revalidate=120')
     return c.json({
       store: publicStore(store),
@@ -94,7 +93,12 @@ export const publicRoutes = new Hono<AppEnv>()
         compareAtPrice: product.compareAtPrice,
         offers: product.offers,
         content: { ...product.content, gallery: product.content.gallery.map((g) => publicUrl(g)) },
-        payment: { mode: product.payment.mode, externalLink: product.payment.externalLink, codEnabled: product.payment.codEnabled, onlineEnabled: product.payment.onlineEnabled },
+        payment: {
+          method: product.payment.method,
+          // Seuls les liens publics sortent ; les identifiants Chariow/Maketou restent côté serveur.
+          externalUrl: product.payment.method === 'integration' ? (product.payment.integration?.url ?? null) : null,
+          platform: product.payment.method === 'integration' ? (product.payment.integration?.platform ?? null) : null,
+        },
         variantLabel: product.variantLabel,
         variants: variants.map((vr) => ({ id: vr.id, name: vr.name, price: vr.price != null ? displayPrice(product, store.currency, vr) : null, inStock: !product.trackInventory || vr.stock == null || vr.stock > 0 })),
         inStock: !product.trackInventory || product.stock == null || product.stock > 0,
@@ -102,7 +106,7 @@ export const publicRoutes = new Hono<AppEnv>()
       zones,
       checkout: cfg?.settings ?? DEFAULT_CHECKOUT,
       tracking: { facebookPixelId: cfg?.facebookPixelId ?? null, tiktokPixelId: cfg?.tiktokPixelId ?? null },
-      redirectOnlyPayment: redirectOnly,
+      onlinePaymentEnabled,
     })
   })
   .post('/promo/check', rateLimit({ key: 'promo', limit: 30, windowSec: 300 }), v('json', z.object({ storeSlug: z.string(), productId: z.coerce.number().int(), code: z.string().trim().toUpperCase().max(30), subtotal: z.coerce.number().min(0) })), async (c) => {

@@ -22,6 +22,7 @@ import type {
   PaymentProvider,
   PaymentStatus,
   ProductContent,
+  ProductPayment,
   ProductType,
   Promo,
   QuantityOffer,
@@ -160,17 +161,7 @@ export const products = pgTable(
     coverImage: varchar('cover_image', { length: 500 }),
     thumbnail: varchar('thumbnail', { length: 500 }),
     content: jsonb('content').$type<ProductContent>().notNull(),
-    payment: jsonb('payment')
-      .$type<{
-        mode: 'native' | 'external_link'
-        externalPlatform: 'selar' | 'chariow' | null
-        externalLink: string | null
-        chariowProductId: string | null
-        maketouProductId: string | null
-        codEnabled: boolean
-        onlineEnabled: boolean
-      }>()
-      .notNull(),
+    payment: jsonb('payment').$type<ProductPayment>().notNull(),
     /** Digital : livraison. */
     delivery: jsonb('delivery').$type<{ type: 'file'; filePath: string | null } | { type: 'external_url'; url: string } | null>(),
     /** Code produit Selar (webhook externe). */

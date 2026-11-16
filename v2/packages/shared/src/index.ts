@@ -167,17 +167,50 @@ export const digitalDeliverySchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('external_url'), url: httpUrl }),
 ])
 
-export const productPaymentSchema = z.object({
-  mode: z.enum(['native', 'external_link']).default('native'),
-  externalPlatform: z.enum(['selar', 'chariow']).nullable().default(null),
-  externalLink: httpUrl.nullable().default(null),
-  chariowProductId: z.string().max(100).nullable().default(null),
-  maketouProductId: z.string().max(100).nullable().default(null),
-  /** Physique uniquement : autoriser le paiement à la livraison. */
-  codEnabled: z.boolean().default(true),
-  /** Physique : autoriser aussi le paiement en ligne (mobile money). */
-  onlineEnabled: z.boolean().default(false),
-})
+/**
+ * Mode de paiement d'un produit — UN SEUL choix :
+ * - `native`      : API de paiement interne (FeexPay, FedaPay, PayDunya, PawaPay),
+ *                   possible seulement si la boutique a activé au moins un de ces moyens ;
+ * - `integration` : paiement hébergé chez une plateforme (Chariow, Maketou) ou lien externe (Selar, autre) ;
+ * - `cod`         : paiement à la livraison (produits physiques uniquement).
+ */
+export const PAYMENT_CHOICES = ['native', 'integration', 'cod'] as const
+export const paymentChoiceSchema = z.enum(PAYMENT_CHOICES)
+export type PaymentChoice = z.infer<typeof paymentChoiceSchema>
+
+export const NATIVE_PROVIDERS = ['feexpay', 'fedapay', 'paydunya', 'pawapay'] as const
+export const INTEGRATION_PLATFORMS = ['chariow', 'maketou', 'selar', 'link'] as const
+export const integrationPlatformSchema = z.enum(INTEGRATION_PLATFORMS)
+export type IntegrationPlatform = z.infer<typeof integrationPlatformSchema>
+
+export const productIntegrationSchema = z
+  .object({
+    platform: integrationPlatformSchema,
+    /** Selar / lien : page de paiement externe. */
+    url: httpUrl.nullable().default(null),
+    /** Chariow / Maketou : identifiant du produit chez la plateforme. */
+    productId: z.string().trim().max(100).nullable().default(null),
+  })
+  .superRefine((v, ctx) => {
+    if ((v.platform === 'chariow' || v.platform === 'maketou') && !v.productId) {
+      ctx.addIssue({ code: 'custom', path: ['productId'], message: 'Identifiant produit requis pour cette plateforme' })
+    }
+    if ((v.platform === 'selar' || v.platform === 'link') && !v.url) {
+      ctx.addIssue({ code: 'custom', path: ['url'], message: 'Lien de paiement requis' })
+    }
+  })
+
+export const productPaymentSchema = z
+  .object({
+    method: paymentChoiceSchema,
+    integration: productIntegrationSchema.nullable().default(null),
+  })
+  .superRefine((v, ctx) => {
+    if (v.method === 'integration' && !v.integration) {
+      ctx.addIssue({ code: 'custom', path: ['integration'], message: 'Choisissez une plateforme' })
+    }
+  })
+export type ProductPayment = z.infer<typeof productPaymentSchema>
 
 export const variantInputSchema = z.object({
   id: z.coerce.number().int().optional(),
@@ -201,7 +234,8 @@ export const productInputSchema = z.object({
   coverImage: z.string().max(500).nullable().default(null),
   thumbnail: z.string().max(500).nullable().default(null),
   content: productContentSchema.default(productContentSchema.parse({})),
-  payment: productPaymentSchema.default(productPaymentSchema.parse({})),
+  /** Absent → défaut selon le type (COD pour le physique, paiement intégré pour le digital). */
+  payment: productPaymentSchema.optional(),
   delivery: digitalDeliverySchema.nullable().default(null),
   externalProductId: z.string().max(100).nullable().default(null),
   // physique
@@ -212,7 +246,18 @@ export const productInputSchema = z.object({
   variantLabel: z.string().max(40).nullable().default(null),
   variants: z.array(variantInputSchema).max(50).default([]),
 })
+  .superRefine((p, ctx) => {
+    if (p.type === 'digital' && p.payment?.method === 'cod') {
+      ctx.addIssue({ code: 'custom', path: ['payment', 'method'], message: 'Le paiement à la livraison est réservé aux produits physiques' })
+    }
+  })
+  .transform((p) => ({
+    ...p,
+    payment: p.payment ?? { method: p.type === 'physical' ? ('cod' as const) : ('native' as const), integration: null },
+  }))
 export type ProductInput = z.infer<typeof productInputSchema>
+/** Forme du formulaire côté dashboard (avant valeurs par défaut). */
+export type ProductFormInput = z.input<typeof productInputSchema>
 
 // ─── Boutique ────────────────────────────────────────────────────────────────
 
@@ -341,7 +386,6 @@ export const publicOrderCreateSchema = z
     address: z.string().trim().max(500).nullable().optional(),
     deliveryZoneId: z.coerce.number().int().positive().nullable().optional(),
     note: z.string().trim().max(500).nullable().optional(),
-    paymentMethod: z.enum(['cod', 'mobile_money', 'external']).optional(),
     promoCode: z.string().trim().toUpperCase().max(30).nullable().optional(),
     /** Identifiant d'événement partagé pixel ↔ Conversions API (déduplication). */
     eventId: z.string().max(64).optional(),

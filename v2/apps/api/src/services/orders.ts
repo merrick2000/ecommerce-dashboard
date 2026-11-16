@@ -1,17 +1,19 @@
 import {
   FULFILLMENT_TRANSITIONS,
+  NATIVE_PROVIDERS,
   type FulfillmentStatus,
   type PaymentMethod,
   type PaymentStatus,
   type PublicOrderCreate,
 } from '@sellit/shared'
-import { and, eq, isNull, sql as dsql } from 'drizzle-orm'
+import { and, eq, inArray, isNull, sql as dsql } from 'drizzle-orm'
 import { db, type Tx } from '../db/client'
 import {
   customers,
   deliveryZones,
   leads,
   orderEvents,
+  paymentAccounts,
   orderItems,
   orders,
   productVariants,
@@ -67,12 +69,17 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
     if (input.variantId && (!variant || !variant.isActive)) throw badRequest('Variante indisponible')
 
     const isPhysical = product.type === 'physical'
-    let paymentMethod: PaymentMethod
-    if (product.payment.mode === 'external_link') paymentMethod = 'external'
-    else if (isPhysical) {
-      paymentMethod = input.paymentMethod === 'mobile_money' && product.payment.onlineEnabled ? 'mobile_money' : 'cod'
-      if (paymentMethod === 'cod' && !product.payment.codEnabled) throw badRequest('Paiement à la livraison indisponible pour ce produit')
-    } else paymentMethod = 'mobile_money'
+    const choice = product.payment.method
+    if (choice === 'cod' && !isPhysical) throw badRequest('Paiement à la livraison indisponible pour ce produit')
+    if (choice === 'native') {
+      const [account] = await tx
+        .select({ id: paymentAccounts.id })
+        .from(paymentAccounts)
+        .where(and(eq(paymentAccounts.storeId, store.id), eq(paymentAccounts.enabled, true), inArray(paymentAccounts.provider, [...NATIVE_PROVIDERS])))
+        .limit(1)
+      if (!account) throw badRequest('Le paiement en ligne n’est pas activé pour cette boutique', 'payments_disabled')
+    }
+    const paymentMethod: PaymentMethod = choice === 'cod' ? 'cod' : choice === 'integration' ? 'external' : 'mobile_money'
 
     if (!isPhysical && !input.customerEmail) throw badRequest('Email requis pour recevoir le produit', 'email_required')
 
@@ -154,7 +161,7 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
         paymentMethod,
         promoCodeId: q.discount > 0 && promo ? promo.id : null,
         promoCode: q.discount > 0 && promo ? promo.code : null,
-        source: product.payment.mode === 'external_link' ? (product.payment.externalPlatform ?? 'external') : 'storefront',
+        source: choice === 'integration' ? (product.payment.integration?.platform ?? 'external') : 'storefront',
         utmSource: input.utmSource,
         utmMedium: input.utmMedium,
         utmCampaign: input.utmCampaign,
