@@ -8,13 +8,24 @@ import { storeRoutes } from './routes/stores'
 import type { AppEnv } from './lib/context'
 import { HttpError } from './lib/errors'
 import { ValidationError } from './lib/validate'
-import { isProd } from './lib/env'
+import { env, isProd } from './lib/env'
+import { safeEqual } from './lib/crypto'
 import { sql } from './db/client'
 
 export const app = new Hono<AppEnv>()
 
 if (!isProd && process.env.NODE_ENV !== 'test') app.use(logger())
 app.use(secureHeaders())
+
+// Derrière le Worker : seules les requêtes portant le secret partagé sont acceptées.
+if (env.EDGE_SECRET) {
+  const secret = env.EDGE_SECRET
+  app.use('/api/*', async (c, next) => {
+    if (c.req.path === '/api/health') return next()
+    if (!safeEqual(c.req.header('x-edge-secret') ?? '', secret)) return c.json({ error: 'Accès direct interdit', code: 'edge_only' }, 403)
+    await next()
+  })
+}
 
 app.get('/api/health', async (c) => {
   await sql`select 1`

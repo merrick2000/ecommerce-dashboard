@@ -8,9 +8,10 @@ import type { AppEnv } from '../lib/context'
 import { HttpError } from '../lib/errors'
 import { rateLimit } from '../lib/rate-limit'
 import { v } from '../lib/validate'
+import { env } from '../lib/env'
 
 /** Inscription ouverte ? Par défaut : seulement tant qu'aucun compte n'existe (outil perso). */
-const REGISTRATION_OPEN = process.env.REGISTRATION_OPEN === 'true'
+const REGISTRATION_OPEN = env.REGISTRATION_OPEN === 'true'
 
 // Hash factice : on vérifie quand même un mot de passe si l'email est inconnu (pas de fuite par le temps de réponse).
 const DUMMY_HASH = await Bun.password.hash('dummy-password-for-timing', { algorithm: 'argon2id' })

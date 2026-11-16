@@ -1,0 +1,27 @@
+# Image unique pour l'API et le worker (même code, commande différente).
+#   API    : docker run … sellit-api
+#   Worker : docker run … sellit-api bun src/worker.ts
+FROM oven/bun:1.3-alpine AS deps
+WORKDIR /app
+COPY package.json bun.lock ./
+COPY packages/shared/package.json packages/shared/
+COPY apps/api/package.json apps/api/
+COPY apps/dashboard/package.json apps/dashboard/
+COPY apps/edge/package.json apps/edge/
+RUN bun install --frozen-lockfile --production --filter @sellit/api
+
+FROM oven/bun:1.3-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+# node_modules racine + liens par workspace (installation isolée de Bun)
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
+COPY packages/shared ./packages/shared
+COPY apps/api ./apps/api
+WORKDIR /app/apps/api
+USER bun
+EXPOSE 8787
+HEALTHCHECK --interval=30s --timeout=5s CMD wget -qO- http://127.0.0.1:8787/api/health || exit 1
+# Les migrations tournent une seule fois, au démarrage de l'API (jamais dans le worker).
+CMD ["sh", "-c", "bun src/db/migrate.ts && exec bun src/index.ts"]

@@ -19,6 +19,9 @@ const schema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   TELEGRAM_CHAT_ID: z.string().optional(),
   LEGACY_DATABASE_URL: z.string().optional(),
+  /** Secret partagé avec le Worker Cloudflare : si défini, l'API refuse le trafic direct. */
+  EDGE_SECRET: z.string().min(24).optional(),
+  REGISTRATION_OPEN: z.enum(['true', 'false']).default('false'),
 })
 
 const parsed = schema.safeParse(process.env)
