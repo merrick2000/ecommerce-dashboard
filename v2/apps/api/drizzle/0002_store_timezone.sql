@@ -1,0 +1,1 @@
+ALTER TABLE "stores" ADD COLUMN "timezone" varchar(50) DEFAULT 'Africa/Lagos' NOT NULL;

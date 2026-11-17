@@ -326,3 +326,20 @@ describe('webhook Selar (n8n)', () => {
     expect(o).toMatchObject({ paymentStatus: 'refunded', fulfillmentStatus: 'returned', customerEmail: 'client@test.dev' })
   })
 })
+
+describe('commande manuelle', () => {
+  test('stock contrôlé et réservé comme sur le storefront', async () => {
+    const tooMany = await owner.post(`/api/stores/${storeId}/orders`, { items: [{ productId: physicalId, variantId, quantity: 50 }], customerName: 'Client WhatsApp', customerPhone: '+22990111111' })
+    expect(tooMany.status).toBe(409)
+    const ok = await owner.post(`/api/stores/${storeId}/orders`, { items: [{ productId: physicalId, variantId, quantity: 1 }], customerName: 'Client WhatsApp', customerPhone: '+22990111111', city: 'Porto-Novo' })
+    expect(ok.status).toBe(201)
+    const [v] = await db.select().from(productVariants).where(eq(productVariants.id, variantId))
+    expect(v!.stock).toBe(2)
+  })
+
+  test('filtre « jusqu’au » inclut toute la journée', async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const r = await owner.get(`/api/stores/${storeId}/orders?to=${today}`)
+    expect(r.body.total).toBeGreaterThan(0)
+  })
+})

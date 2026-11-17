@@ -297,7 +297,7 @@ export function useCustomers(q: string, page = 1) {
   const s = useStoreId()
   return useQuery({
     queryKey: [...keys.customers(s), 'list', q, page],
-    queryFn: ({ signal }) => api.get<Customer[]>(`${base(s)}/customers`, { q, page }, signal),
+    queryFn: ({ signal }) => api.get<{ data: Customer[]; total: number; page: number; pageSize: number }>(`${base(s)}/customers`, { q, page }, signal),
     placeholderData: keepPreviousData,
   })
 }
@@ -311,7 +311,7 @@ export function useUpdateCustomer(id: number) {
   const s = useStoreId()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { isBlocked?: boolean; notes?: string | null; name?: string }) => api.patch<Customer>(`${base(s)}/customers/${id}`, body),
+    mutationFn: (body: { isBlocked?: boolean; notes?: string | null; name?: string; phone?: string; email?: string | null; city?: string | null; address?: string | null }) => api.patch<Customer>(`${base(s)}/customers/${id}`, body),
     onSuccess: (c) => {
       qc.setQueryData<CustomerDetail>(keys.customer(s, id), (d) => (d ? { ...d, ...c } : d))
       void qc.invalidateQueries({ queryKey: keys.customers(s) })

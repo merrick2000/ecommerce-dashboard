@@ -12,7 +12,9 @@ export default function CustomersList() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const q = useDebounced(search.trim(), 300)
-  const { data, error, isPending, refetch, isFetching } = useCustomers(q, page)
+  const { data: result, error, isPending, refetch, isFetching } = useCustomers(q, page)
+  const data = result?.data ?? []
+  const totalPages = result ? Math.max(1, Math.ceil(result.total / result.pageSize)) : 1
 
   return (
     <>
@@ -75,13 +77,13 @@ export default function CustomersList() {
         </div>
       )}
 
-      {data && (page > 1 || data.length === 50) && (
+      {result && totalPages > 1 && (
         <nav className="mt-4 flex items-center justify-center gap-3" aria-label="Pagination">
           <Button size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)} aria-label="Page précédente">
             <ChevronLeft className="size-4" />
           </Button>
-          <span className="text-sm text-muted">Page {page}</span>
-          <Button size="sm" disabled={data.length < 50} onClick={() => setPage(page + 1)} aria-label="Page suivante">
+          <span className="text-sm text-muted">Page {page} / {totalPages} · {result.total} clients</span>
+          <Button size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)} aria-label="Page suivante">
             <ChevronRight className="size-4" />
           </Button>
         </nav>

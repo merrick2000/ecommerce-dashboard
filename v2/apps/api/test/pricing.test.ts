@@ -97,3 +97,16 @@ describe('quote', () => {
     expect(quote({ product: product(), storeCurrency: 'XOF', quantity: 2, offerId: 'nope', productId: 1 }).subtotal).toBe(20000)
   })
 })
+
+import { localMidnight } from '../src/routes/stats'
+describe('fuseaux horaires des stats', () => {
+  test('minuit à Cotonou (UTC+1) = 23h UTC la veille', () => {
+    expect(localMidnight('2026-11-17', 'Africa/Porto-Novo').toISOString()).toBe('2026-11-16T23:00:00.000Z')
+  })
+  test('Abidjan (UTC+0)', () => {
+    expect(localMidnight('2026-11-17', 'Africa/Abidjan').toISOString()).toBe('2026-11-17T00:00:00.000Z')
+  })
+  test('Paris en été (UTC+2)', () => {
+    expect(localMidnight('2026-07-01', 'Europe/Paris').toISOString()).toBe('2026-06-30T22:00:00.000Z')
+  })
+})

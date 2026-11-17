@@ -14,11 +14,29 @@ const rangeSchema = z.object({
 /** Revenu « encaissé » : payé en ligne, ou COD livré. */
 const collected = dsql`(${orders.paymentStatus} = 'paid')`
 
+const addDays = (ymd: string, n: number) => new Date(Date.parse(`${ymd}T00:00:00Z`) + n * 86400_000).toISOString().slice(0, 10)
+
+/** Instant UTC correspondant à minuit local dans `tz` (gère les fuseaux à heure d'été). */
+export function localMidnight(ymd: string, tz: string): Date {
+  const guess = Date.parse(`${ymd}T00:00:00Z`)
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      .formatToParts(new Date(guess))
+      .map((p) => [p.type, p.value]),
+  )
+  const asLocal = Date.UTC(+parts.year!, +parts.month! - 1, +parts.day!, +parts.hour!, +parts.minute!, +parts.second!)
+  return new Date(guess - (asLocal - guess))
+}
+
 export const statsRoutes = new Hono<AppEnv>().get('/overview', v('query', rangeSchema), async (c) => {
   const store = c.get('store')
   const { from, to } = c.req.valid('query')
-  const start = new Date(from.toISOString().slice(0, 10))
-  const end = new Date(new Date(to.toISOString().slice(0, 10)).getTime() + 86400_000)
+  // Jours LOCAUX de la boutique : une commande à 00h30 heure de Cotonou compte bien pour ce jour-là.
+  const tz = store.timezone
+  const startDay = from.toISOString().slice(0, 10)
+  const endDay = to.toISOString().slice(0, 10)
+  const start = localMidnight(startDay, tz)
+  const end = localMidnight(addDays(endDay, 1), tz)
   const span = end.getTime() - start.getTime()
   const prevStart = new Date(start.getTime() - span)
   const inRange = (s: Date, e: Date) => and(eq(orders.storeId, store.id), gte(orders.createdAt, s), lt(orders.createdAt, e))
@@ -49,8 +67,8 @@ export const statsRoutes = new Hono<AppEnv>().get('/overview', v('query', rangeS
       select to_char(d.day, 'YYYY-MM-DD') as day,
              count(o.id)::int as orders,
              coalesce(sum(o.total) filter (where o.payment_status = 'paid'), 0)::float as revenue
-      from generate_series(${start.toISOString()}::timestamptz, ${end.toISOString()}::timestamptz - interval '1 day', interval '1 day') as d(day)
-      left join orders o on o.store_id = ${store.id} and o.created_at >= d.day and o.created_at < d.day + interval '1 day'
+      from generate_series(${startDay}::date, ${endDay}::date, interval '1 day') as d(day)
+      left join orders o on o.store_id = ${store.id} and (o.created_at at time zone ${tz})::date = d.day::date
       group by d.day order by d.day`),
     db
       .select({

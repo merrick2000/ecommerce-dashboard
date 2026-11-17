@@ -1,4 +1,4 @@
-import { checkoutSettingsSchema, storeCreateSchema, storeUpdateSchema, trackingSettingsSchema } from '@sellit/shared'
+import { checkoutSettingsSchema, storeCreateSchema, storeUpdateSchema, timezoneForCountry, trackingSettingsSchema } from '@sellit/shared'
 import { and, eq, ne, or } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { db } from '../db/client'
@@ -103,7 +103,7 @@ export const storeRoutes = new Hono<AppEnv>()
     const input = c.req.valid('json')
     await assertUnique({ slug: input.slug, subdomain: input.slug })
     const store = await db.transaction(async (tx) => {
-      const [s] = await tx.insert(stores).values({ ...input, subdomain: input.slug }).returning()
+      const [s] = await tx.insert(stores).values({ ...input, subdomain: input.slug, timezone: timezoneForCountry(input.country) }).returning()
       if (!s) throw new Error('Création boutique échouée')
       await tx.insert(storeMembers).values({ storeId: s.id, userId: c.get('user').id, role: 'owner' })
       await tx.insert(checkoutSettings).values({ storeId: s.id, settings: DEFAULT_CHECKOUT })

@@ -10,6 +10,7 @@ import { notFound } from '../lib/errors'
 import { sanitizeHtml } from '../lib/sanitize'
 import { v } from '../lib/validate'
 import { displayPrice } from '../services/pricing'
+import { publicUrl } from '../services/storage'
 
 const idParam = z.object({ id: z.coerce.number().int().positive() })
 
@@ -50,7 +51,14 @@ async function loadProduct(storeId: number, id: number) {
   const [product] = await db.select().from(products).where(and(eq(products.id, id), eq(products.storeId, storeId))).limit(1)
   if (!product) throw notFound('Produit')
   const variants = await db.select().from(productVariants).where(eq(productVariants.productId, id)).orderBy(asc(productVariants.position))
-  return { ...product, variants }
+  // Les clés S3 héritées (« covers/…webp ») sont résolues en URLs ; les URLs passent telles quelles.
+  return {
+    ...product,
+    coverImage: publicUrl(product.coverImage),
+    thumbnail: publicUrl(product.thumbnail),
+    content: { ...product.content, gallery: product.content.gallery.map((g) => publicUrl(g)!).filter(Boolean) },
+    variants,
+  }
 }
 
 export const productRoutes = new Hono<AppEnv>()
@@ -62,6 +70,8 @@ export const productRoutes = new Hono<AppEnv>()
         sales: dsql<number>`coalesce(sum(${orderItems.quantity}) filter (where ${orders.paymentStatus} = 'paid' or ${orders.fulfillmentStatus} = 'delivered'), 0)::int`,
         revenue: dsql<number>`coalesce(sum(${orderItems.total}) filter (where ${orders.paymentStatus} = 'paid'), 0)::float`,
         pending: dsql<number>`count(${orders.id}) filter (where ${orders.fulfillmentStatus} in ('new','unreachable'))::int`,
+        variantStock: dsql<number | null>`(select sum(${productVariants.stock})::int from ${productVariants} where ${productVariants.productId} = ${products.id} and ${productVariants.isActive})`,
+        variantCount: dsql<number>`(select count(*)::int from ${productVariants} where ${productVariants.productId} = ${products.id})`,
       })
       .from(products)
       .leftJoin(orderItems, eq(orderItems.productId, products.id))
@@ -75,7 +85,7 @@ export const productRoutes = new Hono<AppEnv>()
         type: product.type,
         name: product.name,
         isActive: product.isActive,
-        thumbnail: product.thumbnail ?? product.coverImage,
+        thumbnail: publicUrl(product.thumbnail ?? product.coverImage),
         stock: product.stock,
         trackInventory: product.trackInventory,
         price: displayPrice(product, store.currency),

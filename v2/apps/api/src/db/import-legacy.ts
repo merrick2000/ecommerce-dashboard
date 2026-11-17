@@ -188,6 +188,7 @@ async function main() {
         integrationSecretEnc: settingsRows[0]?.webhook_secret ? encrypt(settingsRows[0].webhook_secret) : null,
         currency: st.currency ?? 'XOF',
         locale: st.locale ?? 'fr',
+        timezone: 'Africa/Porto-Novo', // boutiques v1 : Bénin
         createdAt: date(st.created_at),
       })
       await tx.insert(s.storeMembers).values({ storeId: Number(st.id), userId: Number(st.user_id), role: 'owner' })

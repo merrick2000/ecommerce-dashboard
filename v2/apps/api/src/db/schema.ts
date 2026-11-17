@@ -85,6 +85,7 @@ export const stores = pgTable('stores', {
   currency: varchar('currency', { length: 5 }).notNull().default('XOF'),
   locale: varchar('locale', { length: 5 }).notNull().default('fr'),
   country: varchar('country', { length: 2 }).notNull().default('BJ'),
+  timezone: varchar('timezone', { length: 50 }).notNull().default('Africa/Lagos'),
   supportPhone: varchar('support_phone', { length: 30 }),
   supportEmail: varchar('support_email', { length: 255 }),
   /** Secret (chiffré) des webhooks d'intégration entrants (ventes Selar via n8n…). */

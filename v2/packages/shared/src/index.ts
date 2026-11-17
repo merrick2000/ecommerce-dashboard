@@ -10,6 +10,23 @@ export const CURRENCIES = ['XOF', 'XAF', 'GNF', 'CDF', 'NGN', 'GHS', 'KES', 'MAD
 export const currencySchema = z.enum(CURRENCIES)
 export type Currency = z.infer<typeof currencySchema>
 
+/** Fuseau par défaut selon le pays (les stats « par jour » suivent l'heure locale de la boutique). */
+export const COUNTRY_TIMEZONES: Record<string, string> = {
+  BJ: 'Africa/Porto-Novo', TG: 'Africa/Lome', CI: 'Africa/Abidjan', SN: 'Africa/Dakar', BF: 'Africa/Ouagadougou', ML: 'Africa/Bamako',
+  NE: 'Africa/Niamey', GN: 'Africa/Conakry', CM: 'Africa/Douala', GA: 'Africa/Libreville', CG: 'Africa/Brazzaville', CD: 'Africa/Kinshasa',
+  NG: 'Africa/Lagos', GH: 'Africa/Accra', KE: 'Africa/Nairobi', RW: 'Africa/Kigali', TZ: 'Africa/Dar_es_Salaam', UG: 'Africa/Kampala',
+  MA: 'Africa/Casablanca', FR: 'Europe/Paris', BE: 'Europe/Brussels', CA: 'America/Toronto', US: 'America/New_York',
+}
+export const timezoneForCountry = (country: string) => COUNTRY_TIMEZONES[country.toUpperCase()] ?? 'Africa/Lagos'
+export const timezoneSchema = z.string().refine((tz) => {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz })
+    return true
+  } catch {
+    return false
+  }
+}, 'Fuseau horaire invalide')
+
 export const LOCALES = ['fr', 'en'] as const
 export const localeSchema = z.enum(LOCALES)
 
@@ -280,6 +297,7 @@ export const storeUpdateSchema = storeCreateSchema.partial().extend({
     .optional(),
   supportPhone: phone.nullable().optional(),
   supportEmail: z.string().email().nullable().optional(),
+  timezone: timezoneSchema.optional(),
 })
 
 export const trackingSettingsSchema = z.object({

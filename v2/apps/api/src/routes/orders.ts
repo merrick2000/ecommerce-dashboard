@@ -6,7 +6,7 @@ import {
   orderPaymentUpdateSchema,
   orderStatusUpdateSchema,
 } from '@sellit/shared'
-import { and, asc, count, desc, eq, gte, ilike, inArray, lte, or, sql as dsql, type SQL } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, ilike, inArray, lt, lte, or, sql as dsql, type SQL } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { db } from '../db/client'
@@ -14,7 +14,7 @@ import { customers, deliveryZones, orderEvents, orderItems, orders, paymentTrans
 import { requireRole } from '../lib/auth'
 import type { AppEnv } from '../lib/context'
 import { orderNumber, randomToken } from '../lib/crypto'
-import { badRequest, notFound } from '../lib/errors'
+import { badRequest, conflict, notFound } from '../lib/errors'
 import { v } from '../lib/validate'
 import { normalizePhone, setPaymentStatus, transitionFulfillment } from '../services/orders'
 import { displayPrice, roundMoney, shippingFee } from '../services/pricing'
@@ -27,7 +27,11 @@ function listFilters(storeId: number, q: z.infer<typeof orderListQuerySchema>): 
   if (q.paymentStatus) conds.push(eq(orders.paymentStatus, q.paymentStatus))
   if (q.fulfillmentStatus) conds.push(eq(orders.fulfillmentStatus, q.fulfillmentStatus))
   if (q.from) conds.push(gte(orders.createdAt, q.from))
-  if (q.to) conds.push(lte(orders.createdAt, q.to))
+  if (q.to) {
+    // Une date seule (minuit pile) inclut toute la journée.
+    const dayOnly = q.to.getUTCHours() === 0 && q.to.getUTCMinutes() === 0 && q.to.getUTCSeconds() === 0 && q.to.getUTCMilliseconds() === 0
+    conds.push(dayOnly ? lt(orders.createdAt, new Date(q.to.getTime() + 86400_000)) : lte(orders.createdAt, q.to))
+  }
   if (q.q) {
     const like = `%${q.q.replace(/[%_]/g, '\\$&')}%`
     conds.push(or(ilike(orders.orderNumber, like), ilike(orders.customerName, like), ilike(orders.customerPhone, like), ilike(orders.customerEmail, like), ilike(orders.city, like))!)
@@ -210,10 +214,37 @@ export const orderRoutes = new Hono<AppEnv>()
     const phone = normalizePhone(input.customerPhone)
 
     const order = await db.transaction(async (tx) => {
+      // Stock : même règle que les commandes du storefront (verrou + contrôle + réservation).
+      for (const l of lines) {
+        if (l.p.type !== 'physical' || !l.p.trackInventory) continue
+        if (l.variant) {
+          const [vr] = await tx.select({ stock: productVariants.stock }).from(productVariants).where(eq(productVariants.id, l.variant.id)).for('update')
+          if (vr?.stock != null) {
+            if (vr.stock < l.quantity) throw conflict(`Stock insuffisant : ${l.p.name} (${l.variant.name})`, 'out_of_stock')
+            await tx.update(productVariants).set({ stock: vr.stock - l.quantity }).where(eq(productVariants.id, l.variant.id))
+          }
+        } else {
+          const [pr] = await tx.select({ stock: products.stock }).from(products).where(eq(products.id, l.p.id)).for('update')
+          if (pr?.stock != null) {
+            if (pr.stock < l.quantity) throw conflict(`Stock insuffisant : ${l.p.name}`, 'out_of_stock')
+            await tx.update(products).set({ stock: pr.stock - l.quantity }).where(eq(products.id, l.p.id))
+          }
+        }
+      }
       const [customer] = await tx
         .insert(customers)
         .values({ storeId: store.id, phone, name: input.customerName, email: input.customerEmail ?? null, city: input.city ?? null, address: input.address ?? null, ordersCount: 1 })
-        .onConflictDoUpdate({ target: [customers.storeId, customers.phone], set: { name: input.customerName, ordersCount: dsql`${customers.ordersCount} + 1` } })
+        .onConflictDoUpdate({
+          target: [customers.storeId, customers.phone],
+          set: {
+            name: input.customerName,
+            email: dsql`coalesce(excluded.email, ${customers.email})`,
+            city: dsql`coalesce(excluded.city, ${customers.city})`,
+            address: dsql`coalesce(excluded.address, ${customers.address})`,
+            ordersCount: dsql`${customers.ordersCount} + 1`,
+            updatedAt: new Date(),
+          },
+        })
         .returning()
       const [o] = await tx
         .insert(orders)
