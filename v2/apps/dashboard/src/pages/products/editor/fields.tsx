@@ -149,52 +149,69 @@ export function ImageUpload({
   const storeId = useStoreId()
   const toast = useToast()
   const input = useRef<HTMLInputElement>(null)
-  const [busy, setBusy] = useState(false)
+  /** null = inactif ; 0..1 = envoi ; 1 = envoyé, le serveur optimise l'image. */
+  const [progress, setProgress] = useState<number | null>(null)
+  const [localPreview, setLocalPreview] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [urlMode, setUrlMode] = useState(false)
   const [url, setUrl] = useState('')
+  const busy = progress !== null
+
+  useEffect(() => () => {
+    if (localPreview) URL.revokeObjectURL(localPreview)
+  }, [localPreview])
 
   const pick = async (file: File | undefined) => {
     if (!file) return
-    setBusy(true)
+    if (!file.type.startsWith('image/')) return setUploadError('Choisissez un fichier image (JPG, PNG, WebP).')
+    if (file.size > 15 * 1024 * 1024) return setUploadError('Image trop lourde : 15 Mo maximum.')
     setUploadError(null)
+    // Aperçu immédiat de la photo choisie, pendant l'envoi.
+    setLocalPreview(URL.createObjectURL(file))
+    setProgress(0)
     try {
-      const r = await uploadImage(storeId, file, preset)
+      const r = await uploadImage(storeId, file, preset, setProgress)
       onChange(r.url ?? r.key)
       toast.success('Image envoyée')
     } catch (e) {
       setUploadError(errorMessage(e))
     } finally {
-      setBusy(false)
+      setProgress(null)
+      setLocalPreview(null)
       if (input.current) input.current.value = ''
     }
   }
 
+  const shown = localPreview ?? value
   return (
     <Field label={label} hint={hint} error={error ?? uploadError ?? undefined}>
       <div className={cx('relative overflow-hidden rounded-xl border border-dashed border-line-strong bg-surface-2', aspect === 'video' ? 'aspect-video' : 'aspect-square max-w-48')}>
-        {value ? (
+        {shown ? (
           <>
-            <img src={value} alt="" className="size-full object-cover" />
-            <button type="button" onClick={() => onChange(null)} className="absolute top-2 right-2 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80" aria-label="Retirer l’image">
-              <X className="size-4" />
-            </button>
+            <PreviewImage src={shown} dimmed={busy} />
+            {busy && <UploadOverlay progress={progress} />}
+            {!busy && (
+              <button type="button" onClick={() => onChange(null)} className="absolute top-2 right-2 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80" aria-label="Retirer l’image">
+                <X className="size-4" />
+              </button>
+            )}
           </>
         ) : (
-          <button type="button" onClick={() => input.current?.click()} disabled={busy} className="flex size-full flex-col items-center justify-center gap-1.5 text-sm text-muted hover:text-fg">
+          <button type="button" onClick={() => input.current?.click()} className="flex size-full flex-col items-center justify-center gap-1.5 text-sm text-muted hover:text-fg">
             <ImagePlus className="size-6" />
-            {busy ? 'Envoi…' : 'Choisir une image'}
+            Choisir une image
+            <span className="text-xs">JPG, PNG ou WebP · 15 Mo max</span>
           </button>
         )}
       </div>
       <input ref={input} type="file" accept="image/*" className="hidden" onChange={(e) => void pick(e.target.files?.[0])} />
       <div className="flex flex-wrap gap-2">
-        {value && (
-          <Button size="sm" onClick={() => input.current?.click()} loading={busy}>
+        {value && !busy && (
+          <Button size="sm" onClick={() => input.current?.click()}>
             <Upload className="size-3.5" /> Remplacer
           </Button>
         )}
-        <Button size="sm" variant="ghost" onClick={() => setUrlMode(!urlMode)}>
+        <Button size="sm" variant="ghost" onClick={() => setUrlMode(!urlMode)} disabled={busy}>
           <Link2 className="size-3.5" /> Coller une URL
         </Button>
       </div>
@@ -215,5 +232,46 @@ export function ImageUpload({
         </div>
       )}
     </Field>
+  )
+}
+
+/** Image avec état de chargement et message clair si elle ne peut pas s'afficher. */
+function PreviewImage({ src, dimmed }: { src: string; dimmed?: boolean }) {
+  const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading')
+  useEffect(() => setState('loading'), [src])
+  return (
+    <>
+      {state === 'loading' && <div className="absolute inset-0 animate-pulse bg-surface-2" aria-hidden />}
+      {state === 'error' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-3 text-center text-xs text-muted">
+          <ImagePlus className="size-5" />
+          Image indisponible pour le moment
+        </div>
+      )}
+      <img
+        src={src}
+        alt=""
+        onLoad={() => setState('ok')}
+        onError={() => setState('error')}
+        className={cx('size-full object-cover transition-opacity', state === 'ok' ? 'opacity-100' : 'opacity-0', dimmed && 'opacity-60')}
+      />
+    </>
+  )
+}
+
+/** Barre de progression posée sur l'aperçu pendant l'envoi. */
+export function UploadOverlay({ progress }: { progress: number | null }) {
+  const pct = Math.round((progress ?? 0) * 100)
+  const optimizing = (progress ?? 0) >= 1
+  return (
+    <div className="absolute inset-x-0 bottom-0 bg-black/65 px-3 py-2 text-white" role="status" aria-live="polite">
+      <div className="mb-1 flex justify-between text-xs font-medium">
+        <span>{optimizing ? 'Optimisation…' : 'Envoi…'}</span>
+        {!optimizing && <span>{pct} %</span>}
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-white/25">
+        <div className={cx('h-full rounded-full bg-accent transition-[width] duration-200', optimizing && 'animate-pulse')} style={{ width: `${optimizing ? 100 : pct}%` }} />
+      </div>
+    </div>
   )
 }

@@ -93,11 +93,37 @@ export const api = {
   put: <T>(path: string, body: unknown) => request<T>(path, { method: 'PUT', body }),
   patch: <T>(path: string, body: unknown) => request<T>(path, { method: 'PATCH', body }),
   del: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
-  upload: <T>(path: string, file: File, query?: Query) => {
+  upload: <T>(path: string, file: File, query?: Query, onProgress?: (ratio: number) => void) => uploadWithProgress<T>(path, file, query, onProgress),
+}
+
+/**
+ * Envoi de fichier avec progression (fetch ne sait pas suivre l'envoi : on passe par XMLHttpRequest).
+ * Mêmes conventions d'erreur que request().
+ */
+function uploadWithProgress<T>(path: string, file: File, query?: Query, onProgress?: (ratio: number) => void): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', withQuery(`/api${path}`, query))
+    xhr.withCredentials = true
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total)
+    }
+    xhr.onerror = () => reject(new ApiError(0, null))
+    xhr.onload = () => {
+      let data: unknown = null
+      try {
+        data = xhr.responseText ? JSON.parse(xhr.responseText) : null
+      } catch {
+        data = xhr.responseText
+      }
+      if (xhr.status >= 200 && xhr.status < 300) return resolve(data as T)
+      if (xhr.status === 401) unauthorizedListeners.forEach((fn) => fn())
+      reject(new ApiError(xhr.status, typeof data === 'object' ? (data as ApiErrorBody) : null))
+    }
     const fd = new FormData()
     fd.append('file', file)
-    return request<T>(path, { method: 'POST', body: fd, query })
-  },
+    xhr.send(fd)
+  })
 }
 
 export function errorMessage(e: unknown): string {

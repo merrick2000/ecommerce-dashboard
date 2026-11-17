@@ -9,6 +9,7 @@ import {
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
   type KeyboardEvent,
+  type Ref,
   type ReactNode,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
@@ -54,9 +55,9 @@ export function Button({
   children,
   type = 'button',
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size; loading?: boolean }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size; loading?: boolean; ref?: Ref<HTMLButtonElement> }) {
   return (
-    <button type={type} className={buttonClass(variant, size, className)} disabled={loading || rest.disabled} aria-busy={loading || undefined} {...rest}>
+    <button type={type} className={buttonClass(variant, size, className)} {...rest} disabled={loading || rest.disabled} aria-busy={loading || undefined}>
       {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
       {children}
     </button>

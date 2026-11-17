@@ -342,24 +342,29 @@ function DigitalDelivery(p: SectionProps) {
   const { storeId } = useCurrentStore()
   const toast = useToast()
   const input = useRef<HTMLInputElement>(null)
-  const [busy, setBusy] = useState(false)
+  const [progress, setProgress] = useState<number | null>(null)
+  const [sending, setSending] = useState<{ name: string; size: number } | null>(null)
+  const busy = progress !== null
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploaded, setUploaded] = useState<{ name: string; size: number } | null>(null)
   const d = form.delivery ?? { type: 'file' as const, filePath: null }
 
   const pick = async (f: File | undefined) => {
     if (!f) return
-    setBusy(true)
+    if (f.size > 500 * 1024 * 1024) return setUploadError('Fichier trop lourd : 500 Mo maximum.')
     setUploadError(null)
+    setSending({ name: f.name, size: f.size })
+    setProgress(0)
     try {
-      const r = await uploadFile(storeId, f)
+      const r = await uploadFile(storeId, f, setProgress)
       set({ delivery: { type: 'file', filePath: r.key } })
       setUploaded({ name: r.name, size: r.size })
       toast.success('Fichier envoyé')
     } catch (e) {
       setUploadError(errorMessage(e))
     } finally {
-      setBusy(false)
+      setProgress(null)
+      setSending(null)
       if (input.current) input.current.value = ''
     }
   }
@@ -378,7 +383,21 @@ function DigitalDelivery(p: SectionProps) {
         />
         {d.type === 'file' ? (
           <Field label="Fichier à télécharger" error={uploadError ?? errors['delivery.filePath']} hint="PDF, ZIP, vidéo… 500 Mo max. Stocké en privé, lien signé après paiement.">
-            {d.filePath ? (
+            {busy && sending ? (
+              <div className="space-y-2 rounded-lg border border-line bg-surface-2 p-3" role="status" aria-live="polite">
+                <div className="flex items-center gap-3">
+                  <Paperclip className="size-4 shrink-0 text-muted" />
+                  <p className="min-w-0 flex-1 truncate text-sm font-medium">{sending.name}</p>
+                  <span className="text-xs text-muted">
+                    {(progress ?? 0) >= 1 ? 'Finalisation…' : `${Math.round((progress ?? 0) * 100)} % · ${fileSize(sending.size)}`}
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-line">
+                  <div className="h-full rounded-full bg-accent transition-[width] duration-200" style={{ width: `${Math.round((progress ?? 0) * 100)}%` }} />
+                </div>
+                <p className="text-[12px] text-muted">Gardez cette page ouverte pendant l’envoi.</p>
+              </div>
+            ) : d.filePath ? (
               <div className="flex items-center gap-3 rounded-lg border border-line bg-surface-2 p-3">
                 <Paperclip className="size-4 shrink-0 text-muted" />
                 <div className="min-w-0 flex-1">

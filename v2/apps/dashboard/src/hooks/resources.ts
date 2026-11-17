@@ -393,10 +393,10 @@ export function useStats(from: string, to: string) {
   })
 }
 
-export function uploadImage(storeId: number, file: File, preset: 'cover' | 'thumbnail' | 'content' | 'gallery') {
-  return api.upload<{ key: string; url: string | null; size: number }>(`${base(storeId)}/uploads/image`, file, { preset })
+export function uploadImage(storeId: number, file: File, preset: 'cover' | 'thumbnail' | 'content' | 'gallery', onProgress?: (ratio: number) => void) {
+  return api.upload<{ key: string; url: string | null; size: number }>(`${base(storeId)}/uploads/image`, file, { preset }, onProgress)
 }
 
-export function uploadFile(storeId: number, file: File) {
-  return api.upload<{ key: string; name: string; size: number }>(`${base(storeId)}/uploads/file`, file)
+export function uploadFile(storeId: number, file: File, onProgress?: (ratio: number) => void) {
+  return api.upload<{ key: string; name: string; size: number }>(`${base(storeId)}/uploads/file`, file, undefined, onProgress)
 }

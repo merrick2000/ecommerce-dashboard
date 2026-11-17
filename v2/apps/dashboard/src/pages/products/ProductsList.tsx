@@ -1,5 +1,5 @@
-import { Copy, ImageOff, MoreVertical, Package, Plus, Search, Trash2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { Copy, ExternalLink, ImageOff, MoreVertical, Package, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ConfirmDialog, useDialogState } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
@@ -30,32 +30,76 @@ function Price({ p }: { p: ProductListItem }) {
   )
 }
 
-function RowMenu({ onDuplicate, onDelete, busy }: { onDuplicate: () => void; onDelete: () => void; busy?: boolean }) {
-  const [open, setOpen] = useState(false)
+/** Adresse publique de la page de vente (sous-domaine de la boutique). */
+export const salesPageUrl = (storeSlug: string, productId: number) => `https://${storeSlug}.zurisell.store/p/${productId}?notrack`
+
+const MENU_WIDTH = 208
+
+/**
+ * Menu d'actions d'une ligne. Affiché en position fixe (au-dessus de la page) pour ne jamais
+ * être coupé par le tableau ; s'ouvre vers le haut s'il n'y a pas la place en dessous.
+ */
+function RowMenu({ editHref, viewHref, onDuplicate, onDelete, busy }: { editHref: string; viewHref: string | null; onDuplicate: () => void; onDelete: () => void; busy?: boolean }) {
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null)
+  const button = useRef<HTMLButtonElement>(null)
+  const close = () => setPos(null)
+
+  useEffect(() => {
+    if (!pos) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [pos])
+
+  const toggle = () => {
+    if (pos) return close()
+    const r = button.current?.getBoundingClientRect()
+    if (!r) return
+    const left = Math.max(8, Math.min(r.right - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 8))
+    const spaceBelow = window.innerHeight - r.bottom
+    setPos(spaceBelow < 200 ? { bottom: window.innerHeight - r.top + 4, left } : { top: r.bottom + 4, left })
+  }
+
+  const item = 'flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm hover:bg-surface-2'
   return (
-    <div className="relative" onClick={(e) => e.stopPropagation()}>
-      <Button variant="ghost" size="icon" aria-label="Plus d’actions" aria-expanded={open} onClick={() => setOpen(!open)} loading={busy}>
+    <div onClick={(e) => e.stopPropagation()}>
+      <Button ref={button} variant="ghost" size="icon" aria-label="Plus d’actions" aria-haspopup="menu" aria-expanded={!!pos} onClick={toggle} loading={busy}>
         {!busy && <MoreVertical className="size-4" />}
       </Button>
-      {open && (
+      {pos && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden />
-          <div role="menu" className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-lg">
+          <div className="fixed inset-0 z-40" onClick={close} aria-hidden />
+          <div role="menu" style={{ ...pos, width: MENU_WIDTH }} className="fixed z-50 overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-xl">
+            <Link role="menuitem" to={editHref} className={item} onClick={close}>
+              <Pencil className="size-4" /> Modifier
+            </Link>
+            {viewHref && (
+              <a role="menuitem" href={viewHref} target="_blank" rel="noreferrer" className={item} onClick={close}>
+                <ExternalLink className="size-4" /> Voir la page de vente
+              </a>
+            )}
             <button
               role="menuitem"
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-surface-2"
+              className={item}
               onClick={() => {
-                setOpen(false)
+                close()
                 onDuplicate()
               }}
             >
               <Copy className="size-4" /> Dupliquer
             </button>
+            <div className="my-1 h-px bg-line" />
             <button
               role="menuitem"
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-surface-2 dark:text-red-400"
+              className={cx(item, 'text-red-600 dark:text-red-400')}
               onClick={() => {
-                setOpen(false)
+                close()
                 onDelete()
               }}
             >
@@ -69,7 +113,7 @@ function RowMenu({ onDuplicate, onDelete, busy }: { onDuplicate: () => void; onD
 }
 
 export default function ProductsList() {
-  const { storeId } = useCurrentStore()
+  const { storeId, store } = useCurrentStore()
   const navigate = useNavigate()
   const toast = useToast()
   const { data, error, isPending, refetch } = useProducts()
@@ -183,7 +227,7 @@ export default function ProductsList() {
                 <div className="relative z-[1] flex items-center gap-1 md:contents">
                   <Switch size="sm" checked={p.isActive} onChange={(v) => toggle.mutate({ id: p.id, isActive: v }, { onError: (e) => toast.error(e) })} ariaLabel={p.isActive ? `Désactiver ${p.name}` : `Activer ${p.name}`} />
                   <div className="flex items-center">
-                    <RowMenu busy={duplicate.isPending && duplicate.variables === p.id} onDuplicate={() => onDuplicate(p)} onDelete={() => confirmDelete.show(p)} />
+                    <RowMenu busy={duplicate.isPending && duplicate.variables === p.id} editHref={`/stores/${storeId}/products/${p.id}`} viewHref={store ? salesPageUrl(store.slug, p.id) : null} onDuplicate={() => onDuplicate(p)} onDelete={() => confirmDelete.show(p)} />
                   </div>
                 </div>
               </li>
