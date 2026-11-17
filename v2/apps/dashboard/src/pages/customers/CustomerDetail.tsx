@@ -26,7 +26,7 @@ export default function CustomerDetail() {
     </Link>
   )
 
-  if (error) return <>{back}<ErrorState error={error} onRetry={() => void refetch()} /></>
+  if (error && !c) return <>{back}<ErrorState error={error} onRetry={() => void refetch()} /></>
   if (isPending)
     return (
       <div className="space-y-4">

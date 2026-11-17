@@ -118,7 +118,7 @@ function StoreForm({ store, canEdit }: { store: Store; canEdit: boolean }) {
 
 export function StoreSettings({ canEdit }: { canEdit: boolean }) {
   const { data, error, isPending, refetch } = useStoreInfo()
-  if (error) return <ErrorState error={error} onRetry={() => void refetch()} />
+  if (error && !data) return <ErrorState error={error} onRetry={() => void refetch()} />
   if (isPending) return <Skeleton className="h-96 rounded-xl" />
   return <StoreForm key={data.updatedAt} store={data} canEdit={canEdit} />
 }

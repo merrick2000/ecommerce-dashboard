@@ -183,7 +183,7 @@ function Devices() {
   const remove = useRemoveDevice()
   const dialog = useDialogState<number>()
   if (devices.isPending) return <ListSkeleton rows={2} />
-  if (devices.error) return <ErrorState error={devices.error} onRetry={() => devices.refetch()} />
+  if (devices.error && !devices.data) return <ErrorState error={devices.error} onRetry={() => devices.refetch()} />
   if (!devices.data.length) return <p className="text-sm text-muted">Aucun appareil pour l’instant.</p>
   return (
     <ul className="divide-y divide-line">
@@ -223,7 +223,7 @@ function Preferences() {
     if (prefs.data) setDraft(Object.fromEntries(prefs.data.events.map((e) => [e.event, e.channels])) as NotificationPrefs)
   }, [prefs.data])
   if (prefs.isPending || !draft) return <ListSkeleton rows={4} />
-  if (prefs.error) return <ErrorState error={prefs.error} onRetry={() => prefs.refetch()} />
+  if (prefs.error && !prefs.data) return <ErrorState error={prefs.error} onRetry={() => prefs.refetch()} />
   const telegramOff = !config.data?.telegram.enabled
   const toggle = (event: NotificationEvent, channel: NotificationChannel, value: boolean) => {
     const next = { ...draft, [event]: { ...(draft[event] as ChannelPrefs), [channel]: value } }

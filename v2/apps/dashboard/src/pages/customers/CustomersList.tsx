@@ -34,7 +34,7 @@ export default function CustomersList() {
         />
       </div>
 
-      {error ? (
+      {error && !result ? (
         <ErrorState error={error} onRetry={() => void refetch()} />
       ) : isPending ? (
         <ListSkeleton />

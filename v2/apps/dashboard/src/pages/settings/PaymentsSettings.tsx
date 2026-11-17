@@ -169,7 +169,7 @@ export function PaymentsSettings() {
   const { data, error, isPending, refetch } = usePaymentAccounts(isOwner)
   const forbidden = !isOwner || (error instanceof ApiError && error.status === 403)
   if (forbidden) return <EmptyState icon={<Lock className="size-5" />} title="Réservé au propriétaire" description="Seul le propriétaire de la boutique peut voir et modifier les moyens de paiement." />
-  if (error) return <ErrorState error={error} onRetry={() => void refetch()} />
+  if (error && !data) return <ErrorState error={error} onRetry={() => void refetch()} />
   if (isPending)
     return (
       <div className="space-y-4">

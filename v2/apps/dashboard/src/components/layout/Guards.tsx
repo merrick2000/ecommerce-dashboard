@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Navigate, Outlet, isRouteErrorResponse, useLocation, useRouteError } from 'react-router'
 import { useMe } from '@/hooks/auth'
 import { LAST_STORE_KEY, readLocal } from '@/lib/storage'
@@ -28,7 +29,7 @@ export function RequireAuth() {
   const { data: me, isPending, error, refetch } = useMe()
   const location = useLocation()
   if (isPending) return <FullPageSpinner />
-  if (error)
+  if (error && !me)
     return (
       <div className="mx-auto max-w-md p-6 pt-24">
         <ErrorState error={error} onRetry={() => void refetch()} />
@@ -65,7 +66,20 @@ export function RouteError() {
   const err = useRouteError()
   if (isRouteErrorResponse(err) && err.status === 404) return <NotFound />
   // Chunk introuvable après un déploiement : un rechargement suffit.
-  const chunk = err instanceof Error && /dynamically imported module|Importing a module script failed/i.test(err.message)
+  const chunk = err instanceof Error && /dynamically imported module|Importing a module script failed|Failed to load module script|error loading dynamically/i.test(err.message)
+  // Nouvelle version déployée pendant que la page était ouverte : on recharge une fois, sans rien demander.
+  useEffect(() => {
+    if (!chunk) return
+    try {
+      const last = Number(sessionStorage.getItem('zuri:chunk-reload') ?? 0)
+      if (Date.now() - last > 30_000) {
+        sessionStorage.setItem('zuri:chunk-reload', String(Date.now()))
+        window.location.reload()
+      }
+    } catch {
+      /* stockage indisponible : l'utilisateur rechargera via le bouton */
+    }
+  }, [chunk])
   return (
     <div className="mx-auto max-w-md p-6 pt-24">
       <ErrorState error={chunk ? new Error('Une nouvelle version est disponible. Rechargez la page.') : err} onRetry={() => window.location.reload()} />

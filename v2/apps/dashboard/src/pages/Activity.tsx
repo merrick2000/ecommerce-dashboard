@@ -135,7 +135,7 @@ export default function Activity() {
         <Select aria-label="Type" value={entityType} onChange={(e) => changeFilter(() => setEntityType(e.target.value))} options={TYPES} />
       </div>
 
-      {error ? (
+      {error && !data ? (
         <ErrorState error={error} onRetry={() => void refetch()} />
       ) : isPending && !items.length ? (
         <ListSkeleton rows={6} />

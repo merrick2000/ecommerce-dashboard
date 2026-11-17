@@ -182,7 +182,7 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
 
 export function CheckoutSettingsForm({ canEdit }: { canEdit: boolean }) {
   const { data, error, isPending, refetch } = useCheckoutSettings()
-  if (error) return <ErrorState error={error} onRetry={() => void refetch()} />
+  if (error && !data) return <ErrorState error={error} onRetry={() => void refetch()} />
   if (isPending) return <Skeleton className="h-96 rounded-xl" />
   const parsed = checkoutSettingsSchema.safeParse(data.settings)
   return <Form initial={parsed.success ? parsed.data : checkoutSettingsSchema.parse({})} canEdit={canEdit} />

@@ -10,7 +10,7 @@ import { normalizeForm, OrderFormBuilder } from './OrderFormBuilder'
 /** Formulaire de commande de la boutique : s'applique à tous les produits (sauf formulaire propre au produit). */
 export function FormSettings({ canEdit }: { canEdit: boolean }) {
   const { data, error, isPending, refetch } = useCheckoutSettings()
-  if (error) return <ErrorState error={error} onRetry={() => void refetch()} />
+  if (error && !data) return <ErrorState error={error} onRetry={() => void refetch()} />
   if (isPending) return <Skeleton className="h-96 rounded-xl" />
   const parsed = checkoutSettingsSchema.safeParse(data.settings)
   const settings = parsed.success ? parsed.data : checkoutSettingsSchema.parse({})

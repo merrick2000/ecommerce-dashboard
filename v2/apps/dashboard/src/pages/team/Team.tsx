@@ -451,7 +451,7 @@ export default function Team() {
         }
       />
 
-      {error ? (
+      {error && !data ? (
         <ErrorState error={error} onRetry={() => void refetch()} />
       ) : isPending ? (
         <ListSkeleton rows={4} />

@@ -96,7 +96,7 @@ function Form({ tracking, canEdit }: { tracking: CheckoutSettingsResponse['track
 
 export function TrackingSettings({ canEdit }: { canEdit: boolean }) {
   const { data, error, isPending, refetch } = useCheckoutSettings()
-  if (error) return <ErrorState error={error} onRetry={() => void refetch()} />
+  if (error && !data) return <ErrorState error={error} onRetry={() => void refetch()} />
   if (isPending) return <Skeleton className="h-72 rounded-xl" />
   return <Form key={JSON.stringify(data.tracking)} tracking={data.tracking} canEdit={canEdit} />
 }

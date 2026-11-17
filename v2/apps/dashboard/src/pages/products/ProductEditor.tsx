@@ -283,7 +283,7 @@ export default function ProductEditor() {
   const { data, error, isPending, refetch } = useProduct(id)
 
   if (id === null) return <Editor key="new" initial={emptyForm('physical')} productId={null} />
-  if (error) return <ErrorState error={error} onRetry={() => void refetch()} />
+  if (error && !data) return <ErrorState error={error} onRetry={() => void refetch()} />
   if (isPending)
     return (
       <div className="space-y-4">

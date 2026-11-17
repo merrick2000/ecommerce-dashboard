@@ -19,7 +19,7 @@ export function IntegrationsSettings() {
 
   if (!isOwner || (error instanceof ApiError && error.status === 403))
     return <EmptyState icon={<Lock className="size-5" />} title="Réservé au propriétaire" description="Seul le propriétaire de la boutique peut gérer les intégrations." />
-  if (error) return <ErrorState error={error} onRetry={() => void refetch()} />
+  if (error && !data) return <ErrorState error={error} onRetry={() => void refetch()} />
   if (isPending) return <Skeleton className="h-64 rounded-xl" />
 
   const generate = () =>

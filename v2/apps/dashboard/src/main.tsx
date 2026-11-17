@@ -14,16 +14,22 @@ import { PushBridge } from '@/components/PushBridge'
 // Messages de validation zod en français (schémas partagés compris : même instance de zod).
 z.config(fr())
 
+/**
+ * Erreurs « métier » (4xx) : inutile de réessayer. Coupure réseau (status 0) ou serveur
+ * momentanément indisponible (5xx, redéploiement) : on réessaie plus longtemps
+ * (1 s, 2 s, 4 s, 8 s), le temps qu'un réseau mobile ou un ordinateur sorti de veille se reconnecte.
+ */
 const retry = (count: number, e: unknown) => {
   if (e instanceof ApiError && e.status >= 400 && e.status < 500) return false
-  return count < 2
+  return count < 4
 }
+const retryDelay = (attempt: number) => Math.min(1000 * 2 ** attempt, 8000)
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache(),
   mutationCache: new MutationCache(),
   defaultOptions: {
-    queries: { staleTime: 30_000, retry, refetchOnWindowFocus: true },
+    queries: { staleTime: 30_000, retry, retryDelay, refetchOnWindowFocus: true, refetchOnReconnect: true },
     mutations: { retry: false },
   },
 })

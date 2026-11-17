@@ -270,7 +270,7 @@ export default function OrderDetail() {
     </Link>
   )
 
-  if (error) return <>{back}<ErrorState error={error} onRetry={() => void refetch()} /></>
+  if (error && !order) return <>{back}<ErrorState error={error} onRetry={() => void refetch()} /></>
   if (isPending)
     return (
       <div className="space-y-4">

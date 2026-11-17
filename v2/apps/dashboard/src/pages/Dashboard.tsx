@@ -172,7 +172,7 @@ export default function Dashboard() {
     />
   )
 
-  if (error)
+  if (error && !data)
     return (
       <>
         {header}

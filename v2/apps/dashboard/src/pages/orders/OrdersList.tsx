@@ -333,7 +333,7 @@ export default function OrdersList() {
         </div>
       )}
 
-      {error ? (
+      {error && !data ? (
         <ErrorState error={error} onRetry={() => void refetch()} />
       ) : isPending ? (
         <ListSkeleton rows={6} />

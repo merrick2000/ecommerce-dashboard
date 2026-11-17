@@ -154,7 +154,7 @@ export default function PromoCodes() {
           </Button>
         }
       />
-      {list.error ? (
+      {list.error && !list.data ? (
         <ErrorState error={list.error} onRetry={() => void list.refetch()} />
       ) : list.isPending ? (
         <ListSkeleton rows={3} />
