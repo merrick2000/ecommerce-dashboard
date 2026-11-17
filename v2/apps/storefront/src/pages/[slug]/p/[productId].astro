@@ -3,7 +3,7 @@
 import Footer from '../../../components/Footer.astro'
 import Layout from '../../../components/Layout.astro'
 import Block from '../../../components/sales/Block.astro'
-import OrderForm from '../../../islands/OrderForm'
+import OrderBox from '../../../components/sales/OrderBox.astro'
 import { ApiError, apiGet } from '../../../lib/api'
 import { excerpt, jsonForScript, waLink } from '../../../lib/content'
 import { money } from '../../../lib/format'
@@ -36,6 +36,10 @@ const isCod = product.payment.method === 'cod'
 const price = product.price
 const m = (n: number) => money(n, price.currency, store.locale)
 const blocks = checkout.pageLayout.filter((b) => b.visible).map((b) => b.block)
+// Mise en page sur ordinateur (sur mobile, tout est sur une colonne).
+const layout = checkout.desktopLayout ?? 'form_side'
+const titleAbove = layout === 'product_split' && checkout.titlePosition === 'above'
+const SPLIT_TOP: string[] = ['hero_image', 'product_name', 'price_cta']
 const ctaLabel = isCod ? t.orderCod : checkout.ctaText
 // Bouton collant : réglages de la boutique (valeurs par défaut fournies par l'API).
 const sticky = { ...STICKY_CTA_DEFAULTS, ...checkout.stickyCta }
@@ -67,62 +71,39 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebo
 >
   <div id="sf-promo" class="promo-bar" role="status" hidden></div>
 
-  <div class="sales">
-    <main class="sales-main">
-      {blocks.map((b) => <Block block={b} d={d} />)}
-    </main>
-
-    <aside class="sales-aside" id="commander" aria-label={t.orderTitle}>
-      <div class="order-box">
-        {
-          !(d.orderForm.texts.title || d.orderForm.texts.subtitle) && (
-            <>
-              <h2 class="order-title">{t.orderTitle}</h2>
-              <p class="muted" style="margin-bottom:14px">{product.name} · <strong>{m(price.effective)}</strong></p>
-            </>
-          )
-        }
-        {
-          product.inStock && (product.variants.length === 0 || product.variants.some((v) => v.inStock)) ? (
-            <OrderForm
-              client:idle
-              slug={store.slug}
-              storeId={store.id}
-              productId={product.id}
-              productName={product.name}
-              type={product.type}
-              currency={price.currency}
-              locale={store.locale}
-              country={store.country}
-              unit={price}
-              offers={product.offers}
-              variants={product.variants}
-              variantLabel={product.variantLabel}
-              inStock={product.inStock}
-              zones={zones}
-              method={product.payment.method}
-              externalUrl={product.payment.externalUrl}
-              onlineEnabled={d.onlinePaymentEnabled}
-              ctaText={checkout.ctaText}
-              ctaStyle={checkout.ctaStyle}
-              orderBase={storeUrl(Astro.locals, '/order/')}
-              fb={tracking.facebookPixelId}
-              tt={tracking.tiktokPixelId}
-              t={T.form}
-              pt={T.pay}
-              form={d.orderForm}
-              storeName={store.name}
-            />
-          ) : (
-            <div class="notice warn soldout">
-              <strong>{t.outOfStock}</strong>
-              <p style="margin:6px 0 0">{t.outOfStockText}</p>
-            </div>
-          )
-        }
+  {
+    layout === 'product_split' ? (
+      // Style boutique : image à gauche ; titre, prix et formulaire à droite ; le reste en dessous.
+      <div class={`sales sales-split${titleAbove ? ' title-above' : ''}`}>
+        {titleAbove && blocks.includes('product_name') && (
+          <div class="split-head">
+            <Block block="product_name" d={d} />
+          </div>
+        )}
+        <div class="split-media">{blocks.includes('hero_image') && <Block block="hero_image" d={d} />}</div>
+        <div class="split-buy">
+          {!titleAbove && blocks.includes('product_name') && <Block block="product_name" d={d} />}
+          {blocks.includes('price_cta') && <Block block="price_cta" d={d} inline />}
+          <section class="split-order" id="commander" aria-label={t.orderTitle}>
+            <OrderBox d={d} orderBase={storeUrl(Astro.locals, '/order/')} compact />
+          </section>
+        </div>
+        <main class="split-rest">
+          {blocks.filter((b) => !SPLIT_TOP.includes(b)).map((b) => <Block block={b} d={d} />)}
+        </main>
       </div>
-    </aside>
-  </div>
+    ) : (
+      <div class={`sales${layout === 'single' ? ' sales-single' : ''}`}>
+        <main class="sales-main">
+          {blocks.map((b) => <Block block={b} d={d} />)}
+        </main>
+
+        <aside class="sales-aside" id="commander" aria-label={t.orderTitle}>
+          <OrderBox d={d} orderBase={storeUrl(Astro.locals, '/order/')} />
+        </aside>
+      </div>
+    )
+  }
 
   <Footer store={store} />
 

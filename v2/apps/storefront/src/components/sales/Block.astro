@@ -13,8 +13,10 @@ import Urgency from './Urgency.astro'
 interface Props {
   block: string
   d: CheckoutData
+  /** Prix affiché juste au-dessus du formulaire : pas de bouton « Commander » qui ferait doublon. */
+  inline?: boolean
 }
-const { block, d } = Astro.props
+const { block, d, inline = false } = Astro.props
 const { product, checkout, store } = d
 const locale = store.locale
 const t = dict(locale).page
@@ -64,8 +66,16 @@ const LOGO: Record<string, string> = { mtn: 'MTN MoMo', moov: 'Moov Money', oran
 
 {
   block === 'product_name' && (
-    <div class="block">
-      <h1 class="p-name">{product.name}</h1>
+    <div class="block p-head">
+      {content.kicker && <p class="p-kicker">{content.kicker}</p>}
+      <h1 class="p-name">{content.headline || product.name}</h1>
+      {(content.tagline || content.headline) && (
+        <p class="p-tagline">
+          {content.headline && <strong>{product.name}</strong>}
+          {content.headline && content.tagline ? '. ' : ''}
+          {content.tagline}
+        </p>
+      )}
     </div>
   )
 }
@@ -80,7 +90,7 @@ const LOGO: Record<string, string> = { mtn: 'MTN MoMo', moov: 'Moov Money', oran
         {pct && promo.display === 'strikethrough' && pct > 0 && <span class="price-off">-{pct}%</span>}
         {promoText && <span class="price-label">{promoText}</span>}
       </div>
-      {product.inStock ? (
+      {inline ? null : product.inStock ? (
         <a class={`btn btn-block btn-lg cta-${checkout.ctaStyle}`} href="#commander" data-cta="price">
           {isCod ? t.orderCod : checkout.ctaText}
         </a>

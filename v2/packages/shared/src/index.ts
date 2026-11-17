@@ -357,6 +357,12 @@ export function parseOrderForm(raw: unknown): OrderForm {
 
 export const productContentSchema = z.object({
   customText: z.string().max(20_000).optional(),
+  /** Petit texte au-dessus du titre (ex. « Complément alimentaire · Hommes dès 40 ans »). */
+  kicker: z.string().max(80).optional(),
+  /** Grand titre accrocheur affiché à la place du nom du produit (le nom reste dans l'accroche). */
+  headline: z.string().max(160).optional(),
+  /** Phrase courte sous le titre (ex. « Retrouvez des nuits calmes, naturellement. »). */
+  tagline: z.string().max(300).optional(),
   features: z.array(z.string().max(200)).max(30).default([]),
   featuresPosition: z.enum(['before_description', 'after_description', 'hidden']).default('after_description'),
   faqs: z.array(z.object({ question: z.string().max(300), answer: z.string().max(3000) })).max(40).default([]),
@@ -546,6 +552,14 @@ export const STICKY_CTA_DEFAULTS: StickyCta = stickyCtaSchema.parse({})
 
 export const checkoutSettingsSchema = z.object({
   template: templateSchema.default('classic'),
+  /**
+   * Mise en page sur ordinateur :
+   * form_side = contenu à gauche, formulaire à droite ; product_split = style boutique (image à gauche,
+   * titre, prix et formulaire à droite, puis le reste en dessous) ; single = une seule colonne.
+   */
+  desktopLayout: z.enum(['form_side', 'product_split', 'single']).default('form_side'),
+  /** Position du titre par rapport à l'image (mise en page « boutique ») : à côté ou au-dessus. */
+  titlePosition: z.enum(['beside', 'above']).default('beside'),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#f59e0b'),
   ctaText: z.string().max(60).default('Acheter maintenant'),
   ctaStyle: ctaStyleSchema.default('default'),

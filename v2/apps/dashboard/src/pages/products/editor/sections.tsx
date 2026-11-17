@@ -126,6 +126,23 @@ export function SalesPageSection(p: SectionProps) {
   const c = form.content
   return (
     <div className="space-y-4">
+      <Card title="En-tête de la page" description="Ce que le client voit en premier, à côté ou au-dessus de l’image.">
+        <div className="space-y-4">
+          <Input label="Sur-titre" optional maxLength={80} placeholder="Ex. Complément alimentaire · Hommes dès 40 ans" value={c.kicker ?? ''} onChange={(e) => setContent(p, { kicker: opt(e.target.value) })} error={errors['content.kicker']} />
+          <Input
+            label="Titre accrocheur"
+            optional
+            maxLength={160}
+            placeholder="Ex. Vous vous levez encore 2, 3 fois par nuit ?"
+            hint="Remplace le nom du produit en grand. Le nom reste affiché juste en dessous."
+            value={c.headline ?? ''}
+            onChange={(e) => setContent(p, { headline: opt(e.target.value) })}
+            error={errors['content.headline']}
+          />
+          <Textarea label="Accroche" optional rows={2} maxLength={300} placeholder="Ex. Retrouvez des nuits calmes et votre vitalité, naturellement." value={c.tagline ?? ''} onChange={(e) => setContent(p, { tagline: opt(e.target.value) })} error={errors['content.tagline']} />
+        </div>
+      </Card>
+
       <Card title="Description">
         <Suspense fallback={<Skeleton className="h-56 rounded-lg" />}>
           <RichText label="Description du produit" value={form.description} onChange={(description) => p.set({ description })} placeholder="Décrivez le produit, ses bénéfices…" />

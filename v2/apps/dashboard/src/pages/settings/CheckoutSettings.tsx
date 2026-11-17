@@ -10,10 +10,58 @@ import { NumberField } from '../products/editor/fields'
 
 const PAYMENT_LOGOS = ['mtn', 'moov', 'orange', 'wave', 'free', 'airtel', 'mpesa', 'visa', 'mastercard', 'paypal', 'celtiis', 'togocom']
 
+const LAYOUTS: { value: CheckoutSettings['desktopLayout']; label: string; description: string }[] = [
+  { value: 'product_split', label: 'Style boutique', description: 'Image à gauche ; titre, prix et formulaire à droite.' },
+  { value: 'form_side', label: 'Formulaire à droite', description: 'Toute la page à gauche, le formulaire à côté.' },
+  { value: 'single', label: 'Une colonne', description: 'Comme sur téléphone, centré.' },
+]
+
+/** Petit schéma de la mise en page (image, texte, formulaire). */
+function LayoutSketch({ kind, titleAbove }: { kind: CheckoutSettings['desktopLayout']; titleAbove: boolean }) {
+  const img = 'rounded bg-line-strong/60'
+  const line = 'h-1.5 rounded bg-line-strong'
+  const form = 'rounded border border-accent/60 bg-accent/15'
+  return (
+    <div className="aspect-[16/10] rounded-lg border border-line bg-surface-2 p-2" aria-hidden>
+      {kind === 'product_split' && (
+        <div className="flex h-full flex-col gap-1.5">
+          {titleAbove && <div className={cx(line, 'w-2/3 h-2')} />}
+          <div className="grid flex-1 grid-cols-2 gap-1.5">
+            <div className={img} />
+            <div className="flex flex-col gap-1">
+              {!titleAbove && <div className={cx(line, 'h-2 w-5/6')} />}
+              <div className={cx(line, 'w-1/2')} />
+              <div className={cx(form, 'flex-1')} />
+            </div>
+          </div>
+        </div>
+      )}
+      {kind === 'form_side' && (
+        <div className="grid h-full grid-cols-[1.4fr_1fr] gap-1.5">
+          <div className="flex flex-col gap-1">
+            <div className={cx(img, 'h-1/2')} />
+            <div className={cx(line, 'w-5/6')} />
+            <div className={cx(line, 'w-2/3')} />
+            <div className={cx(line, 'w-3/4')} />
+          </div>
+          <div className={form} />
+        </div>
+      )}
+      {kind === 'single' && (
+        <div className="mx-auto flex h-full w-1/2 flex-col gap-1">
+          <div className={cx(img, 'h-2/5')} />
+          <div className={cx(line, 'w-5/6')} />
+          <div className={cx(form, 'flex-1')} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** Complète la mise en page avec les blocs absents (nouveaux blocs ajoutés au produit). */
 function normalize(s: CheckoutSettings): CheckoutSettings {
   const present = new Set(s.pageLayout.map((b) => b.block))
-  return { ...s, stickyCta: { ...STICKY_CTA_DEFAULTS, ...s.stickyCta }, pageLayout: [...s.pageLayout, ...PAGE_BLOCKS.filter((b) => !present.has(b)).map((block) => ({ block, visible: false }))] }
+  return { ...s, desktopLayout: s.desktopLayout ?? 'form_side', titlePosition: s.titlePosition ?? 'beside', stickyCta: { ...STICKY_CTA_DEFAULTS, ...s.stickyCta }, pageLayout: [...s.pageLayout, ...PAGE_BLOCKS.filter((b) => !present.has(b)).map((block) => ({ block, visible: false }))] }
 }
 
 function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolean }) {
@@ -62,6 +110,39 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
       <fieldset disabled={!canEdit} className="space-y-4">
+        <Card title="Mise en page sur ordinateur" description="Sur téléphone, tout s’affiche sur une colonne, le formulaire après le prix.">
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              {LAYOUTS.map((l) => (
+                <button
+                  key={l.value}
+                  type="button"
+                  onClick={() => set({ desktopLayout: l.value })}
+                  aria-pressed={s.desktopLayout === l.value}
+                  className={cx('rounded-xl border p-3 text-left transition', s.desktopLayout === l.value ? 'border-accent bg-accent/10 ring-1 ring-accent' : 'border-line hover:border-line-strong')}
+                >
+                  <LayoutSketch kind={l.value} titleAbove={s.titlePosition === 'above'} />
+                  <span className="mt-2 block text-sm font-semibold">{l.label}</span>
+                  <span className="block text-xs text-muted">{l.description}</span>
+                </button>
+              ))}
+            </div>
+            {s.desktopLayout === 'product_split' && (
+              <Field label="Position du titre">
+                <Segmented
+                  label="Position du titre"
+                  value={s.titlePosition}
+                  onChange={(titlePosition) => set({ titlePosition })}
+                  options={[
+                    { value: 'beside', label: 'À côté de l’image' },
+                    { value: 'above', label: 'Au-dessus de l’image' },
+                  ]}
+                />
+              </Field>
+            )}
+          </div>
+        </Card>
+
         <Card title="Apparence">
           <div className="grid gap-4 sm:grid-cols-2">
             <Select label="Modèle" value={s.template} onChange={(e) => set({ template: e.target.value as CheckoutSettings['template'] })} options={TEMPLATES.map((t) => ({ value: t, label: TEMPLATE_LABEL[t] ?? t }))} />

@@ -1,0 +1,69 @@
+---
+/** Bloc « commander » (titre + formulaire), réutilisé par toutes les mises en page. */
+import OrderForm from '../../islands/OrderForm'
+import { money } from '../../lib/format'
+import { dict } from '../../lib/i18n'
+import type { CheckoutData } from '../../lib/types'
+
+interface Props {
+  d: CheckoutData
+  orderBase: string
+  /** Mise en page « boutique » : le titre et le prix sont déjà affichés juste au-dessus. */
+  compact?: boolean
+}
+const { d, orderBase, compact = false } = Astro.props
+const { store, product, checkout, zones, tracking } = d
+const T = dict(store.locale)
+const t = T.page
+const price = product.price
+const m = (n: number) => money(n, price.currency, store.locale)
+---
+
+<div class="order-box">
+  {
+    !compact && !(d.orderForm.texts.title || d.orderForm.texts.subtitle) && (
+      <>
+        <h2 class="order-title">{t.orderTitle}</h2>
+        <p class="muted" style="margin-bottom:14px">{product.name} · <strong>{m(price.effective)}</strong></p>
+      </>
+    )
+  }
+  {
+    product.inStock && (product.variants.length === 0 || product.variants.some((v) => v.inStock)) ? (
+      <OrderForm
+        client:idle
+        slug={store.slug}
+        storeId={store.id}
+        productId={product.id}
+        productName={product.name}
+        type={product.type}
+        currency={price.currency}
+        locale={store.locale}
+        country={store.country}
+        unit={price}
+        offers={product.offers}
+        variants={product.variants}
+        variantLabel={product.variantLabel}
+        inStock={product.inStock}
+        zones={zones}
+        method={product.payment.method}
+        externalUrl={product.payment.externalUrl}
+        onlineEnabled={d.onlinePaymentEnabled}
+        ctaText={checkout.ctaText}
+        ctaStyle={checkout.ctaStyle}
+        orderBase={orderBase}
+        fb={tracking.facebookPixelId}
+        tt={tracking.tiktokPixelId}
+        t={T.form}
+        pt={T.pay}
+        form={d.orderForm}
+        storeName={store.name}
+      />
+    ) : (
+      <div class="notice warn soldout">
+        <strong>{t.outOfStock}</strong>
+        <p style="margin:6px 0 0">{t.outOfStockText}</p>
+      </div>
+    )
+  }
+</div>
