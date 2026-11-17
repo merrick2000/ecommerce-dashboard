@@ -187,8 +187,30 @@ p {
   .tpl-minimalist_card .sales-aside {
     margin-top: 0;
   }
-  .sticky {
+  /* Sur ordinateur, seulement si la boutique l'a demandé (« mobile et ordinateur »). */
+  .sticky:not(.sticky-all) {
     display: none !important;
+  }
+  .sticky.sticky-all {
+    left: 50%;
+    right: auto;
+    width: min(680px, calc(100% - 32px));
+    bottom: 16px;
+    padding-bottom: 10px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    transform: translate(-50%, 140%);
+  }
+  .sticky.sticky-all.show {
+    transform: translate(-50%, 0);
+  }
+  .sticky.sticky-all.sticky-top {
+    top: 16px;
+    bottom: auto;
+    transform: translate(-50%, -140%);
+  }
+  .sticky.sticky-all.sticky-top.show {
+    transform: translate(-50%, 0);
   }
 }
 
@@ -1083,6 +1105,65 @@ textarea.input {
 }
 .sticky .btn {
   flex: 1;
+}
+.sticky .s-thumb {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  object-fit: contain;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+/* Bouton collant en haut de l'écran. */
+.sticky.sticky-top {
+  top: 0;
+  bottom: auto;
+  padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+  border-top: 0;
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.08);
+  transform: translateY(-110%);
+}
+.sticky.sticky-top.show {
+  transform: none;
+}
+/* Animations discrètes pour attirer l'œil, coupées si l'utilisateur réduit les animations. */
+.sticky.anim-pulse.show .btn {
+  animation: sf-pulse 2.4s ease-in-out infinite;
+}
+.sticky.anim-shake.show .btn {
+  animation: sf-shake 4s ease-in-out infinite;
+}
+@keyframes sf-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.035);
+  }
+}
+@keyframes sf-shake {
+  0%,
+  88%,
+  100% {
+    transform: rotate(0);
+  }
+  90% {
+    transform: rotate(-2deg);
+  }
+  93% {
+    transform: rotate(2deg);
+  }
+  96% {
+    transform: rotate(-1deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sticky .btn {
+    animation: none !important;
+  }
 }
 .wa {
   position: fixed;

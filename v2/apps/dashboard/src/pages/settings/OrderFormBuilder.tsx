@@ -9,9 +9,12 @@ import {
   type OrderFormField,
   type OrderFormTexts,
 } from '@zuri/shared'
-import { ArrowDown, ArrowUp, ChevronDown, Eye, EyeOff, Lock, Plus, Trash2 } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { ChevronDown, Eye, EyeOff, GripVertical, Lock, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { Badge, Button, Card, cx, Input, Segmented, Select, Switch, TagInput, Textarea } from '@/components/ui'
+import { useCurrentStore } from '@/hooks/auth'
+import { useProducts } from '@/hooks/resources'
+import { LiveFormPreview } from './LiveFormPreview'
 
 export const BUILTIN_LABEL: Record<string, string> = {
   variant: 'Choix (variante)',
@@ -61,8 +64,36 @@ const TEXT_FIELDS: { key: keyof Omit<OrderFormTexts, 'reassurance'>; label: stri
   { key: 'successMessage', label: 'Message après commande', hint: 'Vide : numéro de commande et « Nous vous appelons très vite… ».', long: true },
 ]
 
-export function OrderFormBuilder({ value, onChange, storeName, currency, disabled }: { value: OrderForm; onChange: (f: OrderForm) => void; storeName: string; currency: string; disabled?: boolean }) {
-  const [previewType, setPreviewType] = useState<'physical' | 'digital'>('physical')
+/**
+ * `product` : éditeur produit (aperçu sur CE produit, type imposé). Sans `product` : réglage boutique,
+ * l'aperçu prend un vrai produit de la boutique du type choisi (actif de préférence).
+ */
+export function OrderFormBuilder({
+  value,
+  onChange,
+  storeName,
+  currency,
+  disabled,
+  product,
+}: {
+  value: OrderForm
+  onChange: (f: OrderForm) => void
+  storeName: string
+  currency: string
+  disabled?: boolean
+  product?: { id: string | null; type: 'physical' | 'digital'; active: boolean }
+}) {
+  const [chosenType, setChosenType] = useState<'physical' | 'digital'>('physical')
+  const previewType = product?.type ?? chosenType
+  const { store } = useCurrentStore()
+  const products = useProducts(!product)
+  const previewProductId = useMemo(() => {
+    if (product) return product.id && product.active ? product.id : null
+    const list = (products.data ?? []).filter((x) => x.type === previewType)
+    return (list.find((x) => x.isActive) ?? null)?.id ?? null
+  }, [product, products.data, previewType])
+  const listRef = useRef<HTMLUListElement>(null)
+  const [dragKey, setDragKey] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [addType, setAddType] = useState<CustomFieldType>('text')
   // Dernier champ texte actif : les variables cliquées s'y insèrent à la position du curseur.
@@ -79,6 +110,57 @@ export function OrderFormBuilder({ value, onChange, storeName, currency, disable
     ;[next[i], next[j]] = [next[j]!, next[i]!]
     setFields(next)
   }
+  // ─── Glisser-déposer (souris et tactile) : la liste se réordonne en direct sous le doigt ───
+  // Le suivi se fait sur la fenêtre (pas de capture du pointeur : déplacer l'élément tenu la ferait perdre).
+  const latest = useRef({ fields, setFields })
+  latest.current = { fields, setFields }
+  const startDrag = (e: ReactPointerEvent<HTMLButtonElement>, key: string) => {
+    if (disabled || (e.pointerType === 'mouse' && e.button !== 0)) return
+    e.preventDefault()
+    setDragKey(key)
+    setOpen(null)
+  }
+  useEffect(() => {
+    if (!dragKey) return
+    const move = (e: PointerEvent) => {
+      const list = listRef.current
+      if (!list) return
+      e.preventDefault()
+      // Défilement automatique près des bords de l'écran.
+      if (e.clientY < 70) window.scrollBy(0, -14)
+      else if (e.clientY > window.innerHeight - 70) window.scrollBy(0, 14)
+      const others = [...list.querySelectorAll<HTMLElement>('[data-field-key]')].filter((el) => el.dataset.fieldKey !== dragKey)
+      let target = 0
+      for (const el of others) {
+        const r = el.getBoundingClientRect()
+        if (e.clientY > r.top + r.height / 2) target++
+      }
+      const { fields: cur, setFields: commit } = latest.current
+      const from = cur.findIndex((f) => f.key === dragKey)
+      if (from === -1 || from === target) return
+      const next = [...cur]
+      const [moved] = next.splice(from, 1)
+      next.splice(target, 0, moved!)
+      commit(next)
+    }
+    const end = () => setDragKey(null)
+    window.addEventListener('pointermove', move, { passive: false })
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
+    return () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+    }
+  }, [dragKey])
+  /** Clavier : poignée focalisée + flèches haut/bas. */
+  const dragKeys = (e: ReactKeyboardEvent<HTMLButtonElement>, i: number, key: string) => {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+    e.preventDefault()
+    move(i, e.key === 'ArrowUp' ? -1 : 1)
+    requestAnimationFrame(() => listRef.current?.querySelector<HTMLButtonElement>(`[data-handle="${key}"]`)?.focus())
+  }
+
   const addField = () => {
     const key = newKey()
     const needsOptions = addType === 'select' || addType === 'radio'
@@ -107,8 +189,8 @@ export function OrderFormBuilder({ value, onChange, storeName, currency, disable
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
       <fieldset disabled={disabled} className="min-w-0 space-y-4">
-        <Card title="Champs" description="Ordre, visibilité, libellés. Les champs grisés ne s’appliquent pas au type de produit de l’aperçu.">
-          <ul className="divide-y divide-line">
+        <Card title="Champs" description="Glissez la poignée pour changer l’ordre. Les champs grisés ne s’appliquent pas au type de produit de l’aperçu.">
+          <ul ref={listRef} className={cx('divide-y divide-line', dragKey && 'select-none')}>
             {fields.map((f, i) => {
               const lock = LOCKS[f.key]
               const lockedVisible = f.key === 'name' || f.key === 'phone' || f.key === 'city' || f.key === 'variant'
@@ -116,16 +198,23 @@ export function OrderFormBuilder({ value, onChange, storeName, currency, disable
               const title = f.label || (f.builtin ? BUILTIN_LABEL[f.key] : TYPE_LABEL[f.type ?? 'text'])
               const expanded = open === f.key
               return (
-                <li key={f.key} className={cx('py-2.5', inapplicable && 'opacity-50')}>
+                <li
+                  key={f.key}
+                  data-field-key={f.key}
+                  className={cx('py-2.5 transition-shadow', inapplicable && dragKey !== f.key && 'opacity-50', dragKey === f.key && 'relative z-10 -mx-2 rounded-lg bg-surface px-2 shadow-lg ring-2 ring-accent')}
+                >
                   <div className="flex items-center gap-2">
-                    <div className="flex flex-col">
-                      <button type="button" className="rounded p-0.5 text-muted hover:text-fg disabled:opacity-30" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Monter ${title}`}>
-                        <ArrowUp className="size-3.5" />
-                      </button>
-                      <button type="button" className="rounded p-0.5 text-muted hover:text-fg disabled:opacity-30" onClick={() => move(i, 1)} disabled={i === fields.length - 1} aria-label={`Descendre ${title}`}>
-                        <ArrowDown className="size-3.5" />
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      data-handle={f.key}
+                      className={cx('-ml-1 touch-none rounded-md p-1 text-subtle hover:bg-surface-2 hover:text-fg focus-visible:outline-2 focus-visible:outline-accent', dragKey === f.key ? 'cursor-grabbing text-accent' : 'cursor-grab')}
+                      onPointerDown={(e) => startDrag(e, f.key)}
+                      onKeyDown={(e) => dragKeys(e, i, f.key)}
+                      aria-label={`Déplacer « ${title} » (flèches haut et bas)`}
+                      title="Glisser pour déplacer"
+                    >
+                      <GripVertical className="size-4" />
+                    </button>
                     <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => setOpen(expanded ? null : f.key)} aria-expanded={expanded}>
                       <span className={cx('truncate text-sm font-medium', !f.visible && 'text-muted line-through')}>{title}</span>
                       {!f.builtin && <Badge>{TYPE_LABEL[f.type ?? 'text']}</Badge>}
@@ -267,17 +356,34 @@ export function OrderFormBuilder({ value, onChange, storeName, currency, disable
       <div className="lg:sticky lg:top-4">
         <div className="mb-2 flex items-center justify-between gap-2">
           <p className="text-sm font-semibold">Aperçu</p>
-          <Segmented
-            label="Type de produit de l’aperçu"
-            value={previewType}
-            onChange={setPreviewType}
-            options={[
-              { value: 'physical', label: 'Physique' },
-              { value: 'digital', label: 'Digital' },
-            ]}
-          />
+          {!product && (
+            <Segmented
+              label="Type de produit de l’aperçu"
+              value={previewType}
+              onChange={setChosenType}
+              options={[
+                { value: 'physical', label: 'Physique' },
+                { value: 'digital', label: 'Digital' },
+              ]}
+            />
+          )}
         </div>
-        <OrderFormPreview form={value} productType={previewType} storeName={storeName} currency={currency} />
+        {store && previewProductId ? (
+          <LiveFormPreview form={value} storeSlug={store.slug} productId={previewProductId} fallback={<OrderFormPreview form={value} productType={previewType} storeName={storeName} currency={currency} />} />
+        ) : (
+          <div className="space-y-2">
+            {(product || !products.isPending) && (
+              <p className="rounded-lg bg-surface-2 px-3 py-2 text-[12px] text-muted">
+                {product
+                  ? product.id
+                    ? 'Activez et enregistrez ce produit pour voir l’aperçu réel. Voici une simulation.'
+                    : 'Enregistrez ce produit pour voir l’aperçu réel. Voici une simulation.'
+                  : `Créez un produit ${previewType === 'physical' ? 'physique' : 'digital'} actif pour voir l’aperçu réel. Voici une simulation.`}
+              </p>
+            )}
+            <OrderFormPreview form={value} productType={previewType} storeName={storeName} currency={currency} />
+          </div>
+        )}
       </div>
     </div>
   )

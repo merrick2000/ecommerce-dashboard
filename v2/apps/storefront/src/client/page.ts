@@ -8,28 +8,43 @@ import { startTracking } from './track'
 
 startTracking({ viewContent: true })
 
-// ─── Barre CTA mobile : visible quand le bloc prix/hero est passé et que le formulaire n'est pas à l'écran ───
+// ─── Bouton d'achat collant : déclencheur réglable (après l'image, tout de suite, ou à X % du défilement) ───
 const sticky = document.getElementById('sf-sticky')
-const after = document.querySelector('[data-sticky-after]') ?? document.querySelector('.hero')
 const form = document.getElementById('commander')
-if (sticky && 'IntersectionObserver' in window) {
-  let passed = !after
+if (sticky) {
+  const trigger = sticky.dataset.trigger ?? 'after_hero'
+  const percent = Number(sticky.dataset.percent ?? 25)
+  const hideNearForm = sticky.dataset.hideNearForm !== '0'
+  const after = document.querySelector('[data-sticky-after]') ?? document.querySelector('.hero')
+  let passed = trigger === 'immediate' || (trigger === 'after_hero' && !after)
   let formVisible = false
   const update = () => {
-    const on = passed && !formVisible
+    const on = passed && !(hideNearForm && formVisible)
     sticky.classList.toggle('show', on)
     sticky.setAttribute('aria-hidden', String(!on))
-    document.body.classList.toggle('sticky-on', on)
+    document.body.classList.toggle('sticky-on', on && !sticky.classList.contains('sticky-top'))
   }
-  const io = new IntersectionObserver((entries) => {
-    for (const e of entries) {
-      if (e.target === after) passed = !e.isIntersecting && e.boundingClientRect.top < 0
-      else if (e.target === form) formVisible = e.isIntersecting
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.target === after && trigger === 'after_hero') passed = !e.isIntersecting && e.boundingClientRect.top < 0
+        else if (e.target === form) formVisible = e.isIntersecting
+      }
+      update()
+    })
+    if (after && trigger === 'after_hero') io.observe(after)
+    if (form) io.observe(form)
+  }
+  if (trigger === 'scroll') {
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight
+      passed = max <= 0 || (window.scrollY / max) * 100 >= percent
+      update()
     }
-    update()
-  })
-  if (after) io.observe(after)
-  if (form) io.observe(form)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+  }
+  update()
 }
 
 // ─── Vidéo : vignette, puis iframe au clic seulement ───

@@ -56,18 +56,37 @@ interface RequestOptions {
   signal?: AbortSignal
 }
 
+/** Combine le signal d'annulation de l'appelant et une limite de temps (compatible navigateurs anciens). */
+function withTimeout(outer: AbortSignal | undefined, ms: number) {
+  const ctrl = new AbortController()
+  let fired = false
+  const timer = setTimeout(() => {
+    fired = true
+    ctrl.abort()
+  }, ms)
+  if (outer) {
+    if (outer.aborted) ctrl.abort()
+    else outer.addEventListener('abort', () => ctrl.abort(), { once: true })
+  }
+  ctrl.signal.addEventListener('abort', () => clearTimeout(timer), { once: true })
+  return { signal: ctrl.signal, timedOut: () => fired, done: () => clearTimeout(timer) }
+}
+
 export async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const isForm = typeof FormData !== 'undefined' && opts.body instanceof FormData
   let res: Response
+  // Limite de 35 s : au-delà, message clair au lieu d'un bouton qui tourne sans fin.
+  const { signal, timedOut } = withTimeout(opts.signal, 35_000)
   try {
     res = await fetch(withQuery(`/api${path}`, opts.query), {
       method: opts.method ?? 'GET',
       credentials: 'include',
       headers: opts.body !== undefined && !isForm ? { 'content-type': 'application/json' } : undefined,
       body: opts.body === undefined ? undefined : isForm ? (opts.body as FormData) : JSON.stringify(opts.body),
-      signal: opts.signal,
+      signal,
     })
   } catch (e) {
+    if (timedOut() && !opts.signal?.aborted) throw new ApiError(0, { error: 'Le serveur met trop de temps à répondre. Réessayez dans un instant.', code: 'timeout' })
     if (e instanceof DOMException && e.name === 'AbortError') throw e
     throw new ApiError(0, null)
   }

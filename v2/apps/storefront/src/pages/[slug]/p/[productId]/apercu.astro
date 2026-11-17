@@ -1,0 +1,96 @@
+---
+/**
+ * Aperçu du formulaire de commande, affiché dans le dashboard (iframe).
+ * Même rendu que la page de vente (styles, couleurs, offres, zones), mais :
+ * jamais en cache, non indexé, aucun suivi, aucune commande créée.
+ * Le réglage du formulaire arrive du dashboard par postMessage (origine de l'app uniquement).
+ */
+import { env } from 'cloudflare:workers'
+import Layout from '../../../../components/Layout.astro'
+import PreviewOrderForm from '../../../../islands/PreviewOrderForm'
+import { ApiError, apiGet } from '../../../../lib/api'
+import { money } from '../../../../lib/format'
+import { dict } from '../../../../lib/i18n'
+import type { CheckoutData } from '../../../../lib/types'
+import { storeUrl } from '../../../../lib/urls'
+
+export const prerender = false
+
+const { slug = '', productId = '' } = Astro.params
+if (!/^prd_[0-9A-Za-z]{8,32}$/.test(productId)) return Astro.rewrite('/404')
+
+let d: CheckoutData
+try {
+  d = await apiGet<CheckoutData>(`/checkout/${encodeURIComponent(slug)}/${productId}`)
+} catch (e) {
+  if (e instanceof ApiError && (e.status === 404 || e.status === 422)) return Astro.rewrite('/404')
+  throw e
+}
+
+const { store, product, checkout, zones } = d
+const T = dict(store.locale)
+const price = product.price
+// Seule l'app (dashboard) peut afficher cette page dans une iframe et lui envoyer un brouillon.
+const appOrigin = import.meta.env.DEV ? 'http://localhost:5173' : (env.APP_ORIGIN ?? `https://app.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
+
+Astro.response.headers.set('Cache-Control', 'no-store')
+Astro.response.headers.set('Cloudflare-CDN-Cache-Control', 'no-store')
+Astro.response.headers.set('Content-Security-Policy', `frame-ancestors ${appOrigin}`)
+Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow')
+---
+
+<Layout title={`Aperçu | ${product.name}`} lang={store.locale} template={checkout.template} primaryColor={checkout.primaryColor} noindex>
+  <div class="preview-shell">
+    <div class="order-box">
+      {
+        product.inStock && (product.variants.length === 0 || product.variants.some((v) => v.inStock)) ? (
+          <PreviewOrderForm
+            client:load
+            appOrigin={appOrigin}
+            defaultTitle={T.page.orderTitle}
+            priceLabel={money(price.effective, price.currency, store.locale)}
+            slug={store.slug}
+            storeId={store.id}
+            productId={product.id}
+            productName={product.name}
+            type={product.type}
+            currency={price.currency}
+            locale={store.locale}
+            country={store.country}
+            unit={price}
+            offers={product.offers}
+            variants={product.variants}
+            variantLabel={product.variantLabel}
+            inStock={product.inStock}
+            zones={zones}
+            method={product.payment.method}
+            externalUrl={product.payment.externalUrl}
+            onlineEnabled={d.onlinePaymentEnabled}
+            ctaText={checkout.ctaText}
+            ctaStyle={checkout.ctaStyle}
+            orderBase={storeUrl(Astro.locals, '/order/')}
+            fb={null}
+            tt={null}
+            t={T.form}
+            pt={T.pay}
+            form={d.orderForm}
+            storeName={store.name}
+          />
+        ) : (
+          <div class="notice warn soldout">
+            <strong>{T.page.outOfStock}</strong>
+            <p style="margin:6px 0 0">{T.page.outOfStockText}</p>
+          </div>
+        )
+      }
+    </div>
+  </div>
+</Layout>
+
+<style is:global>
+  .preview-shell {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 12px;
+  }
+</style>

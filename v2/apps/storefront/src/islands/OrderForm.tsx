@@ -42,6 +42,8 @@ export interface OrderFormProps {
   /** Formulaire effectif (produit ou boutique), déjà choisi par l'API. */
   form: OrderForm
   storeName: string
+  /** Aperçu dans le dashboard : aucune commande, aucun suivi, aucun envoi de coordonnées. */
+  preview?: boolean
 }
 
 /** Champs intégrés, « form » (erreur générale) ou clé d'un champ personnalisé (« cf_xxxx »). */
@@ -109,6 +111,7 @@ export default function OrderForm(p: OrderFormProps) {
 
   // ─── Préremplissage APRÈS montage (pas de décalage d'hydratation) ───
   useEffect(() => {
+    if (p.preview) return
     const b = getJSON<Buyer>('sf_buyer')
     if (b) {
       if (b.name) setName(b.name)
@@ -159,7 +162,7 @@ export default function OrderForm(p: OrderFormProps) {
 
   // ─── Panier abandonné : coordonnées envoyées une fois ───
   const sendLead = (kind: 'phone' | 'email') => {
-    if (noTrack()) return
+    if (p.preview || noTrack()) return
     const full = fullPhone(dial, phone)
     const okEmail = validEmail(email)
     if (kind === 'phone' && !full) return
@@ -207,6 +210,11 @@ export default function OrderForm(p: OrderFormProps) {
     if (Object.keys(e).length) {
       setErrors({ ...e, form: t.errFix })
       focusFirstError(e)
+      return
+    }
+    if (p.preview) {
+      // Aperçu : on montre l'écran de remerciement, sans créer de commande.
+      setStage({ kind: 'done', orderNumber: 'ZR-APERCU', token: '' })
       return
     }
     busyRef.current = true
@@ -324,9 +332,18 @@ export default function OrderForm(p: OrderFormProps) {
             <p class="muted">{t.callSoon}</p>
           </>
         )}
-        <a class="btn btn-block btn-ghost" href={p.orderBase + stage.token}>
-          {t.track}
-        </a>
+        {p.preview ? (
+          <>
+            <p class="muted">Aperçu : aucune commande n’a été créée.</p>
+            <button type="button" class="btn btn-block btn-ghost" onClick={() => setStage({ kind: 'form' })}>
+              Revenir au formulaire
+            </button>
+          </>
+        ) : (
+          <a class="btn btn-block btn-ghost" href={p.orderBase + stage.token}>
+            {t.track}
+          </a>
+        )}
       </div>
     )
   }
@@ -697,7 +714,7 @@ export default function OrderForm(p: OrderFormProps) {
           {texts.subtitle && <p class="muted pre">{tx(texts.subtitle)}</p>}
         </div>
       )}
-      <form class="form" onSubmit={submit} onFocusCapture={initiateCheckout} noValidate>
+      <form class="form" onSubmit={submit} onFocusCapture={p.preview ? undefined : initiateCheckout} noValidate>
         {leadMode && <p class="notice warn">{t.onlineOff}</p>}
 
         <div class="form-grid">{fields.map((f) => (f.builtin ? builtinField(f) : f.visible ? customField(f) : null))}</div>

@@ -17,7 +17,7 @@ import {
 } from '@zuri/shared'
 import { CreditCard, ExternalLink, FileUp, Paperclip, Star, Trash2, Truck, Wallet } from 'lucide-react'
 import { lazy, Suspense, useRef, useState, type ReactNode } from 'react'
-import { Link } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, cx, Field, Input, Segmented, Select, Skeleton, Switch, Textarea } from '@/components/ui'
 import { useCan, useCurrentStore } from '@/hooks/auth'
@@ -623,6 +623,7 @@ export function PaymentSection(p: SectionProps) {
 
 export function OrderFormSection(p: SectionProps) {
   const { form } = p
+  const { productId } = useParams()
   const { store } = useCurrentStore()
   const storeSettings = useCheckoutSettings()
   const custom = form.content.orderForm ?? null
@@ -644,7 +645,15 @@ export function OrderFormSection(p: SectionProps) {
         />
         {p.errors['content.orderForm'] && <p className="mt-2 text-[13px] text-red-600">{p.errors['content.orderForm']}</p>}
       </Card>
-      {custom && <OrderFormBuilder value={normalizeForm(custom)} onChange={(orderForm) => setContent(p, { orderForm })} storeName={store?.name ?? 'Ma boutique'} currency={p.currency} />}
+      {custom && (
+        <OrderFormBuilder
+          value={normalizeForm(custom)}
+          onChange={(orderForm) => setContent(p, { orderForm })}
+          storeName={store?.name ?? 'Ma boutique'}
+          currency={p.currency}
+          product={{ id: productId ?? null, type: form.type, active: form.isActive }}
+        />
+      )}
     </div>
   )
 }

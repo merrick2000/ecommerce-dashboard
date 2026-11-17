@@ -10,7 +10,8 @@ import { defineMiddleware } from 'astro:middleware'
 import { isPlatformHost, normalizeHost, resolveHost } from './lib/resolve'
 
 const PASS_THROUGH = /^\/(api\/|_astro\/|_server-islands\/|favicon|robots\.txt|404$|500$)/
-const CACHEABLE = /^\/[^/]+(\/p\/\d+)?\/?$/
+// Pages de vente (identifiant prd_… ou ancien numérique) et catalogue. Jamais /apercu ni /order/….
+const CACHEABLE = /^\/[^/]+(\/p\/(?:\d+|prd_[0-9A-Za-z]{8,32}))?\/?$/
 
 function withSecurityHeaders(res: Response): Response {
   try {

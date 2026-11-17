@@ -9,7 +9,9 @@ import { excerpt, jsonForScript, waLink } from '../../../lib/content'
 import { money } from '../../../lib/format'
 import { dict } from '../../../lib/i18n'
 import type { CheckoutData } from '../../../lib/types'
-import { absoluteUrl, originOf, storeUrl } from '../../../lib/urls'
+import { absoluteUrl, img, originOf, storeUrl } from '../../../lib/urls'
+import { STICKY_CTA_DEFAULTS } from '@zuri/shared'
+import { interpolate } from '@zuri/shared/form-runtime'
 
 export const prerender = false
 
@@ -35,6 +37,13 @@ const price = product.price
 const m = (n: number) => money(n, price.currency, store.locale)
 const blocks = checkout.pageLayout.filter((b) => b.visible).map((b) => b.block)
 const ctaLabel = isCod ? t.orderCod : checkout.ctaText
+// Bouton collant : réglages de la boutique (valeurs par défaut fournies par l'API).
+const sticky = { ...STICKY_CTA_DEFAULTS, ...checkout.stickyCta }
+const stickyText = sticky.text.trim()
+  ? interpolate(sticky.text, { produit: product.name, prix: m(price.effective), prix_barre: price.regular > price.effective ? m(price.regular) : '', boutique: store.name })
+  : isCod
+    ? t.buyNow
+    : ctaLabel
 const wa = product.content.whatsapp
 const waHref = wa?.enabled && wa.phone ? waLink(wa.phone, wa.welcomeMessage || t.whatsappMessage(product.name)) : null
 const description = excerpt(product.description) || excerpt(product.content.customText ?? '') || product.name
@@ -118,14 +127,24 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebo
   <Footer store={store} />
 
   {
-    product.inStock && (
-      <div id="sf-sticky" class="sticky" aria-hidden="true">
-        <div class="s-price">
-          {price.regular > price.effective && <s>{m(price.regular)}</s>}
-          {m(price.effective)}
-        </div>
+    product.inStock && sticky.enabled && (
+      <div
+        id="sf-sticky"
+        class={`sticky${sticky.position === 'top' ? ' sticky-top' : ''}${sticky.devices === 'all' ? ' sticky-all' : ''}${sticky.animation !== 'none' ? ` anim-${sticky.animation}` : ''}`}
+        aria-hidden="true"
+        data-trigger={sticky.trigger}
+        data-percent={sticky.scrollPercent}
+        data-hide-near-form={sticky.hideNearForm ? '1' : '0'}
+      >
+        {sticky.showThumbnail && (product.thumbnail ?? product.coverImage) && <img class="s-thumb" src={img(product.thumbnail ?? product.coverImage, 96)} alt="" width="44" height="44" loading="lazy" decoding="async" />}
+        {sticky.showPrice && (
+          <div class="s-price">
+            {price.regular > price.effective && <s>{m(price.regular)}</s>}
+            {m(price.effective)}
+          </div>
+        )}
         <a class={`btn cta-${checkout.ctaStyle === 'large' ? 'default' : checkout.ctaStyle}`} href="#commander" data-cta="sticky">
-          {isCod ? t.buyNow : ctaLabel}
+          {stickyText}
         </a>
       </div>
     )

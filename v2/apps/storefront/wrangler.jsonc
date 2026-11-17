@@ -11,7 +11,9 @@
     // Domaine « plateforme » : /:slug, /:slug/p/:id, /:slug/order/:token.
     "PLATFORM_HOST": "zurisell.store",
     // Sous-domaines boutiques : <sous-domaine>.BASE_DOMAIN (même valeur que BASE_DOMAIN côté API).
-    "BASE_DOMAIN": "zurisell.store"
+    "BASE_DOMAIN": "zurisell.store",
+    // Dashboard autorisé à afficher l'aperçu du formulaire (/:slug/p/:id/apercu) dans une iframe.
+    "APP_ORIGIN": "https://app.zurisell.store"
     // Optionnel : "IMAGE_RESIZING": "cloudflare" si Image Resizing est activé sur la zone (/cdn-cgi/image).
   }
   // Secret partagé avec l'API : `wrangler secret put EDGE_SECRET` (même valeur que EDGE_SECRET côté API).

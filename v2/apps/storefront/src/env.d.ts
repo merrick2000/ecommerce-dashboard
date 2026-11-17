@@ -22,6 +22,8 @@ declare namespace Cloudflare {
     BASE_DOMAIN?: string
     /** "cloudflare" pour servir les images via /cdn-cgi/image (Image Resizing activé sur la zone). */
     IMAGE_RESIZING?: string
+    /** Origine du dashboard (ex. https://app.zurisell.store) : seule autorisée à afficher l'aperçu du formulaire. */
+    APP_ORIGIN?: string
     /** "off" pour désactiver le cache HTML en périphérie (debug). */
     EDGE_CACHE?: string
   }

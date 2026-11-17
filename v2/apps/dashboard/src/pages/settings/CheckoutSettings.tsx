@@ -1,8 +1,8 @@
-import { checkoutSettingsSchema, CTA_STYLES, PAGE_BLOCKS, TEMPLATES, type CheckoutSettings } from '@zuri/shared'
+import { checkoutSettingsSchema, CTA_STYLES, PAGE_BLOCKS, STICKY_CTA_DEFAULTS, TEMPLATES, type CheckoutSettings, type StickyCta } from '@zuri/shared'
 import { ArrowDown, ArrowUp, Eye, EyeOff } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useToast } from '@/components/Toast'
-import { Button, Card, cx, ErrorState, Field, Input, Select, Skeleton, Switch, TagInput } from '@/components/ui'
+import { Button, Card, cx, ErrorState, Field, Input, Segmented, Select, Skeleton, Switch, TagInput } from '@/components/ui'
 import { useCheckoutSettings, usePromoCodes, useSaveCheckoutSettings } from '@/hooks/resources'
 import { serverErrors, validate, type Errors } from '@/lib/form'
 import { CTA_STYLE_LABEL, PAGE_BLOCK_LABEL, TEMPLATE_LABEL } from '@/lib/labels'
@@ -13,7 +13,7 @@ const PAYMENT_LOGOS = ['mtn', 'moov', 'orange', 'wave', 'free', 'airtel', 'mpesa
 /** Complète la mise en page avec les blocs absents (nouveaux blocs ajoutés au produit). */
 function normalize(s: CheckoutSettings): CheckoutSettings {
   const present = new Set(s.pageLayout.map((b) => b.block))
-  return { ...s, pageLayout: [...s.pageLayout, ...PAGE_BLOCKS.filter((b) => !present.has(b)).map((block) => ({ block, visible: false }))] }
+  return { ...s, stickyCta: { ...STICKY_CTA_DEFAULTS, ...s.stickyCta }, pageLayout: [...s.pageLayout, ...PAGE_BLOCKS.filter((b) => !present.has(b)).map((block) => ({ block, visible: false }))] }
 }
 
 function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolean }) {
@@ -26,6 +26,8 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
   const set = (patch: Partial<CheckoutSettings>) => setS((x) => ({ ...x, ...patch }))
   const dirty = JSON.stringify(s) !== base
   const u = s.urgency
+  const st = s.stickyCta
+  const setSticky = (patch: Partial<StickyCta>) => set({ stickyCta: { ...st, ...patch } })
 
   const move = (i: number, d: -1 | 1) => {
     const next = [...s.pageLayout]
@@ -116,6 +118,71 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
               </li>
             ))}
           </ol>
+        </Card>
+
+        <Card title="Bouton d’achat collant" description="Il suit le client pendant qu’il fait défiler la page, pour commander à tout moment.">
+          <div className="space-y-5">
+            <Switch checked={st.enabled} onChange={(enabled) => setSticky({ enabled })} label="Afficher le bouton collant" />
+            {st.enabled && (
+              <>
+                {/* Aperçu en direct du bandeau. */}
+                <div className="overflow-hidden rounded-xl border border-line bg-surface-2 p-3">
+                  <div className={cx('flex items-center gap-3 rounded-xl border border-line bg-surface px-3 py-2.5 shadow-sm', st.position === 'top' && 'flex-row')}>
+                    {st.showThumbnail && <span className="size-10 shrink-0 rounded-lg bg-surface-2" aria-hidden />}
+                    {st.showPrice && <span className="text-sm font-extrabold whitespace-nowrap">15 000 FCFA</span>}
+                    <span className="flex-1 truncate rounded-lg px-3 py-2 text-center text-sm font-bold text-white" style={{ background: s.primaryColor }}>
+                      {(st.text.trim() || 'Commander maintenant').replace('{produit}', 'Montre X1').replace('{prix}', '15 000 FCFA').replace('{prix_barre}', '18 000 FCFA').replace('{boutique}', 'Ma boutique')}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-center text-xs text-muted">Aperçu : {st.position === 'top' ? 'en haut' : 'en bas'} de l’écran, {st.devices === 'all' ? 'mobile et ordinateur' : 'sur mobile'}</p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Appareils">
+                    <Segmented label="Appareils" value={st.devices} onChange={(devices) => setSticky({ devices })} options={[{ value: 'mobile', label: 'Mobile' }, { value: 'all', label: 'Mobile et ordinateur' }]} />
+                  </Field>
+                  <Field label="Position">
+                    <Segmented label="Position" value={st.position} onChange={(position) => setSticky({ position })} options={[{ value: 'bottom', label: 'En bas' }, { value: 'top', label: 'En haut' }]} />
+                  </Field>
+                </div>
+                <Select
+                  label="Quand l’afficher"
+                  value={st.trigger}
+                  onChange={(e) => setSticky({ trigger: e.target.value as StickyCta['trigger'] })}
+                  options={[
+                    { value: 'after_hero', label: 'Après l’image principale (recommandé)' },
+                    { value: 'immediate', label: 'Dès l’arrivée sur la page' },
+                    { value: 'scroll', label: 'Après un pourcentage de défilement' },
+                  ]}
+                />
+                {st.trigger === 'scroll' && <NumberField label="Défilement" value={st.scrollPercent} onChange={(v) => setSticky({ scrollPercent: Math.min(90, Math.max(5, v ?? 25)) })} suffix="%" wrapClass="sm:max-w-xs" error={errors['stickyCta.scrollPercent']} />}
+                <Input
+                  label="Texte du bouton"
+                  optional
+                  placeholder="Vide : texte par défaut"
+                  maxLength={60}
+                  value={st.text}
+                  onChange={(e) => setSticky({ text: e.target.value })}
+                  hint="Variables : {produit}, {prix}, {prix_barre}, {boutique}. Ex. « Je commande à {prix} »."
+                  error={errors['stickyCta.text']}
+                />
+                <Select
+                  label="Animation"
+                  value={st.animation}
+                  onChange={(e) => setSticky({ animation: e.target.value as StickyCta['animation'] })}
+                  options={[
+                    { value: 'none', label: 'Aucune' },
+                    { value: 'pulse', label: 'Pulsation douce' },
+                    { value: 'shake', label: 'Petit balancement toutes les 4 s' },
+                  ]}
+                />
+                <div className="space-y-3">
+                  <Switch checked={st.showPrice} onChange={(showPrice) => setSticky({ showPrice })} label="Afficher le prix" />
+                  <Switch checked={st.showThumbnail} onChange={(showThumbnail) => setSticky({ showThumbnail })} label="Afficher la miniature du produit" />
+                  <Switch checked={st.hideNearForm} onChange={(hideNearForm) => setSticky({ hideNearForm })} label="Masquer quand le formulaire est visible" description="Évite un bouton en double à côté du formulaire." />
+                </div>
+              </>
+            )}
+          </div>
         </Card>
 
         <Card title="Urgence">
