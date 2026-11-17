@@ -30,7 +30,7 @@ async function storeBySlug(slug: string) {
   return store
 }
 
-const publicStore = (s: typeof stores.$inferSelect) => ({ id: s.id, name: s.name, slug: s.slug, currency: s.currency, locale: s.locale, country: s.country, supportPhone: s.supportPhone })
+const publicStore = (s: typeof stores.$inferSelect) => ({ id: s.id, name: s.name, slug: s.slug, currency: s.currency, locale: s.locale, country: s.country, supportPhone: s.supportPhone, supportEmail: s.supportEmail })
 
 export const publicRoutes = new Hono<AppEnv>()
   /** Résolution sous-domaine / domaine perso → slug (appelé par le Worker/middleware). */
@@ -114,7 +114,8 @@ export const publicRoutes = new Hono<AppEnv>()
     const store = await storeBySlug(body.storeSlug)
     const [rule] = await db.select().from(promoCodes).where(and(eq(promoCodes.storeId, store.id), eq(promoCodes.code, body.code))).limit(1)
     if (!rule) return c.json({ ok: false, reason: 'Code invalide' })
-    return c.json(evaluatePromoCode(rule, body.subtotal, [body.productId], store.currency))
+    const res = evaluatePromoCode(rule, body.subtotal, [body.productId], store.currency)
+    return c.json(res.ok ? { ...res, code: rule.code, type: rule.type, value: rule.value } : res)
   })
   .post('/orders', rateLimit({ key: 'order', limit: 15, windowSec: 600 }), v('json', publicOrderCreateSchema), async (c) => {
     const { order, promoError } = await createPublicOrder(c.req.valid('json'), {
@@ -134,7 +135,8 @@ export const publicRoutes = new Hono<AppEnv>()
     const [order] = await db.select().from(orders).where(eq(orders.accessToken, c.req.valid('param').token)).limit(1)
     if (!order) throw notFound('Commande')
     const [store] = await db.select().from(stores).where(eq(stores.id, order.storeId)).limit(1)
-    const items = await db.select({ name: orderItems.name, variantName: orderItems.variantName, quantity: orderItems.quantity, total: orderItems.total, productType: orderItems.productType }).from(orderItems).where(eq(orderItems.orderId, order.id))
+    const [cfg] = await db.select({ settings: checkoutSettings.settings, facebookPixelId: checkoutSettings.facebookPixelId, tiktokPixelId: checkoutSettings.tiktokPixelId }).from(checkoutSettings).where(eq(checkoutSettings.storeId, order.storeId)).limit(1)
+    const items = await db.select({ productId: orderItems.productId, name: orderItems.name, variantName: orderItems.variantName, quantity: orderItems.quantity, total: orderItems.total, productType: orderItems.productType }).from(orderItems).where(eq(orderItems.orderId, order.id))
     c.header('Cache-Control', 'no-store')
     return c.json({
       orderNumber: order.orderNumber,
@@ -151,6 +153,10 @@ export const publicRoutes = new Hono<AppEnv>()
       fulfillmentStatus: order.fulfillmentStatus,
       eventId: order.eventId,
       canDownload: order.kind !== 'physical' && order.paymentStatus === 'paid',
+      // Thème + pixels : la page commande garde l'apparence de la boutique et peut déclarer l'achat une fois payé.
+      primaryColor: cfg?.settings.primaryColor ?? DEFAULT_CHECKOUT.primaryColor,
+      template: cfg?.settings.template ?? DEFAULT_CHECKOUT.template,
+      tracking: { facebookPixelId: cfg?.facebookPixelId ?? null, tiktokPixelId: cfg?.tiktokPixelId ?? null },
       createdAt: order.createdAt,
     })
   })

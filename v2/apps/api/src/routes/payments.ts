@@ -16,7 +16,7 @@ export const paymentRoutes = new Hono<AppEnv>()
   .get('/stores/:slug/payment-networks', async (c) => {
     const [store] = await db.select({ id: stores.id }).from(stores).where(eq(stores.slug, c.req.param('slug'))).limit(1)
     if (!store) throw notFound('Boutique')
-    c.header('Cache-Control', 'public, max-age=300')
+    c.header('Cache-Control', 'public, max-age=60')
     return c.json(await availableNetworks(store.id))
   })
   .post(
