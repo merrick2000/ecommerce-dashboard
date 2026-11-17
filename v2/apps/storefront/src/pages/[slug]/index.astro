@@ -29,9 +29,9 @@ const trackCfg = { storeId: store.id, productId: null, fb: null, tt: null }
 
 <Layout title={store.name} description={`${store.name} | ${t.catalog.products}`} lang={store.locale} canonical={absoluteUrl(Astro.locals, '/')} ogImage={products[0]?.thumbnail} primaryColor={d.primaryColor}>
   <header class="top">
-    <div class="wrap"><a href={storeUrl(Astro.locals, '/')}>{store.name}</a></div>
+    <div class="wrap wrap-wide"><a href={storeUrl(Astro.locals, '/')}>{store.name}</a></div>
   </header>
-  <main class="wrap">
+  <main class="wrap wrap-wide">
     <h1 class="sr-only">{store.name}</h1>
     {
       products.length === 0 ? (
