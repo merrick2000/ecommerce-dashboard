@@ -19,6 +19,8 @@
     { "pattern": "zurisell.store", "custom_domain": true },
     // Sous-domaines boutiques. app.zurisell.store (domaine personnalisé du Worker zuri-app) reste prioritaire,
     // api-origin.zurisell.store n'est pas proxifié (nuage gris) donc non concerné.
+    // cdn.zurisell.store (images R2) est exclu par une route SANS Worker « cdn.zurisell.store/* » créée dans la zone :
+    // ne pas la supprimer, sinon les images renvoient la page 404 du storefront.
     { "pattern": "*.zurisell.store/*", "zone_name": "zurisell.store" }
   ]
   // Domaines personnalisés des vendeurs : Cloudflare for SaaS (custom hostnames) pointant vers ce Worker.
