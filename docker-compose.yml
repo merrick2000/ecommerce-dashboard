@@ -6,7 +6,8 @@
 #   son URL est fournie via DATABASE_URL dans les variables d'environnement.
 # - Le dashboard et les boutiques sont sur Cloudflare (hors de ce fichier).
 #
-# Variables à définir dans Dokploy (onglet Environment) : voir apps/api/.env.example.
+# Variables à définir dans Dokploy (onglet Environment) : voir v2/apps/api/.env.example.
+# Dokploy : Compose Path = ./docker-compose.yml (racine du dépôt).
 
 x-api-env: &api-env
   NODE_ENV: production
@@ -32,7 +33,8 @@ x-api-env: &api-env
 services:
   api:
     build:
-      context: .
+      # Le code v2 vit dans le dossier v2/ du dépôt.
+      context: ./v2
       dockerfile: Dockerfile.api
     image: zuri-api:latest
     restart: unless-stopped
