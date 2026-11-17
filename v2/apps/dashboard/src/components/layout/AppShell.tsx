@@ -1,4 +1,6 @@
+import type { Permission } from '@zuri/shared'
 import {
+  Activity,
   ChevronsUpDown,
   LayoutDashboard,
   LogOut,
@@ -11,12 +13,13 @@ import {
   Sun,
   Tag,
   Truck,
+  UserPlus,
   Users,
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Navigate, NavLink, Outlet, useLocation, useNavigate, useNavigation } from 'react-router'
-import { useCurrentStore, useLogout } from '@/hooks/auth'
+import { useCurrentStore, useLogout, usePermissions } from '@/hooks/auth'
 import { useOrders } from '@/hooks/resources'
 import { ROLE_LABEL } from '@/lib/labels'
 import { LAST_STORE_KEY, readLocal, THEME_KEY, writeLocal } from '@/lib/storage'
@@ -31,19 +34,24 @@ interface NavItem {
   short?: string
   icon: LucideIcon
   end?: boolean
+  /** Entrée visible seulement avec cette permission. */
+  perm?: Permission
 }
 
 const NAV: NavItem[] = [
   { to: '', label: 'Tableau de bord', short: 'Accueil', icon: LayoutDashboard, end: true },
-  { to: 'orders', label: 'Commandes', icon: ShoppingBag },
-  { to: 'products', label: 'Produits', icon: Package },
-  { to: 'customers', label: 'Clients', icon: Users },
-  { to: 'zones', label: 'Livraison', icon: Truck },
-  { to: 'promo-codes', label: 'Codes promo', icon: Tag },
+  { to: 'orders', label: 'Commandes', icon: ShoppingBag, perm: 'orders.view' },
+  { to: 'products', label: 'Produits', icon: Package, perm: 'products.view' },
+  { to: 'customers', label: 'Clients', icon: Users, perm: 'customers.view' },
+  { to: 'zones', label: 'Livraison', icon: Truck, perm: 'delivery.edit' },
+  { to: 'promo-codes', label: 'Codes promo', icon: Tag, perm: 'marketing.edit' },
+  { to: 'activity', label: 'Activité', icon: Activity, perm: 'activity.view' },
+  { to: 'team', label: 'Équipe', icon: UserPlus, perm: 'team.manage' },
   { to: 'settings', label: 'Paramètres', icon: Settings },
 ]
-const PRIMARY_MOBILE = NAV.slice(0, 4)
-const MORE_MOBILE = NAV.slice(4)
+
+/** Les paramètres regroupent boutique, paiements et intégrations : visibles si au moins un onglet l'est. */
+const SETTINGS_PERMS: Permission[] = ['store.settings', 'payments.manage', 'integrations.manage']
 
 function useTheme() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
@@ -101,8 +109,13 @@ export function AppShell() {
   const navigation = useNavigation()
   const location = useLocation()
   const [moreOpen, setMoreOpen] = useState(false)
+  const permissions = usePermissions()
+  const nav = NAV.filter((i) => (i.to === 'settings' ? SETTINGS_PERMS.some((p) => permissions.includes(p)) : !i.perm || permissions.includes(i.perm)))
+  const primaryMobile = nav.slice(0, 4)
+  const moreMobile = nav.slice(4)
+  const canOrders = permissions.includes('orders.view')
   // Commandes à traiter (nouvelles) : pastille sur l'onglet Commandes.
-  const pending = useOrders({ fulfillmentStatus: 'new', pageSize: 1 })
+  const pending = useOrders({ fulfillmentStatus: 'new', pageSize: 1 }, canOrders)
   const newCount = pending.data?.total
 
   useEffect(() => {
@@ -137,7 +150,7 @@ export function AppShell() {
           <StoreSwitcher />
         </div>
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2" aria-label="Navigation principale">
-          {NAV.map((item) => (
+          {nav.map((item) => (
             <NavLink
               key={item.to}
               to={href(item.to)}
@@ -189,7 +202,7 @@ export function AppShell() {
       {/* Navigation basse mobile */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Navigation principale">
         <div className="grid grid-cols-5">
-          {PRIMARY_MOBILE.map((item) => (
+          {primaryMobile.map((item) => (
             <NavLink key={item.to} to={href(item.to)} end={item.end} className={({ isActive }) => cx('relative flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium', isActive ? 'text-accent' : 'text-muted')}>
               <item.icon className="size-[22px]" aria-hidden />
               {item.short ?? item.label}
@@ -207,7 +220,7 @@ export function AppShell() {
 
       <Dialog open={moreOpen} onClose={() => setMoreOpen(false)} title="Menu">
         <div className="space-y-1">
-          {MORE_MOBILE.map((item) => (
+          {moreMobile.map((item) => (
             <NavLink key={item.to} to={href(item.to)} className={({ isActive }) => cx('flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-medium', isActive ? 'bg-accent-soft' : 'hover:bg-surface-2')}>
               <item.icon className="size-5 text-muted" aria-hidden />
               {item.label}

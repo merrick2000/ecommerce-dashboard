@@ -3,15 +3,14 @@ import { useState } from 'react'
 import { ConfirmDialog } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, EmptyState, ErrorState, Skeleton } from '@/components/ui'
-import { useCurrentStore } from '@/hooks/auth'
+import { useCan } from '@/hooks/auth'
 import { useIntegrations, useRotateIntegrationSecret } from '@/hooks/resources'
 import { ApiError } from '@/lib/api'
 import { CopyButton } from './PaymentsSettings'
 
 /** Webhook entrant Selar (via n8n / Zapier) : URL commune + secret propre à la boutique. */
 export function IntegrationsSettings() {
-  const { role } = useCurrentStore()
-  const isOwner = role === 'owner'
+  const isOwner = useCan('integrations.manage')
   const toast = useToast()
   const { data, error, isPending, refetch } = useIntegrations(isOwner)
   const rotate = useRotateIntegrationSecret()

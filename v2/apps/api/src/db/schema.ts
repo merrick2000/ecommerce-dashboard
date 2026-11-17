@@ -4,6 +4,7 @@ import {
   bigint,
   bigserial,
   boolean,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -27,6 +28,7 @@ import type {
   ProductType,
   Promo,
   QuantityOffer,
+  MemberOptions,
   StoreRole,
 } from '@zuri/shared'
 
@@ -144,9 +146,76 @@ export const storeMembers = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     role: varchar('role', { length: 20 }).$type<StoreRole>().notNull().default('owner'),
+    /** Options en plus du rôle (voir le CA, exporter). */
+    options: jsonb('options').$type<MemberOptions>().notNull().default({ viewRevenue: false, exportData: false }),
+    /** false = accès limité aux produits listés dans store_member_products. */
+    allProducts: boolean('all_products').notNull().default(true),
     createdAt: createdAt(),
   },
   (t) => [primaryKey({ columns: [t.storeId, t.userId] }), index('store_members_user_idx').on(t.userId)],
+)
+
+/** Périmètre produits d'un membre (quand allProducts = false). */
+export const storeMemberProducts = pgTable(
+  'store_member_products',
+  {
+    storeId: ref('store_id').notNull(),
+    userId: fk('user_id').notNull(),
+    productId: ref('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.userId, t.productId] }),
+    foreignKey({ columns: [t.storeId, t.userId], foreignColumns: [storeMembers.storeId, storeMembers.userId] }).onDelete('cascade'),
+  ],
+)
+
+/** Invitations d'équipe : seul le SHA-256 du jeton est stocké, valables 7 jours. */
+export const storeInvitations = pgTable(
+  'store_invitations',
+  {
+    id: pid('inv'),
+    tokenHash: varchar('token_hash', { length: 64 }).notNull().unique(),
+    storeId: ref('store_id')
+      .notNull()
+      .references(() => stores.id, { onDelete: 'cascade' }),
+    email: varchar('email', { length: 255 }).notNull(),
+    role: varchar('role', { length: 20 }).$type<StoreRole>().notNull(),
+    productIds: jsonb('product_ids').$type<string[] | null>(),
+    options: jsonb('options').$type<MemberOptions>().notNull().default({ viewRevenue: false, exportData: false }),
+    invitedBy: fk('invited_by').references(() => users.id, { onDelete: 'set null' }),
+    expiresAt: ts('expires_at').notNull(),
+    acceptedAt: ts('accepted_at'),
+    acceptedBy: fk('accepted_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('store_invitations_store_idx').on(t.storeId)],
+)
+
+/**
+ * Journal d'activité hors commandes (produits, promos, zones, réglages, équipe).
+ * Les actions sur les commandes vivent dans order_events ; le fil d'activité fusionne les deux.
+ */
+export const activityLog = pgTable(
+  'activity_log',
+  {
+    id: id(),
+    storeId: ref('store_id')
+      .notNull()
+      .references(() => stores.id, { onDelete: 'cascade' }),
+    userId: fk('user_id').references(() => users.id, { onDelete: 'set null' }),
+    entityType: varchar('entity_type', { length: 30 }).notNull(),
+    entityId: varchar('entity_id', { length: 40 }),
+    entityLabel: varchar('entity_label', { length: 255 }),
+    action: varchar('action', { length: 40 }).notNull(),
+    message: text('message').notNull(),
+    /** Produits concernés : un membre limité à certains produits ne voit que ce qui les touche. */
+    productIds: jsonb('product_ids').$type<string[]>(),
+    data: jsonb('data').$type<Record<string, unknown>>(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('activity_log_store_created_idx').on(t.storeId, t.createdAt)],
 )
 
 export const checkoutSettings = pgTable('checkout_settings', {
@@ -370,6 +439,9 @@ export const orders = pgTable(
     trackingContext: jsonb('tracking_context').$type<{ ip?: string; userAgent?: string; fbp?: string; fbc?: string }>(),
     /** Marque l'envoi unique des effets de bord (emails, CAPI…), idempotence. */
     fulfilledEffectsAt: ts('fulfilled_effects_at'),
+    /** Membre qui traite la commande (« Je prends » ou attribution). */
+    assignedTo: fk('assigned_to').references(() => users.id, { onDelete: 'set null' }),
+    assignedAt: ts('assigned_at'),
     metadata: jsonb('metadata').$type<Record<string, unknown>>(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -380,6 +452,7 @@ export const orders = pgTable(
     index('orders_store_payment_idx').on(t.storeId, t.paymentStatus),
     index('orders_customer_idx').on(t.customerId),
     index('orders_payment_ref_idx').on(t.paymentRef),
+    index('orders_store_assigned_idx').on(t.storeId, t.assignedTo),
   ],
 )
 

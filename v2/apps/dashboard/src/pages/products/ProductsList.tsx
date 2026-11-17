@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router'
 import { ConfirmDialog, useDialogState } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, ButtonLink, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Segmented, Switch } from '@/components/ui'
-import { useCurrentStore } from '@/hooks/auth'
+import { useCan, useCurrentStore } from '@/hooks/auth'
 import { useDeleteProduct, useDuplicateProduct, useProducts, useToggleProductActive } from '@/hooks/resources'
 import { money, num } from '@/lib/format'
 import type { ProductListItem } from '@/lib/types'
@@ -39,7 +39,7 @@ const MENU_WIDTH = 208
  * Menu d'actions d'une ligne. Affiché en position fixe (au-dessus de la page) pour ne jamais
  * être coupé par le tableau ; s'ouvre vers le haut s'il n'y a pas la place en dessous.
  */
-function RowMenu({ editHref, viewHref, onDuplicate, onDelete, busy }: { editHref: string; viewHref: string | null; onDuplicate: () => void; onDelete: () => void; busy?: boolean }) {
+function RowMenu({ editHref, viewHref, onDuplicate, onDelete, busy, canEdit = true }: { editHref: string; viewHref: string | null; onDuplicate: () => void; onDelete: () => void; busy?: boolean; canEdit?: boolean }) {
   const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null)
   const button = useRef<HTMLButtonElement>(null)
   const close = () => setPos(null)
@@ -77,13 +77,15 @@ function RowMenu({ editHref, viewHref, onDuplicate, onDelete, busy }: { editHref
           <div className="fixed inset-0 z-40" onClick={close} aria-hidden />
           <div role="menu" style={{ ...pos, width: MENU_WIDTH }} className="fixed z-50 overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-xl">
             <Link role="menuitem" to={editHref} className={item} onClick={close}>
-              <Pencil className="size-4" /> Modifier
+              <Pencil className="size-4" /> {canEdit ? 'Modifier' : 'Voir'}
             </Link>
             {viewHref && (
               <a role="menuitem" href={viewHref} target="_blank" rel="noreferrer" className={item} onClick={close}>
                 <ExternalLink className="size-4" /> Voir la page de vente
               </a>
             )}
+            {canEdit && (
+              <>
             <button
               role="menuitem"
               className={item}
@@ -105,6 +107,8 @@ function RowMenu({ editHref, viewHref, onDuplicate, onDelete, busy }: { editHref
             >
               <Trash2 className="size-4" /> Supprimer
             </button>
+              </>
+            )}
           </div>
         </>
       )}
@@ -114,6 +118,7 @@ function RowMenu({ editHref, viewHref, onDuplicate, onDelete, busy }: { editHref
 
 export default function ProductsList() {
   const { storeId, store } = useCurrentStore()
+  const canEdit = useCan('products.edit')
   const navigate = useNavigate()
   const toast = useToast()
   const { data, error, isPending, refetch } = useProducts()
@@ -143,9 +148,11 @@ export default function ProductsList() {
       <PageHeader
         title="Produits"
         actions={
-          <ButtonLink to="new" variant="primary">
-            <Plus className="size-4" /> Nouveau produit
-          </ButtonLink>
+          canEdit && (
+            <ButtonLink to="new" variant="primary">
+              <Plus className="size-4" /> Nouveau produit
+            </ButtonLink>
+          )
         }
       />
 
@@ -178,9 +185,11 @@ export default function ProductsList() {
           title="Aucun produit"
           description="Créez votre premier produit : physique avec paiement à la livraison, ou digital (ebook, formation…)."
           action={
-            <ButtonLink to="new" variant="primary">
-              <Plus className="size-4" /> Créer un produit
-            </ButtonLink>
+            canEdit && (
+              <ButtonLink to="new" variant="primary">
+                <Plus className="size-4" /> Créer un produit
+              </ButtonLink>
+            )
           }
         />
       ) : rows.length === 0 ? (
@@ -225,9 +234,9 @@ export default function ProductsList() {
                 <span className={cx('tabular hidden text-sm md:block', p.trackInventory && p.stock != null && p.stock <= 3 && 'font-medium text-orange-600')}>{p.type === 'digital' ? '∞' : p.trackInventory ? (p.stock == null ? 'Par variante' : num(p.stock)) : '-'}</span>
                 <span className="tabular hidden text-sm md:block">{num(p.sales)}</span>
                 <div className="relative z-[1] flex items-center gap-1 md:contents">
-                  <Switch size="sm" checked={p.isActive} onChange={(v) => toggle.mutate({ id: p.id, isActive: v }, { onError: (e) => toast.error(e) })} ariaLabel={p.isActive ? `Désactiver ${p.name}` : `Activer ${p.name}`} />
+                  <Switch size="sm" disabled={!canEdit} checked={p.isActive} onChange={(v) => toggle.mutate({ id: p.id, isActive: v }, { onError: (e) => toast.error(e) })} ariaLabel={p.isActive ? `Désactiver ${p.name}` : `Activer ${p.name}`} />
                   <div className="flex items-center">
-                    <RowMenu busy={duplicate.isPending && duplicate.variables === p.id} editHref={`/stores/${storeId}/products/${p.id}`} viewHref={store ? salesPageUrl(store.slug, p.id) : null} onDuplicate={() => onDuplicate(p)} onDelete={() => confirmDelete.show(p)} />
+                    <RowMenu busy={duplicate.isPending && duplicate.variables === p.id} editHref={`/stores/${storeId}/products/${p.id}`} viewHref={store ? salesPageUrl(store.slug, p.id) : null} onDuplicate={() => onDuplicate(p)} onDelete={() => confirmDelete.show(p)} canEdit={canEdit} />
                   </div>
                 </div>
               </li>

@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router'
 import { ConfirmDialog } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, ErrorState, PageHeader, Skeleton, Stat, Textarea } from '@/components/ui'
-import { useCurrentStore } from '@/hooks/auth'
+import { useCan, useCurrentStore } from '@/hooks/auth'
 import { useCustomer, useUpdateCustomer } from '@/hooks/resources'
 import { date, money, num, phoneDigits, prettyPhone } from '@/lib/format'
 import { PaymentBadge, StatusBadge } from '../orders/shared'
@@ -17,6 +17,7 @@ export default function CustomerDetail() {
   const toast = useToast()
   const { data: c, error, isPending, refetch } = useCustomer(id)
   const update = useUpdateCustomer(id)
+  const canEdit = useCan('customers.edit')
   const [notes, setNotes] = useState<string | null>(null)
   const [confirmBlock, setConfirmBlock] = useState(false)
   const back = (
@@ -59,10 +60,12 @@ export default function CustomerDetail() {
         }
         description={`Client depuis le ${date(c.createdAt)}`}
         actions={
+          canEdit && (
           <Button variant={c.isBlocked ? 'secondary' : 'danger'} onClick={() => (c.isBlocked ? toggleBlock() : setConfirmBlock(true))} loading={update.isPending && update.variables?.isBlocked !== undefined}>
             {c.isBlocked ? <ShieldCheck className="size-4" /> : <Ban className="size-4" />}
             {c.isBlocked ? 'Débloquer' : 'Bloquer'}
           </Button>
+          )
         }
       />
 
@@ -118,7 +121,7 @@ export default function CustomerDetail() {
             </div>
           </Card>
           <Card title="Notes internes">
-            <Textarea aria-label="Notes internes" rows={4} placeholder="Préférences, historique d’appels…" value={currentNotes} onChange={(e) => setNotes(e.target.value)} />
+            <Textarea aria-label="Notes internes" readOnly={!canEdit} rows={4} placeholder="Préférences, historique d’appels…" value={currentNotes} onChange={(e) => setNotes(e.target.value)} />
             <Button
               className="mt-3"
               disabled={notes === null || notes === (c.notes ?? '')}

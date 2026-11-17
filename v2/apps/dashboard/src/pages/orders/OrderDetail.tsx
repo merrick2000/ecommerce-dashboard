@@ -1,12 +1,13 @@
 import { PAYMENT_STATUSES, type PaymentStatus } from '@zuri/shared'
-import { AlertTriangle, ArrowLeft, ChevronRight, MapPin, Pencil, Send, Truck } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ChevronRight, Hand, MapPin, Pencil, Send, Truck, UserCheck } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router'
 import { Dialog } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, cx, ErrorState, Input, PageHeader, Select, Skeleton, Stat, Textarea } from '@/components/ui'
-import { useCurrentStore } from '@/hooks/auth'
+import { useCan, useCurrentStore } from '@/hooks/auth'
 import { useOrder, useOrderNote, useOrderPayment, useUpdateOrder } from '@/hooks/resources'
+import { useAssignees, useAssignOrder, useClaimOrder, useReleaseOrder } from '@/hooks/team'
 import { strOrNull } from '@/lib/form'
 import { dateTime, money, prettyPhone } from '@/lib/format'
 import { FULFILLMENT_LABEL, PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL } from '@/lib/labels'
@@ -193,9 +194,74 @@ function PaymentCard({ order, canEdit }: { order: Order; canEdit: boolean }) {
   )
 }
 
+/** Qui traite la commande : « Je prends », « Libérer », « Attribuer à ». */
+function AssignmentCard({ order }: { order: Order }) {
+  const { me } = useCurrentStore()
+  const canUpdate = useCan('orders.update')
+  const canAssign = useCan('orders.assign')
+  const toast = useToast()
+  const claim = useClaimOrder(order.id)
+  const release = useReleaseOrder(order.id)
+  const assign = useAssignOrder(order.id)
+  const assignees = useAssignees(canAssign)
+  const mine = order.assignedTo != null && order.assignedTo === me?.id
+  const free = order.assignedTo == null
+  const done = (msg: string) => ({ onSuccess: () => toast.success(msg), onError: (e: unknown) => toast.error(e) })
+
+  if (!canUpdate && !canAssign && free) return null
+  return (
+    <Card title="Prise en charge">
+      <div className="flex items-center gap-3">
+        <span className={cx('flex size-9 shrink-0 items-center justify-center rounded-full', free ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300' : 'bg-accent-soft text-accent')}>
+          {free ? <Hand className="size-4" /> : <UserCheck className="size-4" />}
+        </span>
+        <div className="min-w-0">
+          <p className="font-medium">{free ? 'Libre' : mine ? 'Vous' : (order.assigneeName ?? 'Membre de l’équipe')}</p>
+          <p className="text-[13px] text-muted">{free ? 'Personne ne s’en occupe encore.' : order.assignedAt ? `Depuis le ${dateTime(order.assignedAt)}` : 'Attribuée'}</p>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {canUpdate && free && (
+          <Button variant="primary" size="sm" loading={claim.isPending} onClick={() => claim.mutate(undefined, done('Commande prise en charge'))}>
+            <Hand className="size-3.5" /> Je prends
+          </Button>
+        )}
+        {canUpdate && mine && (
+          <Button size="sm" loading={release.isPending} onClick={() => release.mutate(undefined, done('Commande libérée'))}>
+            Libérer
+          </Button>
+        )}
+      </div>
+      {canAssign && (
+        <div className="mt-3">
+          <Select
+            label="Attribuer à"
+            value={order.assignedTo == null ? '' : String(order.assignedTo)}
+            disabled={assign.isPending || assignees.isPending}
+            onChange={(e) => {
+              const userId = e.target.value ? Number(e.target.value) : null
+              const name = assignees.data?.find((a) => a.userId === userId)?.name
+              assign.mutate(userId, done(userId ? `Attribuée à ${name ?? 'ce membre'}` : 'Commande libérée'))
+            }}
+            options={[
+              { value: '', label: 'Personne (libre)' },
+              // Membre actuel absent de la liste (retiré de l'équipe) : on l'affiche quand même.
+              ...(order.assignedTo != null && !(assignees.data ?? []).some((a) => a.userId === order.assignedTo) ? [{ value: String(order.assignedTo), label: order.assigneeName ?? 'Membre' }] : []),
+              ...(assignees.data ?? []).map((a) => ({ value: String(a.userId), label: a.userId === me?.id ? `${a.name} (vous)` : a.name })),
+            ]}
+          />
+        </div>
+      )}
+    </Card>
+  )
+}
+
 export default function OrderDetail() {
   const { orderId } = useParams()
-  const { storeId, store, role } = useCurrentStore()
+  const { storeId, store } = useCurrentStore()
+  const canEditPayment = useCan('orders.payment')
+  const canUpdate = useCan('orders.update')
+  const canSeeCustomers = useCan('customers.view')
   const { data: order, error, isPending, refetch } = useOrder(orderId ?? '')
   const [editing, setEditing] = useState(false)
   const back = (
@@ -216,7 +282,6 @@ export default function OrderDetail() {
     )
 
   const physical = order.kind !== 'digital'
-  const canEditPayment = role === 'owner' || role === 'admin'
 
   return (
     <>
@@ -239,11 +304,11 @@ export default function OrderDetail() {
       <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
         <div className="space-y-4">
           {/* Actions rapides */}
-          {(order.allowedTransitions.length > 0 || order.customerPhone) && (
+          {((canUpdate && order.allowedTransitions.length > 0) || order.customerPhone) && (
             <Card>
               <div className="space-y-3 p-4">
                 {order.customerPhone && <ContactButtons phone={order.customerPhone} waUrl={whatsappUrl(order, order.items, store?.name)} className="[&>a]:flex-1 sm:[&>a]:flex-none" />}
-                <StatusActions order={order} transitions={order.allowedTransitions} className="[&>button]:flex-1 sm:[&>button]:flex-none" />
+                {canUpdate && <StatusActions order={order} transitions={order.allowedTransitions} className="[&>button]:flex-1 sm:[&>button]:flex-none" />}
               </div>
             </Card>
           )}
@@ -296,18 +361,21 @@ export default function OrderDetail() {
           </Card>
 
           <Card title="Historique">
-            <NoteForm orderId={order.id} />
+            {canUpdate && <NoteForm orderId={order.id} />}
             <Timeline events={order.events} />
           </Card>
         </div>
 
         <div className="space-y-4">
+          <AssignmentCard order={order} />
           <Card
             title="Client"
             actions={
-              <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
-                <Pencil className="size-3.5" /> Modifier
-              </Button>
+              canUpdate && (
+                <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+                  <Pencil className="size-3.5" /> Modifier
+                </Button>
+              )
             }
           >
             <p className="font-medium">{order.customerName ?? '-'}</p>
@@ -321,9 +389,9 @@ export default function OrderDetail() {
                   {order.customer.returnedCount > 0 && <Badge tone="orange">{order.customer.returnedCount} retour(s)</Badge>}
                   {order.customer.isBlocked && <Badge tone="red">Bloqué</Badge>}
                 </div>
-                <Link to={`/stores/${storeId}/customers/${order.customer.id}`} className="mt-3 inline-flex items-center gap-0.5 text-sm font-medium text-accent hover:underline">
+                {canSeeCustomers && <Link to={`/stores/${storeId}/customers/${order.customer.id}`} className="mt-3 inline-flex items-center gap-0.5 text-sm font-medium text-accent hover:underline">
                   Voir l’historique <ChevronRight className="size-4" />
-                </Link>
+                </Link>}
               </>
             )}
             {physical && (

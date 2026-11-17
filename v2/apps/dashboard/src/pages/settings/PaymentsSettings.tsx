@@ -2,7 +2,7 @@ import { Check, Copy, Lock } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, EmptyState, ErrorState, Input, Segmented, Skeleton, Switch } from '@/components/ui'
-import { useCurrentStore } from '@/hooks/auth'
+import { useCan } from '@/hooks/auth'
 import { usePaymentAccounts, useSavePaymentAccount } from '@/hooks/resources'
 import { ApiError } from '@/lib/api'
 import { FIELD_LABEL, PROVIDER_LABEL } from '@/lib/labels'
@@ -165,8 +165,7 @@ function ProviderCard({ account }: { account: PaymentAccount }) {
 }
 
 export function PaymentsSettings() {
-  const { role } = useCurrentStore()
-  const isOwner = role === 'owner'
+  const isOwner = useCan('payments.manage')
   const { data, error, isPending, refetch } = usePaymentAccounts(isOwner)
   const forbidden = !isOwner || (error instanceof ApiError && error.status === 403)
   if (forbidden) return <EmptyState icon={<Lock className="size-5" />} title="Réservé au propriétaire" description="Seul le propriétaire de la boutique peut voir et modifier les moyens de paiement." />

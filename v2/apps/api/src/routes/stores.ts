@@ -3,7 +3,10 @@ import { and, eq, ne, or } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { db } from '../db/client'
 import { checkoutSettings, storeMembers, stores } from '../db/schema'
-import { requireAuth, requireRole, requireStore } from '../lib/auth'
+import { requireAuth, requirePermission, requireStore } from '../lib/auth'
+import { logActivity } from '../services/activity'
+import { activityRoutes } from './activity'
+import { teamRoutes } from './team'
 import type { AppEnv } from '../lib/context'
 import { encrypt } from '../lib/crypto'
 import { conflict } from '../lib/errors'
@@ -40,7 +43,7 @@ async function assertUnique(fields: { slug?: string; subdomain?: string | null; 
 
 const storeScoped = new Hono<AppEnv>()
   .get('/', (c) => c.json(storeView(c.get('store'))))
-  .patch('/', requireRole('admin'), v('json', storeUpdateSchema), async (c) => {
+  .patch('/', requirePermission('store.settings'), v('json', storeUpdateSchema), async (c) => {
     const store = c.get('store')
     const input = c.req.valid('json')
     await assertUnique(input, store.id)
@@ -48,9 +51,10 @@ const storeScoped = new Hono<AppEnv>()
     // Changer de domaine perso remet la vérification à zéro.
     if (input.customDomain !== undefined && input.customDomain !== store.customDomain) patch.customDomainVerifiedAt = null
     const [row] = await db.update(stores).set(patch).where(eq(stores.id, store.id)).returning()
+    await logActivity(c, { entityType: 'store', entityId: store.id, entityLabel: row?.name ?? store.name, action: 'updated', message: `Réglages de la boutique modifiés (${Object.keys(input).join(', ')})` })
     return c.json(row ? storeView(row) : null)
   })
-  .get('/checkout-settings', async (c) => {
+  .get('/checkout-settings', requirePermission('store.settings'), async (c) => {
     const [row] = await db.select().from(checkoutSettings).where(eq(checkoutSettings.storeId, c.get('store').id)).limit(1)
     return c.json({
       settings: row?.settings ?? DEFAULT_CHECKOUT,
@@ -62,13 +66,14 @@ const storeScoped = new Hono<AppEnv>()
       },
     })
   })
-  .put('/checkout-settings', requireRole('admin'), v('json', checkoutSettingsSchema), async (c) => {
+  .put('/checkout-settings', requirePermission('store.settings'), v('json', checkoutSettingsSchema), async (c) => {
     const storeId = c.get('store').id
     const settings = c.req.valid('json')
     await db.insert(checkoutSettings).values({ storeId, settings }).onConflictDoUpdate({ target: checkoutSettings.storeId, set: { settings } })
+    await logActivity(c, { entityType: 'store', entityId: storeId, action: 'checkout_updated', message: 'Réglages du formulaire de commande modifiés' })
     return c.json({ settings })
   })
-  .put('/tracking', requireRole('admin'), v('json', trackingSettingsSchema), async (c) => {
+  .put('/tracking', requirePermission('store.settings'), v('json', trackingSettingsSchema), async (c) => {
     const storeId = c.get('store').id
     const t = c.req.valid('json')
     const patch = {
@@ -82,12 +87,13 @@ const storeScoped = new Hono<AppEnv>()
       .insert(checkoutSettings)
       .values({ storeId, settings: DEFAULT_CHECKOUT, ...patch })
       .onConflictDoUpdate({ target: checkoutSettings.storeId, set: patch })
+    await logActivity(c, { entityType: 'store', entityId: storeId, action: 'tracking_updated', message: 'Pixels de suivi modifiés' })
     return c.json({ ok: true })
   })
-  .get('/integrations', requireRole('owner'), (c) =>
+  .get('/integrations', requirePermission('integrations.manage'), (c) =>
     c.json({ webhookUrl: `${env.APP_URL.replace(/\/$/, '')}/api/v1/webhooks/external`, hasSecret: Boolean(c.get('store').integrationSecretEnc) }),
   )
-  .post('/integrations/secret', requireRole('owner'), async (c) => c.json({ secret: await rotateIntegrationSecret(c.get('store').id) }))
+  .post('/integrations/secret', requirePermission('integrations.manage'), async (c) => c.json({ secret: await rotateIntegrationSecret(c.get('store').id) }))
   .route('/products', productRoutes)
   .route('/orders', orderRoutes)
   .route('/customers', customerRoutes)
@@ -96,6 +102,8 @@ const storeScoped = new Hono<AppEnv>()
   .route('/payment-accounts', paymentAccountRoutes)
   .route('/stats', statsRoutes)
   .route('/uploads', uploadRoutes)
+  .route('/team', teamRoutes)
+  .route('/activity', activityRoutes)
 
 export const storeRoutes = new Hono<AppEnv>()
   .use(requireAuth)

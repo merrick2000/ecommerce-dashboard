@@ -1,12 +1,13 @@
 import { FULFILLMENT_STATUSES, FULFILLMENT_TRANSITIONS, PAYMENT_STATUSES, type FulfillmentStatus } from '@zuri/shared'
-import { AlertTriangle, ChevronLeft, ChevronRight, Download, Filter, Plus, Search, ShoppingBag, X } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, Download, Filter, Hand, Plus, Search, ShoppingBag, UserCheck, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { ConfirmDialog, Dialog } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
-import { Badge, Button, ButtonLink, buttonClass, Checkbox, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Select } from '@/components/ui'
-import { useCurrentStore } from '@/hooks/auth'
+import { Badge, Button, ButtonLink, buttonClass, Checkbox, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Segmented, Select } from '@/components/ui'
+import { useCan, useCurrentStore } from '@/hooks/auth'
 import { ordersCsvUrl, useBulkOrderStatus, useOrders } from '@/hooks/resources'
+import { useClaimOrder } from '@/hooks/team'
 import { useDebounced } from '@/hooks/useDebounced'
 import type { Query } from '@/lib/api'
 import { money, prettyPhone, relative } from '@/lib/format'
@@ -36,7 +37,40 @@ function CustomerFlags({ order }: { order: OrderListItem }) {
 
 const itemsText = (o: OrderListItem) => o.items.map((i) => `${i.quantity} × ${i.name}${i.variantName ? ` (${i.variantName})` : ''}`).join(', ')
 
-function OrderCard({ order, selected, onSelect, storeName }: { order: OrderListItem; selected: boolean; onSelect: (v: boolean) => void; storeName?: string }) {
+/** « À moi », « Pris par Awa » ou « Libre » (+ bouton « Je prends »). */
+function AssigneeBadge({ order, canUpdate }: { order: OrderListItem; canUpdate: boolean }) {
+  const { me } = useCurrentStore()
+  const claim = useClaimOrder(order.id)
+  const toast = useToast()
+  if (order.assignedTo != null)
+    return order.assignedTo === me?.id ? (
+      <Badge tone="blue">
+        <UserCheck className="size-3" /> À moi
+      </Badge>
+    ) : (
+      <Badge>
+        <UserCheck className="size-3" /> {order.assigneeName ?? 'Membre'}
+      </Badge>
+    )
+  const open = ['new', 'unreachable', 'confirmed'].includes(order.fulfillmentStatus)
+  if (!open) return null
+  if (!canUpdate) return <Badge tone="amber">Libre</Badge>
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        claim.mutate(undefined, { onSuccess: () => toast.success(`${order.orderNumber} : prise en charge`), onError: (err) => toast.error(err) })
+      }}
+      disabled={claim.isPending}
+      className="inline-flex items-center gap-1 rounded-full border border-dashed border-accent px-2 py-0.5 text-[12px] font-medium text-accent hover:bg-accent-soft disabled:opacity-60"
+    >
+      <Hand className="size-3" /> Je prends
+    </button>
+  )
+}
+
+function OrderCard({ order, selected, onSelect, storeName, canUpdate }: { order: OrderListItem; selected: boolean; onSelect: (v: boolean) => void; storeName?: string; canUpdate: boolean }) {
   const navigate = useNavigate()
   const open = () => navigate(String(order.id))
   const cod = order.paymentMethod === 'cod'
@@ -50,7 +84,7 @@ function OrderCard({ order, selected, onSelect, storeName }: { order: OrderListI
       aria-label={`Commande ${order.orderNumber}`}
     >
       <div className="flex items-start gap-3">
-        <Checkbox checked={selected} onChange={onSelect} label={`Sélectionner ${order.orderNumber}`} className="mt-0.5" />
+        {canUpdate && <Checkbox checked={selected} onChange={onSelect} label={`Sélectionner ${order.orderNumber}`} className="mt-0.5" />}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -70,6 +104,7 @@ function OrderCard({ order, selected, onSelect, storeName }: { order: OrderListI
             {order.kind === 'digital' && <Badge tone="violet">Digital</Badge>}
             {order.callAttempts > 0 && <Badge tone="orange">{order.callAttempts} appel{order.callAttempts > 1 ? 's' : ''}</Badge>}
             <CustomerFlags order={order} />
+            <AssigneeBadge order={order} canUpdate={canUpdate} />
             <span className="ml-auto text-[12px] text-subtle">{order.orderNumber}</span>
           </div>
         </div>
@@ -79,7 +114,7 @@ function OrderCard({ order, selected, onSelect, storeName }: { order: OrderListI
           {cod && ['new', 'unreachable', 'confirmed'].includes(order.fulfillmentStatus) && (
             <ContactButtons phone={order.customerPhone} waUrl={whatsappUrl(order, order.items, storeName)} size="sm" className="[&>a]:flex-1" />
           )}
-          <StatusActions order={order} size="sm" className="[&>button]:flex-1" />
+          {canUpdate && <StatusActions order={order} size="sm" className="[&>button]:flex-1" />}
         </div>
       )}
     </li>
@@ -195,6 +230,9 @@ function BulkBar({ ids, orders, onDone }: { ids: string[]; orders: OrderListItem
 
 export default function OrdersList() {
   const { storeId, store } = useCurrentStore()
+  const canUpdate = useCan('orders.update')
+  const canCreate = useCan('orders.create')
+  const canExport = useCan('orders.export')
   const [params, setParams] = useSearchParams()
   const [search, setSearch] = useState(params.get('q') ?? '')
   const q = useDebounced(search.trim(), 350)
@@ -212,8 +250,10 @@ export default function OrdersList() {
     from: params.get('from') || undefined,
     // Inclure toute la journée de fin.
     to: to ? `${to}T23:59:59` : undefined,
+    assigned: params.get('assigned') || undefined,
     page,
   }
+  const assigned = params.get('assigned') ?? ''
   const { data, error, isPending, refetch, isFetching } = useOrders(query)
 
   const update = (patch: Record<string, string>, resetPage = true) => {
@@ -245,16 +285,34 @@ export default function OrdersList() {
         title="Commandes"
         actions={
           <>
-            <a href={ordersCsvUrl(storeId, query)} className={buttonClass('secondary', 'md')} download>
-              <Download className="size-4" /> <span className="hidden sm:inline">Exporter CSV</span>
-              <span className="sm:hidden">CSV</span>
-            </a>
-            <ButtonLink to="new" variant="primary">
-              <Plus className="size-4" /> Saisir
-            </ButtonLink>
+            {canExport && (
+              <a href={ordersCsvUrl(storeId, query)} className={buttonClass('secondary', 'md')} download>
+                <Download className="size-4" /> <span className="hidden sm:inline">Exporter CSV</span>
+                <span className="sm:hidden">CSV</span>
+              </a>
+            )}
+            {canCreate && (
+              <ButtonLink to="new" variant="primary">
+                <Plus className="size-4" /> Saisir
+              </ButtonLink>
+            )}
           </>
         }
       />
+
+      {/* Attribution : toutes, les miennes, les libres */}
+      <div className="mb-3">
+        <Segmented
+          label="Attribution"
+          value={assigned}
+          onChange={(v) => update({ assigned: v })}
+          options={[
+            { value: '', label: 'Toutes' },
+            { value: 'me', label: 'Mes commandes' },
+            { value: 'none', label: 'Libres' },
+          ]}
+        />
+      </div>
 
       {/* Onglets par statut */}
       <div className="scrollbar-none -mx-4 mb-3 overflow-x-auto px-4 sm:mx-0 sm:px-0" role="tablist" aria-label="Statut">
@@ -306,7 +364,7 @@ export default function OrdersList() {
 
       {rows.length > 0 && (
         <div className="mb-2 flex items-center gap-2 px-1 text-[13px] text-muted">
-          <Checkbox checked={selected.length === rows.length} onChange={(v) => setSelected(v ? rows.map((r) => r.id) : [])} label="Tout sélectionner" />
+          {canUpdate && <Checkbox checked={selected.length === rows.length} onChange={(v) => setSelected(v ? rows.map((r) => r.id) : [])} label="Tout sélectionner" />}
           <span>
             {data?.total} commande{(data?.total ?? 0) > 1 ? 's' : ''}
           </span>
@@ -321,10 +379,16 @@ export default function OrdersList() {
       ) : rows.length === 0 ? (
         <EmptyState
           icon={<ShoppingBag className="size-5" />}
-          title={q || activeFilters.length || status ? 'Aucune commande ne correspond' : 'Aucune commande pour le moment'}
-          description={q || activeFilters.length || status ? 'Essayez un autre onglet ou retirez des filtres.' : 'Les commandes de vos pages de vente arrivent ici. Vous pouvez aussi saisir une commande reçue par téléphone ou WhatsApp.'}
+          title={q || activeFilters.length || status || assigned ? 'Aucune commande ne correspond' : 'Aucune commande pour le moment'}
+          description={
+            assigned === 'me' && !q && !activeFilters.length && !status
+              ? 'Aucune commande ne vous est attribuée. Prenez une commande libre avec « Je prends ».'
+              : q || activeFilters.length || status || assigned
+                ? 'Essayez un autre onglet ou retirez des filtres.'
+                : 'Les commandes de vos pages de vente arrivent ici. Vous pouvez aussi saisir une commande reçue par téléphone ou WhatsApp.'
+          }
           action={
-            q || activeFilters.length || status ? (
+            q || activeFilters.length || status || assigned ? (
               <Button
                 onClick={() => {
                   setSearch('')
@@ -333,17 +397,17 @@ export default function OrdersList() {
               >
                 Tout afficher
               </Button>
-            ) : (
+            ) : canCreate ? (
               <ButtonLink to="new" variant="primary">
                 <Plus className="size-4" /> Saisir une commande
               </ButtonLink>
-            )
+            ) : undefined
           }
         />
       ) : (
         <ul className="grid gap-2.5 xl:grid-cols-2">
           {rows.map((o) => (
-            <OrderCard key={o.id} order={o} selected={selected.includes(o.id)} onSelect={(v) => toggle(o.id, v)} storeName={store?.name} />
+            <OrderCard key={o.id} order={o} selected={selected.includes(o.id)} onSelect={(v) => toggle(o.id, v)} storeName={store?.name} canUpdate={canUpdate} />
           ))}
         </ul>
       )}
@@ -371,7 +435,7 @@ export default function OrdersList() {
           setFiltersOpen(false)
         }}
       />
-      {selected.length > 0 && <BulkBar ids={selected} orders={rows} onDone={() => setSelected([])} />}
+      {canUpdate && selected.length > 0 && <BulkBar ids={selected} orders={rows} onDone={() => setSelected([])} />}
     </>
   )
 }

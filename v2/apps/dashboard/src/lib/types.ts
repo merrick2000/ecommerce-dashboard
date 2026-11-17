@@ -151,6 +151,10 @@ export interface OrderBase {
   utmCampaign: string | null
   createdAt: Iso
   updatedAt: Iso
+  /** Membre de l'équipe qui traite la commande (null = libre). */
+  assignedTo: number | null
+  assignedAt: Iso | null
+  assigneeName: string | null
 }
 
 export interface OrderListItem extends OrderBase {
@@ -283,11 +287,12 @@ export interface PaymentAccount {
 
 export interface KpiBlock {
   orders: number
-  revenue: number
+  /** null quand le membre n'a pas le droit de voir le chiffre d'affaires. */
+  revenue: number | null
   paidOrders: number
   codPending: number
   codToShip: number
-  codInTransit: number
+  codInTransit: number | null
   delivered: number
   returned: number
   confirmedOrBeyond: number
@@ -301,9 +306,13 @@ export interface StatsOverview {
   previous: KpiBlock
   rates: { conversion: number | null; confirmation: number | null; delivery: number | null }
   visitors: { visitors: number; views: number; checkouts: number }
-  daily: { day: string; orders: number; revenue: number }[]
-  topProducts: { productId: string | null; name: string; orders: number; units: number; revenue: number }[]
-  sources: { source: string; orders: number; revenue: number }[]
+  daily: { day: string; orders: number; revenue: number | null }[]
+  topProducts: { productId: string | null; name: string; orders: number; units: number; revenue: number | null }[]
+  sources: { source: string; orders: number; revenue: number | null }[]
+  /** Faux : les montants de revenu valent null et ne doivent pas être affichés. */
+  revenueVisible: boolean
+  /** Résultats personnels (commandes attribuées au membre connecté). */
+  mine: { assigned: number; confirmed: number; delivered: number; confirmationRate: number | null } | null
 }
 
 export interface UploadedImage {

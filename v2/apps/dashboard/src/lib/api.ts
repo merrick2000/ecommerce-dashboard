@@ -129,6 +129,7 @@ function uploadWithProgress<T>(path: string, file: File, query?: Query, onProgre
 export function errorMessage(e: unknown): string {
   if (e instanceof ApiError) {
     if (e.status === 403) return e.message || 'Vous n’avez pas les droits pour cette action.'
+    if (e.code === 'order_taken') return e.message || 'Cette commande est déjà prise par un autre membre de l’équipe.'
     if (e.status === 503 && e.code === 's3_unconfigured') return 'Le stockage de fichiers n’est pas configuré sur le serveur.'
     return e.message
   }

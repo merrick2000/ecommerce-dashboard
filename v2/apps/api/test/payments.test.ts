@@ -157,12 +157,12 @@ describe('clients providers (HTTP simulé)', () => {
   })
   test('FeexPay : réponse sans référence → échec (plus de référence inventée)', async () => {
     respond({ message: 'ok' })
-    const r = await new FeexPay({ apiKey: 'k', shopId: 's' }).initiate({ orderId: 'ord_test0000000001', orderNumber: 'SLT-1', amount: 5000, currency: 'XOF', phone: '97000000', country: 'BJ', network: 'mtn', customerName: null, customerEmail: null, returnUrl: '', webhookUrl: '' })
+    const r = await new FeexPay({ apiKey: 'k', shopId: 's' }).initiate({ orderId: 'ord_test0000000001', orderNumber: 'ZR-1', amount: 5000, currency: 'XOF', phone: '97000000', country: 'BJ', network: 'mtn', customerName: null, customerEmail: null, returnUrl: '', webhookUrl: '' })
     expect(r.status).toBe('failed')
   })
   test('PawaPay : dépôt refusé → message lisible', async () => {
     respond({ status: 'REJECTED', rejectionReason: { rejectionMessage: 'Solde insuffisant' } })
-    const r = await new PawaPay({ apiKey: 'k' }, 'sandbox').initiate({ orderId: 'ord_test0000000001', orderNumber: 'SLT-1', amount: 5000, currency: 'XOF', phone: '97000000', country: 'BJ', network: 'mtn', customerName: null, customerEmail: null, returnUrl: '', webhookUrl: '' })
+    const r = await new PawaPay({ apiKey: 'k' }, 'sandbox').initiate({ orderId: 'ord_test0000000001', orderNumber: 'ZR-1', amount: 5000, currency: 'XOF', phone: '97000000', country: 'BJ', network: 'mtn', customerName: null, customerEmail: null, returnUrl: '', webhookUrl: '' })
     expect(r).toMatchObject({ status: 'failed', error: 'Solde insuffisant' })
   })
   test('numéros : indicatif ajouté pour tous les pays routés', () => {

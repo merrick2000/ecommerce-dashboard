@@ -5,7 +5,7 @@ import { Link, useBeforeUnload, useBlocker, useNavigate, useParams } from 'react
 import { ConfirmDialog } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, cx, ErrorState, Segmented, Skeleton } from '@/components/ui'
-import { useCurrency, useStoreId } from '@/hooks/auth'
+import { useCan, useCurrency, useStoreId } from '@/hooks/auth'
 import { useProduct, useSaveProduct } from '@/hooks/resources'
 import { serverErrors, validate, type Errors } from '@/lib/form'
 import type { Product } from '@/lib/types'
@@ -95,12 +95,14 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
   const navigate = useNavigate()
   const toast = useToast()
   const save = useSaveProduct()
+  const canEdit = useCan('products.edit')
   const [form, setForm] = useState<Form>(initial)
   const [saved, setSaved] = useState(() => JSON.stringify(initial))
   const [errors, setErrors] = useState<Errors>({})
   const [tab, setTab] = useState<Tab>('general')
   const leaving = useRef(false)
-  const dirty = JSON.stringify(form) !== saved
+  // Lecture seule (closer…) : jamais « non enregistré », pas de blocage à la sortie.
+  const dirty = canEdit && JSON.stringify(form) !== saved
 
   const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && !leaving.current && currentLocation.pathname !== nextLocation.pathname)
   useBeforeUnload((e) => {
@@ -187,7 +189,8 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
           <h1 className="min-w-0 truncate text-xl font-semibold tracking-tight sm:text-2xl">{form.name.trim() || (productId ? 'Produit' : 'Nouveau produit')}</h1>
           <div className="flex items-center gap-2">
             {dirty && <Badge tone="amber">Non enregistré</Badge>}
-            <div className="hidden sm:block">
+            {!canEdit && <Badge>Lecture seule</Badge>}
+            <div className={canEdit ? 'hidden sm:block' : 'hidden'}>
               <Button variant="primary" onClick={submit} loading={save.isPending}>
                 Enregistrer
               </Button>
@@ -250,7 +253,7 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
       </div>
 
       {/* Barre d'enregistrement mobile, au-dessus de la navigation basse */}
-      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 border-t border-line bg-surface/95 p-3 backdrop-blur sm:hidden">
+      <div className={cx('fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 border-t border-line bg-surface/95 p-3 backdrop-blur sm:hidden', !canEdit && 'hidden')}>
         <Button variant="primary" size="lg" className="w-full" onClick={submit} loading={save.isPending}>
           {dirty ? 'Enregistrer les modifications' : 'Enregistrer'}
         </Button>

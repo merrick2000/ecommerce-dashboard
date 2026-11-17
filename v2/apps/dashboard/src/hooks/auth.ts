@@ -1,4 +1,4 @@
-import type { Me } from '@zuri/shared'
+import { PERMISSIONS, type Me, type Permission, type StoreRole } from '@zuri/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router'
 import { api, ApiError, request } from '@/lib/api'
@@ -57,7 +57,11 @@ export function useCurrentStore() {
   const { data: me } = useMe()
   const id = storeId ?? ''
   const store = me?.stores.find((s) => s.id === id) ?? null
-  return { storeId: id, store, me: me ?? null, role: store?.role ?? (me?.isPlatformAdmin ? 'owner' : null) }
+  const role: StoreRole | null = store?.role ?? (me?.isPlatformAdmin ? 'owner' : null)
+  // Admin plateforme sans appartenance : accès complet, comme côté API.
+  const permissions: readonly Permission[] = store?.permissions ?? (me?.isPlatformAdmin ? PERMISSIONS : [])
+  const productIds = store ? store.productIds : null
+  return { storeId: id, store, me: me ?? null, role, permissions, productIds }
 }
 
 /** Identifiant numérique de la boutique de l'URL, utilisé par tous les hooks de ressources. */
@@ -87,4 +91,16 @@ export function useResetPassword() {
       qc.setQueryData(meKey, me)
     },
   })
+}
+
+/** Permissions du membre connecté dans la boutique courante. */
+export function usePermissions() {
+  const { permissions } = useCurrentStore()
+  return permissions
+}
+
+/** Vrai si le membre connecté a cette permission (ou au moins une si plusieurs). */
+export function useCan(...perms: Permission[]) {
+  const permissions = usePermissions()
+  return perms.some((p) => permissions.includes(p))
 }

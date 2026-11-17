@@ -1,4 +1,4 @@
-import type { FulfillmentStatus, PaymentMethod, PaymentProvider, PaymentStatus, StoreRole } from '@zuri/shared'
+import { ROLE_LABELS, type FulfillmentStatus, type PaymentMethod, type PaymentProvider, type PaymentStatus, type StoreRole } from '@zuri/shared'
 
 export type Tone = 'neutral' | 'amber' | 'blue' | 'green' | 'red' | 'violet' | 'orange'
 
@@ -73,12 +73,8 @@ export const FIELD_LABEL: Record<string, string> = {
   token: 'Token',
 }
 
-export const ROLE_LABEL: Record<StoreRole, string> = {
-  owner: 'Propriétaire',
-  admin: 'Administrateur',
-  staff: 'Équipe',
-  confirmer: 'Confirmateur',
-}
+/** Libellés des rôles : source unique dans @zuri/shared. */
+export const ROLE_LABEL: Record<StoreRole, string> = ROLE_LABELS
 
 export const COUNTRIES: { code: string; name: string }[] = [
   { code: 'BJ', name: 'Bénin' },

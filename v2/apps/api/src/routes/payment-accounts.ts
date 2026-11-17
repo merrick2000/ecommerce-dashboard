@@ -4,7 +4,8 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { db } from '../db/client'
 import { paymentAccounts } from '../db/schema'
-import { requireRole } from '../lib/auth'
+import { requirePermission } from '../lib/auth'
+import { logActivity } from '../services/activity'
 import type { AppEnv } from '../lib/context'
 import { decryptJson, encryptJson, randomToken } from '../lib/crypto'
 import { env } from '../lib/env'
@@ -33,7 +34,7 @@ const updateSchema = z.object({
 })
 
 export const paymentAccountRoutes = new Hono<AppEnv>()
-  .use(requireRole('owner'))
+  .use(requirePermission('payments.manage'))
   .get('/', async (c) => {
     const rows = await db.select().from(paymentAccounts).where(eq(paymentAccounts.storeId, c.get('store').id))
     return c.json(
@@ -74,5 +75,6 @@ export const paymentAccountRoutes = new Hono<AppEnv>()
     const values = { enabled: body.enabled, mode: body.mode, credentialsEnc: encryptJson(creds) }
     if (row) await db.update(paymentAccounts).set(values).where(eq(paymentAccounts.id, row.id))
     else await db.insert(paymentAccounts).values({ storeId, provider, webhookToken: randomToken(24), ...values })
+    await logActivity(c, { entityType: 'payment_account', entityLabel: provider, action: 'updated', message: `Moyen de paiement ${provider} ${body.enabled ? 'activé' : 'désactivé'} (${body.mode === 'live' ? 'production' : 'test'})` })
     return c.json({ ok: true })
   })

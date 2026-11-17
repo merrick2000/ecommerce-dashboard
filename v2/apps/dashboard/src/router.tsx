@@ -15,6 +15,7 @@ export const router = createBrowserRouter([
       { path: '/register', lazy: page(() => import('@/pages/auth/Register')) },
       { path: '/forgot-password', lazy: page(() => import('@/pages/auth/ForgotPassword')) },
       { path: '/reset-password', lazy: page(() => import('@/pages/auth/ResetPassword')) },
+      { path: '/invite', lazy: page(() => import('@/pages/auth/AcceptInvite')) },
       {
         element: <RequireAuth />,
         children: [
@@ -37,6 +38,8 @@ export const router = createBrowserRouter([
               { path: 'zones', lazy: page(() => import('@/pages/Zones')) },
               { path: 'promo-codes', lazy: page(() => import('@/pages/PromoCodes')) },
               { path: 'settings', lazy: page(() => import('@/pages/settings/Settings')) },
+              { path: 'team', lazy: page(() => import('@/pages/team/Team')) },
+              { path: 'activity', lazy: page(() => import('@/pages/Activity')) },
               { path: '*', element: <NotFound /> },
             ],
           },

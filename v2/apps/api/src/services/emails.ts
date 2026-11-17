@@ -157,3 +157,18 @@ ${button(p.forgotUrl, 'Sécuriser mon compte', '#dc2626')}`,
     ),
   }
 }
+
+export function teamInviteEmail(p: { storeName: string; inviterName: string; roleLabel: string; roleDescription: string; acceptUrl: string; days: number }) {
+  return {
+    subject: `${p.inviterName} vous invite à rejoindre ${p.storeName} sur Zuri`,
+    html: layout(
+      'Zuri',
+      `<p>Bonjour,</p>
+<p><strong>${escapeHtml(p.inviterName)}</strong> vous invite à rejoindre l’équipe de la boutique <strong>${escapeHtml(p.storeName)}</strong> en tant que <strong>${escapeHtml(p.roleLabel)}</strong>.</p>
+<p style="color:#52525b">${escapeHtml(p.roleDescription)}</p>
+${button(p.acceptUrl, 'Rejoindre l’équipe')}
+<p>Cette invitation est valable <strong>${p.days} jours</strong>. Vous pourrez vous connecter avec Google ou créer un mot de passe.</p>
+${small('Vous ne connaissez pas cette personne ? Ignorez cet email, rien ne sera créé.')}`,
+    ),
+  }
+}

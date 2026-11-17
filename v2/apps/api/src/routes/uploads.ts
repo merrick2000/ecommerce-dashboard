@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import sharp from 'sharp'
 import { z } from 'zod'
-import { requireRole } from '../lib/auth'
+import { requirePermission } from '../lib/auth'
 import type { AppEnv } from '../lib/context'
 import { badRequest } from '../lib/errors'
 import { v } from '../lib/validate'
@@ -18,7 +18,7 @@ const PRESETS = {
 } as const
 
 export const uploadRoutes = new Hono<AppEnv>()
-  .use(requireRole('staff'))
+  .use(requirePermission('products.edit'))
   /** Image → WebP redimensionnée, stockée en public. */
   .post('/image', v('query', z.object({ preset: z.enum(['cover', 'thumbnail', 'content', 'gallery']).default('content') })), async (c) => {
     const form = await c.req.formData()
@@ -41,7 +41,7 @@ export const uploadRoutes = new Hono<AppEnv>()
     return c.json({ key, url: publicUrl(key), size: out.length })
   })
   /** Fichier digital à vendre → stockage privé (servi par URL signée après paiement). */
-  .post('/file', requireRole('admin'), async (c) => {
+  .post('/file', requirePermission('products.edit'), async (c) => {
     const form = await c.req.formData()
     const file = form.get('file')
     if (!(file instanceof File)) throw badRequest('Fichier manquant')

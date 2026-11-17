@@ -36,5 +36,5 @@ export function orderNumber(): string {
   const bytes = randomBytes(8)
   let out = ''
   for (const b of bytes) out += alphabet[b % alphabet.length]
-  return `SLT-${out}`
+  return `ZR-${out}`
 }

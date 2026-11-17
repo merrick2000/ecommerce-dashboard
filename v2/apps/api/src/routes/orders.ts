@@ -6,24 +6,61 @@ import {
   orderPaymentUpdateSchema,
   orderStatusUpdateSchema,
   orderIdSchema,
+  orderAssignSchema,
 } from '@zuri/shared'
-import { and, asc, count, desc, eq, gte, ilike, inArray, lt, lte, or, sql as dsql, type SQL } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, lt, lte, or, sql as dsql, type SQL } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { db } from '../db/client'
-import { customers, deliveryZones, orderEvents, orderItems, orders, paymentTransactions, productVariants, products, users } from '../db/schema'
-import { requireRole } from '../lib/auth'
+import { customers, deliveryZones, orderEvents, orderItems, orders, paymentTransactions, productVariants, products, storeMembers, users, type Order } from '../db/schema'
+import { can, loadAccess, requirePermission } from '../lib/auth'
+import type { StoreAccess } from '../lib/context'
+import { assertProductsInScope, loadScopedOrder, orderScope } from '../lib/scope'
 import type { AppEnv } from '../lib/context'
 import { orderNumber, randomToken } from '../lib/crypto'
-import { badRequest, conflict, notFound } from '../lib/errors'
+import { badRequest, conflict, forbidden, notFound } from '../lib/errors'
 import { v } from '../lib/validate'
 import { normalizePhone, setPaymentStatus, transitionFulfillment } from '../services/orders'
 import { displayPrice, roundMoney, shippingFee } from '../services/pricing'
 
 const idParam = z.object({ id: orderIdSchema })
 
-function listFilters(storeId: string, q: z.infer<typeof orderListQuerySchema>): SQL {
+const assignee = alias(users, 'assignee')
+
+/** Rôles « terrain » : la première action sur une commande libre la leur attribue. */
+const AUTO_CLAIM_ROLES = new Set(['closer', 'order_manager'])
+
+async function userName(id: number) {
+  const [u] = await db.select({ name: users.name }).from(users).where(eq(users.id, id)).limit(1)
+  return u?.name ?? 'un membre'
+}
+
+/** Une commande prise par un autre membre n'est modifiable que par ceux qui peuvent attribuer. */
+async function assertCanAct(access: StoreAccess, order: Pick<Order, 'assignedTo'>) {
+  if (order.assignedTo && order.assignedTo !== access.userId && !can(access, 'orders.assign')) {
+    throw conflict(`Cette commande est déjà prise par ${await userName(order.assignedTo)}`, 'order_taken')
+  }
+}
+
+/** Prise en charge automatique : celui qui agit le premier sur une commande libre la prend. */
+async function autoClaim(access: StoreAccess, orderId: string) {
+  if (!AUTO_CLAIM_ROLES.has(access.role)) return
+  const [row] = await db
+    .update(orders)
+    .set({ assignedTo: access.userId, assignedAt: new Date() })
+    .where(and(eq(orders.id, orderId), isNull(orders.assignedTo)))
+    .returning({ id: orders.id })
+  if (row) await db.insert(orderEvents).values({ orderId, type: 'assigned', message: 'Prise en charge', data: { assignedTo: access.userId }, userId: access.userId })
+}
+
+function listFilters(storeId: string, q: z.infer<typeof orderListQuerySchema>, access: StoreAccess): SQL {
   const conds: SQL[] = [eq(orders.storeId, storeId)]
+  const scope = orderScope(access)
+  if (scope) conds.push(scope)
+  if (q.assigned === 'me') conds.push(eq(orders.assignedTo, access.userId))
+  else if (q.assigned === 'none') conds.push(isNull(orders.assignedTo))
+  else if (typeof q.assigned === 'number') conds.push(eq(orders.assignedTo, q.assigned))
   if (q.type) conds.push(eq(orders.kind, q.type))
   if (q.paymentStatus) conds.push(eq(orders.paymentStatus, q.paymentStatus))
   if (q.fulfillmentStatus) conds.push(eq(orders.fulfillmentStatus, q.fulfillmentStatus))
@@ -41,10 +78,11 @@ function listFilters(storeId: string, q: z.infer<typeof orderListQuerySchema>): 
 }
 
 export const orderRoutes = new Hono<AppEnv>()
-  .get('/', v('query', orderListQuerySchema), async (c) => {
+  .get('/', requirePermission('orders.view'), v('query', orderListQuerySchema), async (c) => {
     const store = c.get('store')
+    const access = c.get('access')
     const q = c.req.valid('query')
-    const where = listFilters(store.id, q)
+    const where = listFilters(store.id, q, access)
     const [rows, [{ total } = { total: 0 }], counts] = await Promise.all([
       db
         .select({
@@ -54,9 +92,11 @@ export const orderRoutes = new Hono<AppEnv>()
             from ${orderItems} where "order_items"."order_id" = "orders"."id")`,
           customerFlag: dsql<boolean>`coalesce(${customers.isBlocked}, false)`,
           customerReturns: dsql<number>`coalesce(${customers.returnedCount}, 0)`,
+          assigneeName: assignee.name,
         })
         .from(orders)
         .leftJoin(customers, eq(customers.id, orders.customerId))
+        .leftJoin(assignee, eq(assignee.id, orders.assignedTo))
         .where(where)
         .orderBy(desc(orders.createdAt))
         .limit(q.pageSize)
@@ -66,7 +106,7 @@ export const orderRoutes = new Hono<AppEnv>()
       db
         .select({ status: orders.fulfillmentStatus, n: count() })
         .from(orders)
-        .where(listFilters(store.id, { ...q, fulfillmentStatus: undefined }))
+        .where(listFilters(store.id, { ...q, fulfillmentStatus: undefined }, access))
         .groupBy(orders.fulfillmentStatus),
     ])
     return c.json({
@@ -80,12 +120,12 @@ export const orderRoutes = new Hono<AppEnv>()
       statusCounts: Object.fromEntries(counts.map((r) => [r.status, r.n])),
     })
   })
-  .get('/export.csv', requireRole('staff'), v('query', orderListQuerySchema), async (c) => {
+  .get('/export.csv', requirePermission('orders.view', 'orders.export'), v('query', orderListQuerySchema), async (c) => {
     const store = c.get('store')
     const rows = await db
       .select({ order: orders, items: dsql<string>`(select string_agg(${orderItems.quantity} || ' x ' || ${orderItems.name} || coalesce(' (' || ${orderItems.variantName} || ')', ''), ' + ') from ${orderItems} where "order_items"."order_id" = "orders"."id")` })
       .from(orders)
-      .where(listFilters(store.id, c.req.valid('query')))
+      .where(listFilters(store.id, c.req.valid('query'), c.get('access')))
       .orderBy(desc(orders.createdAt))
       .limit(10_000)
     const esc = (v: unknown) => {
@@ -102,11 +142,10 @@ export const orderRoutes = new Hono<AppEnv>()
     c.header('Content-Disposition', `attachment; filename="commandes-${store.slug}.csv"`)
     return c.body(`﻿${[header.join(';'), ...lines].join('\n')}`)
   })
-  .get('/:id', v('param', idParam), async (c) => {
+  .get('/:id', requirePermission('orders.view'), v('param', idParam), async (c) => {
     const store = c.get('store')
     const { id } = c.req.valid('param')
-    const [order] = await db.select().from(orders).where(and(eq(orders.id, id), eq(orders.storeId, store.id))).limit(1)
-    if (!order) throw notFound('Commande')
+    const order = await loadScopedOrder(c.get('access'), store.id, id)
     const [items, events, transactions, customer, zone] = await Promise.all([
       db.select().from(orderItems).where(eq(orderItems.orderId, id)),
       db
@@ -132,6 +171,7 @@ export const orderRoutes = new Hono<AppEnv>()
       order.customerId ? db.select().from(customers).where(eq(customers.id, order.customerId)).limit(1).then((r) => r[0] ?? null) : null,
       order.deliveryZoneId ? db.select().from(deliveryZones).where(eq(deliveryZones.id, order.deliveryZoneId)).limit(1).then((r) => r[0] ?? null) : null,
     ])
+    const assigneeName = order.assignedTo ? await userName(order.assignedTo) : null
     const { accessToken: _t, trackingContext: _tc, ...safe } = order
     return c.json({
       ...safe,
@@ -140,21 +180,28 @@ export const orderRoutes = new Hono<AppEnv>()
       transactions,
       customer,
       zone,
+      assigneeName,
       allowedTransitions: FULFILLMENT_TRANSITIONS[order.fulfillmentStatus],
     })
   })
-  .post('/:id/status', v('param', idParam), v('json', orderStatusUpdateSchema), async (c) => {
+  .post('/:id/status', requirePermission('orders.update'), v('param', idParam), v('json', orderStatusUpdateSchema), async (c) => {
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
+    const access = c.get('access')
+    await assertCanAct(access, await loadScopedOrder(access, c.get('store').id, id))
     await transitionFulfillment(c.get('store'), id, body.fulfillmentStatus, { userId: c.get('user').id, ...body })
+    await autoClaim(access, id)
     return c.json({ ok: true })
   })
-  .post('/bulk-status', requireRole('staff'), v('json', orderStatusUpdateSchema.extend({ ids: z.array(orderIdSchema).min(1).max(200) })), async (c) => {
+  .post('/bulk-status', requirePermission('orders.update'), v('json', orderStatusUpdateSchema.extend({ ids: z.array(orderIdSchema).min(1).max(200) })), async (c) => {
     const { ids, ...body } = c.req.valid('json')
+    const access = c.get('access')
     const results: { id: string; ok: boolean; error?: string }[] = []
     for (const id of ids) {
       try {
+        await assertCanAct(access, await loadScopedOrder(access, c.get('store').id, id))
         await transitionFulfillment(c.get('store'), id, body.fulfillmentStatus, { userId: c.get('user').id, ...body })
+        await autoClaim(access, id)
         results.push({ id, ok: true })
       } catch (e) {
         results.push({ id, ok: false, error: e instanceof Error ? e.message : 'Erreur' })
@@ -162,27 +209,28 @@ export const orderRoutes = new Hono<AppEnv>()
     }
     return c.json({ results })
   })
-  .post('/:id/payment', requireRole('admin'), v('param', idParam), v('json', orderPaymentUpdateSchema), async (c) => {
+  .post('/:id/payment', requirePermission('orders.payment'), v('param', idParam), v('json', orderPaymentUpdateSchema), async (c) => {
     const { id } = c.req.valid('param')
+    await loadScopedOrder(c.get('access'), c.get('store').id, id)
     const { paymentStatus, note } = c.req.valid('json')
     await setPaymentStatus(c.get('store'), id, paymentStatus, c.get('user').id, note)
     return c.json({ ok: true })
   })
-  .post('/:id/notes', v('param', idParam), v('json', orderNoteSchema), async (c) => {
+  .post('/:id/notes', requirePermission('orders.update'), v('param', idParam), v('json', orderNoteSchema), async (c) => {
     const { id } = c.req.valid('param')
-    const [order] = await db.select({ id: orders.id }).from(orders).where(and(eq(orders.id, id), eq(orders.storeId, c.get('store').id))).limit(1)
-    if (!order) throw notFound('Commande')
+    await loadScopedOrder(c.get('access'), c.get('store').id, id)
     const [event] = await db.insert(orderEvents).values({ orderId: id, type: 'note', message: c.req.valid('json').note, userId: c.get('user').id }).returning()
     return c.json(event, 201)
   })
   .patch(
     '/:id',
-    requireRole('staff'),
+    requirePermission('orders.update'),
     v('param', idParam),
     v('json', z.object({ customerName: z.string().max(120).optional(), customerPhone: z.string().max(30).optional(), city: z.string().max(120).nullable().optional(), address: z.string().max(500).nullable().optional(), courier: z.string().max(80).nullable().optional(), trackingNumber: z.string().max(80).nullable().optional() })),
     async (c) => {
       const { id } = c.req.valid('param')
       const body = c.req.valid('json')
+      await assertCanAct(c.get('access'), await loadScopedOrder(c.get('access'), c.get('store').id, id))
       const [row] = await db
         .update(orders)
         .set({ ...body, ...(body.customerPhone ? { customerPhone: normalizePhone(body.customerPhone) } : {}) })
@@ -193,11 +241,60 @@ export const orderRoutes = new Hono<AppEnv>()
       return c.json({ ok: true })
     },
   )
+  /** « Je prends » : seulement si la commande est libre (ou déjà à moi). */
+  .post('/:id/claim', requirePermission('orders.update'), v('param', idParam), async (c) => {
+    const { id } = c.req.valid('param')
+    const access = c.get('access')
+    const order = await loadScopedOrder(access, c.get('store').id, id)
+    if (order.assignedTo === access.userId) return c.json({ ok: true })
+    const [row] = await db
+      .update(orders)
+      .set({ assignedTo: access.userId, assignedAt: new Date() })
+      .where(and(eq(orders.id, id), isNull(orders.assignedTo)))
+      .returning({ id: orders.id })
+    if (!row) throw conflict(`Cette commande est déjà prise par ${await userName(order.assignedTo!)}`, 'order_taken')
+    await db.insert(orderEvents).values({ orderId: id, type: 'assigned', message: 'Prise en charge', data: { assignedTo: access.userId }, userId: access.userId })
+    return c.json({ ok: true })
+  })
+  /** « Libérer » : rend la commande disponible pour les autres. */
+  .post('/:id/release', requirePermission('orders.update'), v('param', idParam), async (c) => {
+    const { id } = c.req.valid('param')
+    const access = c.get('access')
+    const order = await loadScopedOrder(access, c.get('store').id, id)
+    if (!order.assignedTo) return c.json({ ok: true })
+    if (order.assignedTo !== access.userId && !can(access, 'orders.assign')) throw forbidden('Seul le membre qui a pris la commande peut la libérer')
+    await db.update(orders).set({ assignedTo: null, assignedAt: null }).where(eq(orders.id, id))
+    await db.insert(orderEvents).values({ orderId: id, type: 'assigned', message: 'Commande libérée', data: { assignedTo: null }, userId: access.userId })
+    return c.json({ ok: true })
+  })
+  /** Attribuer à un membre précis (qui doit pouvoir traiter cette commande). */
+  .post('/:id/assign', requirePermission('orders.assign'), v('param', idParam), v('json', orderAssignSchema), async (c) => {
+    const { id } = c.req.valid('param')
+    const { userId } = c.req.valid('json')
+    const store = c.get('store')
+    const access = c.get('access')
+    await loadScopedOrder(access, store.id, id)
+    let message = 'Commande libérée'
+    if (userId) {
+      const [member] = await db.select().from(storeMembers).where(and(eq(storeMembers.storeId, store.id), eq(storeMembers.userId, userId))).limit(1)
+      const target = member ? await loadAccess(store.id, userId, member) : null
+      if (!target || !can(target, 'orders.update')) throw badRequest('Ce membre ne peut pas traiter les commandes')
+      // Le membre doit avoir accès aux produits de la commande.
+      await loadScopedOrder(target, store.id, id).catch(() => {
+        throw badRequest('Ce membre n’a pas accès aux produits de cette commande')
+      })
+      message = userId === access.userId ? 'Prise en charge' : `Attribuée à ${await userName(userId)}`
+    }
+    await db.update(orders).set({ assignedTo: userId, assignedAt: userId ? new Date() : null }).where(eq(orders.id, id))
+    await db.insert(orderEvents).values({ orderId: id, type: 'assigned', message, data: { assignedTo: userId }, userId: access.userId })
+    return c.json({ ok: true })
+  })
   /** Commande saisie à la main (WhatsApp, téléphone, boutique physique). */
-  .post('/', requireRole('staff'), v('json', manualOrderCreateSchema), async (c) => {
+  .post('/', requirePermission('orders.create'), v('json', manualOrderCreateSchema), async (c) => {
     const store = c.get('store')
     const input = c.req.valid('json')
     const productIds = input.items.map((i) => i.productId)
+    assertProductsInScope(c.get('access'), productIds)
     const prods = await db.select().from(products).where(and(eq(products.storeId, store.id), inArray(products.id, productIds)))
     const variantIds = input.items.map((i) => i.variantId).filter((x): x is number => !!x)
     const vars = variantIds.length ? await db.select().from(productVariants).where(inArray(productVariants.id, variantIds)) : []
@@ -268,6 +365,7 @@ export const orderRoutes = new Hono<AppEnv>()
           currency: store.currency,
           paymentMethod: input.paymentMethod,
           source: 'manual',
+          ...(AUTO_CLAIM_ROLES.has(c.get('access').role) ? { assignedTo: c.get('access').userId, assignedAt: new Date() } : {}),
           eventId: randomToken(16),
         })
         .returning()

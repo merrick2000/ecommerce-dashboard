@@ -30,9 +30,159 @@ export const timezoneSchema = z.string().refine((tz) => {
 export const LOCALES = ['fr', 'en'] as const
 export const localeSchema = z.enum(LOCALES)
 
-export const STORE_ROLES = ['owner', 'admin', 'staff', 'confirmer'] as const
+// ─── Équipe : rôles, permissions, périmètre produits ─────────────────────────
+
+export const STORE_ROLES = ['owner', 'admin', 'store_manager', 'order_manager', 'closer'] as const
 export const storeRoleSchema = z.enum(STORE_ROLES)
 export type StoreRole = z.infer<typeof storeRoleSchema>
+
+export const ROLE_LABELS: Record<StoreRole, string> = {
+  owner: 'Propriétaire',
+  admin: 'Administrateur',
+  store_manager: 'Gestionnaire boutique',
+  order_manager: 'Gestionnaire commandes',
+  closer: 'Closer',
+}
+
+export const ROLE_DESCRIPTIONS: Record<StoreRole, string> = {
+  owner: 'Accès total, y compris les moyens de paiement et l’équipe.',
+  admin: 'Tout gérer sauf les moyens de paiement et les intégrations.',
+  store_manager: 'Produits, promos, zones de livraison. Voit les commandes.',
+  order_manager: 'Toutes les commandes : appels, statuts, livraisons, attribution aux closers.',
+  closer: 'Appelle et confirme les commandes des produits auxquels il a accès.',
+}
+
+export const PERMISSIONS = [
+  'orders.view',
+  'orders.update',
+  'orders.create',
+  'orders.assign',
+  'orders.payment',
+  'orders.export',
+  'customers.view',
+  'customers.edit',
+  'products.view',
+  'products.edit',
+  'marketing.edit',
+  'delivery.edit',
+  'store.settings',
+  'team.manage',
+  'payments.manage',
+  'integrations.manage',
+  'stats.view',
+  'stats.revenue',
+  'activity.view',
+] as const
+export type Permission = (typeof PERMISSIONS)[number]
+
+const ALL_PERMISSIONS = [...PERMISSIONS]
+export const ROLE_PERMISSIONS: Record<StoreRole, readonly Permission[]> = {
+  owner: ALL_PERMISSIONS,
+  admin: ALL_PERMISSIONS.filter((p) => p !== 'payments.manage' && p !== 'integrations.manage'),
+  store_manager: ['products.view', 'products.edit', 'marketing.edit', 'delivery.edit', 'orders.view', 'customers.view', 'stats.view', 'activity.view'],
+  order_manager: ['orders.view', 'orders.update', 'orders.create', 'orders.assign', 'customers.view', 'customers.edit', 'products.view', 'stats.view', 'activity.view'],
+  closer: ['orders.view', 'orders.update', 'customers.view', 'products.view', 'stats.view'],
+}
+
+/** Options cochables par membre, en plus de son rôle. */
+export const memberOptionsSchema = z.object({
+  /** Voir le chiffre d'affaires et les montants encaissés dans les statistiques. */
+  viewRevenue: z.boolean().default(false),
+  /** Exporter les commandes en CSV. */
+  exportData: z.boolean().default(false),
+})
+export type MemberOptions = z.infer<typeof memberOptionsSchema>
+
+/** Rôles qui voient toujours toute la boutique (pas de périmètre produits). */
+export const FULL_SCOPE_ROLES: readonly StoreRole[] = ['owner', 'admin']
+
+export function permissionsFor(role: StoreRole, options: Partial<MemberOptions> = {}): Permission[] {
+  const set = new Set<Permission>(ROLE_PERMISSIONS[role])
+  if (options.viewRevenue) set.add('stats.revenue')
+  if (options.exportData && set.has('orders.view')) set.add('orders.export')
+  return [...set]
+}
+
+/** Peut-on attribuer ce rôle ? Seul le propriétaire nomme des admins ; personne ne nomme de propriétaire ici. */
+export function canGrantRole(actor: StoreRole, target: StoreRole): boolean {
+  if (target === 'owner') return false
+  if (target === 'admin') return actor === 'owner'
+  return actor === 'owner' || actor === 'admin'
+}
+
+const memberAccessFields = {
+  role: storeRoleSchema.exclude(['owner']),
+  /** null = tous les produits de la boutique ; sinon la liste des produits accessibles. */
+  productIds: z.array(z.string().max(40)).max(500).nullable().default(null),
+  options: memberOptionsSchema.default({ viewRevenue: false, exportData: false }),
+}
+
+export const invitationCreateSchema = z.object({
+  email: z.string().trim().toLowerCase().email('Adresse email invalide'),
+  ...memberAccessFields,
+})
+export type InvitationCreate = z.infer<typeof invitationCreateSchema>
+
+export const memberUpdateSchema = z.object(memberAccessFields)
+export type MemberUpdate = z.infer<typeof memberUpdateSchema>
+
+export const inviteRegisterSchema = z.object({
+  token: z.string().min(20).max(200),
+  name: z.string().trim().min(2).max(120),
+  password: z.string().min(10, '10 caractères minimum').max(200),
+})
+
+export const orderAssignSchema = z.object({ userId: z.number().int().positive().nullable() })
+
+export interface TeamMember {
+  userId: number
+  name: string
+  email: string
+  avatarUrl: string | null
+  role: StoreRole
+  productIds: string[] | null
+  options: MemberOptions
+  lastLoginAt: string | null
+  joinedAt: string
+  /** Commandes en cours attribuées (nouvelles, injoignables, confirmées). */
+  openOrders: number
+}
+
+export interface TeamInvitation {
+  id: string
+  email: string
+  role: StoreRole
+  productIds: string[] | null
+  options: MemberOptions
+  invitedBy: string | null
+  expiresAt: string
+  createdAt: string
+}
+
+export interface InvitationPreview {
+  storeId: string
+  storeName: string
+  inviterName: string | null
+  email: string
+  role: StoreRole
+  expired: boolean
+  accepted: boolean
+  /** Un compte existe déjà pour cet email (se connecter plutôt que s'inscrire). */
+  hasAccount: boolean
+}
+
+export interface ActivityItem {
+  id: string
+  at: string
+  actor: { id: number; name: string } | null
+  /** order | product | promo | zone | store | team | payment_account */
+  entityType: string
+  entityId: string | null
+  /** Libellé lisible de l'objet (n° de commande, nom de produit…). */
+  entityLabel: string | null
+  action: string
+  message: string
+}
 
 export const PRODUCT_TYPES = ['digital', 'physical'] as const
 export const productTypeSchema = z.enum(PRODUCT_TYPES)
@@ -104,12 +254,13 @@ export const pageBlockSchema = z.enum(PAGE_BLOCKS)
  * Identifiants non séquentiels « à la Stripe » : préfixe + 16 caractères base62 aléatoires (~95 bits).
  * Ils apparaissent dans les URLs : impossibles à deviner, ne révèlent aucun volume.
  */
-export const ID_PREFIXES = { store: 'shp', product: 'prd', order: 'ord', customer: 'cus' } as const
+export const ID_PREFIXES = { store: 'shp', product: 'prd', order: 'ord', customer: 'cus', invitation: 'inv' } as const
 const publicId = (prefix: string) => z.string().regex(new RegExp(`^${prefix}_[0-9A-Za-z]{8,32}$`), 'Identifiant invalide')
 export const storeIdSchema = publicId(ID_PREFIXES.store)
 export const productIdSchema = publicId(ID_PREFIXES.product)
 export const orderIdSchema = publicId(ID_PREFIXES.order)
 export const customerIdSchema = publicId(ID_PREFIXES.customer)
+export const invitationIdSchema = publicId(ID_PREFIXES.invitation)
 
 // ─── Briques réutilisables ───────────────────────────────────────────────────
 
@@ -470,6 +621,8 @@ export const orderListQuerySchema = z.object({
   fulfillmentStatus: fulfillmentStatusSchema.optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
+  /** me = mes commandes, none = non attribuées, ou l'id d'un membre. */
+  assigned: z.union([z.enum(['me', 'none']), z.coerce.number().int().positive()]).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(50),
 })
@@ -507,7 +660,7 @@ export interface Me {
   email: string
   name: string
   isPlatformAdmin: boolean
-  stores: { id: string; name: string; slug: string; role: StoreRole; currency: Currency }[]
+  stores: { id: string; name: string; slug: string; role: StoreRole; currency: Currency; permissions: Permission[]; productIds: string[] | null }[]
 }
 
 export interface Paginated<T> {

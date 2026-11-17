@@ -155,7 +155,7 @@ describe('commande COD de bout en bout', () => {
   })
 
   test('vue publique par jeton uniquement', async () => {
-    expect((await visitor.get(`/api/v1/orders/${token}`)).body.orderNumber).toMatch(/^SLT-/)
+    expect((await visitor.get(`/api/v1/orders/${token}`)).body.orderNumber).toMatch(/^ZR-/)
     expect((await visitor.get(`/api/v1/orders/${orderId}`)).status).toBe(404)
     expect((await visitor.get('/api/v1/orders/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).status).toBe(404)
   })

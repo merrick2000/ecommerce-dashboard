@@ -107,9 +107,9 @@ export function useSaveTracking() {
 
 // ─── Produits ────────────────────────────────────────────────────────────────
 
-export function useProducts() {
+export function useProducts(enabled = true) {
   const s = useStoreId()
-  return useQuery({ queryKey: keys.products(s), queryFn: () => api.get<ProductListItem[]>(`${base(s)}/products`) })
+  return useQuery({ queryKey: keys.products(s), queryFn: () => api.get<ProductListItem[]>(`${base(s)}/products`), enabled })
 }
 
 export function useProduct(id: string | null) {
@@ -187,11 +187,12 @@ export function useDeleteProduct() {
 
 // ─── Commandes ───────────────────────────────────────────────────────────────
 
-export function useOrders(q: Query) {
+export function useOrders(q: Query, enabled = true) {
   const s = useStoreId()
   return useQuery({
     queryKey: keys.orderList(s, q),
     queryFn: ({ signal }) => api.get<OrderList>(`${base(s)}/orders`, q, signal),
+    enabled,
     placeholderData: keepPreviousData,
     refetchInterval: 60_000,
   })

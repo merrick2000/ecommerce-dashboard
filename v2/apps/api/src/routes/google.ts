@@ -15,6 +15,8 @@ import { users } from '../db/schema'
 import { createSession, hashPassword } from '../lib/auth'
 import { enqueue } from '../jobs/queue'
 import { recordLogin } from '../services/account'
+import { acceptInvitation, validInvitationFor } from '../services/team'
+import { HttpError } from '../lib/errors'
 import type { AppEnv } from '../lib/context'
 import { randomToken, safeEqual } from '../lib/crypto'
 import { env, isProd } from '../lib/env'
@@ -27,7 +29,11 @@ export const googleEnabled = () => Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CL
 /** N'accepte qu'un chemin interne (pas d'open redirect vers un autre site). */
 const safeNext = (next: string | undefined) => (next && /^\/(?!\/)[\w\-/?=&%.]*$/.test(next) ? next : '/')
 
-const back = (path: string, error?: string) => `${env.APP_URL.replace(/\/$/, '')}${error ? `/login?error=${encodeURIComponent(error)}` : path}`
+/** Retour vers le dashboard ; une erreur s'affiche sur la page donnée (ou la connexion par défaut). */
+const back = (path: string, error?: string) => {
+  const target = error ? `${path || '/login'}${(path || '/login').includes('?') ? '&' : '?'}error=${encodeURIComponent(error)}` : path
+  return `${env.APP_URL.replace(/\/$/, '')}${target}`
+}
 
 interface GoogleClaims {
   iss: string
@@ -56,7 +62,8 @@ export const googleRoutes = new Hono<AppEnv>()
     const state = randomToken(24)
     const verifier = randomToken(48)
     const challenge = createHash('sha256').update(verifier).digest('base64url')
-    setCookie(c, FLOW_COOKIE, JSON.stringify({ state, verifier, next: safeNext(c.req.query('next')) }), {
+    const invite = /^[A-Za-z0-9_-]{20,200}$/.test(c.req.query('invite') ?? '') ? c.req.query('invite') : undefined
+    setCookie(c, FLOW_COOKIE, JSON.stringify({ state, verifier, next: safeNext(c.req.query('next')), invite }), {
       httpOnly: true,
       secure: isProd,
       sameSite: 'Lax', // nécessaire : le retour de Google est une navigation depuis un autre site
@@ -80,7 +87,7 @@ export const googleRoutes = new Hono<AppEnv>()
     const raw = getCookie(c, FLOW_COOKIE)
     deleteCookie(c, FLOW_COOKIE, { path: '/api/auth/google', secure: isProd })
     if (c.req.query('error')) return c.redirect(back('', 'google_cancelled'))
-    let flow: { state: string; verifier: string; next: string }
+    let flow: { state: string; verifier: string; next: string; invite?: string }
     try {
       flow = JSON.parse(raw ?? '')
     } catch {
@@ -132,7 +139,9 @@ export const googleRoutes = new Hono<AppEnv>()
     if (!user) {
       isNewAccount = true
       const [{ count } = { count: 0 }] = await db.select({ count: dsql<number>`count(*)::int` }).from(users)
-      if (count > 0 && env.REGISTRATION_OPEN !== 'true') return c.redirect(back('', 'registration_closed'))
+      // Inscriptions fermées : seule une invitation valable pour cet email permet de créer le compte.
+      const invited = flow.invite ? await validInvitationFor(flow.invite, email) : null
+      if (count > 0 && env.REGISTRATION_OPEN !== 'true' && !invited) return c.redirect(back('', 'registration_closed'))
       ;[user] = await db
         .insert(users)
         .values({
@@ -150,6 +159,15 @@ export const googleRoutes = new Hono<AppEnv>()
     await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id))
     await createSession(c, user.id)
     await recordLogin(c, user, 'google', { isNewAccount })
-    if (isNewAccount) await enqueue('account.notify', { userId: user.id, kind: 'welcome' })
+    if (flow.invite) {
+      try {
+        await acceptInvitation(user, flow.invite)
+      } catch (err) {
+        const code = err instanceof HttpError && err.code === 'invite_email_mismatch' ? 'invite_email_mismatch' : 'invite_invalid'
+        return c.redirect(back(`/invite?token=${encodeURIComponent(flow.invite)}`, code))
+      }
+    } else if (isNewAccount) {
+      await enqueue('account.notify', { userId: user.id, kind: 'welcome' })
+    }
     return c.redirect(back(flow.next))
   })

@@ -1,9 +1,9 @@
-import { ArrowDownRight, ArrowUpRight, Banknote, Check, Copy, ExternalLink, PackageCheck, PhoneCall, Plus, ShoppingBag, Truck } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Banknote, Check, Copy, ExternalLink, Inbox, PackageCheck, PhoneCall, Plus, ShoppingBag, Truck, UserCheck } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ButtonLink, Card, cx, EmptyState, ErrorState, PageHeader, Segmented, Skeleton } from '@/components/ui'
-import { useCurrentStore } from '@/hooks/auth'
+import { useCan, useCurrentStore } from '@/hooks/auth'
 import { usePaymentAccounts, useProducts, useStats, useZones } from '@/hooks/resources'
 import { salesPageUrl } from './products/ProductsList'
 import { useToast } from '@/components/Toast'
@@ -62,13 +62,16 @@ function Kpi({ label, value, icon, delta, hint, to }: { label: string; value: Re
   )
 }
 
-function RevenueChart({ data, currency }: { data: StatsOverview['daily']; currency: string }) {
-  const [metric, setMetric] = useState<'revenue' | 'orders'>('revenue')
+function RevenueChart({ data, currency, revenueVisible }: { data: StatsOverview['daily']; currency: string; revenueVisible: boolean }) {
+  const [chosen, setMetric] = useState<'revenue' | 'orders'>('revenue')
+  // Sans droit sur le chiffre d'affaires : seulement le nombre de commandes.
+  const metric = revenueVisible ? chosen : 'orders'
   const compact = useMemo(() => new Intl.NumberFormat('fr-FR', { notation: 'compact', maximumFractionDigits: 1 }), [])
   return (
     <Card
       title="Évolution"
       actions={
+        revenueVisible && (
         <Segmented
           label="Indicateur"
           value={metric}
@@ -78,6 +81,7 @@ function RevenueChart({ data, currency }: { data: StatsOverview['daily']; curren
             { value: 'orders', label: 'Commandes' },
           ]}
         />
+        )
       }
     >
       <div className="h-56 sm:h-64">
@@ -125,8 +129,35 @@ function Bars({ rows }: { rows: { label: string; value: number; sub: string }[] 
   )
 }
 
+/** Résultats personnels du membre (commandes qui lui sont attribuées). */
+function MyResults({ mine, base }: { mine: NonNullable<StatsOverview['mine']>; base: string }) {
+  return (
+    <Card title="Mes résultats" description="Commandes qui vous sont attribuées sur la période" actions={<ButtonLink to={`${base}/orders?assigned=me`} size="sm">Mes commandes</ButtonLink>}>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <MiniStat label="Attribuées" value={num(mine.assigned)} icon={<Inbox className="size-4" />} />
+        <MiniStat label="Confirmées" value={num(mine.confirmed)} icon={<UserCheck className="size-4" />} />
+        <MiniStat label="Livrées" value={num(mine.delivered)} icon={<PackageCheck className="size-4" />} />
+        <MiniStat label="Taux de confirmation" value={percent(mine.confirmationRate)} icon={<PhoneCall className="size-4" />} />
+      </div>
+    </Card>
+  )
+}
+
+function MiniStat({ label, value, icon }: { label: string; value: ReactNode; icon: ReactNode }) {
+  return (
+    <div>
+      <p className="flex items-center gap-1.5 text-[13px] text-muted">
+        <span className="text-subtle">{icon}</span>
+        {label}
+      </p>
+      <p className="tabular mt-1 text-xl font-semibold tracking-tight">{value}</p>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const { storeId, store } = useCurrentStore()
+  const canSetup = useCan('products.edit')
   const [preset, setPreset] = useState<Preset>('30')
   const range = useMemo(() => rangeFor(Number(preset)), [preset])
   const { data, error, isPending, refetch, isFetching } = useStats(range.from, range.to)
@@ -164,42 +195,55 @@ export default function Dashboard() {
 
   const { current: c, previous: p, rates } = data
   const empty = c.orders === 0 && p.orders === 0
+  const rv = data.revenueVisible && c.revenue != null
 
   return (
     <div className={cx('transition-opacity', isFetching && 'opacity-70')}>
       {header}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="Revenu encaissé" value={money(c.revenue, currency)} icon={<Banknote className="size-4" />} delta={<Delta current={c.revenue} previous={p.revenue} />} />
+        {rv && <Kpi label="Revenu encaissé" value={money(c.revenue, currency)} icon={<Banknote className="size-4" />} delta={<Delta current={c.revenue ?? 0} previous={p.revenue ?? 0} />} />}
         <Kpi label="Commandes" value={num(c.orders)} icon={<ShoppingBag className="size-4" />} delta={<Delta current={c.orders} previous={p.orders} />} to={`${base}/orders`} />
         <Kpi label="COD à confirmer" value={num(c.codPending)} icon={<PhoneCall className="size-4" />} hint="à appeler" to={`${base}/orders?status=new`} />
         <Kpi label="À expédier" value={num(c.codToShip)} icon={<PackageCheck className="size-4" />} hint="confirmées" to={`${base}/orders?status=confirmed`} />
-        <Kpi label="Chez les livreurs" value={money(c.codInTransit, currency)} icon={<Truck className="size-4" />} hint="à encaisser" to={`${base}/orders?status=shipped`} />
+        {rv && c.codInTransit != null && <Kpi label="Chez les livreurs" value={money(c.codInTransit, currency)} icon={<Truck className="size-4" />} hint="à encaisser" to={`${base}/orders?status=shipped`} />}
         <Kpi label="Taux de confirmation" value={percent(rates.confirmation)} hint="COD confirmées" />
         <Kpi label="Taux de livraison" value={percent(rates.delivery)} hint={`${num(c.delivered)} livrées · ${num(c.returned)} retours`} />
         <Kpi label="Conversion" value={percent(rates.conversion)} hint={`${num(data.visitors.visitors)} visiteurs`} />
       </div>
 
+      {data.mine && (
+        <div className="mt-4">
+          <MyResults mine={data.mine} base={base} />
+        </div>
+      )}
+
       {empty ? (
         <div className="mt-4">
-          <GettingStarted base={base} />
+          {canSetup ? (
+            <GettingStarted base={base} />
+          ) : (
+            <Card>
+              <EmptyState icon={<ShoppingBag className="size-5" />} title="Aucune commande sur la période" description="Les nouvelles commandes des produits auxquels vous avez accès apparaîtront ici." />
+            </Card>
+          )}
         </div>
       ) : (
         <>
           <div className="mt-4">
-            <RevenueChart data={data.daily} currency={currency} />
+            <RevenueChart data={data.daily} currency={currency} revenueVisible={rv} />
           </div>
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <Card title="Meilleurs produits">
               {data.topProducts.length ? (
-                <Bars rows={data.topProducts.map((t) => ({ label: t.name, value: t.units, sub: `${num(t.units)} u. · ${money(t.revenue, currency)}` }))} />
+                <Bars rows={data.topProducts.map((t) => ({ label: t.name, value: t.units, sub: rv ? `${num(t.units)} u. · ${money(t.revenue, currency)}` : `${num(t.units)} u. · ${num(t.orders)} cmd` }))} />
               ) : (
                 <p className="text-sm text-muted">Aucune vente sur la période.</p>
               )}
             </Card>
             <Card title="Sources de trafic">
               {data.sources.length ? (
-                <Bars rows={data.sources.map((s) => ({ label: s.source === 'direct' ? 'Direct' : s.source, value: s.orders, sub: `${num(s.orders)} cmd · ${money(s.revenue, currency)}` }))} />
+                <Bars rows={data.sources.map((s) => ({ label: s.source === 'direct' ? 'Direct' : s.source, value: s.orders, sub: rv ? `${num(s.orders)} cmd · ${money(s.revenue, currency)}` : `${num(s.orders)} cmd` }))} />
               ) : (
                 <p className="text-sm text-muted">Aucune donnée.</p>
               )}
@@ -220,7 +264,8 @@ function GettingStarted({ base }: { base: string }) {
   const toast = useToast()
   const products = useProducts()
   const zones = useZones().list
-  const payments = usePaymentAccounts()
+  const canPayments = useCan('payments.manage')
+  const payments = usePaymentAccounts(canPayments)
   const list = products.data ?? []
   const active = list.filter((p) => p.isActive)
   const needsZones = list.some((p) => p.type === 'physical')
@@ -235,7 +280,7 @@ function GettingStarted({ base }: { base: string }) {
     { show: true, done: list.length > 0, title: 'Créer un produit', text: 'Digital (ebook, formation…) ou physique (livré, payé à la livraison).', to: `${base}/products/new`, cta: 'Ajouter un produit' },
     { show: list.length > 0, done: active.length > 0, title: 'Activer un produit', text: 'Un produit inactif n’est pas visible par vos clients.', to: `${base}/products`, cta: 'Voir mes produits' },
     { show: needsZones, done: (zones.data ?? []).length > 0, title: 'Configurer la livraison', text: 'Zones et frais de livraison pour vos produits physiques.', to: `${base}/zones`, cta: 'Ajouter une zone' },
-    { show: needsPayments, done: nativeOn, title: 'Activer le paiement en ligne', text: 'Un de vos produits utilise le paiement intégré : activez au moins un moyen (FeexPay, FedaPay…).', to: `${base}/settings?tab=payments`, cta: 'Configurer' },
+    { show: needsPayments && canPayments, done: nativeOn, title: 'Activer le paiement en ligne', text: 'Un de vos produits utilise le paiement intégré : activez au moins un moyen (FeexPay, FedaPay…).', to: `${base}/settings?tab=payments`, cta: 'Configurer' },
   ]
   const visible = steps.filter((s) => s.show)
   const doneCount = visible.filter((s) => s.done).length

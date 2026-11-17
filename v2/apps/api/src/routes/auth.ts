@@ -1,9 +1,9 @@
-import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema, type Me } from '@zuri/shared'
+import { forgotPasswordSchema, inviteRegisterSchema, loginSchema, registerSchema, resetPasswordSchema, type Me } from '@zuri/shared'
 import { and, eq, gt, isNull, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { db } from '../db/client'
 import { passwordResets, sessions, storeMembers, stores, users, type User } from '../db/schema'
-import { createSession, destroySession, hashPassword, requireAuth, verifyPassword } from '../lib/auth'
+import { createSession, destroySession, hashPassword, loadAccess, requireAuth, verifyPassword } from '../lib/auth'
 import type { AppEnv } from '../lib/context'
 import { HttpError } from '../lib/errors'
 import { rateLimit } from '../lib/rate-limit'
@@ -13,6 +13,7 @@ import { googleEnabled, googleRoutes } from './google'
 import { sha256 } from '../lib/crypto'
 import { enqueue } from '../jobs/queue'
 import { loginContext, recordLogin, sendPasswordReset } from '../services/account'
+import { acceptInvitation, previewInvitation } from '../services/team'
 
 /** Inscription ouverte ? Par défaut : seulement tant qu'aucun compte n'existe (outil perso). */
 const REGISTRATION_OPEN = env.REGISTRATION_OPEN === 'true'
@@ -22,17 +23,23 @@ const DUMMY_HASH = await Bun.password.hash('dummy-password-for-timing', { algori
 
 export async function loadMe(user: User): Promise<Me> {
   const rows = await db
-    .select({ id: stores.id, name: stores.name, slug: stores.slug, currency: stores.currency, role: storeMembers.role })
+    .select({ id: stores.id, name: stores.name, slug: stores.slug, currency: stores.currency, member: storeMembers })
     .from(storeMembers)
     .innerJoin(stores, eq(stores.id, storeMembers.storeId))
     .where(eq(storeMembers.userId, user.id))
     .orderBy(stores.name)
+  const list = await Promise.all(
+    rows.map(async ({ member, ...r }) => {
+      const access = (await loadAccess(r.id, user.id, member))!
+      return { ...r, currency: r.currency as Me['stores'][number]['currency'], role: access.role, permissions: [...access.permissions], productIds: access.productIds }
+    }),
+  )
   return {
     id: user.id,
     email: user.email,
     name: user.name,
     isPlatformAdmin: user.isPlatformAdmin,
-    stores: rows.map((r) => ({ ...r, currency: r.currency as Me['stores'][number]['currency'] })),
+    stores: list,
   }
 }
 
@@ -65,12 +72,26 @@ export const authRoutes = new Hono<AppEnv>()
         country: input.country,
         passwordHash: await hashPassword(input.password),
         isPlatformAdmin: count === 0, // le tout premier compte administre la plateforme
+        lastLoginAt: new Date(),
       })
       .returning()
     if (!user) throw new Error('Création du compte échouée')
     await createSession(c, user.id)
     await recordLogin(c, user, 'password', { isNewAccount: true })
     await enqueue('account.notify', { userId: user.id, kind: 'welcome' })
+    return c.json(await loadMe(user), 201)
+  })
+  /** Inscription via une invitation d'équipe : l'email est celui de l'invitation, inscriptions fermées ou non. */
+  .post('/register-invite', rateLimit({ key: 'register', limit: 5, windowSec: 3600 }), v('json', inviteRegisterSchema), async (c) => {
+    const input = c.req.valid('json')
+    const preview = await previewInvitation(input.token)
+    if (!preview || preview.expired || preview.accepted) throw new HttpError(400, 'Cette invitation n’est plus valable. Demandez-en une nouvelle.', 'invite_invalid')
+    if (preview.hasAccount) throw new HttpError(409, 'Un compte existe déjà avec cet email : connectez-vous pour rejoindre l’équipe.', 'email_taken')
+    const [user] = await db.insert(users).values({ email: preview.email, name: input.name, passwordHash: await hashPassword(input.password), lastLoginAt: new Date() }).returning()
+    if (!user) throw new Error('Création du compte échouée')
+    await acceptInvitation(user, input.token)
+    await createSession(c, user.id)
+    await recordLogin(c, user, 'password', { isNewAccount: true })
     return c.json(await loadMe(user), 201)
   })
   /**

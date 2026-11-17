@@ -18,7 +18,7 @@ import { lazy, Suspense, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, cx, Field, Input, Segmented, Select, Skeleton, Switch, Textarea } from '@/components/ui'
-import { useCurrentStore } from '@/hooks/auth'
+import { useCan, useCurrentStore } from '@/hooks/auth'
 import { uploadFile, usePaymentAccounts } from '@/hooks/resources'
 import { errorMessage } from '@/lib/api'
 import type { Errors } from '@/lib/form'
@@ -547,8 +547,8 @@ function ChoiceCard({ value, current, onSelect, icon, title, description, disabl
 
 export function PaymentSection(p: SectionProps) {
   const { form, set, errors } = p
-  const { storeId, role } = useCurrentStore()
-  const isOwner = role === 'owner'
+  const { storeId } = useCurrentStore()
+  const isOwner = useCan('payments.manage')
   const accounts = usePaymentAccounts(isOwner)
   const enabledNative = (accounts.data ?? []).filter((a) => a.enabled && (NATIVE_PROVIDERS as readonly string[]).includes(a.provider))
   // Rôle non propriétaire : la liste est inaccessible (403), on n'empêche pas le choix.
