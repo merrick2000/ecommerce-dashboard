@@ -12,8 +12,12 @@
   },
   "vars": {
     // Serveur Dokploy (ou autre) qui fait tourner apps/api. Changer d'hébergeur = changer cette ligne.
-    "API_ORIGIN": "https://api-origin.example.com"
+    "API_ORIGIN": "https://api-origin.zurisell.store"
   }
   // Secret partagé avec l'API : `wrangler secret put EDGE_SECRET` (même valeur que EDGE_SECRET côté API).
-  // Activé au premier déploiement : "routes": [{ "pattern": "app.zurisell.store", "custom_domain": true }]
+  ,"routes": [
+    { "pattern": "app.zurisell.store", "custom_domain": true },
+    // Route explicite : plus spécifique que le joker *.zurisell.store/* du storefront, donc prioritaire.
+    { "pattern": "app.zurisell.store/*", "zone_name": "zurisell.store" }
+  ]
 }
