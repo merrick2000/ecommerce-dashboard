@@ -16,7 +16,7 @@ export const GOOGLE_ERRORS: Record<string, string> = {
 export function useAuthProviders() {
   return useQuery({
     queryKey: ['auth', 'providers'],
-    queryFn: () => api.get<{ google: boolean; registrationOpen: boolean }>('/api/auth/providers'),
+    queryFn: () => api.get<{ google: boolean; registrationOpen: boolean }>('/auth/providers'),
     staleTime: 5 * 60_000,
   })
 }
