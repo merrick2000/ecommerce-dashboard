@@ -7,6 +7,7 @@ import { requireAuth, requirePermission, requireStore } from '../lib/auth'
 import { logActivity } from '../services/activity'
 import { activityRoutes } from './activity'
 import { teamRoutes } from './team'
+import { storeNotificationRoutes } from './notifications'
 import type { AppEnv } from '../lib/context'
 import { encrypt } from '../lib/crypto'
 import { conflict } from '../lib/errors'
@@ -104,6 +105,7 @@ const storeScoped = new Hono<AppEnv>()
   .route('/uploads', uploadRoutes)
   .route('/team', teamRoutes)
   .route('/activity', activityRoutes)
+  .route('/notifications', storeNotificationRoutes)
 
 export const storeRoutes = new Hono<AppEnv>()
   .use(requireAuth)

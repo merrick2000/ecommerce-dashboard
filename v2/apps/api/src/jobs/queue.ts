@@ -1,6 +1,8 @@
 import { PgBoss } from 'pg-boss'
 import { env } from '../lib/env'
 import type { AccountNotice } from '../services/account'
+import type { NotificationEvent } from '@zuri/shared'
+import type { NotifyData } from '../services/notifications'
 
 /** Tâches asynchrones. Les données transportées restent minimales (des IDs), le worker relit la base. */
 export interface JobPayloads {
@@ -9,9 +11,10 @@ export interface JobPayloads {
   'leads.remind': Record<string, never>
   'payments.reconcile': Record<string, never>
   'account.notify': AccountNotice
+  'notify.dispatch': { storeId: string; event: NotificationEvent; data: NotifyData }
 }
 export type JobName = keyof JobPayloads
-export const JOB_NAMES: JobName[] = ['order.paid', 'order.notify-new', 'leads.remind', 'payments.reconcile', 'account.notify']
+export const JOB_NAMES: JobName[] = ['order.paid', 'order.notify-new', 'leads.remind', 'payments.reconcile', 'account.notify', 'notify.dispatch']
 
 let boss: PgBoss | null = null
 let starting: Promise<PgBoss> | null = null

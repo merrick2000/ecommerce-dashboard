@@ -3,6 +3,9 @@
  * à terme, le storefront. Toute donnée qui traverse le réseau est décrite ici.
  */
 import { z } from 'zod'
+import { CUSTOM_FIELD_TYPES, DEFAULT_FORM_FIELDS, DEFAULT_FORM_TEXTS, DEFAULT_ORDER_FORM, type OrderForm } from './form-runtime'
+
+export * from './form-runtime'
 
 // ─── Énumérations ────────────────────────────────────────────────────────────
 
@@ -308,6 +311,50 @@ export const descriptionCtaSchema = z.object({
   subText: z.string().max(120).optional(),
 })
 
+// ─── Formulaire de commande paramétrable ─────────────────────────────────────
+
+const formText = (max: number) => z.string().max(max).default('')
+
+export const orderFormFieldSchema = z
+  .object({
+    key: z.string().regex(/^(variant|quantity|name|phone|email|city|address|note|cf_[a-z0-9]{3,20})$/, 'Clé de champ invalide'),
+    builtin: z.boolean(),
+    type: z.enum(CUSTOM_FIELD_TYPES).nullable().default(null),
+    visible: z.boolean().default(true),
+    required: z.boolean().default(false),
+    label: formText(80),
+    placeholder: formText(120),
+    help: formText(200),
+    width: z.enum(['full', 'half']).default('full'),
+    options: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
+  })
+  .refine((f) => f.builtin === !f.key.startsWith('cf_'), 'Champ intégré ou personnalisé incohérent')
+  .refine((f) => f.builtin || f.type !== null, 'Type requis pour un champ personnalisé')
+  .refine((f) => !(f.type === 'select' || f.type === 'radio') || f.options.length > 0, 'Ajoutez au moins une option')
+
+export const orderFormSchema = z.object({
+  fields: z.array(orderFormFieldSchema).max(40).default(DEFAULT_FORM_FIELDS),
+  texts: z
+    .object({
+      title: formText(120),
+      subtitle: formText(300),
+      submitCod: formText(80),
+      submitOnline: formText(80),
+      successTitle: formText(120),
+      successMessage: formText(500),
+      reassurance: z.array(z.string().trim().min(1).max(120)).max(6).default([]),
+      footnote: formText(300),
+    })
+    .default(DEFAULT_FORM_TEXTS),
+  showPromo: z.boolean().default(true),
+})
+
+/** Lecture tolérante d'une configuration stockée (ancienne, absente ou abîmée → formulaire par défaut). */
+export function parseOrderForm(raw: unknown): OrderForm {
+  const r = orderFormSchema.safeParse(raw ?? {})
+  return r.success ? (r.data as OrderForm) : DEFAULT_ORDER_FORM
+}
+
 export const productContentSchema = z.object({
   customText: z.string().max(20_000).optional(),
   features: z.array(z.string().max(200)).max(30).default([]),
@@ -343,6 +390,8 @@ export const productContentSchema = z.object({
     })
     .default({ enabled: false, position: 'right' }),
   gallery: z.array(z.string().max(500)).max(12).default([]),
+  /** Formulaire propre à ce produit ; null = formulaire de la boutique. */
+  orderForm: orderFormSchema.nullable().default(null),
 })
 export type ProductContent = z.infer<typeof productContentSchema>
 
@@ -506,6 +555,8 @@ export const checkoutSettingsSchema = z.object({
       promoCodeId: z.coerce.number().int().nullable().default(null),
     })
     .default({ enabled: false, promoCodeId: null }),
+  /** Formulaire de commande de la boutique (tous les produits, sauf surcharge produit). */
+  form: orderFormSchema.default(DEFAULT_ORDER_FORM),
 })
 export type CheckoutSettings = z.infer<typeof checkoutSettingsSchema>
 
@@ -571,6 +622,8 @@ export const publicOrderCreateSchema = z
     address: z.string().trim().max(500).nullable().optional(),
     deliveryZoneId: z.coerce.number().int().positive().nullable().optional(),
     note: z.string().trim().max(500).nullable().optional(),
+    /** Réponses aux champs personnalisés du formulaire, par clé (« cf_xxxx »). */
+    customFields: z.record(z.string().regex(/^cf_[a-z0-9]{3,20}$/), z.union([z.string().max(1000), z.array(z.string().max(80)).max(30)])).optional(),
     promoCode: z.string().trim().toUpperCase().max(30).nullable().optional(),
     /** Identifiant d'événement partagé pixel ↔ Conversions API (déduplication). */
     eventId: z.string().max(64).optional(),
@@ -668,4 +721,68 @@ export interface Paginated<T> {
   total: number
   page: number
   pageSize: number
+}
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+export const NOTIFICATION_CHANNELS = ['push', 'email', 'telegram'] as const
+export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number]
+
+/**
+ * Événements notifiables. `permission` : droit requis pour en être notifié ;
+ * les événements liés à des produits respectent en plus le périmètre produits du membre.
+ */
+export const NOTIFICATION_EVENTS = {
+  'order.new': { label: 'Nouvelle commande', description: 'Une commande à la livraison vient d’arriver.', permission: 'orders.view' },
+  'order.paid': { label: 'Paiement reçu', description: 'Une vente en ligne est encaissée.', permission: 'orders.view' },
+  'order.assigned': { label: 'Commande attribuée', description: 'Quelqu’un vous confie une commande.', permission: 'orders.update' },
+  'order.status': { label: 'Statut modifié', description: 'Un membre confirme, expédie, livre ou annule une commande.', permission: 'orders.view' },
+  'lead.abandoned': { label: 'Panier abandonné', description: 'Un client a commencé sa commande sans la terminer.', permission: 'customers.view' },
+  'team.activity': { label: 'Équipe', description: 'Un membre rejoint l’équipe ou accepte une invitation.', permission: 'team.manage' },
+} as const satisfies Record<string, { label: string; description: string; permission: Permission }>
+export type NotificationEvent = keyof typeof NOTIFICATION_EVENTS
+export const NOTIFICATION_EVENT_KEYS = Object.keys(NOTIFICATION_EVENTS) as NotificationEvent[]
+
+export const channelPrefsSchema = z.object({ push: z.boolean(), email: z.boolean(), telegram: z.boolean() })
+export type ChannelPrefs = z.infer<typeof channelPrefsSchema>
+export const notificationPrefsSchema = z.partialRecord(z.enum(NOTIFICATION_EVENT_KEYS as [NotificationEvent, ...NotificationEvent[]]), channelPrefsSchema)
+export type NotificationPrefs = Partial<Record<NotificationEvent, ChannelPrefs>>
+
+/** Réglages par défaut : push pour tout ce qui concerne le membre ; email pour les ventes côté propriétaire. */
+export function defaultChannelPrefs(event: NotificationEvent, role: StoreRole): ChannelPrefs {
+  const email = (role === 'owner' || role === 'admin') && (event === 'order.new' || event === 'order.paid')
+  return { push: true, email, telegram: true }
+}
+
+export const pushSubscriptionSchema = z.object({
+  endpoint: z.string().url().max(1000),
+  keys: z.object({ p256dh: z.string().min(10).max(200), auth: z.string().min(8).max(100) }),
+  label: z.string().max(120).optional(),
+})
+
+export interface NotificationConfig {
+  vapidPublicKey: string
+  telegram: { enabled: boolean; botUsername: string | null; linked: boolean }
+}
+
+export interface NotificationPreferencesView {
+  events: { event: NotificationEvent; label: string; description: string; channels: ChannelPrefs }[]
+}
+
+export interface NotificationDevice {
+  id: number
+  label: string
+  createdAt: string
+  lastUsedAt: string | null
+}
+
+/** Contenu d'une notification push (lu par le service worker du dashboard). */
+export interface PushPayload {
+  title: string
+  body: string
+  url: string
+  tag?: string
+  event: NotificationEvent | 'test'
+  /** Joue le son « encaissement » côté app ouverte. */
+  sound?: 'sale' | 'soft'
 }

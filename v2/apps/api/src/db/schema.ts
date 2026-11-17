@@ -29,6 +29,7 @@ import type {
   Promo,
   QuantityOffer,
   MemberOptions,
+  NotificationPrefs,
   StoreRole,
 } from '@zuri/shared'
 
@@ -64,6 +65,8 @@ export const users = pgTable('users', {
   /** Identifiant Google (« sub ») quand le compte est relié à Google. */
   googleSub: varchar('google_sub', { length: 64 }).unique(),
   avatarUrl: varchar('avatar_url', { length: 500 }),
+  /** Conversation Telegram reliée au compte (notifications). */
+  telegramChatId: varchar('telegram_chat_id', { length: 32 }),
   lastLoginAt: ts('last_login_at'),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -114,6 +117,58 @@ export const userDevices = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.deviceHash] })],
 )
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+/** Choix des canaux par événement, par membre et par boutique (absent = valeurs par défaut du rôle). */
+export const notificationSettings = pgTable(
+  'notification_settings',
+  {
+    userId: fk('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    storeId: ref('store_id')
+      .notNull()
+      .references(() => stores.id, { onDelete: 'cascade' }),
+    prefs: jsonb('prefs').$type<NotificationPrefs>().notNull().default({}),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.storeId] })],
+)
+
+/** Appareils abonnés aux notifications push (téléphone, PC…). */
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: id(),
+    userId: fk('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    endpoint: text('endpoint').notNull().unique(),
+    p256dh: varchar('p256dh', { length: 200 }).notNull(),
+    auth: varchar('auth', { length: 100 }).notNull(),
+    label: varchar('label', { length: 120 }).notNull(),
+    lastUsedAt: ts('last_used_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('push_subscriptions_user_idx').on(t.userId)],
+)
+
+/** Codes à usage unique pour relier un compte à Telegram (/start <code>), 15 min. */
+export const telegramLinks = pgTable('telegram_links', {
+  codeHash: varchar('code_hash', { length: 64 }).primaryKey(),
+  userId: fk('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  expiresAt: ts('expires_at').notNull(),
+})
+
+/** Secrets générés par l'application elle-même (clés VAPID…), chiffrés avec APP_KEY. */
+export const appSecrets = pgTable('app_secrets', {
+  key: varchar('key', { length: 60 }).primaryKey(),
+  valueEnc: text('value_enc').notNull(),
+  createdAt: createdAt(),
+})
 
 // ─── Boutiques (tenants) ─────────────────────────────────────────────────────
 
@@ -550,6 +605,8 @@ export const leads = pgTable(
     nextReminderAt: ts('next_reminder_at'),
     convertedAt: ts('converted_at'),
     convertedOrderId: ref('converted_order_id').references(() => orders.id, { onDelete: 'set null' }),
+    /** Vendeur(s) prévenu(s) du panier abandonné. */
+    sellerNotifiedAt: ts('seller_notified_at'),
     reminderHistory: jsonb('reminder_history').$type<{ step: number; channel: string; at: string; promoCode?: string }[]>().notNull().default([]),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

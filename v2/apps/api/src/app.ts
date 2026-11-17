@@ -4,6 +4,7 @@ import { secureHeaders } from 'hono/secure-headers'
 import { authRoutes } from './routes/auth'
 import { integrationRoutes } from './routes/integrations'
 import { invitationRoutes } from './routes/invitations'
+import { notificationRoutes, telegramWebhookRoutes } from './routes/notifications'
 import { paymentRoutes } from './routes/payments'
 import { publicRoutes } from './routes/public'
 import { storeRoutes } from './routes/stores'
@@ -34,7 +35,7 @@ app.get('/api/health', async (c) => {
   return c.json({ ok: true })
 })
 
-const api = new Hono<AppEnv>().route('/auth', authRoutes).route('/stores', storeRoutes).route('/invitations', invitationRoutes).route('/v1', publicRoutes).route('/v1', paymentRoutes).route('/v1', integrationRoutes)
+const api = new Hono<AppEnv>().route('/auth', authRoutes).route('/stores', storeRoutes).route('/invitations', invitationRoutes).route('/notifications', notificationRoutes).route('/v1', publicRoutes).route('/v1', paymentRoutes).route('/v1', integrationRoutes).route('/v1', telegramWebhookRoutes)
 app.route('/api', api)
 
 app.notFound((c) => c.json({ error: 'Route introuvable', code: 'not_found' }, 404))

@@ -1,11 +1,11 @@
-import { and, asc, eq, isNull, lte, sql as dsql } from 'drizzle-orm'
+import { and, asc, eq, gte, isNull, lte, sql as dsql } from 'drizzle-orm'
 import { db } from '../db/client'
 import { checkoutSettings, leads, orderItems, orders, products, promoCodes, stores, users } from '../db/schema'
 import { decrypt } from '../lib/crypto'
 import { env } from '../lib/env'
-import { escapeHtml } from '../lib/sanitize'
-import { abandonedCartEmail, digitalReceiptEmail, formatMoney, physicalConfirmationEmail, sellerNewOrderEmail } from '../services/emails'
-import { sendCapiEvent, sendEmail, sendTelegram } from '../services/notify'
+import { abandonedCartEmail, digitalReceiptEmail, formatMoney, physicalConfirmationEmail } from '../services/emails'
+import { sendCapiEvent, sendEmail } from '../services/notify'
+import { notify } from '../services/notifications'
 import { sendAccountNotice, type AccountNotice } from '../services/account'
 
 const storefrontUrl = (slug: string, path = '') => `${env.STOREFRONT_URL.replace(/\/$/, '')}/${slug}${path}`
@@ -49,21 +49,24 @@ async function capiPurchase(o: Loaded) {
 
 /** Emails au client : expéditeur = nom de la boutique, réponses vers l'email de support. */
 const customerMailOpts = (o: Loaded) => ({ fromName: o.store.name, replyTo: o.store.supportEmail })
-/** Emails au vendeur : réponse directe au client. */
-const sellerMailOpts = (o: Loaded) => ({ fromName: 'Zuri', replyTo: o.order.customerEmail })
-
-function sellerNewOrderMail(o: Loaded, method: string) {
-  return sellerNewOrderEmail({ storeName: o.store.name, orderNumber: o.order.orderNumber, customer: o.order.customerName ?? '', phone: o.order.customerPhone, items: o.lines, total: o.order.total, currency: o.order.currency, method, dashboardUrl: `${env.APP_URL}/stores/${o.store.id}/orders/${o.order.id}` })
-}
-
-async function notifySeller(o: Loaded, headline: string) {
-  const methodLabel = o.order.paymentMethod === 'cod' ? 'Paiement à la livraison' : o.order.paymentProvider ?? o.order.paymentMethod
-  await sendTelegram(
-    `${headline} <b>${escapeHtml(o.store.name)}</b>\n` +
-      `${o.lines.map(escapeHtml).join('\n')}\n` +
-      `💰 ${escapeHtml(formatMoney(o.order.total, o.order.currency))} | ${escapeHtml(methodLabel)}\n` +
-      `👤 ${escapeHtml(o.order.customerName)} ${escapeHtml(o.order.customerPhone)}${o.order.city ? `\n📍 ${escapeHtml(o.order.city)}` : ''}`,
-  )
+/**
+ * Prévient l'équipe (push / email / Telegram selon les réglages de chacun),
+ * uniquement les membres qui ont accès aux produits de la commande.
+ */
+async function notifyTeam(o: Loaded, event: 'order.new' | 'order.paid') {
+  const method = o.order.paymentMethod === 'cod' ? 'à la livraison' : (o.order.paymentProvider ?? 'en ligne')
+  const who = [o.order.customerName, o.order.city].filter(Boolean).join(', ')
+  const what = o.lines.join(', ')
+  const base = `${who} · ${what}`
+  await notify(o.store.id, event, {
+    title: event === 'order.new' ? `🛒 Nouvelle commande ${o.order.orderNumber}` : `💰 Paiement reçu ${o.order.orderNumber}`,
+    body: base,
+    bodyWithAmount: `${base} · ${formatMoney(o.order.total, o.order.currency)} (${method})`,
+    path: `/stores/${o.store.id}/orders/${o.order.id}`,
+    productIds: [...new Set(o.items.map((i) => i.productId).filter((x): x is string => !!x))],
+    tag: `order-${o.order.id}`,
+    sound: 'sale',
+  })
 }
 
 /** Commande payée (en ligne, ou COD livrée). Exécuté au plus une fois par commande. */
@@ -81,17 +84,13 @@ export async function handleOrderPaid({ orderId }: { orderId: string }) {
 
   if (o.order.paymentMethod !== 'cod') {
     // Les commandes COD ont déjà été notifiées et envoyées à la CAPI à leur création.
-    tasks.push(capiPurchase(o), notifySeller(o, '✅ Vente payée'))
+    tasks.push(capiPurchase(o), notifyTeam(o, 'order.paid'))
     if (o.order.customerEmail) {
       const mail =
         o.order.kind === 'physical'
           ? physicalConfirmationEmail({ storeName: o.store.name, customerName: o.order.customerName, orderNumber: o.order.orderNumber, items: o.lines, total: o.order.total, currency: o.order.currency, cod: false, trackUrl: orderUrl(o.store.slug, o.order.accessToken) })
           : digitalReceiptEmail({ storeName: o.store.name, customerName: o.order.customerName, orderNumber: o.order.orderNumber, items: o.lines, total: o.order.total, currency: o.order.currency, accessUrl: orderUrl(o.store.slug, o.order.accessToken) })
       tasks.push(sendEmail(o.order.customerEmail, mail.subject, mail.html, customerMailOpts(o)))
-    }
-    if (o.store.supportEmail) {
-      const mail = sellerNewOrderMail(o, `Payé en ligne${o.order.paymentProvider ? ` (${o.order.paymentProvider})` : ''}`)
-      tasks.push(sendEmail(o.store.supportEmail, mail.subject, mail.html, sellerMailOpts(o)))
     }
   }
   const results = await Promise.allSettled(tasks)
@@ -107,14 +106,10 @@ export async function handleOrderPaid({ orderId }: { orderId: string }) {
 export async function handleOrderNotifyNew({ orderId }: { orderId: string }) {
   const o = await loadOrder(orderId)
   if (!o) return
-  const tasks: Promise<unknown>[] = [notifySeller(o, '🛒 Nouvelle commande COD'), capiPurchase(o)]
+  const tasks: Promise<unknown>[] = [notifyTeam(o, 'order.new'), capiPurchase(o)]
   if (o.order.customerEmail) {
     const mail = physicalConfirmationEmail({ storeName: o.store.name, customerName: o.order.customerName, orderNumber: o.order.orderNumber, items: o.lines, total: o.order.total, currency: o.order.currency, cod: true, trackUrl: orderUrl(o.store.slug, o.order.accessToken) })
     tasks.push(sendEmail(o.order.customerEmail, mail.subject, mail.html, customerMailOpts(o)))
-  }
-  if (o.store.supportEmail) {
-    const mail = sellerNewOrderMail(o, 'Paiement à la livraison')
-    tasks.push(sendEmail(o.store.supportEmail, mail.subject, mail.html, sellerMailOpts(o)))
   }
   const failed = (await Promise.allSettled(tasks)).filter((r) => r.status === 'rejected')
   if (failed.length) console.warn(`[order.notify-new] ${failed.length} envoi(s) en échec`, failed)
@@ -180,4 +175,32 @@ export async function handleAccountNotify(notice: AccountNotice) {
   const [user] = await db.select().from(users).where(eq(users.id, notice.userId)).limit(1)
   if (!user) return
   await sendAccountNotice(user, notice)
+}
+
+/**
+ * Paniers abandonnés : prévient l'équipe (closers compris, s'ils ont le produit)
+ * 20 minutes après le début d'une commande non terminée, une seule fois par panier.
+ */
+export async function handleLeadsNotifySellers() {
+  const now = Date.now()
+  const due = await db
+    .select({ lead: leads, productName: products.name })
+    .from(leads)
+    .innerJoin(products, eq(products.id, leads.productId))
+    .where(and(isNull(leads.convertedAt), isNull(leads.sellerNotifiedAt), lte(leads.createdAt, new Date(now - 20 * 60_000)), gte(leads.createdAt, new Date(now - 24 * 3600_000))))
+    .orderBy(asc(leads.createdAt))
+    .limit(100)
+  for (const { lead, productName } of due) {
+    const [claimed] = await db.update(leads).set({ sellerNotifiedAt: new Date() }).where(and(eq(leads.id, lead.id), isNull(leads.sellerNotifiedAt))).returning({ id: leads.id })
+    if (!claimed) continue
+    const who = [lead.name ?? 'Un client', lead.phone].filter(Boolean).join(' · ')
+    await notify(lead.storeId, 'lead.abandoned', {
+      title: '🛒 Panier abandonné',
+      body: `${who} a commencé une commande « ${productName} » sans la terminer. Un appel peut la sauver.`,
+      path: `/stores/${lead.storeId}/products/${lead.productId}`,
+      productIds: lead.productId ? [lead.productId] : null,
+      tag: `lead-${lead.id}`,
+      sound: 'soft',
+    })
+  }
 }

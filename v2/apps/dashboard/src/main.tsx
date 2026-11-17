@@ -9,6 +9,7 @@ import { meKey } from '@/hooks/auth'
 import { ApiError, onUnauthorized } from '@/lib/api'
 import { router } from '@/router'
 import './index.css'
+import { PushBridge } from '@/components/PushBridge'
 
 // Messages de validation zod en français (schémas partagés compris : même instance de zod).
 z.config(fr())
@@ -41,6 +42,7 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <RouterProvider router={router} />
+        <PushBridge />
       </ToastProvider>
     </QueryClientProvider>
   </StrictMode>,

@@ -123,6 +123,8 @@ export interface OrderBase {
   address: string | null
   deliveryZoneId: number | null
   customerNote: string | null
+  /** customFields : réponses aux champs personnalisés du formulaire de commande. */
+  metadata?: { customFields?: { key: string; label: string; value: string }[]; flagged?: string } | null
   kind: OrderKind
   subtotal: number
   discount: number

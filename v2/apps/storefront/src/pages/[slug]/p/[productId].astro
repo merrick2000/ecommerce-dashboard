@@ -65,8 +65,14 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebo
 
     <aside class="sales-aside" id="commander" aria-label={t.orderTitle}>
       <div class="order-box">
-        <h2 class="order-title">{t.orderTitle}</h2>
-        <p class="muted" style="margin-bottom:14px">{product.name} · <strong>{m(price.effective)}</strong></p>
+        {
+          !(d.orderForm.texts.title || d.orderForm.texts.subtitle) && (
+            <>
+              <h2 class="order-title">{t.orderTitle}</h2>
+              <p class="muted" style="margin-bottom:14px">{product.name} · <strong>{m(price.effective)}</strong></p>
+            </>
+          )
+        }
         {
           product.inStock && (product.variants.length === 0 || product.variants.some((v) => v.inStock)) ? (
             <OrderForm
@@ -95,6 +101,8 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebo
               tt={tracking.tiktokPixelId}
               t={T.form}
               pt={T.pay}
+              form={d.orderForm}
+              storeName={store.name}
             />
           ) : (
             <div class="notice warn soldout">

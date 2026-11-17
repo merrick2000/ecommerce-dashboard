@@ -1,15 +1,22 @@
 import { env } from '../lib/env'
 
-/** Telegram : notification instantanée au vendeur. Ne bloque jamais une requête HTTP (appelé depuis le worker). */
-export async function sendTelegram(html: string): Promise<void> {
-  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return
-  const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+/** Appel à l'API Telegram du bot (si configuré). */
+export async function telegramApi<T = unknown>(method: string, body: Record<string, unknown>): Promise<T> {
+  if (!env.TELEGRAM_BOT_TOKEN) throw new Error('Telegram non configuré')
+  const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text: html, parse_mode: 'HTML', disable_web_page_preview: true }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(8000),
   })
-  if (!res.ok) throw new Error(`Telegram ${res.status}: ${await res.text()}`)
+  const json = (await res.json().catch(() => null)) as { ok: boolean; result: T; description?: string } | null
+  if (!res.ok || !json?.ok) throw new Error(`Telegram ${method} ${res.status}: ${json?.description ?? ''}`)
+  return json.result
+}
+
+/** Message Telegram vers une conversation précise (HTML simple). */
+export async function sendTelegramTo(chatId: string, html: string): Promise<void> {
+  await telegramApi('sendMessage', { chat_id: chatId, text: html, parse_mode: 'HTML', disable_web_page_preview: true })
 }
 
 export interface EmailOptions {

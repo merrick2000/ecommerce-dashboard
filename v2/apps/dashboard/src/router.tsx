@@ -40,6 +40,7 @@ export const router = createBrowserRouter([
               { path: 'settings', lazy: page(() => import('@/pages/settings/Settings')) },
               { path: 'team', lazy: page(() => import('@/pages/team/Team')) },
               { path: 'activity', lazy: page(() => import('@/pages/Activity')) },
+              { path: 'notifications', lazy: page(() => import('@/pages/Notifications')) },
               { path: '*', element: <NotFound /> },
             ],
           },

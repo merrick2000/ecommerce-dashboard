@@ -3,11 +3,13 @@
  * formulaire (forme `ProductInput` du schéma partagé) et un setter partiel.
  */
 import {
+  checkoutSettingsSchema,
   CTA_STYLES,
   CURRENCIES,
   INTEGRATION_PLATFORMS,
   NATIVE_PROVIDERS,
   type IntegrationPlatform,
+  type OrderForm,
   type PaymentChoice,
   type ProductContent,
   type ProductInput,
@@ -19,12 +21,13 @@ import { Link } from 'react-router'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, cx, Field, Input, Segmented, Select, Skeleton, Switch, Textarea } from '@/components/ui'
 import { useCan, useCurrentStore } from '@/hooks/auth'
-import { uploadFile, usePaymentAccounts } from '@/hooks/resources'
+import { uploadFile, useCheckoutSettings, usePaymentAccounts } from '@/hooks/resources'
+import { normalizeForm, OrderFormBuilder } from '@/pages/settings/OrderFormBuilder'
 import { errorMessage } from '@/lib/api'
 import type { Errors } from '@/lib/form'
 import { currencyLabel, fileSize, money } from '@/lib/format'
 import { CTA_STYLE_LABEL, PROVIDER_LABEL } from '@/lib/labels'
-import { ImageUpload, ListEditor, NumberField } from './fields'
+import { ImageUpload, ListEditor, NumberField, PreviewImage } from './fields'
 
 const RichText = lazy(() => import('./RichText'))
 
@@ -321,7 +324,7 @@ export function MediaSection(p: SectionProps) {
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {gallery.map((src, i) => (
               <div key={`${src}-${i}`} className="relative aspect-square overflow-hidden rounded-xl border border-line bg-surface-2">
-                <img src={src} alt={`Photo ${i + 1}`} className="size-full object-cover" />
+                <PreviewImage src={src} />
                 <button type="button" onClick={() => setContent(p, { gallery: gallery.filter((_, k) => k !== i) })} className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-1.5 text-white" aria-label={`Retirer la photo ${i + 1}`}>
                   <Trash2 className="size-3.5" />
                 </button>
@@ -613,5 +616,35 @@ export function PaymentSection(p: SectionProps) {
         {errors['payment.method'] && <p className="text-[13px] text-red-600">{errors['payment.method']}</p>}
       </div>
     </Card>
+  )
+}
+
+// ─── Formulaire de commande (surcharge produit) ──────────────────────────────
+
+export function OrderFormSection(p: SectionProps) {
+  const { form } = p
+  const { store } = useCurrentStore()
+  const storeSettings = useCheckoutSettings()
+  const custom = form.content.orderForm ?? null
+  const fromStore = () => {
+    const parsed = checkoutSettingsSchema.safeParse(storeSettings.data?.settings)
+    return normalizeForm(parsed.success ? (parsed.data.form as OrderForm) : null)
+  }
+  return (
+    <div className="mt-4 space-y-4">
+      <Card title="Formulaire de commande" description="Par défaut, le produit utilise le formulaire de la boutique (Paramètres, Formulaire de commande).">
+        <Segmented
+          label="Formulaire utilisé"
+          value={custom ? 'custom' : 'store'}
+          onChange={(v) => setContent(p, { orderForm: v === 'custom' ? fromStore() : null })}
+          options={[
+            { value: 'store', label: 'Formulaire de la boutique' },
+            { value: 'custom', label: 'Personnalisé pour ce produit' },
+          ]}
+        />
+        {p.errors['content.orderForm'] && <p className="mt-2 text-[13px] text-red-600">{p.errors['content.orderForm']}</p>}
+      </Card>
+      {custom && <OrderFormBuilder value={normalizeForm(custom)} onChange={(orderForm) => setContent(p, { orderForm })} storeName={store?.name ?? 'Ma boutique'} currency={p.currency} />}
+    </div>
   )
 }

@@ -11,6 +11,7 @@ import { env } from '../lib/env'
 import { badRequest, conflict, forbidden, HttpError } from '../lib/errors'
 import { teamInviteEmail } from './emails'
 import { sendEmail } from './notify'
+import { notify } from './notifications'
 
 export const INVITE_TTL_DAYS = 7
 /** Statuts où une commande attend encore une action d'un membre. */
@@ -129,6 +130,7 @@ export async function acceptInvitation(user: User, token: string): Promise<strin
   if (row.inv.email !== user.email.toLowerCase()) throw new HttpError(403, `Cette invitation est destinée à ${row.inv.email}. Connectez-vous avec cette adresse.`, 'invite_email_mismatch')
   const inv = row.inv
   const productIds = await storeProductIds(inv.storeId, inv.productIds)
+  let joined = false
   await db.transaction(async (tx) => {
     const [claimed] = await tx
       .update(storeInvitations)
@@ -149,7 +151,15 @@ export async function acceptInvitation(user: User, token: string): Promise<strin
       action: 'joined',
       message: `A rejoint l’équipe (${ROLE_LABELS[inv.role]})`,
     })
+    joined = true
   })
+  if (joined) await notify(inv.storeId, 'team.activity', {
+    title: `👋 ${user.name} a rejoint ${row.storeName}`,
+    body: `${user.name} (${user.email}) fait maintenant partie de l’équipe en tant que ${ROLE_LABELS[inv.role]}.`,
+    path: `/stores/${inv.storeId}/team`,
+    excludeUserId: user.id,
+    sound: 'soft',
+  }).catch((err) => console.error('[team] notify', err))
   return inv.storeId
 }
 

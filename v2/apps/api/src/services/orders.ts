@@ -1,6 +1,9 @@
 import {
   FULFILLMENT_TRANSITIONS,
   NATIVE_PROVIDERS,
+  checkCustomFields,
+  parseOrderForm,
+  resolveFormFields,
   type FulfillmentStatus,
   type PaymentMethod,
   type PaymentStatus,
@@ -9,6 +12,7 @@ import {
 import { and, eq, inArray, isNull, sql as dsql } from 'drizzle-orm'
 import { db, type Tx } from '../db/client'
 import {
+  checkoutSettings,
   customers,
   deliveryZones,
   leads,
@@ -25,6 +29,7 @@ import {
 } from '../db/schema'
 import { orderNumber, randomToken } from '../lib/crypto'
 import { badRequest, conflict, notFound } from '../lib/errors'
+import { ValidationError } from '../lib/validate'
 import { enqueue } from '../jobs/queue'
 import { quote } from './pricing'
 
@@ -82,6 +87,14 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
     const paymentMethod: PaymentMethod = choice === 'cod' ? 'cod' : choice === 'integration' ? 'external' : 'mobile_money'
 
     if (!isPhysical && !input.customerEmail) throw badRequest('Email requis pour recevoir le produit', 'email_required')
+
+    // Formulaire effectif (produit, sinon boutique) : le serveur revérifie ce que le storefront a validé.
+    const [cfg] = await tx.select({ settings: checkoutSettings.settings }).from(checkoutSettings).where(eq(checkoutSettings.storeId, store.id)).limit(1)
+    const formFields = resolveFormFields(parseOrderForm(product.content.orderForm ?? cfg?.settings.form), product.type)
+    const required = (key: string) => formFields.some((f) => f.key === key && f.visible && f.required)
+    if (required('email') && !input.customerEmail) throw badRequest('Email requis', 'email_required')
+    const custom = checkCustomFields(formFields, input.customFields)
+    if (!custom.ok) throw new ValidationError(custom.issues.map((i) => ({ path: `customFields.${i.key}`, message: i.message })))
 
     let zone = null
     if (isPhysical) {
@@ -170,7 +183,10 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
         sessionId: input.sessionId,
         eventId: input.eventId ?? randomToken(16),
         trackingContext: { ip: ctx.ip, userAgent: ctx.userAgent, fbp: input.fbp, fbc: input.fbc },
-        metadata: customer.isBlocked ? { flagged: 'blocked_customer' } : null,
+        metadata:
+          customer.isBlocked || custom.answers.length
+            ? { ...(customer.isBlocked ? { flagged: 'blocked_customer' } : {}), ...(custom.answers.length ? { customFields: custom.answers } : {}) }
+            : null,
       })
       .returning()
     if (!order) throw new Error('Insertion commande échouée')

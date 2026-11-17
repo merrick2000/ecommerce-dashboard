@@ -2,7 +2,7 @@
  * API publique consommée par le storefront (/api/v1). Aucune authentification :
  * chaque route ne renvoie que ce qu'un visiteur a le droit de voir.
  */
-import { NATIVE_PROVIDERS, productIdSchema, publicOrderCreateSchema, storeIdSchema } from '@zuri/shared'
+import { NATIVE_PROVIDERS, parseOrderForm, productIdSchema, publicOrderCreateSchema, storeIdSchema } from '@zuri/shared'
 import { and, asc, desc, eq, gte, isNull, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
@@ -108,6 +108,8 @@ export const publicRoutes = new Hono<AppEnv>()
       },
       zones,
       checkout: cfg?.settings ?? DEFAULT_CHECKOUT,
+      /** Formulaire effectif : celui du produit s'il est personnalisé, sinon celui de la boutique. */
+      orderForm: parseOrderForm(product.content.orderForm ?? cfg?.settings.form),
       tracking: { facebookPixelId: cfg?.facebookPixelId ?? null, tiktokPixelId: cfg?.tiktokPixelId ?? null },
       onlinePaymentEnabled,
     })

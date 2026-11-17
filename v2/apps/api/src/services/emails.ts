@@ -172,3 +172,17 @@ ${small('Vous ne connaissez pas cette personne ? Ignorez cet email, rien ne sera
     ),
   }
 }
+
+/** Notification d'équipe par email (nouvelle commande, paiement, attribution…). */
+export function notificationEmail(p: { title: string; body: string; url: string; storeName: string }) {
+  return {
+    subject: p.title,
+    html: layout(
+      p.storeName,
+      `<p style="font-size:17px;font-weight:700;margin:0 0 8px">${escapeHtml(p.title)}</p>
+<p>${escapeHtml(p.body)}</p>
+${button(p.url, 'Ouvrir dans Zuri')}
+${small('Vous recevez cet email selon vos réglages de notifications dans Zuri (menu Notifications).')}`,
+    ),
+  }
+}

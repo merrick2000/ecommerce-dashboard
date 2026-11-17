@@ -22,6 +22,7 @@ import { orderNumber, randomToken } from '../lib/crypto'
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors'
 import { v } from '../lib/validate'
 import { normalizePhone, setPaymentStatus, transitionFulfillment } from '../services/orders'
+import { notify } from '../services/notifications'
 import { displayPrice, roundMoney, shippingFee } from '../services/pricing'
 
 const idParam = z.object({ id: orderIdSchema })
@@ -34,6 +35,31 @@ const AUTO_CLAIM_ROLES = new Set(['closer', 'order_manager'])
 async function userName(id: number) {
   const [u] = await db.select({ name: users.name }).from(users).where(eq(users.id, id)).limit(1)
   return u?.name ?? 'un membre'
+}
+
+/** Produits d'une commande (pour le filtre de périmètre des notifications). */
+async function orderProductIds(orderIds: string[]) {
+  if (!orderIds.length) return []
+  const rows = await db.selectDistinct({ productId: orderItems.productId }).from(orderItems).where(inArray(orderItems.orderId, orderIds))
+  return rows.map((r) => r.productId).filter((x): x is string => !!x)
+}
+
+const STATUS_LABELS: Record<string, string> = { confirmed: '✅ Confirmée', shipped: '🚚 Expédiée', delivered: '📦 Livrée', returned: '↩️ Retournée', cancelled: '❌ Annulée' }
+const NOTIFIED_STATUSES = new Set(Object.keys(STATUS_LABELS))
+
+/** Prévient l'équipe d'un changement de statut fait par un membre (sauf lui-même). */
+async function notifyStatus(storeId: string, actor: { id: number; name: string }, orderList: Pick<Order, 'id' | 'orderNumber' | 'customerName'>[], status: string) {
+  if (!NOTIFIED_STATUSES.has(status) || !orderList.length) return
+  const label = STATUS_LABELS[status] ?? status
+  const one = orderList.length === 1 ? orderList[0]! : null
+  await notify(storeId, 'order.status', {
+    title: one ? `${label} : ${one.orderNumber}` : `${orderList.length} commandes : ${label}`,
+    body: one ? `${actor.name} · ${one.customerName ?? 'client'}` : `${actor.name} a passé ${orderList.length} commandes en « ${label} »`,
+    path: one ? `/stores/${storeId}/orders/${one.id}` : `/stores/${storeId}/orders`,
+    productIds: await orderProductIds(orderList.map((o) => o.id)),
+    excludeUserId: actor.id,
+    tag: one ? `order-${one.id}` : undefined,
+  })
 }
 
 /** Une commande prise par un autre membre n'est modifiable que par ceux qui peuvent attribuer. */
@@ -134,9 +160,13 @@ export const orderRoutes = new Hono<AppEnv>()
       const safe = /^[=+\-@]/.test(s) ? `'${s}` : s
       return /[",;\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe
     }
-    const header = ['Numéro', 'Date', 'Client', 'Téléphone', 'Ville', 'Adresse', 'Articles', 'Total', 'Devise', 'Paiement', 'Statut paiement', 'Statut livraison', 'Livreur', 'Suivi']
+    const header = ['Numéro', 'Date', 'Client', 'Téléphone', 'Ville', 'Adresse', 'Articles', 'Total', 'Devise', 'Paiement', 'Statut paiement', 'Statut livraison', 'Livreur', 'Suivi', 'Champs personnalisés']
+    const customText = (meta: unknown) => {
+      const list = (meta as { customFields?: { label: string; value: string }[] } | null)?.customFields
+      return Array.isArray(list) ? list.map((f) => `${f.label}: ${f.value}`).join(' | ') : ''
+    }
     const lines = rows.map(({ order: o, items }) =>
-      [o.orderNumber, o.createdAt.toISOString(), o.customerName, o.customerPhone, o.city, o.address, items, o.total, o.currency, o.paymentMethod, o.paymentStatus, o.fulfillmentStatus, o.courier, o.trackingNumber].map(esc).join(';'),
+      [o.orderNumber, o.createdAt.toISOString(), o.customerName, o.customerPhone, o.city, o.address, items, o.total, o.currency, o.paymentMethod, o.paymentStatus, o.fulfillmentStatus, o.courier, o.trackingNumber, customText(o.metadata)].map(esc).join(';'),
     )
     c.header('Content-Type', 'text/csv; charset=utf-8')
     c.header('Content-Disposition', `attachment; filename="commandes-${store.slug}.csv"`)
@@ -188,25 +218,31 @@ export const orderRoutes = new Hono<AppEnv>()
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
     const access = c.get('access')
-    await assertCanAct(access, await loadScopedOrder(access, c.get('store').id, id))
+    const order = await loadScopedOrder(access, c.get('store').id, id)
+    await assertCanAct(access, order)
     await transitionFulfillment(c.get('store'), id, body.fulfillmentStatus, { userId: c.get('user').id, ...body })
     await autoClaim(access, id)
+    await notifyStatus(c.get('store').id, c.get('user'), [order], body.fulfillmentStatus)
     return c.json({ ok: true })
   })
   .post('/bulk-status', requirePermission('orders.update'), v('json', orderStatusUpdateSchema.extend({ ids: z.array(orderIdSchema).min(1).max(200) })), async (c) => {
     const { ids, ...body } = c.req.valid('json')
     const access = c.get('access')
     const results: { id: string; ok: boolean; error?: string }[] = []
+    const done: Order[] = []
     for (const id of ids) {
       try {
-        await assertCanAct(access, await loadScopedOrder(access, c.get('store').id, id))
+        const order = await loadScopedOrder(access, c.get('store').id, id)
+        await assertCanAct(access, order)
         await transitionFulfillment(c.get('store'), id, body.fulfillmentStatus, { userId: c.get('user').id, ...body })
         await autoClaim(access, id)
+        done.push(order)
         results.push({ id, ok: true })
       } catch (e) {
         results.push({ id, ok: false, error: e instanceof Error ? e.message : 'Erreur' })
       }
     }
+    await notifyStatus(c.get('store').id, c.get('user'), done, body.fulfillmentStatus)
     return c.json({ results })
   })
   .post('/:id/payment', requirePermission('orders.payment'), v('param', idParam), v('json', orderPaymentUpdateSchema), async (c) => {
@@ -273,7 +309,7 @@ export const orderRoutes = new Hono<AppEnv>()
     const { userId } = c.req.valid('json')
     const store = c.get('store')
     const access = c.get('access')
-    await loadScopedOrder(access, store.id, id)
+    const order = await loadScopedOrder(access, store.id, id)
     let message = 'Commande libérée'
     if (userId) {
       const [member] = await db.select().from(storeMembers).where(and(eq(storeMembers.storeId, store.id), eq(storeMembers.userId, userId))).limit(1)
@@ -287,6 +323,17 @@ export const orderRoutes = new Hono<AppEnv>()
     }
     await db.update(orders).set({ assignedTo: userId, assignedAt: userId ? new Date() : null }).where(eq(orders.id, id))
     await db.insert(orderEvents).values({ orderId: id, type: 'assigned', message, data: { assignedTo: userId }, userId: access.userId })
+    if (userId && userId !== access.userId) {
+      await notify(store.id, 'order.assigned', {
+        title: `📋 Commande ${order.orderNumber} pour vous`,
+        body: `${c.get('user').name} vous a confié la commande de ${order.customerName ?? 'un client'}${order.city ? ` (${order.city})` : ''}.`,
+        path: `/stores/${store.id}/orders/${id}`,
+        productIds: await orderProductIds([id]),
+        targetUserId: userId,
+        tag: `order-${id}`,
+        sound: 'soft',
+      })
+    }
     return c.json({ ok: true })
   })
   /** Commande saisie à la main (WhatsApp, téléphone, boutique physique). */

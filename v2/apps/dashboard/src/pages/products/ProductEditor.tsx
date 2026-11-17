@@ -9,7 +9,7 @@ import { useCan, useCurrency, useStoreId } from '@/hooks/auth'
 import { useProduct, useSaveProduct } from '@/hooks/resources'
 import { serverErrors, validate, type Errors } from '@/lib/form'
 import type { Product } from '@/lib/types'
-import { DeliverySection, GeneralSection, MediaSection, OffersSection, PaymentSection, SalesPageSection, type Form, type SectionProps } from './editor/sections'
+import { DeliverySection, GeneralSection, MediaSection, OffersSection, OrderFormSection, PaymentSection, SalesPageSection, type Form, type SectionProps } from './editor/sections'
 
 type Tab = 'general' | 'page' | 'media' | 'delivery' | 'offers' | 'payment'
 
@@ -249,7 +249,12 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
         {tab === 'media' && <MediaSection {...props} />}
         {tab === 'delivery' && <DeliverySection {...props} />}
         {tab === 'offers' && form.type === 'physical' && <OffersSection {...props} />}
-        {tab === 'payment' && <PaymentSection {...props} />}
+        {tab === 'payment' && (
+          <>
+            <PaymentSection {...props} />
+            <OrderFormSection {...props} />
+          </>
+        )}
       </div>
 
       {/* Barre d'enregistrement mobile, au-dessus de la navigation basse */}

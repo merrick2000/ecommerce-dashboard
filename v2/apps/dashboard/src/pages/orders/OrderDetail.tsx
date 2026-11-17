@@ -418,6 +418,19 @@ export default function OrderDetail() {
                 <p className="mt-1 text-sm whitespace-pre-line">{order.customerNote}</p>
               </div>
             )}
+            {!!order.metadata?.customFields?.length && (
+              <div className="mt-4 border-t border-line pt-4">
+                <p className="text-[13px] font-medium text-muted">Informations complémentaires</p>
+                <dl className="mt-1 space-y-1 text-sm">
+                  {order.metadata.customFields.map((f) => (
+                    <div key={f.key} className="flex flex-wrap gap-x-2">
+                      <dt className="text-muted">{f.label} :</dt>
+                      <dd className="font-medium whitespace-pre-line">{f.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
           </Card>
 
           <PaymentCard order={order} canEdit={canEditPayment} />

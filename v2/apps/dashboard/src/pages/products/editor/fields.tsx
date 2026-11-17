@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ImagePlus, Link2, Trash2, Upload, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, ImagePlus, Link2, Loader2, Trash2, Upload, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useToast } from '@/components/Toast'
 import { Button, cx, Field, Input } from '@/components/ui'
@@ -149,47 +149,81 @@ export function ImageUpload({
   const storeId = useStoreId()
   const toast = useToast()
   const input = useRef<HTMLInputElement>(null)
-  /** null = inactif ; 0..1 = envoi ; 1 = envoyé, le serveur optimise l'image. */
-  const [progress, setProgress] = useState<number | null>(null)
+  /**
+   * idle : rien en cours. uploading : envoi (progress 0..1, puis 1 = optimisation serveur).
+   * finalizing : envoyé, on attend que l'image définitive soit chargée avant de retirer l'indicateur.
+   */
+  const [phase, setPhase] = useState<'idle' | 'uploading' | 'finalizing'>('idle')
+  const [progress, setProgress] = useState(0)
   const [localPreview, setLocalPreview] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [urlMode, setUrlMode] = useState(false)
   const [url, setUrl] = useState('')
-  const busy = progress !== null
+  const busy = phase !== 'idle'
 
   useEffect(() => () => {
     if (localPreview) URL.revokeObjectURL(localPreview)
   }, [localPreview])
 
+  // Empêche de quitter la page en plein envoi (l'image serait perdue).
+  useEffect(() => {
+    if (!busy) return
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [busy])
+
+  const finish = () => {
+    setPhase('idle')
+    setProgress(0)
+    setLocalPreview(null)
+    if (input.current) input.current.value = ''
+  }
+
   const pick = async (file: File | undefined) => {
-    if (!file) return
+    if (!file || busy) return
     if (!file.type.startsWith('image/')) return setUploadError('Choisissez un fichier image (JPG, PNG, WebP).')
     if (file.size > 15 * 1024 * 1024) return setUploadError('Image trop lourde : 15 Mo maximum.')
     setUploadError(null)
-    // Aperçu immédiat de la photo choisie, pendant l'envoi.
+    // Aperçu immédiat de la photo choisie, pendant tout l'envoi.
     setLocalPreview(URL.createObjectURL(file))
     setProgress(0)
+    setPhase('uploading')
+    let finalUrl: string
     try {
       const r = await uploadImage(storeId, file, preset, setProgress)
-      onChange(r.url ?? r.key)
-      toast.success('Image envoyée')
+      finalUrl = r.url ?? r.key
     } catch (e) {
       setUploadError(errorMessage(e))
-    } finally {
-      setProgress(null)
-      setLocalPreview(null)
-      if (input.current) input.current.value = ''
+      return finish()
     }
+    // On garde l'indicateur jusqu'à ce que l'image définitive (CDN) soit prête à s'afficher.
+    setPhase('finalizing')
+    await new Promise<void>((resolve) => {
+      if (!/^https?:\/\//.test(finalUrl)) return resolve()
+      const img = new Image()
+      const done = () => resolve()
+      img.onload = done
+      img.onerror = done
+      setTimeout(done, 15_000)
+      img.src = finalUrl
+    })
+    onChange(finalUrl)
+    toast.success('Image ajoutée')
+    finish()
   }
 
   const shown = localPreview ?? value
   return (
     <Field label={label} hint={hint} error={error ?? uploadError ?? undefined}>
-      <div className={cx('relative overflow-hidden rounded-xl border border-dashed border-line-strong bg-surface-2', aspect === 'video' ? 'aspect-video' : 'aspect-square max-w-48')}>
+      <div
+        className={cx('relative overflow-hidden rounded-xl border border-dashed border-line-strong bg-surface-2', aspect === 'video' ? 'aspect-video' : 'aspect-square max-w-48')}
+        aria-busy={busy}
+      >
         {shown ? (
           <>
             <PreviewImage src={shown} dimmed={busy} />
-            {busy && <UploadOverlay progress={progress} />}
+            {busy && <UploadOverlay progress={phase === 'finalizing' ? null : progress} />}
             {!busy && (
               <button type="button" onClick={() => onChange(null)} className="absolute top-2 right-2 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80" aria-label="Retirer l’image">
                 <X className="size-4" />
@@ -197,7 +231,7 @@ export function ImageUpload({
             )}
           </>
         ) : (
-          <button type="button" onClick={() => input.current?.click()} className="flex size-full flex-col items-center justify-center gap-1.5 text-sm text-muted hover:text-fg">
+          <button type="button" onClick={() => input.current?.click()} disabled={busy} className="flex size-full flex-col items-center justify-center gap-1.5 text-sm text-muted hover:text-fg">
             <ImagePlus className="size-6" />
             Choisir une image
             <span className="text-xs">JPG, PNG ou WebP · 15 Mo max</span>
@@ -207,7 +241,7 @@ export function ImageUpload({
       <input ref={input} type="file" accept="image/*" className="hidden" onChange={(e) => void pick(e.target.files?.[0])} />
       <div className="flex flex-wrap gap-2">
         {value && !busy && (
-          <Button size="sm" onClick={() => input.current?.click()}>
+          <Button size="sm" onClick={() => input.current?.click()} disabled={busy}>
             <Upload className="size-3.5" /> Remplacer
           </Button>
         )}
@@ -236,12 +270,16 @@ export function ImageUpload({
 }
 
 /** Image avec état de chargement et message clair si elle ne peut pas s'afficher. */
-function PreviewImage({ src, dimmed }: { src: string; dimmed?: boolean }) {
+export function PreviewImage({ src, dimmed }: { src: string; dimmed?: boolean }) {
   const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading')
   useEffect(() => setState('loading'), [src])
   return (
     <>
-      {state === 'loading' && <div className="absolute inset-0 animate-pulse bg-surface-2" aria-hidden />}
+      {state === 'loading' && (
+        <div className="absolute inset-0 flex items-center justify-center bg-surface-2" aria-hidden>
+          <Loader2 className="size-6 animate-spin text-muted" />
+        </div>
+      )}
       {state === 'error' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-3 text-center text-xs text-muted">
           <ImagePlus className="size-5" />
@@ -259,19 +297,21 @@ function PreviewImage({ src, dimmed }: { src: string; dimmed?: boolean }) {
   )
 }
 
-/** Barre de progression posée sur l'aperçu pendant l'envoi. */
+/**
+ * Indicateur posé sur l'aperçu pendant l'envoi : bien visible, au centre, et bloque les clics
+ * (on ne relance pas l'envoi deux fois). progress null = étape finale (optimisation, affichage).
+ */
 export function UploadOverlay({ progress }: { progress: number | null }) {
   const pct = Math.round((progress ?? 0) * 100)
-  const optimizing = (progress ?? 0) >= 1
+  const finishing = progress === null || progress >= 1
   return (
-    <div className="absolute inset-x-0 bottom-0 bg-black/65 px-3 py-2 text-white" role="status" aria-live="polite">
-      <div className="mb-1 flex justify-between text-xs font-medium">
-        <span>{optimizing ? 'Optimisation…' : 'Envoi…'}</span>
-        {!optimizing && <span>{pct} %</span>}
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 px-4 text-white backdrop-blur-[1px]" role="status" aria-live="polite">
+      <Loader2 className="size-8 animate-spin" />
+      <p className="text-sm font-semibold">{finishing ? 'Finalisation de l’image…' : `Envoi de l’image… ${pct} %`}</p>
+      <div className="h-1.5 w-full max-w-56 overflow-hidden rounded-full bg-white/25">
+        <div className={cx('h-full rounded-full bg-accent transition-[width] duration-200', finishing && 'animate-pulse')} style={{ width: `${finishing ? 100 : pct}%` }} />
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-white/25">
-        <div className={cx('h-full rounded-full bg-accent transition-[width] duration-200', optimizing && 'animate-pulse')} style={{ width: `${optimizing ? 100 : pct}%` }} />
-      </div>
+      <p className="text-xs text-white/80">Ne fermez pas la page</p>
     </div>
   )
 }

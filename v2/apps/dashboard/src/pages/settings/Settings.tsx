@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router'
 import { cx, PageHeader } from '@/components/ui'
 import { useCan, usePermissions } from '@/hooks/auth'
 import { CheckoutSettingsForm } from './CheckoutSettings'
+import { FormSettings } from './FormSettings'
 import { IntegrationsSettings } from './IntegrationsSettings'
 import { PaymentsSettings } from './PaymentsSettings'
 import { StoreSettings } from './StoreSettings'
@@ -10,6 +11,7 @@ import { TrackingSettings } from './TrackingSettings'
 const TABS = [
   { id: 'store', label: 'Boutique', perm: 'store.settings' },
   { id: 'checkout', label: 'Page de vente', perm: 'store.settings' },
+  { id: 'form', label: 'Formulaire de commande', perm: 'store.settings' },
   { id: 'tracking', label: 'Suivi publicitaire', perm: 'store.settings' },
   { id: 'payments', label: 'Paiements', perm: 'payments.manage' },
   { id: 'integrations', label: 'Intégrations', perm: 'integrations.manage' },
@@ -46,9 +48,10 @@ export default function Settings() {
       {!canEdit && tab !== 'payments' && tab !== 'integrations' && (
         <p className="mb-4 rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">Lecture seule : seuls le propriétaire et les administrateurs peuvent modifier ces réglages.</p>
       )}
-      <div role="tabpanel" className="max-w-3xl">
+      <div role="tabpanel" className={tab === 'form' ? 'max-w-6xl' : 'max-w-3xl'}>
         {tab === 'store' && <StoreSettings canEdit={canEdit} />}
         {tab === 'checkout' && <CheckoutSettingsForm canEdit={canEdit} />}
+        {tab === 'form' && <FormSettings canEdit={canEdit} />}
         {tab === 'tracking' && <TrackingSettings canEdit={canEdit} />}
         {tab === 'payments' && <PaymentsSettings />}
         {tab === 'integrations' && <IntegrationsSettings />}

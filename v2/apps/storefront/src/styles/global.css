@@ -924,6 +924,39 @@ textarea.input {
   font-weight: 800;
   font-size: 1.15rem;
 }
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.form-grid > * {
+  grid-column: 1 / -1;
+}
+@media (min-width: 420px) {
+  .form-grid > .half {
+    grid-column: auto;
+  }
+}
+.form-head {
+  margin-bottom: 14px;
+}
+.pre {
+  white-space: pre-line;
+}
+.reassure {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.reassure li::before {
+  content: '✓ ';
+  color: var(--ok, #16a34a);
+  font-weight: 700;
+}
 .assure {
   text-align: center;
   color: var(--muted);

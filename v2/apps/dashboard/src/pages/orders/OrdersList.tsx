@@ -1,5 +1,5 @@
 import { FULFILLMENT_STATUSES, FULFILLMENT_TRANSITIONS, PAYMENT_STATUSES, type FulfillmentStatus } from '@zuri/shared'
-import { AlertTriangle, ChevronLeft, ChevronRight, Download, Filter, Hand, Plus, Search, ShoppingBag, UserCheck, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Filter, Plus, Search, ShoppingBag, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { ConfirmDialog, Dialog } from '@/components/Dialog'
@@ -7,73 +7,28 @@ import { useToast } from '@/components/Toast'
 import { Badge, Button, ButtonLink, buttonClass, Checkbox, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Segmented, Select } from '@/components/ui'
 import { useCan, useCurrentStore } from '@/hooks/auth'
 import { ordersCsvUrl, useBulkOrderStatus, useOrders } from '@/hooks/resources'
-import { useClaimOrder } from '@/hooks/team'
 import { useDebounced } from '@/hooks/useDebounced'
 import type { Query } from '@/lib/api'
 import { money, prettyPhone, relative } from '@/lib/format'
 import { FULFILLMENT_LABEL, PAYMENT_STATUS_LABEL, TRANSITION_ACTION } from '@/lib/labels'
 import type { OrderListItem } from '@/lib/types'
 import { ContactButtons, PaymentBadge, ShipDialog, StatusActions, StatusBadge, whatsappUrl } from './shared'
+import { AssigneeBadge, CustomerFlags, itemsText } from './views/common'
+import { OrdersCompact } from './views/OrdersCompact'
+import { OrdersTable } from './views/OrdersTable'
+import { DEFAULT_PREFS, useMediaQuery, usePref, type OrdersPrefs } from './views/prefs'
+import { ViewToolbar } from './views/ViewToolbar'
 
 const TABS: FulfillmentStatus[] = ['new', 'unreachable', 'confirmed', 'shipped', 'delivered', 'returned', 'cancelled']
-
-function CustomerFlags({ order }: { order: OrderListItem }) {
-  if (!order.customerFlag && !order.customerReturns) return null
-  return (
-    <span className="inline-flex flex-wrap gap-1">
-      {order.customerFlag && (
-        <Badge tone="red">
-          <AlertTriangle className="size-3" /> Client bloqué
-        </Badge>
-      )}
-      {order.customerReturns > 0 && (
-        <Badge tone="orange">
-          {order.customerReturns} retour{order.customerReturns > 1 ? 's' : ''}
-        </Badge>
-      )}
-    </span>
-  )
-}
-
-const itemsText = (o: OrderListItem) => o.items.map((i) => `${i.quantity} × ${i.name}${i.variantName ? ` (${i.variantName})` : ''}`).join(', ')
-
-/** « À moi », « Pris par Awa » ou « Libre » (+ bouton « Je prends »). */
-function AssigneeBadge({ order, canUpdate }: { order: OrderListItem; canUpdate: boolean }) {
-  const { me } = useCurrentStore()
-  const claim = useClaimOrder(order.id)
-  const toast = useToast()
-  if (order.assignedTo != null)
-    return order.assignedTo === me?.id ? (
-      <Badge tone="blue">
-        <UserCheck className="size-3" /> À moi
-      </Badge>
-    ) : (
-      <Badge>
-        <UserCheck className="size-3" /> {order.assigneeName ?? 'Membre'}
-      </Badge>
-    )
-  const open = ['new', 'unreachable', 'confirmed'].includes(order.fulfillmentStatus)
-  if (!open) return null
-  if (!canUpdate) return <Badge tone="amber">Libre</Badge>
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation()
-        claim.mutate(undefined, { onSuccess: () => toast.success(`${order.orderNumber} : prise en charge`), onError: (err) => toast.error(err) })
-      }}
-      disabled={claim.isPending}
-      className="inline-flex items-center gap-1 rounded-full border border-dashed border-accent px-2 py-0.5 text-[12px] font-medium text-accent hover:bg-accent-soft disabled:opacity-60"
-    >
-      <Hand className="size-3" /> Je prends
-    </button>
-  )
-}
 
 function OrderCard({ order, selected, onSelect, storeName, canUpdate }: { order: OrderListItem; selected: boolean; onSelect: (v: boolean) => void; storeName?: string; canUpdate: boolean }) {
   const navigate = useNavigate()
   const open = () => navigate(String(order.id))
   const cod = order.paymentMethod === 'cod'
+  const { me } = useCurrentStore()
+  const canAssign = useCan('orders.assign')
+  // Prise par un autre membre : seuls lui et les gestionnaires peuvent changer le statut.
+  const takenByOther = order.assignedTo != null && order.assignedTo !== me?.id && !canAssign
   return (
     <li
       className={cx('rounded-xl border bg-surface p-4 transition-colors', selected ? 'border-accent ring-1 ring-accent' : 'border-line')}
@@ -114,7 +69,8 @@ function OrderCard({ order, selected, onSelect, storeName, canUpdate }: { order:
           {cod && ['new', 'unreachable', 'confirmed'].includes(order.fulfillmentStatus) && (
             <ContactButtons phone={order.customerPhone} waUrl={whatsappUrl(order, order.items, storeName)} size="sm" className="[&>a]:flex-1" />
           )}
-          {canUpdate && <StatusActions order={order} size="sm" className="[&>button]:flex-1" />}
+          {canUpdate && !takenByOther && <StatusActions order={order} size="sm" className="[&>button]:flex-1" />}
+          {canUpdate && takenByOther && <p className="w-full text-[13px] text-muted">Prise par {order.assigneeName ?? 'un autre membre'}</p>}
         </div>
       )}
     </li>
@@ -229,7 +185,11 @@ function BulkBar({ ids, orders, onDone }: { ids: string[]; orders: OrderListItem
 }
 
 export default function OrdersList() {
-  const { storeId, store } = useCurrentStore()
+  const { storeId, store, me } = useCurrentStore()
+  // Vue choisie, mémorisée par utilisateur et par boutique ; le tableau n'existe qu'à partir des écrans larges.
+  const [prefs, setPrefs] = usePref<OrdersPrefs>(`zuri:orders-view:${me?.id ?? 'anon'}:${storeId}`, DEFAULT_PREFS)
+  const wide = useMediaQuery('(min-width: 1024px)')
+  const view = prefs.view === 'table' && !wide ? 'compact' : prefs.view
   const canUpdate = useCan('orders.update')
   const canCreate = useCan('orders.create')
   const canExport = useCan('orders.export')
@@ -301,7 +261,7 @@ export default function OrdersList() {
       />
 
       {/* Attribution : toutes, les miennes, les libres */}
-      <div className="mb-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <Segmented
           label="Attribution"
           value={assigned}
@@ -312,6 +272,7 @@ export default function OrdersList() {
             { value: 'none', label: 'Libres' },
           ]}
         />
+        <ViewToolbar prefs={prefs} setPrefs={setPrefs} tableAvailable={wide} />
       </div>
 
       {/* Onglets par statut */}
@@ -362,7 +323,7 @@ export default function OrdersList() {
         </div>
       )}
 
-      {rows.length > 0 && (
+      {rows.length > 0 && view !== 'table' && (
         <div className="mb-2 flex items-center gap-2 px-1 text-[13px] text-muted">
           {canUpdate && <Checkbox checked={selected.length === rows.length} onChange={(v) => setSelected(v ? rows.map((r) => r.id) : [])} label="Tout sélectionner" />}
           <span>
@@ -405,11 +366,25 @@ export default function OrdersList() {
           }
         />
       ) : (
-        <ul className="grid gap-2.5 xl:grid-cols-2">
-          {rows.map((o) => (
-            <OrderCard key={o.id} order={o} selected={selected.includes(o.id)} onSelect={(v) => toggle(o.id, v)} storeName={store?.name} canUpdate={canUpdate} />
-          ))}
-        </ul>
+        <>
+          {view === 'table' && (
+            <p className="mb-2 px-1 text-[13px] text-muted">
+              {data?.total} commande{(data?.total ?? 0) > 1 ? 's' : ''}
+              {isFetching && <span className="text-subtle"> · mise à jour…</span>}
+            </p>
+          )}
+          {view === 'cards' && (
+            <ul className="grid gap-2.5 xl:grid-cols-2">
+              {rows.map((o) => (
+                <OrderCard key={o.id} order={o} selected={selected.includes(o.id)} onSelect={(v) => toggle(o.id, v)} storeName={store?.name} canUpdate={canUpdate} />
+              ))}
+            </ul>
+          )}
+          {view === 'compact' && <OrdersCompact rows={rows} selected={selected} onSelect={toggle} canUpdate={canUpdate} />}
+          {view === 'table' && (
+            <OrdersTable rows={rows} selected={selected} onSelect={toggle} onSelectAll={(v) => setSelected(v ? rows.map((r) => r.id) : [])} canUpdate={canUpdate} hidden={prefs.hidden} density={prefs.density} />
+          )}
+        </>
       )}
 
       {pages > 1 && (
