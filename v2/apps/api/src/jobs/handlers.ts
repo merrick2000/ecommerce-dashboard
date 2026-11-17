@@ -46,6 +46,15 @@ async function capiPurchase(o: Loaded) {
   })
 }
 
+/** Emails au client : expéditeur = nom de la boutique, réponses vers l'email de support. */
+const customerMailOpts = (o: Loaded) => ({ fromName: o.store.name, replyTo: o.store.supportEmail })
+/** Emails au vendeur : réponse directe au client. */
+const sellerMailOpts = (o: Loaded) => ({ fromName: 'Zuri', replyTo: o.order.customerEmail })
+
+function sellerNewOrderMail(o: Loaded, method: string) {
+  return sellerNewOrderEmail({ storeName: o.store.name, orderNumber: o.order.orderNumber, customer: o.order.customerName ?? '', phone: o.order.customerPhone, items: o.lines, total: o.order.total, currency: o.order.currency, method, dashboardUrl: `${env.APP_URL}/stores/${o.store.id}/orders/${o.order.id}` })
+}
+
 async function notifySeller(o: Loaded, headline: string) {
   const methodLabel = o.order.paymentMethod === 'cod' ? 'Paiement à la livraison' : o.order.paymentProvider ?? o.order.paymentMethod
   await sendTelegram(
@@ -72,9 +81,16 @@ export async function handleOrderPaid({ orderId }: { orderId: string }) {
   if (o.order.paymentMethod !== 'cod') {
     // Les commandes COD ont déjà été notifiées et envoyées à la CAPI à leur création.
     tasks.push(capiPurchase(o), notifySeller(o, '✅ Vente payée'))
-    if (o.order.customerEmail && o.order.kind !== 'physical') {
-      const mail = digitalReceiptEmail({ storeName: o.store.name, customerName: o.order.customerName, orderNumber: o.order.orderNumber, items: o.lines, total: o.order.total, currency: o.order.currency, accessUrl: orderUrl(o.store.slug, o.order.accessToken) })
-      tasks.push(sendEmail(o.order.customerEmail, mail.subject, mail.html))
+    if (o.order.customerEmail) {
+      const mail =
+        o.order.kind === 'physical'
+          ? physicalConfirmationEmail({ storeName: o.store.name, customerName: o.order.customerName, orderNumber: o.order.orderNumber, items: o.lines, total: o.order.total, currency: o.order.currency, cod: false, trackUrl: orderUrl(o.store.slug, o.order.accessToken) })
+          : digitalReceiptEmail({ storeName: o.store.name, customerName: o.order.customerName, orderNumber: o.order.orderNumber, items: o.lines, total: o.order.total, currency: o.order.currency, accessUrl: orderUrl(o.store.slug, o.order.accessToken) })
+      tasks.push(sendEmail(o.order.customerEmail, mail.subject, mail.html, customerMailOpts(o)))
+    }
+    if (o.store.supportEmail) {
+      const mail = sellerNewOrderMail(o, `Payé en ligne${o.order.paymentProvider ? ` (${o.order.paymentProvider})` : ''}`)
+      tasks.push(sendEmail(o.store.supportEmail, mail.subject, mail.html, sellerMailOpts(o)))
     }
   }
   const results = await Promise.allSettled(tasks)
@@ -93,11 +109,11 @@ export async function handleOrderNotifyNew({ orderId }: { orderId: string }) {
   const tasks: Promise<unknown>[] = [notifySeller(o, '🛒 Nouvelle commande COD'), capiPurchase(o)]
   if (o.order.customerEmail) {
     const mail = physicalConfirmationEmail({ storeName: o.store.name, customerName: o.order.customerName, orderNumber: o.order.orderNumber, items: o.lines, total: o.order.total, currency: o.order.currency, cod: true, trackUrl: orderUrl(o.store.slug, o.order.accessToken) })
-    tasks.push(sendEmail(o.order.customerEmail, mail.subject, mail.html))
+    tasks.push(sendEmail(o.order.customerEmail, mail.subject, mail.html, customerMailOpts(o)))
   }
   if (o.store.supportEmail) {
-    const mail = sellerNewOrderEmail({ storeName: o.store.name, orderNumber: o.order.orderNumber, customer: o.order.customerName ?? '', phone: o.order.customerPhone, items: o.lines, total: o.order.total, currency: o.order.currency, method: 'Paiement à la livraison', dashboardUrl: `${env.APP_URL}/stores/${o.store.id}/orders/${o.order.id}` })
-    tasks.push(sendEmail(o.store.supportEmail, mail.subject, mail.html))
+    const mail = sellerNewOrderMail(o, 'Paiement à la livraison')
+    tasks.push(sendEmail(o.store.supportEmail, mail.subject, mail.html, sellerMailOpts(o)))
   }
   const failed = (await Promise.allSettled(tasks)).filter((r) => r.status === 'rejected')
   if (failed.length) console.warn(`[order.notify-new] ${failed.length} envoi(s) en échec`, failed)
@@ -143,7 +159,7 @@ export async function handleLeadsRemind() {
     }
     const url = storefrontUrl(store.slug, `/p/${lead.productId}${promo ? `?promo=${encodeURIComponent(promo.code)}` : ''}`)
     const mail = abandonedCartEmail({ step, storeName: store.name, name: lead.name, product: productName, url, promo })
-    await sendEmail(lead.email!, mail.subject, mail.html)
+    await sendEmail(lead.email!, mail.subject, mail.html, { fromName: store.name, replyTo: store.supportEmail })
     const nextDelay = REMINDER_DELAYS_H[step]
     await db
       .update(leads)

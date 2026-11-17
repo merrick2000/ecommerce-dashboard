@@ -12,15 +12,31 @@ export async function sendTelegram(html: string): Promise<void> {
   if (!res.ok) throw new Error(`Telegram ${res.status}: ${await res.text()}`)
 }
 
-export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+export interface EmailOptions {
+  /** Nom affiché comme expéditeur (ex. le nom de la boutique). L'adresse reste celle de MAIL_FROM. */
+  fromName?: string | null
+  /** Adresse où arrivent les réponses du destinataire (ex. l'email de support de la boutique). */
+  replyTo?: string | null
+}
+
+/** « Nom <adresse> » : garde l'adresse de MAIL_FROM, remplace le nom si fourni (nettoyé). */
+export function buildFrom(mailFrom: string, fromName?: string | null): string {
+  const address = mailFrom.match(/<([^>]+)>/)?.[1] ?? mailFrom.trim()
+  const name = (fromName ?? '').replace(/["<>\r\n\\]/g, '').trim().slice(0, 60)
+  if (!name) return mailFrom
+  return `"${name}" <${address}>`
+}
+
+export async function sendEmail(to: string, subject: string, html: string, opts: EmailOptions = {}): Promise<void> {
+  const from = buildFrom(env.MAIL_FROM, opts.fromName)
   if (!env.RESEND_API_KEY) {
-    console.info(`[mail:dev] → ${to} | ${subject}`)
+    console.info(`[mail:dev] ${from} → ${to} | ${subject}`)
     return
   }
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: env.MAIL_FROM, to: [to], subject, html }),
+    body: JSON.stringify({ from, to: [to], subject, html, ...(opts.replyTo ? { reply_to: opts.replyTo } : {}) }),
     signal: AbortSignal.timeout(10_000),
   })
   // 4xx (adresse invalide…) : inutile de réessayer. 5xx : on laisse pg-boss réessayer.
