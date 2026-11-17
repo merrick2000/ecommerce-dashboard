@@ -1,5 +1,6 @@
 import { checkoutSettingsSchema, CTA_STYLES, PAGE_BLOCKS, STICKY_CTA_DEFAULTS, TEMPLATES, type CheckoutSettings, type StickyCta } from '@zuri/shared'
-import { ArrowDown, ArrowUp, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
+import { DragHandle, draggingClass, useSortable } from '@/components/Sortable'
 import { useState, type FormEvent } from 'react'
 import { useToast } from '@/components/Toast'
 import { Button, Card, cx, ErrorState, Field, Input, Segmented, Select, Skeleton, Switch, TagInput } from '@/components/ui'
@@ -75,15 +76,9 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
   const dirty = JSON.stringify(s) !== base
   const u = s.urgency
   const st = s.stickyCta
+  const layoutSort = useSortable(s.pageLayout, (pageLayout) => set({ pageLayout }))
   const setSticky = (patch: Partial<StickyCta>) => set({ stickyCta: { ...st, ...patch } })
 
-  const move = (i: number, d: -1 | 1) => {
-    const next = [...s.pageLayout]
-    const j = i + d
-    if (j < 0 || j >= next.length) return
-    ;[next[i], next[j]] = [next[j]!, next[i]!]
-    set({ pageLayout: next })
-  }
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -181,20 +176,15 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
           </div>
         </Card>
 
-        <Card title="Mise en page" description="Ordre et visibilité des blocs de la page de vente.">
-          <ol className="divide-y divide-line rounded-lg border border-line">
+        <Card title="Ordre des blocs" description="Glissez la poignée pour changer l’ordre ; l’œil affiche ou masque un bloc.">
+          <ol ref={layoutSort.listRef} className={cx('divide-y divide-line rounded-lg border border-line', layoutSort.dragging && 'select-none')}>
             {s.pageLayout.map((b, i) => (
-              <li key={b.block} className={cx('flex items-center gap-2 px-3 py-2', !b.visible && 'bg-surface-2/50')}>
+              <li key={b.block} {...layoutSort.itemProps(i)} className={cx('flex items-center gap-2 px-3 py-2', !b.visible && 'bg-surface-2/50', layoutSort.dragIndex === i && draggingClass)}>
+                <DragHandle {...layoutSort.handleProps(i, PAGE_BLOCK_LABEL[b.block] ?? b.block)} className="-ml-1" />
                 <span className="tabular w-5 text-[12px] text-subtle">{i + 1}</span>
                 <span className={cx('flex-1 text-sm', !b.visible && 'text-muted line-through')}>{PAGE_BLOCK_LABEL[b.block] ?? b.block}</span>
                 <Button size="sm" variant="ghost" onClick={() => set({ pageLayout: s.pageLayout.map((x, k) => (k === i ? { ...x, visible: !x.visible } : x)) })} aria-label={b.visible ? `Masquer ${PAGE_BLOCK_LABEL[b.block]}` : `Afficher ${PAGE_BLOCK_LABEL[b.block]}`}>
                   {b.visible ? <Eye className="size-4" /> : <EyeOff className="size-4 text-subtle" />}
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Monter ${PAGE_BLOCK_LABEL[b.block]}`}>
-                  <ArrowUp className="size-4" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => move(i, 1)} disabled={i === s.pageLayout.length - 1} aria-label={`Descendre ${PAGE_BLOCK_LABEL[b.block]}`}>
-                  <ArrowDown className="size-4" />
                 </Button>
               </li>
             ))}

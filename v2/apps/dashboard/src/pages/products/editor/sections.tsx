@@ -20,6 +20,7 @@ import { lazy, Suspense, useRef, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, cx, Field, Input, Segmented, Select, Skeleton, Switch, Textarea } from '@/components/ui'
+import { DragHandle, draggingClass, useSortable } from '@/components/Sortable'
 import { useCan, useCurrentStore } from '@/hooks/auth'
 import { uploadFile, useCheckoutSettings, usePaymentAccounts } from '@/hooks/resources'
 import { normalizeForm, OrderFormBuilder } from '@/pages/settings/OrderFormBuilder'
@@ -328,6 +329,7 @@ export function SalesPageSection(p: SectionProps) {
 export function MediaSection(p: SectionProps) {
   const { form, set, errors } = p
   const gallery = form.content.gallery
+  const gallerySort = useSortable(gallery, (next) => setContent(p, { gallery: next }), { mode: 'grid' })
   return (
     <div className="space-y-4">
       <Card title="Images principales">
@@ -337,11 +339,14 @@ export function MediaSection(p: SectionProps) {
         </div>
       </Card>
       {form.type === 'physical' && (
-        <Card title="Galerie" description={`Photos supplémentaires du produit (${gallery.length}/12).`}>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Card title="Galerie" description={`Photos supplémentaires du produit (${gallery.length}/12). Glissez une photo pour changer l’ordre.`}>
+          <div ref={gallerySort.listRef} className={cx('grid grid-cols-2 gap-4 sm:grid-cols-4', gallerySort.dragging && 'select-none')}>
             {gallery.map((src, i) => (
-              <div key={`${src}-${i}`} className="relative aspect-square overflow-hidden rounded-xl border border-line bg-surface-2">
+              <div key={src} {...gallerySort.itemProps(i)} className={cx('relative aspect-square overflow-hidden rounded-xl border border-line bg-surface-2', gallerySort.dragIndex === i && draggingClass)}>
                 <PreviewImage src={src} />
+                <span className="absolute top-1.5 left-1.5 rounded-full bg-black/60 text-white">
+                  <DragHandle {...gallerySort.handleProps(i, `la photo ${i + 1}`)} className="text-white hover:bg-black/40 hover:text-white" />
+                </span>
                 <button type="button" onClick={() => setContent(p, { gallery: gallery.filter((_, k) => k !== i) })} className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-1.5 text-white" aria-label={`Retirer la photo ${i + 1}`}>
                   <Trash2 className="size-3.5" />
                 </button>
@@ -446,6 +451,7 @@ function DigitalDelivery(p: SectionProps) {
 function PhysicalDelivery(p: SectionProps) {
   const { form, set, errors, currency } = p
   const hasVariants = form.variants.length > 0
+  const variantSort = useSortable(form.variants, (variants) => set({ variants }))
   return (
     <div className="space-y-4">
       <Card title="Inventaire">
@@ -463,7 +469,8 @@ function PhysicalDelivery(p: SectionProps) {
       <Card title="Variantes" description="Tailles, couleurs… Laissez le prix vide pour utiliser le prix du produit.">
         <div className="space-y-4">
           <Input label="Nom de l’option" placeholder="Ex. Couleur, Taille" value={form.variantLabel ?? ''} onChange={(e) => set({ variantLabel: nul(e.target.value) })} wrapClass="sm:max-w-xs" />
-          <div className="hidden grid-cols-[1.4fr_1fr_1fr_0.8fr_60px_40px] gap-2 px-1 text-[12px] font-medium text-muted md:grid">
+          <div className="hidden grid-cols-[28px_1.4fr_1fr_1fr_0.8fr_60px_40px] gap-2 px-1 text-[12px] font-medium text-muted md:grid">
+            <span />
             <span>Nom</span>
             <span>SKU</span>
             <span>Prix</span>
@@ -471,11 +478,12 @@ function PhysicalDelivery(p: SectionProps) {
             <span>Actif</span>
             <span />
           </div>
-          <ul className="space-y-2">
+          <ul ref={variantSort.listRef} className={cx('space-y-2', variantSort.dragging && 'select-none')}>
             {form.variants.map((v, i) => {
               const update = (patch: Partial<Form['variants'][number]>) => set({ variants: form.variants.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
               return (
-                <li key={v.id ?? `new-${i}`} className="grid grid-cols-2 gap-2 rounded-xl border border-line p-3 md:grid-cols-[1.4fr_1fr_1fr_0.8fr_60px_40px] md:items-start md:rounded-none md:border-0 md:p-0">
+                <li key={v.id ?? `new-${i}`} {...variantSort.itemProps(i)} className={cx('grid grid-cols-[28px_1fr_1fr] gap-2 rounded-xl border border-line p-3 md:grid-cols-[28px_1.4fr_1fr_1fr_0.8fr_60px_40px] md:items-start md:rounded-none md:border-0 md:p-0', variantSort.dragIndex === i && draggingClass)}>
+                  <DragHandle {...variantSort.handleProps(i, `la variante ${v.name || i + 1}`)} className="row-span-3 mt-2 self-start md:row-span-1" />
                   <Input aria-label="Nom de la variante" placeholder="Nom" value={v.name} onChange={(e) => update({ name: e.target.value })} error={errors[`variants.${i}.name`]} wrapClass="col-span-2 md:col-span-1" />
                   <Input aria-label="SKU" placeholder="SKU" value={v.sku ?? ''} onChange={(e) => update({ sku: nul(e.target.value) })} />
                   <NumberField ariaLabel="Prix" placeholder={String(form.price)} value={v.price ?? null} onChange={(price) => update({ price })} suffix={currencyLabel(currency)} />

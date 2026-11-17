@@ -1,4 +1,5 @@
-import { ArrowDown, ArrowUp, ImagePlus, Link2, Loader2, Trash2, Upload, X } from 'lucide-react'
+import { ImagePlus, Link2, Loader2, Trash2, Upload, X } from 'lucide-react'
+import { DragHandle, draggingClass, useSortable } from '@/components/Sortable'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useToast } from '@/components/Toast'
 import { Button, cx, Field, Input } from '@/components/ui'
@@ -88,35 +89,25 @@ export function ListEditor<T>({
   max?: number
   empty?: string
 }) {
-  const move = (i: number, d: -1 | 1) => {
-    const next = [...items]
-    const j = i + d
-    if (j < 0 || j >= next.length) return
-    ;[next[i], next[j]] = [next[j]!, next[i]!]
-    onChange(next)
-  }
+  const sort = useSortable(items, onChange)
   return (
     <div className="space-y-2.5">
       {items.length === 0 && empty && <p className="text-sm text-muted">{empty}</p>}
-      {items.map((item, i) => (
-        <div key={i} className="rounded-xl border border-line bg-surface-2/40 p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[12px] font-medium text-subtle">#{i + 1}</span>
-            <div className="flex gap-0.5">
-              <Button size="sm" variant="ghost" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Monter">
-                <ArrowUp className="size-4" />
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label="Descendre">
-                <ArrowDown className="size-4" />
-              </Button>
+      <div ref={sort.listRef} className={cx('space-y-2.5', sort.dragging && 'select-none')}>
+        {items.map((item, i) => (
+          <div key={stableKey(item, i)} {...sort.itemProps(i)} className={cx('rounded-xl border border-line bg-surface-2/40 p-3', sort.dragIndex === i && draggingClass)}>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-[12px] font-medium text-subtle">
+                <DragHandle {...sort.handleProps(i, `l’élément ${i + 1}`)} className="-ml-1" />#{i + 1}
+              </span>
               <Button size="sm" variant="ghost" onClick={() => onChange(items.filter((_, k) => k !== i))} aria-label="Supprimer" className="text-red-600 dark:text-red-400">
                 <Trash2 className="size-4" />
               </Button>
             </div>
+            {render(item, (patch) => onChange(items.map((x, k) => (k === i ? keepKey(x, { ...x, ...patch }) : x))), i)}
           </div>
-          {render(item, (patch) => onChange(items.map((x, k) => (k === i ? { ...x, ...patch } : x))), i)}
-        </div>
-      ))}
+        ))}
+      </div>
       {(max === undefined || items.length < max) && (
         <Button size="sm" onClick={() => onChange([...items, create()])}>
           + {addLabel}
@@ -124,6 +115,26 @@ export function ListEditor<T>({
       )}
     </div>
   )
+}
+
+/** Clé stable par objet (les champs gardent le focus quand la liste est réordonnée). */
+const keys = new WeakMap<object, number>()
+let nextKey = 1
+function stableKey(item: unknown, i: number): string | number {
+  if (item && typeof item === 'object') {
+    let k = keys.get(item)
+    if (!k) keys.set(item, (k = nextKey++))
+    return `k${k}`
+  }
+  return i
+}
+/** Le nouvel objet (après modification) garde la clé de l'ancien. */
+function keepKey<T>(prev: T, next: T): T {
+  if (prev && typeof prev === 'object' && next && typeof next === 'object') {
+    const k = keys.get(prev)
+    if (k) keys.set(next, k)
+  }
+  return next
 }
 
 type Preset = 'cover' | 'thumbnail' | 'content' | 'gallery'

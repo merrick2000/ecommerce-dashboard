@@ -3,8 +3,11 @@ import { MapPin, Pencil, Plus, Trash2, Truck } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { ConfirmDialog, Dialog, useDialogState } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
-import { Badge, Button, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Select, Switch, TagInput } from '@/components/ui'
-import { useCurrentStore } from '@/hooks/auth'
+import { Badge, Button, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Select, Switch, TagInput } from '@/components/ui'
+import { DragHandle, draggingClass, useSortable } from '@/components/Sortable'
+import { useQueryClient } from '@tanstack/react-query'
+import { api } from '@/lib/api'
+import { useCurrentStore, useStoreId } from '@/hooks/auth'
 import { useStoreInfo, useZones } from '@/hooks/resources'
 import { serverErrors, strOrNull, validate, type Errors } from '@/lib/form'
 import { currencyLabel, money } from '@/lib/format'
@@ -94,7 +97,6 @@ function ZoneDialog({ zone, open, onClose, nextPosition }: { zone: DeliveryZone 
           <Switch checked={form.codAllowed} onChange={(codAllowed) => setForm({ ...form, codAllowed })} label="Paiement à la livraison accepté" />
           <Switch checked={form.isActive} onChange={(isActive) => setForm({ ...form, isActive })} label="Zone active" description="Visible sur les pages de vente." />
         </div>
-        <NumberField label="Ordre d’affichage" value={form.position} onChange={(v) => setForm({ ...form, position: v ?? 0 })} hint="Les plus petits nombres apparaissent en premier." />
       </form>
     </Dialog>
   )
@@ -108,12 +110,29 @@ export default function Zones() {
   const [editing, setEditing] = useState<{ zone: DeliveryZone | null } | null>(null)
   const del = useDialogState<DeliveryZone>()
   const nextPosition = (list.data?.reduce((m, z) => Math.max(m, z.position), 0) ?? 0) + 1
+  // Ordre affiché pendant/après un glisser-déposer, en attendant le rechargement.
+  const [order, setOrder] = useState<DeliveryZone[] | null>(null)
+  const zones = order ?? list.data ?? []
+  const qc = useQueryClient()
+  const storeId = useStoreId()
+  const sort = useSortable(zones, setOrder, {
+    mode: 'grid',
+    onEnd: (final) =>
+      api
+        .put(`/stores/${storeId}/zones/order`, { ids: final.map((z) => z.id) })
+        .then(() => qc.invalidateQueries({ queryKey: ['store', storeId, 'zones'] }))
+        .then(() => setOrder(null))
+        .catch((e) => {
+          toast.error(e)
+          setOrder(null)
+        }),
+  })
 
   return (
     <>
       <PageHeader
         title="Livraison"
-        description="Zones, frais et délais proposés au client."
+        description="Zones, frais et délais proposés au client. Glissez une zone pour changer l’ordre dans le formulaire."
         actions={
           <Button variant="primary" onClick={() => setEditing({ zone: null })}>
             <Plus className="size-4" /> Nouvelle zone
@@ -136,11 +155,12 @@ export default function Zones() {
           }
         />
       ) : (
-        <ul className="grid gap-3 md:grid-cols-2">
-          {list.data.map((z) => (
-            <li key={z.id} className="rounded-xl border border-line bg-surface p-4">
+        <ul ref={sort.listRef} className={cx('grid gap-3 md:grid-cols-2', sort.dragging && 'select-none')}>
+          {zones.map((z, i) => (
+            <li key={z.id} {...sort.itemProps(i)} className={cx('rounded-xl border border-line bg-surface p-4', sort.dragIndex === i && draggingClass)}>
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
+                <DragHandle {...sort.handleProps(i, z.name)} className="-ml-1.5 mt-0.5" />
+                <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-2 font-semibold">
                     {z.name}
                     {!z.isActive && <Badge>Inactive</Badge>}

@@ -19,6 +19,18 @@ export const zoneRoutes = new Hono<AppEnv>()
     await logActivity(c, { entityType: 'zone', entityId: row?.id, entityLabel: row?.name, action: 'created', message: 'Zone de livraison créée' })
     return c.json(row, 201)
   })
+  /** Nouvel ordre d'affichage (glisser-déposer) : position = rang dans la liste. */
+  .put('/order', requirePermission('delivery.edit'), v('json', z.object({ ids: z.array(z.number().int().positive()).max(500) })), async (c) => {
+    const storeId = c.get('store').id
+    const { ids } = c.req.valid('json')
+    await db.transaction(async (tx) => {
+      for (const [position, id] of ids.entries()) {
+        await tx.update(deliveryZones).set({ position }).where(and(eq(deliveryZones.id, id), eq(deliveryZones.storeId, storeId)))
+      }
+    })
+    await logActivity(c, { entityType: 'zone', action: 'reordered', message: 'Ordre des zones de livraison modifié' })
+    return c.json({ ok: true })
+  })
   .put('/:id', requirePermission('delivery.edit'), v('param', idParam), v('json', deliveryZoneInputSchema), async (c) => {
     const [row] = await db
       .update(deliveryZones)
