@@ -40,6 +40,10 @@ services:
     # Les migrations s'exécutent au démarrage de l'API (commande par défaut de l'image).
     expose:
       - '8787'
+    # Réseau partagé Dokploy : accès à la base (service séparé) et au proxy Traefik pour le domaine.
+    networks:
+      - default
+      - dokploy-network
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8787/api/health']
       interval: 15s
@@ -52,6 +56,9 @@ services:
     restart: unless-stopped
     environment: *api-env
     command: ['bun', 'src/worker.ts']
+    networks:
+      - default
+      - dokploy-network
     # Pas de serveur HTTP dans le worker : on désactive le contrôle de santé hérité de l'image.
     healthcheck:
       disable: true
@@ -59,3 +66,7 @@ services:
     depends_on:
       api:
         condition: service_healthy
+
+networks:
+  dokploy-network:
+    external: true
