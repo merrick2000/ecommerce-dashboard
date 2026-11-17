@@ -10,6 +10,7 @@ const schema = z.object({
   BASE_DOMAIN: z.string().default('zurisell.store'),
   S3_ENDPOINT: z.string().optional(),
   S3_BUCKET: z.string().optional(),
+  S3_PRIVATE_BUCKET: z.string().optional(),
   S3_REGION: z.string().default('auto'),
   S3_ACCESS_KEY_ID: z.string().optional(),
   S3_SECRET_ACCESS_KEY: z.string().optional(),
