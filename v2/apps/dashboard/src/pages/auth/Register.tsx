@@ -7,6 +7,7 @@ import { useMe, useRegister } from '@/hooks/auth'
 import { ApiError, errorMessage } from '@/lib/api'
 import { serverErrors, validate, type Errors } from '@/lib/form'
 import { AuthLayout } from './AuthLayout'
+import { GoogleButton } from './GoogleButton'
 
 export default function Register() {
   const navigate = useNavigate()
@@ -59,6 +60,7 @@ export default function Register() {
       }
     >
       <form onSubmit={submit} className="space-y-4" noValidate>
+        <GoogleButton label="S’inscrire avec Google" />
         <Input label="Nom complet" autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} error={errors.name} autoFocus />
         <Input label="Email" type="email" autoComplete="email" inputMode="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} error={errors.email} />
         <Input label="Téléphone" optional type="tel" autoComplete="tel" inputMode="tel" placeholder="+229 97 00 00 00" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} error={errors.phone} />

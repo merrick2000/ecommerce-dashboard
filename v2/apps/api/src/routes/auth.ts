@@ -9,6 +9,7 @@ import { HttpError } from '../lib/errors'
 import { rateLimit } from '../lib/rate-limit'
 import { v } from '../lib/validate'
 import { env } from '../lib/env'
+import { googleEnabled, googleRoutes } from './google'
 
 /** Inscription ouverte ? Par défaut : seulement tant qu'aucun compte n'existe (outil perso). */
 const REGISTRATION_OPEN = env.REGISTRATION_OPEN === 'true'
@@ -71,3 +72,6 @@ export const authRoutes = new Hono<AppEnv>()
     return c.json({ ok: true })
   })
   .get('/me', requireAuth, async (c) => c.json(await loadMe(c.get('user'))))
+  /** Méthodes de connexion proposées par l'écran de login. */
+  .get('/providers', (c) => c.json({ google: googleEnabled(), registrationOpen: env.REGISTRATION_OPEN === 'true' }))
+  .route('/google', googleRoutes)

@@ -52,6 +52,9 @@ export const users = pgTable('users', {
   /** bcrypt (hérité de Laravel) ou argon2id (nouveaux comptes) — Bun.password gère les deux. */
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   isPlatformAdmin: boolean('is_platform_admin').notNull().default(false),
+  /** Identifiant Google (« sub ») quand le compte est relié à Google. */
+  googleSub: varchar('google_sub', { length: 64 }).unique(),
+  avatarUrl: varchar('avatar_url', { length: 500 }),
   lastLoginAt: ts('last_login_at'),
   createdAt: createdAt(),
   updatedAt: updatedAt(),

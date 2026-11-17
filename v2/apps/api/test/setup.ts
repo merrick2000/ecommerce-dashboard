@@ -2,6 +2,8 @@
 process.env.NODE_ENV = 'test'
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL ?? 'postgres://sellit:sellit@127.0.0.1:5440/sellit_test'
 process.env.APP_KEY ??= Buffer.alloc(32, 7).toString('base64')
+process.env.GOOGLE_CLIENT_ID ??= 'test-client.apps.googleusercontent.com'
+process.env.GOOGLE_CLIENT_SECRET ??= 'test-secret'
 
 const { migrate } = await import('drizzle-orm/postgres-js/migrator')
 const { db, sql } = await import('../src/db/client')

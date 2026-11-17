@@ -21,6 +21,9 @@ const schema = z.object({
   LEGACY_DATABASE_URL: z.string().optional(),
   /** Secret partagé avec le Worker Cloudflare : si défini, l'API refuse le trafic direct. */
   EDGE_SECRET: z.string().min(24).optional(),
+  /** Connexion Google (Google Cloud Console → Identifiants → ID client OAuth « Application Web »). */
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
   REGISTRATION_OPEN: z.enum(['true', 'false']).default('false'),
 })
 

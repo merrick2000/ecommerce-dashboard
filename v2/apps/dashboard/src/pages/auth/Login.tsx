@@ -6,6 +6,7 @@ import { useLogin, useMe } from '@/hooks/auth'
 import { errorMessage } from '@/lib/api'
 import { validate, type Errors } from '@/lib/form'
 import { AuthLayout } from './AuthLayout'
+import { GOOGLE_ERRORS, GoogleButton } from './GoogleButton'
 
 /** N'accepte que des chemins internes pour ?next= (pas de redirection ouverte). */
 const safeNext = (n: string | null) => (n && n.startsWith('/') && !n.startsWith('//') ? n : '/')
@@ -18,6 +19,7 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState<Errors>({})
   const next = safeNext(params.get('next'))
+  const googleError = GOOGLE_ERRORS[params.get('error') ?? '']
 
   if (me) return <Navigate to={next} replace />
 
@@ -43,6 +45,12 @@ export default function Login() {
       }
     >
       <form onSubmit={submit} className="space-y-4" noValidate>
+        {googleError && (
+          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+            {googleError}
+          </p>
+        )}
+        <GoogleButton next={next} />
         <Input label="Email" type="email" autoComplete="email" inputMode="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} error={errors.email} autoFocus />
         <Input label="Mot de passe" type="password" autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} error={errors.password} />
         {login.error && (
