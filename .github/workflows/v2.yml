@@ -40,6 +40,9 @@ jobs:
       - name: Build dashboard
         run: bun run build
         working-directory: v2/apps/dashboard
+      - name: Build storefront
+        run: bun run build
+        working-directory: v2/apps/storefront
 
   # Déploiement uniquement depuis main.
   deploy-api:
@@ -86,6 +89,23 @@ jobs:
       - name: Build dashboard + déployer le Worker
         run: bun run deploy
         working-directory: v2/apps/edge
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  deploy-storefront:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: deploy-api
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - name: Build + déployer le storefront
+        run: bun run deploy
+        working-directory: v2/apps/storefront
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
