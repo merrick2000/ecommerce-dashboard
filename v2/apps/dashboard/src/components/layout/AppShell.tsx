@@ -1,6 +1,9 @@
 import type { Permission } from '@zuri/shared'
 import {
   Bell,
+  Check,
+  PanelLeftClose,
+  PanelLeftOpen,
   Activity,
   ChevronsUpDown,
   LayoutDashboard,
@@ -18,12 +21,14 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Outlet, useLocation, useNavigate, useNavigation } from 'react-router'
 import { useCurrentStore, useLogout, usePermissions } from '@/hooks/auth'
 import { useOrders } from '@/hooks/resources'
 import { ROLE_LABEL } from '@/lib/labels'
 import { LAST_STORE_KEY, readLocal, THEME_KEY, writeLocal } from '@/lib/storage'
+
+const SIDEBAR_KEY = 'zuri:sidebar-collapsed'
 import { Dialog } from '../Dialog'
 import { useToast } from '../Toast'
 import { Button, cx } from '../ui'
@@ -66,34 +71,81 @@ function useTheme() {
   return { dark, toggle }
 }
 
-function StoreSwitcher({ compact }: { compact?: boolean }) {
+const initial = (name: string) => name.trim().charAt(0).toUpperCase() || 'Z'
+
+/**
+ * Sélecteur de boutique : liste des boutiques + « Nouvelle boutique », toujours disponible
+ * (même avec une seule boutique). `collapsed` : seule l'initiale est affichée (menu replié).
+ */
+function StoreSwitcher({ compact, collapsed }: { compact?: boolean; collapsed?: boolean }) {
   const { me, store } = useCurrentStore()
   const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', close)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', close)
+    }
+  }, [open])
   if (!me || !store) return null
-  if (me.stores.length < 2)
-    return (
-      <div className="min-w-0">
-        <p className={cx('truncate font-semibold', compact ? 'text-[15px]' : 'text-sm')}>{store.name}</p>
-        {!compact && <p className="truncate text-[12px] text-muted">{ROLE_LABEL[store.role]}</p>}
-      </div>
-    )
+  const go = (to: string) => {
+    setOpen(false)
+    navigate(to)
+  }
   return (
-    <label className="relative flex min-w-0 items-center">
-      <span className="sr-only">Changer de boutique</span>
-      <select
-        value={store.id}
-        onChange={(e) => (e.target.value === 'new' ? navigate('/onboarding') : navigate(`/stores/${e.target.value}`))}
-        className={cx('w-full min-w-0 cursor-pointer appearance-none truncate rounded-lg bg-transparent py-1 pr-7 font-semibold hover:bg-surface-2 focus:outline-none', compact ? 'pl-1 text-[15px]' : 'pl-2 text-sm')}
+    <div ref={ref} className="relative min-w-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={collapsed ? `${store.name} : changer de boutique` : undefined}
+        className={cx('flex w-full min-w-0 items-center gap-2.5 rounded-lg text-left hover:bg-surface-2', compact ? 'px-1 py-1' : 'p-1.5', collapsed && 'justify-center')}
       >
-        {me.stores.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.name}
-          </option>
-        ))}
-        <option value="new">+ Nouvelle boutique</option>
-      </select>
-      <ChevronsUpDown className="pointer-events-none absolute right-1.5 size-4 text-muted" />
-    </label>
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-sm font-bold text-accent">{initial(store.name)}</span>
+        {!collapsed && (
+          <>
+            <span className="min-w-0 flex-1">
+              <span className={cx('block truncate font-semibold', compact ? 'text-[15px]' : 'text-sm')}>{store.name}</span>
+              {!compact && <span className="block truncate text-[12px] text-muted">{ROLE_LABEL[store.role]}</span>}
+            </span>
+            <ChevronsUpDown className="size-4 shrink-0 text-muted" aria-hidden />
+          </>
+        )}
+      </button>
+      {open && (
+        <div role="menu" className={cx('absolute z-50 mt-1.5 w-64 overflow-hidden rounded-xl border border-line bg-surface p-1.5 shadow-lg', collapsed ? 'left-0' : 'inset-x-0 w-auto min-w-56')}>
+          <p className="px-2.5 pt-1 pb-1.5 text-[11px] font-semibold tracking-wide text-muted uppercase">Mes boutiques</p>
+          <div className="max-h-72 overflow-y-auto">
+            {me.stores.map((s) => (
+              <button key={s.id} type="button" role="menuitem" onClick={() => go(`/stores/${s.id}`)} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-surface-2">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-2 text-xs font-bold">{initial(s.name)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{s.name}</span>
+                  <span className="block truncate text-[12px] text-muted">{ROLE_LABEL[s.role]}</span>
+                </span>
+                {s.id === store.id && <Check className="size-4 shrink-0 text-accent" aria-label="Boutique actuelle" />}
+              </button>
+            ))}
+          </div>
+          <div className="mt-1 border-t border-line pt-1">
+            <button type="button" role="menuitem" onClick={() => go('/onboarding')} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm font-medium hover:bg-surface-2">
+              <span className="flex size-7 items-center justify-center rounded-md border border-dashed border-line-strong">
+                <Plus className="size-4" />
+              </span>
+              Nouvelle boutique
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -111,6 +163,13 @@ export function AppShell() {
   const navigation = useNavigation()
   const location = useLocation()
   const [moreOpen, setMoreOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => readLocal(SIDEBAR_KEY) === '1')
+  const toggleSidebar = () => {
+    setCollapsed((v) => {
+      writeLocal(SIDEBAR_KEY, v ? null : '1')
+      return !v
+    })
+  }
   const permissions = usePermissions()
   const nav = NAV.filter((i) => (i.to === 'settings' ? SETTINGS_PERMS.some((p) => permissions.includes(p)) : !i.perm || permissions.includes(i.perm)))
   const primaryMobile = nav.slice(0, 4)
@@ -140,47 +199,62 @@ export function AppShell() {
     })
 
   return (
-    <div className="min-h-dvh lg:pl-64">
+    <div className={cx('min-h-dvh transition-[padding] duration-200', collapsed ? 'lg:pl-[72px]' : 'lg:pl-64')}>
       {navigation.state === 'loading' && <div className="fixed inset-x-0 top-0 z-50 h-0.5 animate-pulse bg-accent" role="progressbar" aria-label="Chargement" />}
 
-      {/* Barre latérale desktop */}
-      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-line bg-surface lg:flex">
-        <div className="flex h-14 items-center px-5">
-          <Logo />
+      {/* Barre latérale desktop (repliable) */}
+      <aside className={cx('fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-line bg-surface transition-[width] duration-200 lg:flex', collapsed ? 'w-[72px]' : 'w-64')}>
+        <div className={cx('flex h-14 items-center', collapsed ? 'justify-center' : 'justify-between pr-2 pl-5')}>
+          {!collapsed && <Logo />}
+          <Button variant="ghost" size="icon" onClick={toggleSidebar} aria-label={collapsed ? 'Déplier le menu' : 'Replier le menu'} title={collapsed ? 'Déplier le menu' : 'Replier le menu'}>
+            {collapsed ? <PanelLeftOpen className="size-[18px]" /> : <PanelLeftClose className="size-[18px]" />}
+          </Button>
         </div>
-        <div className="mx-3 mb-2 rounded-lg border border-line p-1.5">
-          <StoreSwitcher />
+        <div className={cx('mb-2 rounded-lg border border-line', collapsed ? 'mx-2 p-1' : 'mx-3 p-1')}>
+          <StoreSwitcher collapsed={collapsed} />
         </div>
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2" aria-label="Navigation principale">
+        <nav className={cx('flex-1 space-y-0.5 overflow-y-auto py-2', collapsed ? 'px-2' : 'px-3')} aria-label="Navigation principale">
           {nav.map((item) => (
             <NavLink
               key={item.to}
               to={href(item.to)}
               end={item.end}
+              title={collapsed ? item.label : undefined}
               className={({ isActive }) =>
-                cx('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors', isActive ? 'bg-accent-soft text-fg' : 'text-muted hover:bg-surface-2 hover:text-fg')
+                cx(
+                  'relative flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors',
+                  collapsed ? 'justify-center px-0' : 'px-3',
+                  isActive ? 'bg-accent-soft text-fg' : 'text-muted hover:bg-surface-2 hover:text-fg',
+                )
               }
             >
               {({ isActive }) => (
                 <>
-                  <item.icon className={cx('size-[18px]', isActive && 'text-accent')} aria-hidden />
-                  {item.label}
-                  {item.to === 'orders' && <NavBadge count={newCount} />}
+                  <item.icon className={cx('size-[18px] shrink-0', isActive && 'text-accent')} aria-hidden />
+                  {collapsed ? <span className="sr-only">{item.label}</span> : item.label}
+                  {item.to === 'orders' &&
+                    (collapsed ? (
+                      !!newCount && <span className="absolute top-1 right-2 size-2 rounded-full bg-accent" aria-label={`${newCount} nouvelles`} />
+                    ) : (
+                      <NavBadge count={newCount} />
+                    ))}
                 </>
               )}
             </NavLink>
           ))}
         </nav>
         <div className="border-t border-line p-3">
-          <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1 px-2">
-              <p className="truncate text-sm font-medium">{me?.name}</p>
-              <p className="truncate text-[12px] text-muted">{me?.email}</p>
-            </div>
-            <Button variant="ghost" size="icon" onClick={theme.toggle} aria-label={theme.dark ? 'Mode clair' : 'Mode sombre'}>
+          <div className={cx('flex items-center gap-2', collapsed && 'flex-col')}>
+            {!collapsed && (
+              <div className="min-w-0 flex-1 px-2">
+                <p className="truncate text-sm font-medium">{me?.name}</p>
+                <p className="truncate text-[12px] text-muted">{me?.email}</p>
+              </div>
+            )}
+            <Button variant="ghost" size="icon" onClick={theme.toggle} aria-label={theme.dark ? 'Mode clair' : 'Mode sombre'} title={theme.dark ? 'Mode clair' : 'Mode sombre'}>
               {theme.dark ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
             </Button>
-            <Button variant="ghost" size="icon" onClick={doLogout} aria-label="Se déconnecter" loading={logout.isPending}>
+            <Button variant="ghost" size="icon" onClick={doLogout} aria-label="Se déconnecter" title="Se déconnecter" loading={logout.isPending}>
               {!logout.isPending && <LogOut className="size-[18px]" />}
             </Button>
           </div>
