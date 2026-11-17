@@ -489,6 +489,15 @@ export const registerSchema = z.object({
   country: z.string().length(2).toUpperCase().optional(),
 })
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email('Adresse email invalide'),
+})
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(20).max(200),
+  password: z.string().min(10, '10 caractères minimum').max(200),
+})
+
 // ─── Réponses API (formes partagées) ─────────────────────────────────────────
 
 export type ApiError = { error: string; code?: string; issues?: unknown }

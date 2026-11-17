@@ -36,6 +36,7 @@ describe('auth & boutique', () => {
     const r = await owner.post('/api/auth/register', { name: 'Merrick', email: 'owner@test.dev', password: 'motdepasse-solide' })
     expect(r.status).toBe(201)
     expect(r.body.isPlatformAdmin).toBe(true)
+    expect(enqueued.some((j) => j.name === 'account.notify' && (j.data as { kind: string; userId: number }).kind === 'welcome' && (j.data as { userId: number }).userId === r.body.id)).toBe(true)
     const r2 = await intruder.post('/api/auth/register', { name: 'Intrus', email: 'intrus@test.dev', password: 'motdepasse-solide' })
     expect(r2.status).toBe(403)
   })

@@ -1,11 +1,12 @@
 import { and, asc, eq, isNull, lte, sql as dsql } from 'drizzle-orm'
 import { db } from '../db/client'
-import { checkoutSettings, leads, orderItems, orders, products, promoCodes, stores } from '../db/schema'
+import { checkoutSettings, leads, orderItems, orders, products, promoCodes, stores, users } from '../db/schema'
 import { decrypt } from '../lib/crypto'
 import { env } from '../lib/env'
 import { escapeHtml } from '../lib/sanitize'
 import { abandonedCartEmail, digitalReceiptEmail, formatMoney, physicalConfirmationEmail, sellerNewOrderEmail } from '../services/emails'
 import { sendCapiEvent, sendEmail, sendTelegram } from '../services/notify'
+import { sendAccountNotice, type AccountNotice } from '../services/account'
 
 const storefrontUrl = (slug: string, path = '') => `${env.STOREFRONT_URL.replace(/\/$/, '')}/${slug}${path}`
 const orderUrl = (slug: string, token: string) => storefrontUrl(slug, `/order/${token}`)
@@ -172,4 +173,11 @@ export async function handleLeadsRemind() {
       .where(eq(leads.id, lead.id))
   }
   return { processed: due.length }
+}
+
+/** Emails de compte (bienvenue, nouvelle connexion, mot de passe modifié). */
+export async function handleAccountNotify(notice: AccountNotice) {
+  const [user] = await db.select().from(users).where(eq(users.id, notice.userId)).limit(1)
+  if (!user) return
+  await sendAccountNotice(user, notice)
 }

@@ -53,6 +53,11 @@ export default function Login() {
         <GoogleButton next={next} />
         <Input label="Email" type="email" autoComplete="email" inputMode="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} error={errors.email} autoFocus />
         <Input label="Mot de passe" type="password" autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} error={errors.password} />
+        <div className="-mt-2 flex justify-end">
+          <Link to={`/forgot-password${form.email ? `?email=${encodeURIComponent(form.email)}` : ''}`} className="text-sm font-medium text-accent hover:underline">
+            Mot de passe oublié ?
+          </Link>
+        </div>
         {login.error && (
           <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
             {errorMessage(login.error)}

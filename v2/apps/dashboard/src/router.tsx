@@ -13,6 +13,8 @@ export const router = createBrowserRouter([
     children: [
       { path: '/login', lazy: page(() => import('@/pages/auth/Login')) },
       { path: '/register', lazy: page(() => import('@/pages/auth/Register')) },
+      { path: '/forgot-password', lazy: page(() => import('@/pages/auth/ForgotPassword')) },
+      { path: '/reset-password', lazy: page(() => import('@/pages/auth/ResetPassword')) },
       {
         element: <RequireAuth />,
         children: [

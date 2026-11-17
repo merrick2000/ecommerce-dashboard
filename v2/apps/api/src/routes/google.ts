@@ -13,6 +13,8 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { db } from '../db/client'
 import { users } from '../db/schema'
 import { createSession, hashPassword } from '../lib/auth'
+import { enqueue } from '../jobs/queue'
+import { recordLogin } from '../services/account'
 import type { AppEnv } from '../lib/context'
 import { randomToken, safeEqual } from '../lib/crypto'
 import { env, isProd } from '../lib/env'
@@ -126,7 +128,9 @@ export const googleRoutes = new Hono<AppEnv>()
       }
     }
     // 3) nouveau compte : mêmes règles que l'inscription classique.
+    let isNewAccount = false
     if (!user) {
+      isNewAccount = true
       const [{ count } = { count: 0 }] = await db.select({ count: dsql<number>`count(*)::int` }).from(users)
       if (count > 0 && env.REGISTRATION_OPEN !== 'true') return c.redirect(back('', 'registration_closed'))
       ;[user] = await db
@@ -145,5 +149,7 @@ export const googleRoutes = new Hono<AppEnv>()
     if (!user) return c.redirect(back('', 'google_failed'))
     await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id))
     await createSession(c, user.id)
+    await recordLogin(c, user, 'google', { isNewAccount })
+    if (isNewAccount) await enqueue('account.notify', { userId: user.id, kind: 'welcome' })
     return c.redirect(back(flow.next))
   })

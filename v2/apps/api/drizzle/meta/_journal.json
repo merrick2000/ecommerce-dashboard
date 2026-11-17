@@ -36,6 +36,13 @@
       "when": 1794886119005,
       "tag": "0004_public_ids",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794898361963,
+      "tag": "0005_account_emails",
+      "breakpoints": true
     }
   ]
 }

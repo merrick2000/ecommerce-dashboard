@@ -83,6 +83,36 @@ export const sessions = pgTable(
   (t) => [index('sessions_user_idx').on(t.userId)],
 )
 
+/** Liens « mot de passe oublié » : seul le SHA-256 du jeton est stocké, usage unique, 30 min. */
+export const passwordResets = pgTable(
+  'password_resets',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    userId: fk('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    expiresAt: ts('expires_at').notNull(),
+    usedAt: ts('used_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('password_resets_user_idx').on(t.userId)],
+)
+
+/** Appareils déjà vus par compte (cookie appareil haché) : alerte à la connexion depuis un nouvel appareil. */
+export const userDevices = pgTable(
+  'user_devices',
+  {
+    userId: fk('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    deviceHash: varchar('device_hash', { length: 64 }).notNull(),
+    userAgent: varchar('user_agent', { length: 512 }),
+    lastSeenAt: ts('last_seen_at').notNull().defaultNow(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.deviceHash] })],
+)
+
 // ─── Boutiques (tenants) ─────────────────────────────────────────────────────
 
 export const stores = pgTable('stores', {

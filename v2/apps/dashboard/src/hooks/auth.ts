@@ -70,3 +70,21 @@ export function useStoreId(): string {
 export function useCurrency(): string {
   return useCurrentStore().store?.currency ?? 'XOF'
 }
+
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (body: { email: string }) => api.post<{ ok: true }>('/auth/password/forgot', body),
+  })
+}
+
+/** Le lien de réinitialisation connecte directement : on repart d'un cache propre. */
+export function useResetPassword() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { token: string; password: string }) => api.post<Me>('/auth/password/reset', body),
+    onSuccess: (me) => {
+      qc.clear()
+      qc.setQueryData(meKey, me)
+    },
+  })
+}

@@ -1,8 +1,8 @@
-import { loginSchema, registerSchema, type Me } from '@zuri/shared'
-import { eq, sql as dsql } from 'drizzle-orm'
+import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema, type Me } from '@zuri/shared'
+import { and, eq, gt, isNull, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { db } from '../db/client'
-import { storeMembers, stores, users, type User } from '../db/schema'
+import { passwordResets, sessions, storeMembers, stores, users, type User } from '../db/schema'
 import { createSession, destroySession, hashPassword, requireAuth, verifyPassword } from '../lib/auth'
 import type { AppEnv } from '../lib/context'
 import { HttpError } from '../lib/errors'
@@ -10,6 +10,9 @@ import { rateLimit } from '../lib/rate-limit'
 import { v } from '../lib/validate'
 import { env } from '../lib/env'
 import { googleEnabled, googleRoutes } from './google'
+import { sha256 } from '../lib/crypto'
+import { enqueue } from '../jobs/queue'
+import { loginContext, recordLogin, sendPasswordReset } from '../services/account'
 
 /** Inscription ouverte ? Par défaut : seulement tant qu'aucun compte n'existe (outil perso). */
 const REGISTRATION_OPEN = env.REGISTRATION_OPEN === 'true'
@@ -44,6 +47,7 @@ export const authRoutes = new Hono<AppEnv>()
     if (!user.passwordHash.startsWith('$argon2')) patch.passwordHash = await hashPassword(password)
     await db.update(users).set(patch).where(eq(users.id, user.id))
     await createSession(c, user.id)
+    await recordLogin(c, user, 'password')
     return c.json(await loadMe(user))
   })
   .post('/register', rateLimit({ key: 'register', limit: 5, windowSec: 3600 }), v('json', registerSchema), async (c) => {
@@ -65,7 +69,39 @@ export const authRoutes = new Hono<AppEnv>()
       .returning()
     if (!user) throw new Error('Création du compte échouée')
     await createSession(c, user.id)
+    await recordLogin(c, user, 'password', { isNewAccount: true })
+    await enqueue('account.notify', { userId: user.id, kind: 'welcome' })
     return c.json(await loadMe(user), 201)
+  })
+  /**
+   * Mot de passe oublié : réponse identique que le compte existe ou non (pas d'énumération des emails).
+   * L'envoi n'est pas attendu, pour que le temps de réponse ne trahisse rien non plus.
+   */
+  .post('/password/forgot', rateLimit({ key: 'forgot', limit: 5, windowSec: 900 }), v('json', forgotPasswordSchema), async (c) => {
+    const { email } = c.req.valid('json')
+    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
+    if (user) void sendPasswordReset(user).catch((err) => console.error('[password/forgot]', err))
+    return c.json({ ok: true })
+  })
+  .post('/password/reset', rateLimit({ key: 'reset', limit: 10, windowSec: 900 }), v('json', resetPasswordSchema), async (c) => {
+    const { token, password } = c.req.valid('json')
+    const passwordHash = await hashPassword(password)
+    // Consommation atomique : un lien ne sert qu'une fois, même avec deux clics simultanés.
+    const [reset] = await db
+      .update(passwordResets)
+      .set({ usedAt: new Date() })
+      .where(and(eq(passwordResets.id, sha256(token)), isNull(passwordResets.usedAt), gt(passwordResets.expiresAt, new Date())))
+      .returning({ userId: passwordResets.userId })
+    if (!reset) throw new HttpError(400, 'Ce lien n’est plus valable. Demandez-en un nouveau.', 'reset_invalid')
+    const [user] = await db.update(users).set({ passwordHash, lastLoginAt: new Date() }).where(eq(users.id, reset.userId)).returning()
+    if (!user) throw new HttpError(400, 'Ce lien n’est plus valable. Demandez-en un nouveau.', 'reset_invalid')
+    // Toutes les sessions existantes tombent (un intrus éventuel est déconnecté), les autres liens aussi.
+    await db.delete(sessions).where(eq(sessions.userId, user.id))
+    await db.delete(passwordResets).where(and(eq(passwordResets.userId, user.id), isNull(passwordResets.usedAt)))
+    await createSession(c, user.id)
+    await recordLogin(c, user, 'reset')
+    await enqueue('account.notify', { userId: user.id, kind: 'password-changed', userAgent: loginContext(c).userAgent, at: new Date().toISOString() })
+    return c.json(await loadMe(user))
   })
   .post('/logout', async (c) => {
     await destroySession(c)

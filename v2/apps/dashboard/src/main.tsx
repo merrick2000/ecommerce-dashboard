@@ -31,7 +31,9 @@ const queryClient = new QueryClient({
 onUnauthorized(() => {
   queryClient.setQueryData(meKey, null)
   const here = window.location.pathname + window.location.search
-  if (!here.startsWith('/login')) void router.navigate(`/login?next=${encodeURIComponent(here)}`, { replace: true })
+  // Les écrans publics (connexion, inscription, mot de passe oublié) ne redirigent pas.
+  const isPublic = ['/login', '/register', '/forgot-password', '/reset-password'].some((p) => window.location.pathname.startsWith(p))
+  if (!isPublic) void router.navigate(`/login?next=${encodeURIComponent(here)}`, { replace: true })
 })
 
 createRoot(document.getElementById('root')!).render(

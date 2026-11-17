@@ -1,5 +1,6 @@
 import { PgBoss } from 'pg-boss'
 import { env } from '../lib/env'
+import type { AccountNotice } from '../services/account'
 
 /** Tâches asynchrones. Les données transportées restent minimales (des IDs), le worker relit la base. */
 export interface JobPayloads {
@@ -7,9 +8,10 @@ export interface JobPayloads {
   'order.notify-new': { orderId: string }
   'leads.remind': Record<string, never>
   'payments.reconcile': Record<string, never>
+  'account.notify': AccountNotice
 }
 export type JobName = keyof JobPayloads
-export const JOB_NAMES: JobName[] = ['order.paid', 'order.notify-new', 'leads.remind', 'payments.reconcile']
+export const JOB_NAMES: JobName[] = ['order.paid', 'order.notify-new', 'leads.remind', 'payments.reconcile', 'account.notify']
 
 let boss: PgBoss | null = null
 let starting: Promise<PgBoss> | null = null

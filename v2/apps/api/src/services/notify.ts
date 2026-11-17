@@ -17,18 +17,21 @@ export interface EmailOptions {
   fromName?: string | null
   /** Adresse où arrivent les réponses du destinataire (ex. l'email de support de la boutique). */
   replyTo?: string | null
+  /** Partie avant le @ (ex. « compte ») : remplace celle de MAIL_FROM, même domaine vérifié. */
+  localPart?: string
 }
 
 /** « Nom <adresse> » : garde l'adresse de MAIL_FROM, remplace le nom si fourni (nettoyé). */
-export function buildFrom(mailFrom: string, fromName?: string | null): string {
-  const address = mailFrom.match(/<([^>]+)>/)?.[1] ?? mailFrom.trim()
+export function buildFrom(mailFrom: string, fromName?: string | null, localPart?: string): string {
+  let address = mailFrom.match(/<([^>]+)>/)?.[1] ?? mailFrom.trim()
+  if (localPart && /^[a-z0-9._-]+$/i.test(localPart)) address = `${localPart}@${address.split('@')[1]}`
   const name = (fromName ?? '').replace(/["<>\r\n\\]/g, '').trim().slice(0, 60)
-  if (!name) return mailFrom
+  if (!name) return localPart ? address : mailFrom
   return `"${name}" <${address}>`
 }
 
 export async function sendEmail(to: string, subject: string, html: string, opts: EmailOptions = {}): Promise<void> {
-  const from = buildFrom(env.MAIL_FROM, opts.fromName)
+  const from = buildFrom(env.MAIL_FROM, opts.fromName, opts.localPart)
   if (!env.RESEND_API_KEY) {
     console.info(`[mail:dev] ${from} → ${to} | ${subject}`)
     return
