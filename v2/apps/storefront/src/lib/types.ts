@@ -12,7 +12,7 @@ export interface DisplayPrice {
 }
 
 export interface PublicStore {
-  id: number
+  id: string
   name: string
   slug: string
   currency: Currency
@@ -44,7 +44,7 @@ export interface Variant {
 export interface CheckoutData {
   store: PublicStore
   product: {
-    id: number
+    id: string
     type: ProductType
     name: string
     description: string
@@ -69,7 +69,7 @@ export interface CheckoutData {
 export interface CatalogData {
   store: PublicStore
   primaryColor: string
-  products: { id: number; type: ProductType; name: string; thumbnail: string | null; price: DisplayPrice }[]
+  products: { id: string; type: ProductType; name: string; thumbnail: string | null; price: DisplayPrice }[]
 }
 
 export interface PublicOrder {

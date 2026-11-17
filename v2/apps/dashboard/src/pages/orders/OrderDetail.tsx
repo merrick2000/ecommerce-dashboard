@@ -59,7 +59,7 @@ function Timeline({ events }: { events: OrderEvent[] }) {
   )
 }
 
-function NoteForm({ orderId }: { orderId: number }) {
+function NoteForm({ orderId }: { orderId: string }) {
   const [note, setNote] = useState('')
   const add = useOrderNote(orderId)
   const toast = useToast()
@@ -196,7 +196,7 @@ function PaymentCard({ order, canEdit }: { order: Order; canEdit: boolean }) {
 export default function OrderDetail() {
   const { orderId } = useParams()
   const { storeId, store, role } = useCurrentStore()
-  const { data: order, error, isPending, refetch } = useOrder(Number(orderId))
+  const { data: order, error, isPending, refetch } = useOrder(orderId ?? '')
   const [editing, setEditing] = useState(false)
   const back = (
     <Link to={`/stores/${storeId}/orders`} className="mb-2 inline-flex items-center gap-1 text-sm text-muted hover:text-fg">

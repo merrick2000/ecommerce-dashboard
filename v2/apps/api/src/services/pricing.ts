@@ -25,7 +25,7 @@ export interface PromoCodeRule {
   maxUses: number | null
   usedCount: number
   minSubtotal: number | null
-  productIds: number[]
+  productIds: string[]
   startsAt: Date | null
   endsAt: Date | null
   isActive: boolean
@@ -86,7 +86,7 @@ export function displayPrice(product: PricedProduct, storeCurrency: string, vari
 
 export type PromoCheck = { ok: true; discount: number } | { ok: false; reason: string }
 
-export function evaluatePromoCode(rule: PromoCodeRule, subtotal: number, productIds: number[], currency: string, now = new Date()): PromoCheck {
+export function evaluatePromoCode(rule: PromoCodeRule, subtotal: number, productIds: string[], currency: string, now = new Date()): PromoCheck {
   if (!rule.isActive) return { ok: false, reason: 'Code inactif' }
   if (rule.startsAt && now < rule.startsAt) return { ok: false, reason: 'Code pas encore valable' }
   if (rule.endsAt && now > rule.endsAt) return { ok: false, reason: 'Code expiré' }
@@ -112,7 +112,7 @@ export interface QuoteInput {
   quantity: number
   offerId?: string | null
   promoCode?: PromoCodeRule | null
-  productId: number
+  productId: string
   zone?: ZoneRule | null
 }
 

@@ -8,7 +8,7 @@ import type { AppEnv } from './context'
 import { randomToken, sha256 } from './crypto'
 import { isProd } from './env'
 import { forbidden, HttpError, notFound } from './errors'
-import type { StoreRole } from '@zuri/shared'
+import { storeIdSchema, type StoreRole } from '@zuri/shared'
 
 export const SESSION_COOKIE = isProd ? '__Host-zuri_session' : 'zuri_session'
 const SESSION_TTL_MS = 30 * 24 * 3600 * 1000
@@ -79,8 +79,8 @@ const ROLE_RANK: Record<StoreRole, number> = { confirmer: 1, staff: 2, admin: 3,
  */
 export const requireStore = (minRole: StoreRole = 'confirmer') =>
   createMiddleware<AppEnv>(async (c, next) => {
-    const storeId = Number(c.req.param('storeId'))
-    if (!Number.isInteger(storeId)) throw notFound('Boutique')
+    const storeId = c.req.param('storeId') ?? ''
+    if (!storeIdSchema.safeParse(storeId).success) throw notFound('Boutique')
     const user = c.get('user')
     const [row] = await db
       .select({ store: stores, role: storeMembers.role })

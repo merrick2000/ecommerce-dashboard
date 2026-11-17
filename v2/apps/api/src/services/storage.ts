@@ -21,7 +21,7 @@ function s3(bucket: string | undefined): S3Client {
 const publicBucket = () => env.S3_BUCKET
 const privateBucket = () => env.S3_PRIVATE_BUCKET ?? env.S3_BUCKET
 
-export const privateKey = (storeId: number, name: string) => `stores/${storeId}/private/${name}`
+export const privateKey = (storeId: string, name: string) => `stores/${storeId}/private/${name}`
 
 export async function putObject(key: string, body: Buffer | Blob, type: string, visibility: 'public-read' | 'private') {
   if (visibility === 'public-read') {

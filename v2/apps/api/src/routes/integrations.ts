@@ -95,7 +95,7 @@ export const integrationRoutes = new Hono<AppEnv>().post('/webhooks/external', r
 })
 
 /** Côté dashboard : génère (ou régénère) le secret d'intégration — affiché une seule fois. */
-export async function rotateIntegrationSecret(storeId: number) {
+export async function rotateIntegrationSecret(storeId: string) {
   const secret = `whsec_${randomToken(24)}`
   const { encrypt } = await import('../lib/crypto')
   await db.update(stores).set({ integrationSecretEnc: encrypt(secret) }).where(eq(stores.id, storeId))

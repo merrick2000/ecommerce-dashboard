@@ -3,8 +3,8 @@ import { env } from '../lib/env'
 
 /** Tâches asynchrones. Les données transportées restent minimales (des IDs), le worker relit la base. */
 export interface JobPayloads {
-  'order.paid': { orderId: number }
-  'order.notify-new': { orderId: number }
+  'order.paid': { orderId: string }
+  'order.notify-new': { orderId: string }
   'leads.remind': Record<string, never>
   'payments.reconcile': Record<string, never>
 }
@@ -39,6 +39,6 @@ export async function enqueue<N extends JobName>(name: N, data: JobPayloads[N], 
   }
   const b = await getBoss()
   // singletonKey par défaut : une seule tâche « order.paid » par commande, même si on l'empile deux fois.
-  const singletonKey = opts.singletonKey ?? ('orderId' in data ? `${name}:${(data as { orderId: number }).orderId}` : undefined)
+  const singletonKey = opts.singletonKey ?? ('orderId' in data ? `${name}:${(data as { orderId: string }).orderId}` : undefined)
   await b.send(name, data, { singletonKey, startAfter: opts.startAfter })
 }

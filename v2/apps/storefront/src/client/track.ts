@@ -7,8 +7,8 @@
 import { getJSON, getStr, setJSON, setStr } from './storage'
 
 export interface TrackConfig {
-  storeId: number
-  productId: number | null
+  storeId: string
+  productId: string | null
   fb: string | null
   tt: string | null
   value?: number

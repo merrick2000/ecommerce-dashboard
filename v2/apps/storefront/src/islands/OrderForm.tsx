@@ -15,8 +15,8 @@ import PaymentStep from './PaymentStep'
 
 export interface OrderFormProps {
   slug: string
-  storeId: number
-  productId: number
+  storeId: string
+  productId: string
   productName: string
   type: 'digital' | 'physical'
   currency: string

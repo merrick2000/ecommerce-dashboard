@@ -19,7 +19,7 @@ import type {
 export type Iso = string
 
 export interface Store {
-  id: number
+  id: string
   name: string
   slug: string
   subdomain: string | null
@@ -53,8 +53,9 @@ export interface DisplayPrice {
 }
 
 export interface ProductListItem {
-  id: number
+  id: string
   type: ProductType
+  paymentMethod: 'native' | 'integration' | 'cod'
   name: string
   isActive: boolean
   thumbnail: string | null
@@ -69,7 +70,7 @@ export interface ProductListItem {
 
 export interface ProductVariant {
   id: number
-  productId: number
+  productId: string
   name: string
   sku: string | null
   price: number | null
@@ -79,8 +80,8 @@ export interface ProductVariant {
 }
 
 export interface Product {
-  id: number
-  storeId: number
+  id: string
+  storeId: string
   type: ProductType
   name: string
   isActive: boolean
@@ -111,10 +112,10 @@ export interface Product {
 export type OrderKind = ProductType | 'mixed'
 
 export interface OrderBase {
-  id: number
-  storeId: number
+  id: string
+  storeId: string
   orderNumber: string
-  customerId: number | null
+  customerId: string | null
   customerName: string | null
   customerEmail: string | null
   customerPhone: string | null
@@ -168,8 +169,8 @@ export interface OrderList {
 
 export interface OrderItem {
   id: number
-  orderId: number
-  productId: number | null
+  orderId: string
+  productId: string | null
   variantId: number | null
   productType: ProductType
   name: string
@@ -181,7 +182,7 @@ export interface OrderItem {
 
 export interface OrderEvent {
   id: number
-  orderId: number
+  orderId: string
   type: string
   message: string | null
   data: Record<string, unknown> | null
@@ -202,8 +203,8 @@ export interface PaymentTransaction {
 }
 
 export interface Customer {
-  id: number
-  storeId: number
+  id: string
+  storeId: string
   phone: string
   name: string | null
   email: string | null
@@ -221,7 +222,7 @@ export interface Customer {
 
 export interface DeliveryZone {
   id: number
-  storeId: number
+  storeId: string
   name: string
   country: string
   cities: string[]
@@ -244,7 +245,7 @@ export interface OrderDetail extends OrderBase {
 
 export interface CustomerDetail extends Customer {
   orders: {
-    id: number
+    id: string
     orderNumber: string
     total: number
     currency: string
@@ -256,14 +257,14 @@ export interface CustomerDetail extends Customer {
 
 export interface PromoCode {
   id: number
-  storeId: number
+  storeId: string
   code: string
   type: 'percentage' | 'fixed'
   value: number
   maxUses: number | null
   usedCount: number
   minSubtotal: number | null
-  productIds: number[]
+  productIds: string[]
   startsAt: Iso | null
   endsAt: Iso | null
   isActive: boolean
@@ -301,7 +302,7 @@ export interface StatsOverview {
   rates: { conversion: number | null; confirmation: number | null; delivery: number | null }
   visitors: { visitors: number; views: number; checkouts: number }
   daily: { day: string; orders: number; revenue: number }[]
-  topProducts: { productId: number | null; name: string; orders: number; units: number; revenue: number }[]
+  topProducts: { productId: string | null; name: string; orders: number; units: number; revenue: number }[]
   sources: { source: string; orders: number; revenue: number }[]
 }
 

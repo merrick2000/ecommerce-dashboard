@@ -98,6 +98,19 @@ export const PAGE_BLOCKS = [
 ] as const
 export const pageBlockSchema = z.enum(PAGE_BLOCKS)
 
+// ─── Identifiants publics ────────────────────────────────────────────────────
+
+/**
+ * Identifiants non séquentiels « à la Stripe » : préfixe + 16 caractères base62 aléatoires (~95 bits).
+ * Ils apparaissent dans les URLs : impossibles à deviner, ne révèlent aucun volume.
+ */
+export const ID_PREFIXES = { store: 'shp', product: 'prd', order: 'ord', customer: 'cus' } as const
+const publicId = (prefix: string) => z.string().regex(new RegExp(`^${prefix}_[0-9A-Za-z]{8,32}$`), 'Identifiant invalide')
+export const storeIdSchema = publicId(ID_PREFIXES.store)
+export const productIdSchema = publicId(ID_PREFIXES.product)
+export const orderIdSchema = publicId(ID_PREFIXES.order)
+export const customerIdSchema = publicId(ID_PREFIXES.customer)
+
 // ─── Briques réutilisables ───────────────────────────────────────────────────
 
 const money = z.coerce.number().min(0).max(1_000_000_000)
@@ -372,7 +385,7 @@ export const promoCodeInputSchema = z.object({
   value: money,
   maxUses: z.coerce.number().int().min(1).nullable().default(null),
   minSubtotal: money.nullable().default(null),
-  productIds: z.array(z.coerce.number().int()).default([]),
+  productIds: z.array(productIdSchema).default([]),
   startsAt: z.coerce.date().nullable().default(null),
   endsAt: z.coerce.date().nullable().default(null),
   isActive: z.boolean().default(true),
@@ -395,7 +408,7 @@ const attributionSchema = z.object({
 export const publicOrderCreateSchema = z
   .object({
     storeSlug: slug,
-    productId: z.coerce.number().int().positive(),
+    productId: productIdSchema,
     variantId: z.coerce.number().int().positive().nullable().optional(),
     offerId: z.string().max(40).nullable().optional(),
     quantity: z.coerce.number().int().min(1).max(50).default(1),
@@ -418,7 +431,7 @@ export const manualOrderCreateSchema = z.object({
   items: z
     .array(
       z.object({
-        productId: z.coerce.number().int().positive(),
+        productId: productIdSchema,
         variantId: z.coerce.number().int().positive().nullable().optional(),
         quantity: z.coerce.number().int().min(1).max(500),
         unitPrice: money.optional(),
@@ -485,7 +498,7 @@ export interface Me {
   email: string
   name: string
   isPlatformAdmin: boolean
-  stores: { id: number; name: string; slug: string; role: StoreRole; currency: Currency }[]
+  stores: { id: string; name: string; slug: string; role: StoreRole; currency: Currency }[]
 }
 
 export interface Paginated<T> {

@@ -47,16 +47,16 @@ describe('displayPrice', () => {
 
 describe('evaluatePromoCode', () => {
   test('code expiré refusé', () => {
-    expect(evaluatePromoCode(code({ endsAt: new Date('2020-01-01') }), 10000, [1], 'XOF')).toEqual({ ok: false, reason: 'Code expiré' })
+    expect(evaluatePromoCode(code({ endsAt: new Date('2020-01-01') }), 10000, ['prd_1'], 'XOF')).toEqual({ ok: false, reason: 'Code expiré' })
   })
   test('code épuisé refusé', () => {
-    expect(evaluatePromoCode(code({ maxUses: 5, usedCount: 5 }), 10000, [1], 'XOF').ok).toBe(false)
+    expect(evaluatePromoCode(code({ maxUses: 5, usedCount: 5 }), 10000, ['prd_1'], 'XOF').ok).toBe(false)
   })
   test('code limité à d’autres produits refusé', () => {
-    expect(evaluatePromoCode(code({ productIds: [2] }), 10000, [1], 'XOF').ok).toBe(false)
+    expect(evaluatePromoCode(code({ productIds: ['prd_2'] }), 10000, ['prd_1'], 'XOF').ok).toBe(false)
   })
   test('remise fixe plafonnée au sous-total', () => {
-    expect(evaluatePromoCode(code({ type: 'fixed', value: 99999 }), 10000, [1], 'XOF')).toEqual({ ok: true, discount: 10000 })
+    expect(evaluatePromoCode(code({ type: 'fixed', value: 99999 }), 10000, ['prd_1'], 'XOF')).toEqual({ ok: true, discount: 10000 })
   })
 })
 
@@ -68,7 +68,7 @@ describe('quote', () => {
       quantity: 1,
       offerId: 'x2',
       promoCode: code(),
-      productId: 1,
+      productId: 'prd_1',
       zone: { fee: 1500, freeAbove: null },
     })
     expect(q).toEqual({
@@ -84,17 +84,17 @@ describe('quote', () => {
     })
   })
   test('livraison offerte au-dessus du seuil', () => {
-    const q = quote({ product: product(), storeCurrency: 'XOF', quantity: 3, productId: 1, zone: { fee: 1500, freeAbove: 25000 } })
+    const q = quote({ product: product(), storeCurrency: 'XOF', quantity: 3, productId: 'prd_1', zone: { fee: 1500, freeAbove: 25000 } })
     expect(q.shippingFee).toBe(0)
     expect(q.total).toBe(30000)
   })
   test('code invalide : commande acceptée sans remise, raison renvoyée', () => {
-    const q = quote({ product: product(), storeCurrency: 'XOF', quantity: 1, productId: 1, promoCode: code({ isActive: false }) })
+    const q = quote({ product: product(), storeCurrency: 'XOF', quantity: 1, productId: 'prd_1', promoCode: code({ isActive: false }) })
     expect(q.discount).toBe(0)
     expect(q.promoError).toBe('Code inactif')
   })
   test('offre inconnue ignorée', () => {
-    expect(quote({ product: product(), storeCurrency: 'XOF', quantity: 2, offerId: 'nope', productId: 1 }).subtotal).toBe(20000)
+    expect(quote({ product: product(), storeCurrency: 'XOF', quantity: 2, offerId: 'nope', productId: 'prd_1' }).subtotal).toBe(20000)
   })
 })
 

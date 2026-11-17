@@ -14,7 +14,8 @@ import { absoluteUrl, originOf, storeUrl } from '../../../lib/urls'
 export const prerender = false
 
 const { slug = '', productId = '' } = Astro.params
-if (!/^\d{1,10}$/.test(productId)) return Astro.rewrite('/404')
+// Identifiant public (prd_…) ou ancien numéro de Sellit v1 (/p/123, liens de pub).
+if (!/^(prd_[0-9A-Za-z]{8,32}|\d{1,10})$/.test(productId)) return Astro.rewrite('/404')
 
 let d: CheckoutData
 try {
@@ -25,6 +26,8 @@ try {
 }
 
 const { store, product, checkout, zones, tracking } = d
+// Ancien lien numérique : redirection permanente vers l'adresse définitive (les pubs gardent leur trafic).
+if (product.id !== productId) return Astro.redirect(storeUrl(Astro.locals, `/p/${product.id}`) + Astro.url.search, 301)
 const T = dict(store.locale)
 const t = T.page
 const isCod = product.payment.method === 'cod'

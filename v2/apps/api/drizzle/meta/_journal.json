@@ -29,6 +29,13 @@
       "when": 1794883265676,
       "tag": "0003_google_login",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794886119005,
+      "tag": "0004_public_ids",
+      "breakpoints": true
     }
   ]
 }

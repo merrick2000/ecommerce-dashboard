@@ -10,7 +10,7 @@ import { sendCapiEvent, sendEmail, sendTelegram } from '../services/notify'
 const storefrontUrl = (slug: string, path = '') => `${env.STOREFRONT_URL.replace(/\/$/, '')}/${slug}${path}`
 const orderUrl = (slug: string, token: string) => storefrontUrl(slug, `/order/${token}`)
 
-async function loadOrder(orderId: number) {
+async function loadOrder(orderId: string) {
   const [row] = await db.select({ order: orders, store: stores }).from(orders).innerJoin(stores, eq(stores.id, orders.storeId)).where(eq(orders.id, orderId)).limit(1)
   if (!row) return null
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId))
@@ -57,7 +57,7 @@ async function notifySeller(o: Loaded, headline: string) {
 }
 
 /** Commande payée (en ligne, ou COD livrée). Exécuté au plus une fois par commande. */
-export async function handleOrderPaid({ orderId }: { orderId: number }) {
+export async function handleOrderPaid({ orderId }: { orderId: string }) {
   // Verrou d'idempotence : seul le premier passage obtient la ligne.
   const [claimed] = await db
     .update(orders)
@@ -87,7 +87,7 @@ export async function handleOrderPaid({ orderId }: { orderId: number }) {
 }
 
 /** Nouvelle commande COD : notifier vendeur + client, CAPI Purchase (optimisation des pubs). */
-export async function handleOrderNotifyNew({ orderId }: { orderId: number }) {
+export async function handleOrderNotifyNew({ orderId }: { orderId: string }) {
   const o = await loadOrder(orderId)
   if (!o) return
   const tasks: Promise<unknown>[] = [notifySeller(o, '🛒 Nouvelle commande COD'), capiPurchase(o)]

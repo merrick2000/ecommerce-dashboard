@@ -11,7 +11,7 @@ import { PaymentBadge, StatusBadge } from '../orders/shared'
 
 export default function CustomerDetail() {
   const { customerId } = useParams()
-  const id = Number(customerId)
+  const id = customerId ?? ''
   const { storeId, store } = useCurrentStore()
   const currency = store?.currency ?? 'XOF'
   const toast = useToast()

@@ -89,7 +89,7 @@ function toPayload(f: Form): Form {
   }
 }
 
-function Editor({ initial, productId }: { initial: Form; productId: number | null }) {
+function Editor({ initial, productId }: { initial: Form; productId: string | null }) {
   const storeId = useStoreId()
   const currency = useCurrency()
   const navigate = useNavigate()
@@ -271,7 +271,7 @@ function Editor({ initial, productId }: { initial: Form; productId: number | nul
 
 export default function ProductEditor() {
   const { productId } = useParams()
-  const id = productId ? Number(productId) : null
+  const id = productId ?? null
   const { data, error, isPending, refetch } = useProduct(id)
 
   if (id === null) return <Editor key="new" initial={emptyForm('physical')} productId={null} />

@@ -1,3 +1,4 @@
+import { customerIdSchema } from '@zuri/shared'
 import { and, count, desc, eq, ilike, or } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
@@ -9,7 +10,7 @@ import { notFound } from '../lib/errors'
 import { v } from '../lib/validate'
 import { normalizePhone } from '../services/orders'
 
-const idParam = z.object({ id: z.coerce.number().int().positive() })
+const idParam = z.object({ id: customerIdSchema })
 
 export const customerRoutes = new Hono<AppEnv>()
   .get('/', v('query', z.object({ q: z.string().max(100).optional(), page: z.coerce.number().int().min(1).default(1) })), async (c) => {

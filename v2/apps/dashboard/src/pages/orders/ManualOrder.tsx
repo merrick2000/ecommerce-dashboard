@@ -13,7 +13,7 @@ import type { ProductListItem } from '@/lib/types'
 
 interface Line {
   key: number
-  productId: number | null
+  productId: string | null
   variantId: number | null
   quantity: number
   unitPrice: string
@@ -53,7 +53,7 @@ function LineRow({
           aria-label={`Produit ${index + 1}`}
           wrapClass="flex-1"
           value={line.productId ?? ''}
-          onChange={(e) => onChange({ ...line, productId: e.target.value ? Number(e.target.value) : null, variantId: null, unitPrice: '' })}
+          onChange={(e) => onChange({ ...line, productId: e.target.value || null, variantId: null, unitPrice: '' })}
           options={[{ value: '', label: 'Choisir un produit…' }, ...products.map((p) => ({ value: String(p.id), label: `${p.name}${p.isActive ? '' : ' (inactif)'}` }))]}
           error={errors[`items.${index}.productId`]}
         />

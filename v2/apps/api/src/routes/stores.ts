@@ -24,7 +24,7 @@ export const DEFAULT_CHECKOUT = checkoutSettingsSchema.parse({})
 /** Jamais de secret (même chiffré) dans une réponse. */
 const storeView = ({ integrationSecretEnc, ...rest }: typeof stores.$inferSelect) => ({ ...rest, hasIntegrationSecret: Boolean(integrationSecretEnc) })
 
-async function assertUnique(fields: { slug?: string; subdomain?: string | null; customDomain?: string | null }, exceptId?: number) {
+async function assertUnique(fields: { slug?: string; subdomain?: string | null; customDomain?: string | null }, exceptId?: string) {
   const conds = []
   if (fields.slug) conds.push(eq(stores.slug, fields.slug))
   if (fields.subdomain) conds.push(eq(stores.subdomain, fields.subdomain))

@@ -5,6 +5,7 @@ import {
   orderNoteSchema,
   orderPaymentUpdateSchema,
   orderStatusUpdateSchema,
+  orderIdSchema,
 } from '@zuri/shared'
 import { and, asc, count, desc, eq, gte, ilike, inArray, lt, lte, or, sql as dsql, type SQL } from 'drizzle-orm'
 import { Hono } from 'hono'
@@ -19,9 +20,9 @@ import { v } from '../lib/validate'
 import { normalizePhone, setPaymentStatus, transitionFulfillment } from '../services/orders'
 import { displayPrice, roundMoney, shippingFee } from '../services/pricing'
 
-const idParam = z.object({ id: z.coerce.number().int().positive() })
+const idParam = z.object({ id: orderIdSchema })
 
-function listFilters(storeId: number, q: z.infer<typeof orderListQuerySchema>): SQL {
+function listFilters(storeId: string, q: z.infer<typeof orderListQuerySchema>): SQL {
   const conds: SQL[] = [eq(orders.storeId, storeId)]
   if (q.type) conds.push(eq(orders.kind, q.type))
   if (q.paymentStatus) conds.push(eq(orders.paymentStatus, q.paymentStatus))
@@ -50,7 +51,7 @@ export const orderRoutes = new Hono<AppEnv>()
           order: orders,
           items: dsql<{ name: string; variantName: string | null; quantity: number }[]>`(
             select coalesce(json_agg(json_build_object('name', ${orderItems.name}, 'variantName', ${orderItems.variantName}, 'quantity', ${orderItems.quantity})), '[]')
-            from ${orderItems} where ${orderItems.orderId} = ${orders.id})`,
+            from ${orderItems} where "order_items"."order_id" = "orders"."id")`,
           customerFlag: dsql<boolean>`coalesce(${customers.isBlocked}, false)`,
           customerReturns: dsql<number>`coalesce(${customers.returnedCount}, 0)`,
         })
@@ -82,7 +83,7 @@ export const orderRoutes = new Hono<AppEnv>()
   .get('/export.csv', requireRole('staff'), v('query', orderListQuerySchema), async (c) => {
     const store = c.get('store')
     const rows = await db
-      .select({ order: orders, items: dsql<string>`(select string_agg(${orderItems.quantity} || ' x ' || ${orderItems.name} || coalesce(' (' || ${orderItems.variantName} || ')', ''), ' + ') from ${orderItems} where ${orderItems.orderId} = ${orders.id})` })
+      .select({ order: orders, items: dsql<string>`(select string_agg(${orderItems.quantity} || ' x ' || ${orderItems.name} || coalesce(' (' || ${orderItems.variantName} || ')', ''), ' + ') from ${orderItems} where "order_items"."order_id" = "orders"."id")` })
       .from(orders)
       .where(listFilters(store.id, c.req.valid('query')))
       .orderBy(desc(orders.createdAt))
@@ -148,9 +149,9 @@ export const orderRoutes = new Hono<AppEnv>()
     await transitionFulfillment(c.get('store'), id, body.fulfillmentStatus, { userId: c.get('user').id, ...body })
     return c.json({ ok: true })
   })
-  .post('/bulk-status', requireRole('staff'), v('json', orderStatusUpdateSchema.extend({ ids: z.array(z.number().int()).min(1).max(200) })), async (c) => {
+  .post('/bulk-status', requireRole('staff'), v('json', orderStatusUpdateSchema.extend({ ids: z.array(orderIdSchema).min(1).max(200) })), async (c) => {
     const { ids, ...body } = c.req.valid('json')
-    const results: { id: number; ok: boolean; error?: string }[] = []
+    const results: { id: string; ok: boolean; error?: string }[] = []
     for (const id of ids) {
       try {
         await transitionFulfillment(c.get('store'), id, body.fulfillmentStatus, { userId: c.get('user').id, ...body })

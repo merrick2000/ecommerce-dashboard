@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm'
+import { newId, type IdPrefix } from '../lib/ids'
 import {
   bigint,
   bigserial,
@@ -40,6 +41,12 @@ const updatedAt = () =>
     .$onUpdate(() => new Date())
 const id = () => bigserial('id', { mode: 'number' }).primaryKey()
 const fk = (name: string) => bigint(name, { mode: 'number' })
+/** Identifiant public non séquentiel (voir lib/ids.ts) et références vers lui. */
+const pid = (prefix: IdPrefix) =>
+  varchar('id', { length: 40 })
+    .primaryKey()
+    .$defaultFn(() => newId(prefix))
+const ref = (name: string) => varchar(name, { length: 40 })
 
 // ─── Comptes ─────────────────────────────────────────────────────────────────
 
@@ -79,7 +86,7 @@ export const sessions = pgTable(
 // ─── Boutiques (tenants) ─────────────────────────────────────────────────────
 
 export const stores = pgTable('stores', {
-  id: id(),
+  id: pid('shp'),
   name: varchar('name', { length: 255 }).notNull(),
   slug: varchar('slug', { length: 80 }).notNull().unique(),
   subdomain: varchar('subdomain', { length: 80 }).unique(),
@@ -100,7 +107,7 @@ export const stores = pgTable('stores', {
 export const storeMembers = pgTable(
   'store_members',
   {
-    storeId: fk('store_id')
+    storeId: ref('store_id')
       .notNull()
       .references(() => stores.id, { onDelete: 'cascade' }),
     userId: fk('user_id')
@@ -113,7 +120,7 @@ export const storeMembers = pgTable(
 )
 
 export const checkoutSettings = pgTable('checkout_settings', {
-  storeId: fk('store_id')
+  storeId: ref('store_id')
     .primaryKey()
     .references(() => stores.id, { onDelete: 'cascade' }),
   settings: jsonb('settings').$type<CheckoutSettings>().notNull(),
@@ -130,7 +137,7 @@ export const paymentAccounts = pgTable(
   'payment_accounts',
   {
     id: id(),
-    storeId: fk('store_id')
+    storeId: ref('store_id')
       .notNull()
       .references(() => stores.id, { onDelete: 'cascade' }),
     provider: varchar('provider', { length: 20 }).$type<PaymentProvider>().notNull(),
@@ -150,8 +157,8 @@ export const paymentAccounts = pgTable(
 export const products = pgTable(
   'products',
   {
-    id: id(),
-    storeId: fk('store_id')
+    id: pid('prd'),
+    storeId: ref('store_id')
       .notNull()
       .references(() => stores.id, { onDelete: 'cascade' }),
     type: varchar('type', { length: 10 }).$type<ProductType>().notNull().default('digital'),
@@ -170,6 +177,8 @@ export const products = pgTable(
     payment: jsonb('payment').$type<ProductPayment>().notNull(),
     /** Digital : livraison. */
     delivery: jsonb('delivery').$type<{ type: 'file'; filePath: string | null } | { type: 'external_url'; url: string } | null>(),
+    /** Ancien identifiant numérique (Sellit v1) : redirige les vieux liens de pub /p/123. */
+    legacyId: integer('legacy_id'),
     /** Code produit Selar (webhook externe). */
     externalProductId: varchar('external_product_id', { length: 100 }),
     // Physique
@@ -191,7 +200,7 @@ export const productVariants = pgTable(
   'product_variants',
   {
     id: id(),
-    productId: fk('product_id')
+    productId: ref('product_id')
       .notNull()
       .references(() => products.id, { onDelete: 'cascade' }),
     name: varchar('name', { length: 80 }).notNull(),
@@ -210,7 +219,7 @@ export const deliveryZones = pgTable(
   'delivery_zones',
   {
     id: id(),
-    storeId: fk('store_id')
+    storeId: ref('store_id')
       .notNull()
       .references(() => stores.id, { onDelete: 'cascade' }),
     name: varchar('name', { length: 80 }).notNull(),
@@ -230,7 +239,7 @@ export const promoCodes = pgTable(
   'promo_codes',
   {
     id: id(),
-    storeId: fk('store_id')
+    storeId: ref('store_id')
       .notNull()
       .references(() => stores.id, { onDelete: 'cascade' }),
     code: varchar('code', { length: 30 }).notNull(),
@@ -239,7 +248,7 @@ export const promoCodes = pgTable(
     maxUses: integer('max_uses'),
     usedCount: integer('used_count').notNull().default(0),
     minSubtotal: money('min_subtotal'),
-    productIds: jsonb('product_ids').$type<number[]>().notNull().default([]),
+    productIds: jsonb('product_ids').$type<string[]>().notNull().default([]),
     startsAt: ts('starts_at'),
     endsAt: ts('ends_at'),
     isActive: boolean('is_active').notNull().default(true),
@@ -254,8 +263,8 @@ export const promoCodes = pgTable(
 export const customers = pgTable(
   'customers',
   {
-    id: id(),
-    storeId: fk('store_id')
+    id: pid('cus'),
+    storeId: ref('store_id')
       .notNull()
       .references(() => stores.id, { onDelete: 'cascade' }),
     phone: varchar('phone', { length: 30 }).notNull(),
@@ -281,14 +290,14 @@ export const customers = pgTable(
 export const orders = pgTable(
   'orders',
   {
-    id: id(),
-    storeId: fk('store_id')
+    id: pid('ord'),
+    storeId: ref('store_id')
       .notNull()
       .references(() => stores.id, { onDelete: 'cascade' }),
     orderNumber: varchar('order_number', { length: 20 }).notNull().unique(),
     /** Jeton opaque pour l'accès public (page succès, téléchargement). Remplace les ID séquentiels. */
     accessToken: varchar('access_token', { length: 64 }).notNull().unique(),
-    customerId: fk('customer_id').references(() => customers.id, { onDelete: 'set null' }),
+    customerId: ref('customer_id').references(() => customers.id, { onDelete: 'set null' }),
     customerName: varchar('customer_name', { length: 120 }),
     customerEmail: varchar('customer_email', { length: 255 }),
     customerPhone: varchar('customer_phone', { length: 30 }),
@@ -348,10 +357,10 @@ export const orderItems = pgTable(
   'order_items',
   {
     id: id(),
-    orderId: fk('order_id')
+    orderId: ref('order_id')
       .notNull()
       .references(() => orders.id, { onDelete: 'cascade' }),
-    productId: fk('product_id').references(() => products.id, { onDelete: 'set null' }),
+    productId: ref('product_id').references(() => products.id, { onDelete: 'set null' }),
     variantId: fk('variant_id').references(() => productVariants.id, { onDelete: 'set null' }),
     productType: varchar('product_type', { length: 10 }).$type<ProductType>().notNull(),
     name: varchar('name', { length: 255 }).notNull(),
@@ -368,7 +377,7 @@ export const orderEvents = pgTable(
   'order_events',
   {
     id: id(),
-    orderId: fk('order_id')
+    orderId: ref('order_id')
       .notNull()
       .references(() => orders.id, { onDelete: 'cascade' }),
     type: varchar('type', { length: 30 }).notNull(),
@@ -384,7 +393,7 @@ export const paymentTransactions = pgTable(
   'payment_transactions',
   {
     id: id(),
-    orderId: fk('order_id')
+    orderId: ref('order_id')
       .notNull()
       .references(() => orders.id, { onDelete: 'cascade' }),
     provider: varchar('provider', { length: 20 }).notNull(),
@@ -408,10 +417,10 @@ export const downloads = pgTable(
   'downloads',
   {
     id: id(),
-    orderId: fk('order_id')
+    orderId: ref('order_id')
       .notNull()
       .references(() => orders.id, { onDelete: 'cascade' }),
-    productId: fk('product_id').references(() => products.id, { onDelete: 'set null' }),
+    productId: ref('product_id').references(() => products.id, { onDelete: 'set null' }),
     ipHash: varchar('ip_hash', { length: 64 }),
     createdAt: createdAt(),
   },
@@ -425,10 +434,10 @@ export const leads = pgTable(
   'leads',
   {
     id: id(),
-    storeId: fk('store_id')
+    storeId: ref('store_id')
       .notNull()
       .references(() => stores.id, { onDelete: 'cascade' }),
-    productId: fk('product_id').references(() => products.id, { onDelete: 'cascade' }),
+    productId: ref('product_id').references(() => products.id, { onDelete: 'cascade' }),
     email: varchar('email', { length: 255 }),
     phone: varchar('phone', { length: 30 }),
     name: varchar('name', { length: 120 }),
@@ -437,7 +446,7 @@ export const leads = pgTable(
     lastRemindedAt: ts('last_reminded_at'),
     nextReminderAt: ts('next_reminder_at'),
     convertedAt: ts('converted_at'),
-    convertedOrderId: fk('converted_order_id').references(() => orders.id, { onDelete: 'set null' }),
+    convertedOrderId: ref('converted_order_id').references(() => orders.id, { onDelete: 'set null' }),
     reminderHistory: jsonb('reminder_history').$type<{ step: number; channel: string; at: string; promoCode?: string }[]>().notNull().default([]),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -453,10 +462,10 @@ export const pageEvents = pgTable(
   'page_events',
   {
     id: id(),
-    storeId: fk('store_id')
+    storeId: ref('store_id')
       .notNull()
       .references(() => stores.id, { onDelete: 'cascade' }),
-    productId: fk('product_id').references(() => products.id, { onDelete: 'set null' }),
+    productId: ref('product_id').references(() => products.id, { onDelete: 'set null' }),
     eventType: varchar('event_type', { length: 30 }).notNull(),
     sessionId: varchar('session_id', { length: 64 }).notNull(),
     ipHash: varchar('ip_hash', { length: 64 }),

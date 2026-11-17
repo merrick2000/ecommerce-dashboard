@@ -24,23 +24,35 @@ import type {
 } from '@/lib/types'
 import { meKey, useStoreId } from './auth'
 
-const base = (storeId: number) => `/stores/${storeId}`
+const base = (storeId: string) => `/stores/${storeId}`
 export const keys = {
-  store: (s: number) => ['store', s] as const,
-  info: (s: number) => ['store', s, 'info'] as const,
-  checkout: (s: number) => ['store', s, 'checkout'] as const,
-  products: (s: number) => ['store', s, 'products'] as const,
-  product: (s: number, id: number) => ['store', s, 'products', id] as const,
-  orders: (s: number) => ['store', s, 'orders'] as const,
-  orderList: (s: number, q: Query) => ['store', s, 'orders', 'list', q] as const,
-  order: (s: number, id: number) => ['store', s, 'orders', 'detail', id] as const,
-  customers: (s: number) => ['store', s, 'customers'] as const,
-  customer: (s: number, id: number) => ['store', s, 'customers', id] as const,
-  zones: (s: number) => ['store', s, 'zones'] as const,
-  promos: (s: number) => ['store', s, 'promos'] as const,
-  payments: (s: number) => ['store', s, 'payments'] as const,
-  integrations: (s: number) => ['store', s, 'integrations'] as const,
-  stats: (s: number, from: string, to: string) => ['store', s, 'stats', from, to] as const,
+  store: (s: string) => ['store', s] as const,
+  info: (s: string) => ['store', s, 'info'] as const,
+  checkout: (s: string) => ['store', s, 'checkout'] as const,
+  products: (s: string) => ['store', s, 'products'] as const,
+  product: (s: string, id: string) => ['store', s, 'products', id] as const,
+  orders: (s: string) => ['store', s, 'orders'] as const,
+  orderList: (s: string, q: Query) => ['store', s, 'orders', 'list', q] as const,
+  order: (s: string, id: string) => ['store', s, 'orders', 'detail', id] as const,
+  customers: (s: string) => ['store', s, 'customers'] as const,
+  customer: (s: string, id: string) => ['store', s, 'customers', id] as const,
+  zones: (s: string) => ['store', s, 'zones'] as const,
+  promos: (s: string) => ['store', s, 'promos'] as const,
+  payments: (s: string) => ['store', s, 'payments'] as const,
+  integrations: (s: string) => ['store', s, 'integrations'] as const,
+  stats: (s: string, from: string, to: string) => ['store', s, 'stats', from, to] as const,
+}
+
+/**
+ * Rafraîchissements centralisés : une action sur une commande touche aussi les clients,
+ * le stock/les ventes des produits et les chiffres du tableau de bord.
+ */
+type QC = ReturnType<typeof useQueryClient>
+export function refreshAfterOrderChange(qc: QC, s: string) {
+  for (const k of [keys.orders(s), keys.customers(s), keys.products(s), [...keys.store(s), 'stats']]) void qc.invalidateQueries({ queryKey: k })
+}
+export function refreshAfterProductChange(qc: QC, s: string) {
+  for (const k of [keys.products(s), [...keys.store(s), 'stats']]) void qc.invalidateQueries({ queryKey: k })
 }
 
 // ─── Boutique ────────────────────────────────────────────────────────────────
@@ -100,10 +112,10 @@ export function useProducts() {
   return useQuery({ queryKey: keys.products(s), queryFn: () => api.get<ProductListItem[]>(`${base(s)}/products`) })
 }
 
-export function useProduct(id: number | null) {
+export function useProduct(id: string | null) {
   const s = useStoreId()
   return useQuery({
-    queryKey: keys.product(s, id ?? 0),
+    queryKey: keys.product(s, id ?? 'nouveau'),
     queryFn: () => api.get<Product>(`${base(s)}/products/${id}`),
     enabled: id != null,
   })
@@ -113,11 +125,11 @@ export function useSaveProduct() {
   const s = useStoreId()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, body }: { id: number | null; body: unknown }) =>
+    mutationFn: ({ id, body }: { id: string | null; body: unknown }) =>
       id ? api.put<Product>(`${base(s)}/products/${id}`, body) : api.post<Product>(`${base(s)}/products`, body),
     onSuccess: (p) => {
       qc.setQueryData(keys.product(s, p.id), p)
-      void qc.invalidateQueries({ queryKey: keys.products(s), exact: true })
+      refreshAfterProductChange(qc, s)
     },
   })
 }
@@ -127,7 +139,7 @@ export function useToggleProductActive() {
   const qc = useQueryClient()
   const key = keys.products(s)
   return useMutation({
-    mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) => api.patch(`${base(s)}/products/${id}/active`, { isActive }),
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => api.patch(`${base(s)}/products/${id}/active`, { isActive }),
     onMutate: async ({ id, isActive }) => {
       await qc.cancelQueries({ queryKey: key, exact: true })
       const prev = qc.getQueryData<ProductListItem[]>(key)
@@ -146,8 +158,8 @@ export function useBulkProductActive() {
   const s = useStoreId()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { ids: number[]; isActive: boolean }) => api.post(`${base(s)}/products/bulk-active`, body),
-    onSettled: () => qc.invalidateQueries({ queryKey: keys.products(s) }),
+    mutationFn: (body: { ids: string[]; isActive: boolean }) => api.post(`${base(s)}/products/bulk-active`, body),
+    onSettled: () => refreshAfterProductChange(qc, s),
   })
 }
 
@@ -155,8 +167,8 @@ export function useDuplicateProduct() {
   const s = useStoreId()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => api.post<Product>(`${base(s)}/products/${id}/duplicate`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.products(s), exact: true }),
+    mutationFn: (id: string) => api.post<Product>(`${base(s)}/products/${id}/duplicate`),
+    onSuccess: () => refreshAfterProductChange(qc, s),
   })
 }
 
@@ -164,10 +176,11 @@ export function useDeleteProduct() {
   const s = useStoreId()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => api.del(`${base(s)}/products/${id}`),
+    mutationFn: (id: string) => api.del(`${base(s)}/products/${id}`),
     onSuccess: (_d, id) => {
       qc.setQueryData<ProductListItem[]>(keys.products(s), (l) => l?.filter((p) => p.id !== id))
       qc.removeQueries({ queryKey: keys.product(s, id) })
+      refreshAfterProductChange(qc, s)
     },
   })
 }
@@ -184,13 +197,13 @@ export function useOrders(q: Query) {
   })
 }
 
-export function useOrder(id: number) {
+export function useOrder(id: string) {
   const s = useStoreId()
   return useQuery({ queryKey: keys.order(s, id), queryFn: () => api.get<OrderDetail>(`${base(s)}/orders/${id}`) })
 }
 
 export interface StatusChange {
-  id: number
+  id: string
   fulfillmentStatus: FulfillmentStatus
   note?: string
   courier?: string
@@ -198,7 +211,7 @@ export interface StatusChange {
 }
 
 /** Applique un statut dans toutes les listes et le détail en cache. */
-function patchOrderCaches(qc: ReturnType<typeof useQueryClient>, s: number, ids: number[], status: FulfillmentStatus) {
+function patchOrderCaches(qc: ReturnType<typeof useQueryClient>, s: string, ids: string[], status: FulfillmentStatus) {
   const snapshots: [QueryKey, unknown][] = qc.getQueriesData({ queryKey: keys.orders(s) })
   qc.setQueriesData<OrderList>({ queryKey: [...keys.orders(s), 'list'] }, (l) =>
     l ? { ...l, data: l.data.map((o: OrderListItem) => (ids.includes(o.id) ? { ...o, fulfillmentStatus: status } : o)) } : l,
@@ -220,9 +233,7 @@ export function useOrderStatus() {
     },
     onError: (_e, _v, ctx) => ctx?.snapshots.forEach(([k, d]) => qc.setQueryData(k, d)),
     onSettled: () => {
-      void qc.invalidateQueries({ queryKey: keys.orders(s) })
-      void qc.invalidateQueries({ queryKey: keys.customers(s) })
-      void qc.invalidateQueries({ queryKey: [...keys.store(s), 'stats'] })
+      refreshAfterOrderChange(qc, s)
     },
   })
 }
@@ -231,30 +242,29 @@ export function useBulkOrderStatus() {
   const s = useStoreId()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ ids, ...body }: Omit<StatusChange, 'id'> & { ids: number[] }) =>
-      api.post<{ results: { id: number; ok: boolean; error?: string }[] }>(`${base(s)}/orders/bulk-status`, { ids, ...body }),
+    mutationFn: ({ ids, ...body }: Omit<StatusChange, 'id'> & { ids: string[] }) =>
+      api.post<{ results: { id: string; ok: boolean; error?: string }[] }>(`${base(s)}/orders/bulk-status`, { ids, ...body }),
     onMutate: async (v) => {
       await qc.cancelQueries({ queryKey: keys.orders(s) })
       return { snapshots: patchOrderCaches(qc, s, v.ids, v.fulfillmentStatus) }
     },
     onError: (_e, _v, ctx) => ctx?.snapshots.forEach(([k, d]) => qc.setQueryData(k, d)),
     onSettled: () => {
-      void qc.invalidateQueries({ queryKey: keys.orders(s) })
-      void qc.invalidateQueries({ queryKey: [...keys.store(s), 'stats'] })
+      refreshAfterOrderChange(qc, s)
     },
   })
 }
 
-export function useOrderPayment(id: number) {
+export function useOrderPayment(id: string) {
   const s = useStoreId()
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: { paymentStatus: PaymentStatus; note?: string }) => api.post(`${base(s)}/orders/${id}/payment`, body),
-    onSettled: () => qc.invalidateQueries({ queryKey: keys.orders(s) }),
+    onSettled: () => refreshAfterOrderChange(qc, s),
   })
 }
 
-export function useOrderNote(id: number) {
+export function useOrderNote(id: string) {
   const s = useStoreId()
   const qc = useQueryClient()
   return useMutation({
@@ -263,12 +273,12 @@ export function useOrderNote(id: number) {
   })
 }
 
-export function useUpdateOrder(id: number) {
+export function useUpdateOrder(id: string) {
   const s = useStoreId()
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: Record<string, string | null>) => api.patch(`${base(s)}/orders/${id}`, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.orders(s) }),
+    onSuccess: () => refreshAfterOrderChange(qc, s),
   })
 }
 
@@ -276,15 +286,14 @@ export function useCreateManualOrder() {
   const s = useStoreId()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: unknown) => api.post<{ id: number; orderNumber: string }>(`${base(s)}/orders`, body),
+    mutationFn: (body: unknown) => api.post<{ id: string; orderNumber: string }>(`${base(s)}/orders`, body),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: keys.orders(s) })
-      void qc.invalidateQueries({ queryKey: keys.customers(s) })
+      refreshAfterOrderChange(qc, s)
     },
   })
 }
 
-export const ordersCsvUrl = (storeId: number, q: Query) => {
+export const ordersCsvUrl = (storeId: string, q: Query) => {
   const qs = new URLSearchParams()
   for (const [k, v] of Object.entries(q)) if (v != null && v !== '' && k !== 'page') qs.set(k, String(v))
   const str = qs.toString()
@@ -302,12 +311,12 @@ export function useCustomers(q: string, page = 1) {
   })
 }
 
-export function useCustomer(id: number) {
+export function useCustomer(id: string) {
   const s = useStoreId()
   return useQuery({ queryKey: keys.customer(s, id), queryFn: () => api.get<CustomerDetail>(`${base(s)}/customers/${id}`) })
 }
 
-export function useUpdateCustomer(id: number) {
+export function useUpdateCustomer(id: string) {
   const s = useStoreId()
   const qc = useQueryClient()
   return useMutation({
@@ -322,7 +331,7 @@ export function useUpdateCustomer(id: number) {
 
 // ─── Zones & codes promo (CRUD simples) ──────────────────────────────────────
 
-function useCrud<T extends { id: number }>(resource: 'zones' | 'promo-codes', keyFn: (s: number) => QueryKey) {
+function useCrud<T extends { id: number }>(resource: 'zones' | 'promo-codes', keyFn: (s: string) => QueryKey) {
   const s = useStoreId()
   const qc = useQueryClient()
   const key = keyFn(s)
@@ -388,15 +397,17 @@ export function useStats(from: string, to: string) {
   const s = useStoreId()
   return useQuery({
     queryKey: keys.stats(s, from, to),
+    // Les nouvelles commandes apparaissent sans recharger la page.
+    refetchInterval: 60_000,
     queryFn: () => api.get<StatsOverview>(`${base(s)}/stats/overview`, { from, to }),
     placeholderData: keepPreviousData,
   })
 }
 
-export function uploadImage(storeId: number, file: File, preset: 'cover' | 'thumbnail' | 'content' | 'gallery', onProgress?: (ratio: number) => void) {
+export function uploadImage(storeId: string, file: File, preset: 'cover' | 'thumbnail' | 'content' | 'gallery', onProgress?: (ratio: number) => void) {
   return api.upload<{ key: string; url: string | null; size: number }>(`${base(storeId)}/uploads/image`, file, { preset }, onProgress)
 }
 
-export function uploadFile(storeId: number, file: File, onProgress?: (ratio: number) => void) {
+export function uploadFile(storeId: string, file: File, onProgress?: (ratio: number) => void) {
   return api.upload<{ key: string; name: string; size: number }>(`${base(storeId)}/uploads/file`, file, undefined, onProgress)
 }

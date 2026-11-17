@@ -43,7 +43,7 @@ export function HomeRedirect() {
   const { data: me } = useMe()
   if (!me) return null
   if (!me.stores.length) return <Navigate to="/onboarding" replace />
-  const last = Number(readLocal(LAST_STORE_KEY))
+  const last = readLocal(LAST_STORE_KEY)
   const target = me.stores.find((s) => s.id === last) ?? me.stores[0]!
   return <Navigate to={`/stores/${target.id}`} replace />
 }

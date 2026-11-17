@@ -1,10 +1,12 @@
-import { ArrowDownRight, ArrowUpRight, Banknote, PackageCheck, PhoneCall, Plus, ShoppingBag, Truck } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Banknote, Check, Copy, ExternalLink, PackageCheck, PhoneCall, Plus, ShoppingBag, Truck } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ButtonLink, Card, cx, EmptyState, ErrorState, PageHeader, Segmented, Skeleton } from '@/components/ui'
 import { useCurrentStore } from '@/hooks/auth'
-import { useStats } from '@/hooks/resources'
+import { usePaymentAccounts, useProducts, useStats, useZones } from '@/hooks/resources'
+import { salesPageUrl } from './products/ProductsList'
+import { useToast } from '@/components/Toast'
 import { day, isoDay, money, num, percent } from '@/lib/format'
 import type { StatsOverview } from '@/lib/types'
 
@@ -180,19 +182,7 @@ export default function Dashboard() {
 
       {empty ? (
         <div className="mt-4">
-          <EmptyState
-            icon={<ShoppingBag className="size-5" />}
-            title="Pas encore de commandes sur la période"
-            description="Ajoutez un produit et partagez sa page de vente, ou saisissez une commande reçue sur WhatsApp."
-            action={
-              <div className="flex flex-wrap justify-center gap-2">
-                <ButtonLink to={`${base}/products/new`} variant="primary">
-                  <Plus className="size-4" /> Ajouter un produit
-                </ButtonLink>
-                <ButtonLink to={`${base}/orders/new`}>Saisir une commande</ButtonLink>
-              </div>
-            }
-          />
+          <GettingStarted base={base} />
         </div>
       ) : (
         <>
@@ -218,5 +208,84 @@ export default function Dashboard() {
         </>
       )}
     </div>
+  )
+}
+
+/**
+ * Écran « Bien démarrer » : affiché tant qu'il n'y a pas de commande.
+ * Chaque étape est calculée à partir des vraies données de la boutique.
+ */
+function GettingStarted({ base }: { base: string }) {
+  const { store } = useCurrentStore()
+  const toast = useToast()
+  const products = useProducts()
+  const zones = useZones().list
+  const payments = usePaymentAccounts()
+  const list = products.data ?? []
+  const active = list.filter((p) => p.isActive)
+  const needsZones = list.some((p) => p.type === 'physical')
+  const needsPayments = list.some((p) => p.paymentMethod === 'native')
+  const nativeOn = (payments.data ?? []).some((a) => a.enabled && ['feexpay', 'fedapay', 'paydunya', 'pawapay'].includes(a.provider))
+  const first = active[0] ?? null
+  const link = first && store ? salesPageUrl(store.slug, first.id).replace('?notrack', '') : null
+
+  if (products.isPending) return <Skeleton className="h-56 w-full rounded-xl" />
+
+  const steps: { done: boolean; title: string; text: string; to: string; cta: string; show: boolean }[] = [
+    { show: true, done: list.length > 0, title: 'Créer un produit', text: 'Digital (ebook, formation…) ou physique (livré, payé à la livraison).', to: `${base}/products/new`, cta: 'Ajouter un produit' },
+    { show: list.length > 0, done: active.length > 0, title: 'Activer un produit', text: 'Un produit inactif n’est pas visible par vos clients.', to: `${base}/products`, cta: 'Voir mes produits' },
+    { show: needsZones, done: (zones.data ?? []).length > 0, title: 'Configurer la livraison', text: 'Zones et frais de livraison pour vos produits physiques.', to: `${base}/zones`, cta: 'Ajouter une zone' },
+    { show: needsPayments, done: nativeOn, title: 'Activer le paiement en ligne', text: 'Un de vos produits utilise le paiement intégré : activez au moins un moyen (FeexPay, FedaPay…).', to: `${base}/settings?tab=payments`, cta: 'Configurer' },
+  ]
+  const visible = steps.filter((s) => s.show)
+  const doneCount = visible.filter((s) => s.done).length
+
+  return (
+    <Card title="Bien démarrer" description={`${doneCount}/${visible.length} étapes terminées · aucune commande pour l’instant sur la période`}>
+      <ol className="divide-y divide-line">
+        {visible.map((s) => (
+          <li key={s.title} className="flex items-start gap-3 py-3">
+            <span className={cx('mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border text-xs', s.done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-line-strong text-muted')}>
+              {s.done ? <Check className="size-3.5" /> : null}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className={cx('text-sm font-medium', s.done && 'text-muted line-through')}>{s.title}</p>
+              {!s.done && <p className="text-[13px] text-muted">{s.text}</p>}
+            </div>
+            {!s.done && (
+              <ButtonLink to={s.to} size="sm" variant="primary">
+                {s.cta}
+              </ButtonLink>
+            )}
+          </li>
+        ))}
+      </ol>
+      {link && (
+        <div className="mt-3 rounded-lg bg-surface-2 p-3">
+          <p className="text-sm font-medium">Partagez votre page de vente pour recevoir vos premières commandes</p>
+          <p className="mt-0.5 text-[13px] text-muted">« {first!.name} » — à mettre dans vos pubs, votre bio ou sur WhatsApp.</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded-md border border-line bg-surface px-2 py-1.5 text-[13px]">{link}</code>
+            <button
+              type="button"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-surface px-3 text-sm hover:bg-surface-2"
+              onClick={() => {
+                void navigator.clipboard?.writeText(link).then(() => toast.success('Lien copié'))
+              }}
+            >
+              <Copy className="size-3.5" /> Copier
+            </button>
+            <a href={`${link}?notrack`} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-surface px-3 text-sm hover:bg-surface-2">
+              <ExternalLink className="size-3.5" /> Ouvrir
+            </a>
+          </div>
+        </div>
+      )}
+      <div className="mt-3 flex justify-end">
+        <ButtonLink to={`${base}/orders/new`} size="sm">
+          <Plus className="size-4" /> Saisir une commande reçue sur WhatsApp
+        </ButtonLink>
+      </div>
+    </Card>
   )
 }

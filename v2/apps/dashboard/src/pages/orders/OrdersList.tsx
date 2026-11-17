@@ -126,7 +126,7 @@ function FiltersDialog({ open, onClose, params, apply }: { open: boolean; onClos
   )
 }
 
-function BulkBar({ ids, orders, onDone }: { ids: number[]; orders: OrderListItem[]; onDone: () => void }) {
+function BulkBar({ ids, orders, onDone }: { ids: string[]; orders: OrderListItem[]; onDone: () => void }) {
   const bulk = useBulkOrderStatus()
   const toast = useToast()
   const [ship, setShip] = useState(false)
@@ -199,7 +199,7 @@ export default function OrdersList() {
   const [search, setSearch] = useState(params.get('q') ?? '')
   const q = useDebounced(search.trim(), 350)
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [selected, setSelected] = useState<number[]>([])
+  const [selected, setSelected] = useState<string[]>([])
 
   const status = (params.get('status') ?? '') as FulfillmentStatus | ''
   const page = Number(params.get('page') ?? 1) || 1
@@ -237,7 +237,7 @@ export default function OrdersList() {
   const activeFilters = ['type', 'payment', 'from', 'to'].filter((k) => params.get(k))
   const rows = data?.data ?? []
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
-  const toggle = (id: number, v: boolean) => setSelected((s) => (v ? [...s, id] : s.filter((x) => x !== id)))
+  const toggle = (id: string, v: boolean) => setSelected((s) => (v ? [...s, id] : s.filter((x) => x !== id)))
 
   return (
     <>

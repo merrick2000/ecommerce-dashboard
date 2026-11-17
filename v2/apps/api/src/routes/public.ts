@@ -2,7 +2,7 @@
  * API publique consommée par le storefront (/api/v1). Aucune authentification :
  * chaque route ne renvoie que ce qu'un visiteur a le droit de voir.
  */
-import { NATIVE_PROVIDERS, publicOrderCreateSchema } from '@zuri/shared'
+import { NATIVE_PROVIDERS, productIdSchema, publicOrderCreateSchema, storeIdSchema } from '@zuri/shared'
 import { and, asc, desc, eq, gte, isNull, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
@@ -60,10 +60,13 @@ export const publicRoutes = new Hono<AppEnv>()
     })
   })
   /** Tout ce qu'il faut pour afficher une page de vente. */
-  .get('/checkout/:slug/:productId', v('param', z.object({ slug: z.string(), productId: z.coerce.number().int() })), async (c) => {
+  .get('/checkout/:slug/:productId', v('param', z.object({ slug: z.string(), productId: z.string().max(40) })), async (c) => {
     const { slug, productId } = c.req.valid('param')
     const store = await storeBySlug(slug)
-    const [product] = await db.select().from(products).where(and(eq(products.id, productId), eq(products.storeId, store.id), eq(products.isActive, true))).limit(1)
+    // Ancien lien numérique (/p/123, pubs de Sellit v1) : on retrouve le produit par son ancien numéro.
+    // Le storefront voit que product.id diffère de l'URL et redirige (301) vers la nouvelle adresse.
+    const byId = /^\d{1,10}$/.test(productId) ? eq(products.legacyId, Number(productId)) : eq(products.id, productId)
+    const [product] = await db.select().from(products).where(and(byId, eq(products.storeId, store.id), eq(products.isActive, true))).limit(1)
     if (!product) throw notFound('Produit')
     const [cfg, variants, zones, providers] = await Promise.all([
       db.select().from(checkoutSettings).where(eq(checkoutSettings.storeId, store.id)).limit(1).then((r) => r[0]),
@@ -109,7 +112,7 @@ export const publicRoutes = new Hono<AppEnv>()
       onlinePaymentEnabled,
     })
   })
-  .post('/promo/check', rateLimit({ key: 'promo', limit: 30, windowSec: 300 }), v('json', z.object({ storeSlug: z.string(), productId: z.coerce.number().int(), code: z.string().trim().toUpperCase().max(30), subtotal: z.coerce.number().min(0) })), async (c) => {
+  .post('/promo/check', rateLimit({ key: 'promo', limit: 30, windowSec: 300 }), v('json', z.object({ storeSlug: z.string(), productId: productIdSchema, code: z.string().trim().toUpperCase().max(30), subtotal: z.coerce.number().min(0) })), async (c) => {
     const body = c.req.valid('json')
     const store = await storeBySlug(body.storeSlug)
     const [rule] = await db.select().from(promoCodes).where(and(eq(promoCodes.storeId, store.id), eq(promoCodes.code, body.code))).limit(1)
@@ -179,7 +182,7 @@ export const publicRoutes = new Hono<AppEnv>()
     return c.json({ links, expiresIn: 1800 })
   })
   /** Panier abandonné : coordonnées laissées dans le formulaire. */
-  .post('/leads', rateLimit({ key: 'lead', limit: 20, windowSec: 600 }), v('json', z.object({ storeSlug: z.string(), productId: z.coerce.number().int(), email: z.string().trim().toLowerCase().email().optional(), phone: z.string().max(30).optional(), name: z.string().max(120).optional() })), async (c) => {
+  .post('/leads', rateLimit({ key: 'lead', limit: 20, windowSec: 600 }), v('json', z.object({ storeSlug: z.string(), productId: productIdSchema, email: z.string().trim().toLowerCase().email().optional(), phone: z.string().max(30).optional(), name: z.string().max(120).optional() })), async (c) => {
     const body = c.req.valid('json')
     if (!body.email && !body.phone) throw badRequest('Email ou téléphone requis')
     const store = await storeBySlug(body.storeSlug)
@@ -202,7 +205,7 @@ export const publicRoutes = new Hono<AppEnv>()
   .post(
     '/track',
     rateLimit({ key: 'track', limit: 240, windowSec: 60 }),
-    v('json', z.object({ storeId: z.number().int(), productId: z.number().int().nullable().optional(), eventType: z.enum(EVENT_TYPES), sessionId: z.string().min(8).max(64), referrer: z.string().max(2048).optional(), utmSource: z.string().max(255).optional(), utmMedium: z.string().max(255).optional(), utmCampaign: z.string().max(255).optional(), metadata: z.record(z.string(), z.unknown()).optional() })),
+    v('json', z.object({ storeId: storeIdSchema, productId: productIdSchema.nullable().optional(), eventType: z.enum(EVENT_TYPES), sessionId: z.string().min(8).max(64), referrer: z.string().max(2048).optional(), utmSource: z.string().max(255).optional(), utmMedium: z.string().max(255).optional(), utmCampaign: z.string().max(255).optional(), metadata: z.record(z.string(), z.unknown()).optional() })),
     async (c) => {
       const b = c.req.valid('json')
       const ua = c.req.header('user-agent') ?? ''

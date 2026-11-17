@@ -208,7 +208,7 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
   return { order: result.order, promoError: result.promoError }
 }
 
-async function upsertCustomer(tx: Tx, storeId: number, data: { phone: string; name: string; email: string | null; city: string | null; address: string | null }) {
+async function upsertCustomer(tx: Tx, storeId: string, data: { phone: string; name: string; email: string | null; city: string | null; address: string | null }) {
   const [row] = await tx
     .insert(customers)
     .values({ storeId, ...data, ordersCount: 1 })
@@ -232,7 +232,7 @@ async function upsertCustomer(tx: Tx, storeId: number, data: { phone: string; na
  * Marque une commande payée. Idempotent et sûr en concurrence (webhook + polling
  * simultanés) : verrou de ligne, puis effets de bord déclenchés une seule fois.
  */
-export async function markOrderPaid(orderId: number, info: { provider?: string | null; ref?: string | null; userId?: number; note?: string }) {
+export async function markOrderPaid(orderId: string, info: { provider?: string | null; ref?: string | null; userId?: number; note?: string }) {
   const changed = await db.transaction(async (tx) => {
     const [order] = await tx.select().from(orders).where(eq(orders.id, orderId)).for('update').limit(1)
     if (!order) throw notFound('Commande')
@@ -294,7 +294,7 @@ const STATUS_LABEL: Record<FulfillmentStatus, string> = {
 /** Change le statut logistique en respectant la machine d'état. */
 export async function transitionFulfillment(
   store: Store,
-  orderId: number,
+  orderId: string,
   to: FulfillmentStatus,
   opts: { userId: number; note?: string; courier?: string; trackingNumber?: string },
 ) {
@@ -356,7 +356,7 @@ export async function transitionFulfillment(
   if (result.becamePaid) await enqueue('order.paid', { orderId })
 }
 
-async function restock(tx: Tx, orderId: number, sign: 1 | -1 = 1) {
+async function restock(tx: Tx, orderId: string, sign: 1 | -1 = 1) {
   const items = await tx
     .select({ item: orderItems, track: products.trackInventory })
     .from(orderItems)
@@ -379,7 +379,7 @@ async function restock(tx: Tx, orderId: number, sign: 1 | -1 = 1) {
   }
 }
 
-export async function setPaymentStatus(store: Store, orderId: number, status: PaymentStatus, userId: number, note?: string) {
+export async function setPaymentStatus(store: Store, orderId: string, status: PaymentStatus, userId: number, note?: string) {
   const [order] = await db.select().from(orders).where(and(eq(orders.id, orderId), eq(orders.storeId, store.id))).limit(1)
   if (!order) throw notFound('Commande')
   if (status === 'paid') return markOrderPaid(orderId, { userId, note: note ?? 'Paiement marqué reçu manuellement' })

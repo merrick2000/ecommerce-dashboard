@@ -9,9 +9,9 @@ import { Client } from './helpers'
 const owner = new Client()
 const intruder = new Client()
 const visitor = new Client()
-let storeId = 0
-let physicalId = 0
-let digitalId = 0
+let storeId = ''
+let physicalId = ''
+let digitalId = ''
 let variantId = 0
 let zoneId = 0
 
@@ -112,7 +112,7 @@ describe('catalogue', () => {
 })
 
 describe('commande COD de bout en bout', () => {
-  let orderId = 0
+  let orderId = ''
   let token = ''
 
   test('page de vente publique : zones, variantes, stock', async () => {
@@ -155,7 +155,7 @@ describe('commande COD de bout en bout', () => {
 
   test('vue publique par jeton uniquement', async () => {
     expect((await visitor.get(`/api/v1/orders/${token}`)).body.orderNumber).toMatch(/^SLT-/)
-    expect((await visitor.get(`/api/v1/orders/${orderId}`)).status).toBe(422)
+    expect((await visitor.get(`/api/v1/orders/${orderId}`)).status).toBe(404)
     expect((await visitor.get('/api/v1/orders/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).status).toBe(404)
   })
 
@@ -278,7 +278,7 @@ describe('stats & divers', () => {
   })
 
   test('track : produit inconnu ignoré sans erreur 500', async () => {
-    const r = await visitor.post('/api/v1/track', { storeId, productId: 999999, eventType: 'page_view', sessionId: 'session-12345' })
+    const r = await visitor.post('/api/v1/track', { storeId, productId: 'prd_inexistant0000000', eventType: 'page_view', sessionId: 'session-12345' })
     expect(r.status).toBe(204)
   })
 
@@ -341,5 +341,32 @@ describe('commande manuelle', () => {
     const today = new Date().toISOString().slice(0, 10)
     const r = await owner.get(`/api/stores/${storeId}/orders?to=${today}`)
     expect(r.body.total).toBeGreaterThan(0)
+  })
+})
+
+describe('identifiants publics', () => {
+  test('boutique, produit, commande, client : préfixe + 16 caractères aléatoires', async () => {
+    expect(storeId).toMatch(/^shp_[0-9A-Za-z]{16}$/)
+    expect(physicalId).toMatch(/^prd_[0-9A-Za-z]{16}$/)
+    const list = await owner.get(`/api/stores/${storeId}/orders`)
+    expect(list.body.data[0].id).toMatch(/^ord_[0-9A-Za-z]{16}$/)
+    expect(list.body.data[0].customerId).toMatch(/^cus_[0-9A-Za-z]{16}$/)
+  })
+
+  test('identifiant mal formé → 404 (pas d’erreur serveur)', async () => {
+    expect((await owner.get('/api/stores/1/products')).status).toBe(404)
+    expect((await owner.get(`/api/stores/${storeId}/products/12`)).status).toBe(422)
+  })
+
+  test('ancien lien de pub /p/123 : le produit est retrouvé par son ancien numéro', async () => {
+    await db.update(products).set({ legacyId: 123, isActive: true }).where(eq(products.id, physicalId))
+    const r = await visitor.get('/api/v1/checkout/ma-boutique/123')
+    expect(r.status).toBe(200)
+    expect(r.body.product.id).toBe(physicalId)
+  })
+
+  test('export CSV : colonne Articles correcte', async () => {
+    const res = await owner.get(`/api/stores/${storeId}/orders/export.csv`)
+    expect(res.body).toContain('x Montre connectée X1')
   })
 })

@@ -1,4 +1,4 @@
-import { productInputSchema, type ProductInput } from '@zuri/shared'
+import { productIdSchema, productInputSchema, type ProductInput } from '@zuri/shared'
 import { and, asc, desc, eq, inArray, notInArray, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
@@ -12,9 +12,9 @@ import { v } from '../lib/validate'
 import { displayPrice } from '../services/pricing'
 import { publicUrl } from '../services/storage'
 
-const idParam = z.object({ id: z.coerce.number().int().positive() })
+const idParam = z.object({ id: productIdSchema })
 
-function toRow(input: ProductInput, storeId: number, baseCurrency: string) {
+function toRow(input: ProductInput, storeId: string, baseCurrency: string) {
   const { variants: _variants, ...rest } = input
   return {
     ...rest,
@@ -27,7 +27,7 @@ function toRow(input: ProductInput, storeId: number, baseCurrency: string) {
   }
 }
 
-async function syncVariants(tx: Tx, productId: number, variants: ProductInput['variants']) {
+async function syncVariants(tx: Tx, productId: string, variants: ProductInput['variants']) {
   const keepIds = variants.map((v) => v.id).filter((id): id is number => typeof id === 'number')
   await tx
     .delete(productVariants)
@@ -47,7 +47,7 @@ async function syncVariants(tx: Tx, productId: number, variants: ProductInput['v
   }
 }
 
-async function loadProduct(storeId: number, id: number) {
+async function loadProduct(storeId: string, id: string) {
   const [product] = await db.select().from(products).where(and(eq(products.id, id), eq(products.storeId, storeId))).limit(1)
   if (!product) throw notFound('Produit')
   const variants = await db.select().from(productVariants).where(eq(productVariants.productId, id)).orderBy(asc(productVariants.position))
@@ -70,8 +70,8 @@ export const productRoutes = new Hono<AppEnv>()
         sales: dsql<number>`coalesce(sum(${orderItems.quantity}) filter (where ${orders.paymentStatus} = 'paid' or ${orders.fulfillmentStatus} = 'delivered'), 0)::int`,
         revenue: dsql<number>`coalesce(sum(${orderItems.total}) filter (where ${orders.paymentStatus} = 'paid'), 0)::float`,
         pending: dsql<number>`count(${orders.id}) filter (where ${orders.fulfillmentStatus} in ('new','unreachable'))::int`,
-        variantStock: dsql<number | null>`(select sum(${productVariants.stock})::int from ${productVariants} where ${productVariants.productId} = ${products.id} and ${productVariants.isActive})`,
-        variantCount: dsql<number>`(select count(*)::int from ${productVariants} where ${productVariants.productId} = ${products.id})`,
+        variantStock: dsql<number | null>`(select sum(${productVariants.stock})::int from ${productVariants} where "product_variants"."product_id" = "products"."id" and "product_variants"."is_active")`,
+        variantCount: dsql<number>`(select count(*)::int from ${productVariants} where "product_variants"."product_id" = "products"."id")`,
       })
       .from(products)
       .leftJoin(orderItems, eq(orderItems.productId, products.id))
@@ -83,6 +83,7 @@ export const productRoutes = new Hono<AppEnv>()
       rows.map(({ product, ...stats }) => ({
         id: product.id,
         type: product.type,
+        paymentMethod: product.payment.method,
         name: product.name,
         isActive: product.isActive,
         thumbnail: publicUrl(product.thumbnail ?? product.coverImage),
@@ -149,7 +150,7 @@ export const productRoutes = new Hono<AppEnv>()
     if (!row) throw notFound('Produit')
     return c.json({ ok: true })
   })
-  .post('/bulk-active', requireRole('staff'), v('json', z.object({ ids: z.array(z.number().int()).min(1).max(500), isActive: z.boolean() })), async (c) => {
+  .post('/bulk-active', requireRole('staff'), v('json', z.object({ ids: z.array(productIdSchema).min(1).max(500), isActive: z.boolean() })), async (c) => {
     const { ids, isActive } = c.req.valid('json')
     await db.update(products).set({ isActive }).where(and(eq(products.storeId, c.get('store').id), inArray(products.id, ids)))
     return c.json({ ok: true })

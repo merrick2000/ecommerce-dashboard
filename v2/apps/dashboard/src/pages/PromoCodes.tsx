@@ -17,7 +17,7 @@ interface PromoForm {
   value: number | null
   maxUses: number | null
   minSubtotal: number | null
-  productIds: number[]
+  productIds: string[]
   startsAt: string
   endsAt: string
   isActive: boolean
@@ -83,7 +83,7 @@ function PromoDialog({ promo, open, onClose }: { promo: PromoCode | null; open: 
     )
   }
 
-  const toggleProduct = (id: number) => setForm((f) => ({ ...f, productIds: f.productIds.includes(id) ? f.productIds.filter((x) => x !== id) : [...f.productIds, id] }))
+  const toggleProduct = (id: string) => setForm((f) => ({ ...f, productIds: f.productIds.includes(id) ? f.productIds.filter((x) => x !== id) : [...f.productIds, id] }))
 
   return (
     <Dialog

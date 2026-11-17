@@ -15,6 +15,7 @@ import * as s from './schema'
 import { encrypt, encryptJson, orderNumber, randomToken } from '../lib/crypto'
 import { env } from '../lib/env'
 import { normalizePhone } from '../services/orders'
+import { newId } from '../lib/ids'
 import { DEFAULT_CHECKOUT } from '../routes/stores'
 import { sql as dsql } from 'drizzle-orm'
 
@@ -159,6 +160,14 @@ async function main() {
   const redirectOnly =
     enabledProviders.length > 0 && enabledProviders.every((p) => p === 'chariow' || p === 'maketou') ? ((enabledProviders.includes('chariow') ? 'chariow' : 'maketou') as 'chariow' | 'maketou') : null
 
+  // Ancien numéro → nouvel identifiant public (les ID séquentiels ne sont plus exposés).
+  const storeIds = new Map<number, string>(stores.map((st) => [Number(st.id), newId('shp')]))
+  const productIds = new Map<number, string>(products.map((p) => [Number(p.id), newId('prd')]))
+  const orderIds = new Map<number, string>(orders.map((o) => [Number(o.id), newId('ord')]))
+  const S = (v: unknown) => storeIds.get(Number(v))!
+  const P = (v: unknown) => (v == null ? null : (productIds.get(Number(v)) ?? null))
+  const O = (v: unknown) => orderIds.get(Number(v))!
+
   await db.transaction(async (tx) => {
     // Utilisateurs (mots de passe bcrypt conservés, rehachés à la 1re connexion)
     for (const [i, u] of users.entries()) {
@@ -177,7 +186,7 @@ async function main() {
 
     for (const st of stores) {
       await tx.insert(s.stores).values({
-        id: Number(st.id),
+        id: S(st.id),
         name: st.name,
         slug: st.slug,
         subdomain: st.subdomain ?? st.slug,
@@ -191,7 +200,7 @@ async function main() {
         timezone: 'Africa/Porto-Novo', // boutiques v1 : Bénin
         createdAt: date(st.created_at),
       })
-      await tx.insert(s.storeMembers).values({ storeId: Number(st.id), userId: Number(st.user_id), role: 'owner' })
+      await tx.insert(s.storeMembers).values({ storeId: S(st.id), userId: Number(st.user_id), role: 'owner' })
       bump('stores')
 
       // Les clés de paiement étaient GLOBALES en v1 : on les copie sur chaque boutique (outil mono-propriétaire).
@@ -204,7 +213,7 @@ async function main() {
             creds[mode] = Object.fromEntries(Object.entries(PROVIDER_KEYS[provider]!).flatMap(([from, to]) => (src[from] ? [[to, String(src[from])]] : [])))
           }
           await tx.insert(s.paymentAccounts).values({
-            storeId: Number(st.id),
+            storeId: S(st.id),
             provider: provider as s.PaymentAccount['provider'],
             enabled: Boolean(cfg?.enabled),
             mode: globalPay.mode as 'sandbox' | 'live',
@@ -221,13 +230,13 @@ async function main() {
       if (promo.code && /^[A-Za-z0-9_-]{3,30}$/.test(promo.code)) {
         const [code] = await tx
           .insert(s.promoCodes)
-          .values({ storeId: Number(st.id), code: String(promo.code).toUpperCase(), type: promo.type === 'fixed' ? 'fixed' : 'percentage', value: num(promo.value, 10), isActive: true })
+          .values({ storeId: S(st.id), code: String(promo.code).toUpperCase(), type: promo.type === 'fixed' ? 'fixed' : 'percentage', value: num(promo.value, 10), isActive: true })
           .returning({ id: s.promoCodes.id })
         settings.abandonedCart = { enabled: Boolean(promo.enabled), promoCodeId: code!.id }
         bump('promo_codes')
       }
       await tx.insert(s.checkoutSettings).values({
-        storeId: Number(st.id),
+        storeId: S(st.id),
         settings,
         facebookPixelId: /^\d{5,20}$/.test(tracking.facebook_pixel_id ?? '') ? tracking.facebook_pixel_id : null,
         facebookTestEventCode: tracking.facebook_test_event_code ?? null,
@@ -240,8 +249,9 @@ async function main() {
     for (const p of products) {
       const deliveryType = p.delivery_type === 'external_url' && isUrl(p.external_url) ? 'external_url' : 'file'
       await tx.insert(s.products).values({
-        id: Number(p.id),
-        storeId: Number(p.store_id),
+        id: P(p.id)!,
+        legacyId: Number(p.id),
+        storeId: S(p.store_id),
         type: 'digital',
         name: p.name,
         isActive: Boolean(p.is_active),
@@ -267,11 +277,11 @@ async function main() {
     }
 
     const productById = new Map(products.map((p) => [Number(p.id), p]))
-    const customerIds = new Map<string, number>()
+    const customerIds = new Map<string, string>()
     for (const o of orders) {
-      const storeId = Number(o.store_id)
+      const storeId = S(o.store_id)
       const phone = o.customer_phone ? normalizePhone(o.customer_phone).slice(0, 30) : null
-      let customerId: number | null = null
+      let customerId: string | null = null
       if (phone && phone.length >= 6) {
         const key = `${storeId}:${phone}`
         customerId = customerIds.get(key) ?? null
@@ -291,7 +301,7 @@ async function main() {
       const external = o.source && o.source !== 'native'
       const created = date(o.created_at)
       await tx.insert(s.orders).values({
-        id: Number(o.id),
+        id: O(o.id),
         storeId,
         orderNumber: o.order_number ?? orderNumber(),
         accessToken: randomToken(24),
@@ -324,15 +334,15 @@ async function main() {
       })
       const product = productById.get(Number(o.product_id))
       await tx.insert(s.orderItems).values({
-        orderId: Number(o.id),
-        productId: product ? Number(o.product_id) : null,
+        orderId: O(o.id),
+        productId: product ? P(o.product_id) : null,
         productType: 'digital',
         name: product?.name ?? 'Produit supprimé',
         quantity: 1,
         unitPrice: num(o.amount),
         total: num(o.amount),
       })
-      await tx.insert(s.orderEvents).values({ orderId: Number(o.id), type: 'imported', message: 'Importée depuis Sellit v1', createdAt: created })
+      await tx.insert(s.orderEvents).values({ orderId: O(o.id), type: 'imported', message: 'Importée depuis Sellit v1', createdAt: created })
       bump('orders')
     }
 
@@ -343,7 +353,7 @@ async function main() {
       const ref = t.provider_ref && !seenRefs.has(key) ? t.provider_ref : null
       if (t.provider_ref) seenRefs.add(key)
       await tx.insert(s.paymentTransactions).values({
-        orderId: Number(t.order_id),
+        orderId: O(t.order_id),
         provider: t.provider,
         providerRef: ref,
         country: t.country?.slice(0, 2) ?? null,
@@ -364,8 +374,8 @@ async function main() {
       await tx
         .insert(s.leads)
         .values({
-          storeId: Number(l.store_id),
-          productId: productById.has(Number(l.product_id)) ? Number(l.product_id) : null,
+          storeId: S(l.store_id),
+          productId: P(l.product_id),
           email: l.customer_email?.toLowerCase() ?? null,
           phone: l.customer_phone ? normalizePhone(l.customer_phone).slice(0, 30) : null,
           name: l.customer_name,
@@ -382,7 +392,7 @@ async function main() {
     }
 
     for (const d of clicks) {
-      await tx.insert(s.downloads).values({ orderId: Number(d.order_id), productId: productById.has(Number(d.product_id)) ? Number(d.product_id) : null, createdAt: date(d.clicked_at) })
+      await tx.insert(s.downloads).values({ orderId: O(d.order_id), productId: P(d.product_id), createdAt: date(d.clicked_at) })
       bump('downloads')
     }
 
@@ -393,8 +403,8 @@ async function main() {
       if (!batch.length) break
       await tx.insert(s.pageEvents).values(
         batch.map((e) => ({
-          storeId: Number(e.store_id),
-          productId: e.product_id && productById.has(Number(e.product_id)) ? Number(e.product_id) : null,
+          storeId: S(e.store_id),
+          productId: P(e.product_id),
           eventType: e.event_type,
           sessionId: e.session_id,
           ipHash: e.ip_hash,
@@ -413,7 +423,8 @@ async function main() {
     }
 
     // Les séquences reprennent après les ID importés.
-    for (const table of ['users', 'stores', 'products', 'orders']) {
+    // Seule la table users garde des ID numériques : on recale sa séquence.
+    for (const table of ['users']) {
       await tx.execute(dsql.raw(`select setval(pg_get_serial_sequence('${table}', 'id'), coalesce((select max(id) from ${table}), 0) + 1, false)`))
     }
 

@@ -11,7 +11,7 @@ import { v } from '../lib/validate'
 
 const idParam = z.object({ id: z.coerce.number().int().positive() })
 
-async function assertCodeFree(storeId: number, code: string, exceptId?: number) {
+async function assertCodeFree(storeId: string, code: string, exceptId?: number) {
   const [hit] = await db.select({ id: promoCodes.id }).from(promoCodes).where(and(eq(promoCodes.storeId, storeId), eq(promoCodes.code, code))).limit(1)
   if (hit && hit.id !== exceptId) throw conflict('Ce code existe déjà', 'code_taken')
 }

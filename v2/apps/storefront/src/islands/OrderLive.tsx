@@ -12,7 +12,7 @@ import PaymentStep from './PaymentStep'
 export interface OrderLiveProps {
   token: string
   slug: string
-  storeId: number
+  storeId: string
   storeCountry: string
   locale: string
   total: number
@@ -42,7 +42,7 @@ export default function OrderLive(p: OrderLiveProps) {
   // Purchase : COD dès la commande, paiement en ligne une fois payé — une seule fois par commande.
   useEffect(() => {
     const isSale = p.paymentStatus === 'paid' || (p.paymentMethod === 'cod' && p.fulfillmentStatus !== 'cancelled')
-    const saved = getJSON<{ fb: string | null; tt: string | null; productId: number; name: string; storeId: number }>(`sf_o_${p.token}`)
+    const saved = getJSON<{ fb: string | null; tt: string | null; productId: string; name: string; storeId: string }>(`sf_o_${p.token}`)
     if (isSale && saved && (saved.fb || saved.tt)) {
       setTrackConfig({ storeId: saved.storeId, productId: saved.productId, fb: saved.fb, tt: saved.tt, name: saved.name, value: p.total, currency: p.currency })
       purchaseOnce(p.token, { value: p.total, currency: p.currency, eventId: p.eventId, numItems: p.numItems })

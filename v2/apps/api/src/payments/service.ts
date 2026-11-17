@@ -48,7 +48,7 @@ interface LoadedAccount {
   client: PaymentProviderClient
 }
 
-async function loadAccounts(storeId: number, onlyEnabled = true): Promise<LoadedAccount[]> {
+async function loadAccounts(storeId: string, onlyEnabled = true): Promise<LoadedAccount[]> {
   const rows = await db
     .select()
     .from(paymentAccounts)
@@ -65,7 +65,7 @@ async function loadAccounts(storeId: number, onlyEnabled = true): Promise<Loaded
 const webhookUrl = (provider: string, token: string) => `${env.APP_URL.replace(/\/$/, '')}/api/v1/webhooks/${provider}/${token}`
 
 /** Pays et réseaux réellement payables pour cette boutique (selon les moyens activés). */
-export async function availableNetworks(storeId: number) {
+export async function availableNetworks(storeId: string) {
   const enabled = new Set((await loadAccounts(storeId)).map((a) => a.provider as string))
   const out: { country: string; networks: string[] }[] = []
   for (const [country, networks] of Object.entries(ROUTING)) {
@@ -210,7 +210,7 @@ export async function confirmOtp(token: string, otp: string): Promise<PublicPaym
  * C'est la SEULE voie qui peut marquer une commande payée côté provider
  * (webhook, polling et réconciliation passent tous par ici).
  */
-export async function refreshOrderPayment(orderId: number): Promise<'paid' | 'pending' | 'failed'> {
+export async function refreshOrderPayment(orderId: string): Promise<'paid' | 'pending' | 'failed'> {
   const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1)
   if (!order) return 'failed'
   if (order.paymentStatus === 'paid') return 'paid'

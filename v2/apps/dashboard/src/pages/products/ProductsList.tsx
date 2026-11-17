@@ -31,7 +31,7 @@ function Price({ p }: { p: ProductListItem }) {
 }
 
 /** Adresse publique de la page de vente (sous-domaine de la boutique). */
-export const salesPageUrl = (storeSlug: string, productId: number) => `https://${storeSlug}.zurisell.store/p/${productId}?notrack`
+export const salesPageUrl = (storeSlug: string, productId: string) => `https://${storeSlug}.zurisell.store/p/${productId}?notrack`
 
 const MENU_WIDTH = 208
 

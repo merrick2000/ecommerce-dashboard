@@ -3,7 +3,7 @@ import type { PaymentProvider } from '@zuri/shared'
 export type ProviderMode = 'sandbox' | 'live'
 
 export interface PaymentRequest {
-  orderId: number
+  orderId: string
   orderNumber: string
   amount: number
   currency: string

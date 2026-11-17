@@ -55,15 +55,15 @@ export function useLogout() {
 export function useCurrentStore() {
   const { storeId } = useParams()
   const { data: me } = useMe()
-  const id = Number(storeId)
+  const id = storeId ?? ''
   const store = me?.stores.find((s) => s.id === id) ?? null
   return { storeId: id, store, me: me ?? null, role: store?.role ?? (me?.isPlatformAdmin ? 'owner' : null) }
 }
 
 /** Identifiant numérique de la boutique de l'URL — utilisé par tous les hooks de ressources. */
-export function useStoreId(): number {
+export function useStoreId(): string {
   const { storeId } = useParams()
-  return Number(storeId)
+  return storeId ?? ''
 }
 
 /** Devise de la boutique courante (FCFA par défaut). */
