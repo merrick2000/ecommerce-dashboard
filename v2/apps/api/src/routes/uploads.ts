@@ -1,21 +1,15 @@
 import { Hono } from 'hono'
-import sharp from 'sharp'
 import { z } from 'zod'
 import { requirePermission } from '../lib/auth'
 import type { AppEnv } from '../lib/context'
 import { badRequest } from '../lib/errors'
 import { v } from '../lib/validate'
-import { privateKey, publicUrl, putObject } from '../services/storage'
+import { privateKey, putObject } from '../services/storage'
+import { storeImage } from '../services/remote'
 
 const MAX_IMAGE = 15 * 1024 * 1024
 const MAX_FILE = 500 * 1024 * 1024
 
-const PRESETS = {
-  cover: { width: 1280, quality: 80 },
-  thumbnail: { width: 600, quality: 80 },
-  content: { width: 1200, quality: 78 },
-  gallery: { width: 1280, quality: 80 },
-} as const
 
 export const uploadRoutes = new Hono<AppEnv>()
   .use(requirePermission('products.edit'))
@@ -25,20 +19,7 @@ export const uploadRoutes = new Hono<AppEnv>()
     const file = form.get('file')
     if (!(file instanceof File)) throw badRequest('Fichier manquant')
     if (file.size > MAX_IMAGE) throw badRequest('Image trop lourde (15 Mo max)')
-    const preset = PRESETS[c.req.valid('query').preset]
-    let out: Buffer
-    try {
-      out = await sharp(Buffer.from(await file.arrayBuffer()), { animated: false })
-        .rotate() // respecte l'orientation EXIF des photos de téléphone
-        .resize({ width: preset.width, withoutEnlargement: true })
-        .webp({ quality: preset.quality })
-        .toBuffer()
-    } catch {
-      throw badRequest('Format d’image non supporté')
-    }
-    const key = `stores/${c.get('store').id}/images/${crypto.randomUUID()}.webp`
-    await putObject(key, out, 'image/webp', 'public-read')
-    return c.json({ key, url: publicUrl(key), size: out.length })
+    return c.json(await storeImage(c.get('store').id, Buffer.from(await file.arrayBuffer()), c.req.valid('query').preset))
   })
   /** Fichier digital à vendre → stockage privé (servi par URL signée après paiement). */
   .post('/file', requirePermission('products.edit'), async (c) => {

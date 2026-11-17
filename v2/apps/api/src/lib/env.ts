@@ -25,6 +25,9 @@ const schema = z.object({
   /** Connexion Google (Google Cloud Console → Identifiants → ID client OAuth « Application Web »). */
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  /** Suggestions IA de l'import de produits (kie.ai, API compatible Messages). Absente : fonction masquée. */
+  KIE_API_KEY: z.string().optional(),
+  KIE_MODEL: z.string().optional(),
   REGISTRATION_OPEN: z.enum(['true', 'false']).default('false'),
 })
 

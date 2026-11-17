@@ -1,4 +1,4 @@
-import { Copy, ExternalLink, ImageOff, MoreVertical, Package, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { Copy, ExternalLink, ImageOff, MoreVertical, Package, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ConfirmDialog, useDialogState } from '@/components/Dialog'
@@ -149,9 +149,14 @@ export default function ProductsList() {
         title="Produits"
         actions={
           canEdit && (
-            <ButtonLink to="new" variant="primary">
-              <Plus className="size-4" /> Nouveau produit
-            </ButtonLink>
+            <div className="flex flex-wrap gap-2">
+              <ButtonLink to="import">
+                <Upload className="size-4" /> Importer
+              </ButtonLink>
+              <ButtonLink to="new" variant="primary">
+                <Plus className="size-4" /> Nouveau produit
+              </ButtonLink>
+            </div>
           )
         }
       />

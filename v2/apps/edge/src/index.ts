@@ -28,8 +28,8 @@ export async function proxyApi(request: Request, env: Env): Promise<Response> {
     headers,
     body: request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body,
     redirect: 'manual',
-    // Jamais d'attente infinie : 30 s pour l'API, 10 min pour les envois de fichiers.
-    signal: AbortSignal.timeout(url.pathname.includes('/uploads/') ? 600_000 : 30_000),
+        // Envois de fichiers : 10 min ; imports de produits (images distantes, IA) : 2 min ; le reste : 30 s.
+    signal: AbortSignal.timeout(url.pathname.includes('/uploads/') ? 600_000 : url.pathname.includes('/products/import/') ? 120_000 : 30_000),
   }
   try {
     const res = await fetch(target, init)

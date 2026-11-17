@@ -16,6 +16,8 @@ import { customerRoutes } from './customers'
 import { orderRoutes } from './orders'
 import { paymentAccountRoutes } from './payment-accounts'
 import { productRoutes } from './products'
+import { productImportRoutes } from './product-import'
+import { productImportUrlRoutes } from './product-import-url'
 import { promoRoutes } from './promos'
 import { statsRoutes } from './stats'
 import { uploadRoutes } from './uploads'
@@ -104,6 +106,8 @@ const storeScoped = new Hono<AppEnv>()
     c.json({ webhookUrl: `${env.APP_URL.replace(/\/$/, '')}/api/v1/webhooks/external`, hasSecret: Boolean(c.get('store').integrationSecretEnc) }),
   )
   .post('/integrations/secret', requirePermission('integrations.manage'), async (c) => c.json({ secret: await rotateIntegrationSecret(c.get('store').id) }))
+  .route('/products/import/url', productImportUrlRoutes)
+  .route('/products/import', productImportRoutes)
   .route('/products', productRoutes)
   .route('/orders', orderRoutes)
   .route('/customers', customerRoutes)

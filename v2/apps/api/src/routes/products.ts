@@ -8,6 +8,7 @@ import { can, requirePermission } from '../lib/auth'
 import type { StoreAccess } from '../lib/context'
 import { inProductScope, productScope } from '../lib/scope'
 import { logActivity } from '../services/activity'
+import { addToScope, createProduct, syncVariants, toRow } from '../services/product-write'
 import type { AppEnv } from '../lib/context'
 import { notFound } from '../lib/errors'
 import { sanitizeHtml } from '../lib/sanitize'
@@ -16,45 +17,6 @@ import { displayPrice } from '../services/pricing'
 import { publicUrl } from '../services/storage'
 
 const idParam = z.object({ id: productIdSchema })
-
-function toRow(input: ProductInput, storeId: string, baseCurrency: string) {
-  const { variants: _variants, ...rest } = input
-  return {
-    ...rest,
-    storeId,
-    baseCurrency,
-    // Le HTML vendeur est nettoyé à l'écriture : le storefront peut l'afficher sans risque.
-    description: sanitizeHtml(input.description),
-    content: { ...input.content, customText: input.content.customText ? sanitizeHtml(input.content.customText) : undefined },
-    delivery: input.type === 'digital' ? input.delivery : null,
-  }
-}
-
-async function syncVariants(tx: Tx, productId: string, variants: ProductInput['variants']) {
-  const keepIds = variants.map((v) => v.id).filter((id): id is number => typeof id === 'number')
-  await tx
-    .delete(productVariants)
-    .where(keepIds.length ? and(eq(productVariants.productId, productId), notInArray(productVariants.id, keepIds)) : eq(productVariants.productId, productId))
-  for (const [position, variant] of variants.entries()) {
-    const values = {
-      productId,
-      name: variant.name,
-      sku: variant.sku ?? null,
-      price: variant.price ?? null,
-      stock: variant.stock ?? null,
-      isActive: variant.isActive,
-      position,
-    }
-    if (variant.id) await tx.update(productVariants).set(values).where(and(eq(productVariants.id, variant.id), eq(productVariants.productId, productId)))
-    else await tx.insert(productVariants).values(values)
-  }
-}
-
-/** Un membre limité à certains produits garde l'accès à ceux qu'il crée. */
-async function addToScope(access: StoreAccess, storeId: string, productId: string) {
-  if (!access.productIds) return
-  await db.insert(storeMemberProducts).values({ storeId, userId: access.userId, productId }).onConflictDoNothing()
-}
 
 function assertScope(access: StoreAccess, id: string) {
   if (!inProductScope(access, id)) throw notFound('Produit')
@@ -119,13 +81,7 @@ export const productRoutes = new Hono<AppEnv>()
   .post('/', requirePermission('products.edit'), v('json', productInputSchema), async (c) => {
     const store = c.get('store')
     const input = c.req.valid('json')
-    const id = await db.transaction(async (tx) => {
-      const [row] = await tx.insert(products).values(toRow(input, store.id, store.currency)).returning({ id: products.id })
-      if (!row) throw new Error('Création produit échouée')
-      await syncVariants(tx, row.id, input.variants)
-      return row.id
-    })
-    await addToScope(c.get('access'), store.id, id)
+    const id = await createProduct(c.get('access'), store, input)
     await logActivity(c, { entityType: 'product', entityId: id, entityLabel: input.name, action: 'created', message: 'Produit créé', productIds: [id] })
     return c.json(await loadProduct(store.id, id), 201)
   })
