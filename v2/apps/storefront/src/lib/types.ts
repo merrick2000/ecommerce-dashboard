@@ -1,6 +1,6 @@
 /**
  * Formes des réponses de l'API publique (/api/v1) telles que renvoyées par
- * apps/api/src/routes/public.ts et routes/payments.ts — c'est le code qui fait foi.
+ * apps/api/src/routes/public.ts et routes/payments.ts, c'est le code qui fait foi.
  */
 import type { CheckoutSettings, Currency, FulfillmentStatus, PaymentMethod, PaymentStatus, ProductContent, ProductType, Promo, QuantityOffer } from '@zuri/shared'
 
@@ -19,7 +19,7 @@ export interface PublicStore {
   locale: string
   country: string
   supportPhone: string | null
-  /** Pas encore exposé par l'API (voir rapport) — gardé optionnel. */
+  /** Pas encore exposé par l'API (voir rapport), gardé optionnel. */
   supportEmail?: string | null
 }
 

@@ -33,7 +33,7 @@ export const paymentRoutes = new Hono<AppEnv>()
     c.header('Cache-Control', 'no-store')
     return c.json(await paymentStatus(c.req.valid('param').token))
   })
-  /** URL de webhook par compte : /webhooks/:provider/:webhookToken — répond toujours 200 (pas d'oracle). */
+  /** URL de webhook par compte : /webhooks/:provider/:webhookToken, répond toujours 200 (pas d'oracle). */
   .post('/webhooks/:provider/:webhookToken', v('param', z.object({ provider: paymentProviderSchema, webhookToken: z.string().min(16).max(64) })), async (c) => {
     const { provider, webhookToken } = c.req.valid('param')
     let payload: unknown = null

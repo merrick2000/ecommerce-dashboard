@@ -45,7 +45,7 @@ export interface PaymentProviderClient {
 
 export class ProviderHttpError extends Error {}
 
-/** fetch JSON avec délai — un provider lent ne doit pas bloquer la requête du client. */
+/** fetch JSON avec délai, un provider lent ne doit pas bloquer la requête du client. */
 export async function httpJson(url: string, init: RequestInit & { timeoutMs?: number } = {}): Promise<{ ok: boolean; status: number; data: any }> {
   const res = await fetch(url, { ...init, signal: AbortSignal.timeout(init.timeoutMs ?? 15_000) })
   const text = await res.text()

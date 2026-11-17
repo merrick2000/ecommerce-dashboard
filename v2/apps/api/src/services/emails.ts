@@ -16,7 +16,7 @@ const button = (href: string, label: string, color = '#f59e0b') =>
 
 export function digitalReceiptEmail(p: { storeName: string; customerName: string | null; orderNumber: string; items: string[]; total: number; currency: string; accessUrl: string }) {
   return {
-    subject: `Votre commande ${p.orderNumber} — accès à votre produit`,
+    subject: `Votre commande ${p.orderNumber} | accès à votre produit`,
     html: layout(
       p.storeName,
       `<p>Bonjour ${escapeHtml(p.customerName?.split(' ')[0] ?? '')},</p>
@@ -36,7 +36,7 @@ export function physicalConfirmationEmail(p: { storeName: string; customerName: 
       `<p>Bonjour ${escapeHtml(p.customerName?.split(' ')[0] ?? '')},</p>
 <p>Nous avons bien reçu votre commande :</p>
 <p>${p.items.map(escapeHtml).join('<br>')}</p>
-<p>Total : <strong>${fmt(p.total, p.currency)}</strong>${p.cod ? ' — à payer à la livraison' : ''}.</p>
+<p>Total : <strong>${fmt(p.total, p.currency)}</strong>${p.cod ? ' (à payer à la livraison)' : ''}.</p>
 <p>Nous allons vous appeler pour confirmer la livraison. Gardez votre téléphone à portée de main 📞</p>
 ${button(p.trackUrl, 'Suivre ma commande')}`,
     ),
@@ -45,12 +45,12 @@ ${button(p.trackUrl, 'Suivre ma commande')}`,
 
 export function sellerNewOrderEmail(p: { storeName: string; orderNumber: string; customer: string; phone: string | null; items: string[]; total: number; currency: string; method: string; dashboardUrl: string }) {
   return {
-    subject: `🛒 Nouvelle commande ${p.orderNumber} — ${fmt(p.total, p.currency)}`,
+    subject: `🛒 Nouvelle commande ${p.orderNumber} | ${fmt(p.total, p.currency)}`,
     html: layout(
       p.storeName,
       `<p><strong>${escapeHtml(p.customer)}</strong> ${p.phone ? `(${escapeHtml(p.phone)})` : ''}</p>
 <p>${p.items.map(escapeHtml).join('<br>')}</p>
-<p>Total : <strong>${fmt(p.total, p.currency)}</strong> — ${escapeHtml(p.method)}</p>
+<p>Total : <strong>${fmt(p.total, p.currency)}</strong> | ${escapeHtml(p.method)}</p>
 ${button(p.dashboardUrl, 'Ouvrir la commande')}`,
     ),
   }
@@ -59,7 +59,7 @@ ${button(p.dashboardUrl, 'Ouvrir la commande')}`,
 const REMINDERS = [
   { subject: 'Vous avez oublié quelque chose 👀', body: 'Vous étiez sur le point de commander <strong>{product}</strong>. Votre commande vous attend toujours.' },
   { subject: 'Toujours intéressé(e) par {product} ?', body: 'Beaucoup de clients ont déjà franchi le pas. Il ne vous reste qu’un clic pour finaliser votre commande de <strong>{product}</strong>.' },
-  { subject: 'Dernier rappel — une remise vous attend', body: 'C’est notre dernier message au sujet de <strong>{product}</strong>.' },
+  { subject: 'Dernier rappel : une remise vous attend', body: 'C’est notre dernier message au sujet de <strong>{product}</strong>.' },
 ]
 
 export function abandonedCartEmail(p: { step: number; storeName: string; name: string | null; product: string; url: string; promo?: { code: string; label: string } }) {
@@ -71,7 +71,7 @@ export function abandonedCartEmail(p: { step: number; storeName: string; name: s
       p.storeName,
       `<p>Bonjour ${escapeHtml(p.name?.split(' ')[0] ?? '')},</p>
 <p>${tpl.body.replace('{product}', product)}</p>
-${p.promo ? `<p style="background:#fef3c7;border-radius:8px;padding:12px;text-align:center">Code <strong>${escapeHtml(p.promo.code)}</strong> : ${escapeHtml(p.promo.label)} — appliqué automatiquement via le bouton ci-dessous.</p>` : ''}
+${p.promo ? `<p style="background:#fef3c7;border-radius:8px;padding:12px;text-align:center">Code <strong>${escapeHtml(p.promo.code)}</strong> : ${escapeHtml(p.promo.label)}, appliqué automatiquement via le bouton ci-dessous.</p>` : ''}
 ${button(p.url, 'Finaliser ma commande')}`,
     ),
   }

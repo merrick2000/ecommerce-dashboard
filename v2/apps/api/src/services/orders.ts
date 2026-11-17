@@ -194,7 +194,7 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
     await tx.insert(orderEvents).values({
       orderId: order.id,
       type: 'created',
-      message: paymentMethod === 'cod' ? 'Commande reçue — paiement à la livraison' : 'Commande créée',
+      message: paymentMethod === 'cod' ? 'Commande reçue (paiement à la livraison)' : 'Commande créée',
       data: { quantity: q.quantity, offerId: q.offerId, total: q.total },
     })
 

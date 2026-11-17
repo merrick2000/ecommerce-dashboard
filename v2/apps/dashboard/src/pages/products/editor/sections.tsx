@@ -459,7 +459,7 @@ function PhysicalDelivery(p: SectionProps) {
                   <Input aria-label="Nom de la variante" placeholder="Nom" value={v.name} onChange={(e) => update({ name: e.target.value })} error={errors[`variants.${i}.name`]} wrapClass="col-span-2 md:col-span-1" />
                   <Input aria-label="SKU" placeholder="SKU" value={v.sku ?? ''} onChange={(e) => update({ sku: nul(e.target.value) })} />
                   <NumberField ariaLabel="Prix" placeholder={String(form.price)} value={v.price ?? null} onChange={(price) => update({ price })} suffix={currencyLabel(currency)} />
-                  <NumberField ariaLabel="Stock" placeholder={form.trackInventory ? '0' : '—'} value={v.stock ?? null} onChange={(stock) => update({ stock })} error={errors[`variants.${i}.stock`]} />
+                  <NumberField ariaLabel="Stock" placeholder={form.trackInventory ? '0' : '-'} value={v.stock ?? null} onChange={(stock) => update({ stock })} error={errors[`variants.${i}.stock`]} />
                   <div className="flex h-10 items-center gap-2">
                     <Switch size="sm" checked={v.isActive} onChange={(isActive) => update({ isActive })} ariaLabel={`Variante ${v.name || i + 1} active`} />
                     <span className="text-[13px] text-muted md:hidden">Active</span>

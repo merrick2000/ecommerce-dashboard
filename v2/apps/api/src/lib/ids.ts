@@ -5,7 +5,7 @@ export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES]
 const ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 
 /**
- * Identifiant public : `shp_7Kq2mX9vB3nRtYwE` — préfixe + 16 caractères base62 tirés
+ * Identifiant public : `shp_7Kq2mX9vB3nRtYwE`, préfixe + 16 caractères base62 tirés
  * uniformément (rejet des octets ≥ 248 pour éviter le biais du modulo). ~95 bits d'aléa.
  */
 export function newId(prefix: IdPrefix, length = 16): string {

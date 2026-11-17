@@ -1,6 +1,6 @@
 /**
  * Client API côté serveur (rendu des pages) : appelle directement l'origine,
- * avec le secret partagé — jamais exposé au navigateur.
+ * avec le secret partagé, jamais exposé au navigateur.
  */
 import { env } from 'cloudflare:workers'
 

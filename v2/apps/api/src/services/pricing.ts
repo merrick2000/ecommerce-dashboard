@@ -1,5 +1,5 @@
 /**
- * Moteur de prix — PUR (aucun accès base), donc entièrement testable.
+ * Moteur de prix, PUR (aucun accès base), donc entièrement testable.
  * Le serveur est la seule source de vérité des montants : le storefront affiche,
  * l'API recalcule toujours.
  */

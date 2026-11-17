@@ -107,7 +107,7 @@ export default function CustomerDetail() {
           <Card title="Coordonnées">
             <p className="tabular font-medium">{prettyPhone(c.phone)}</p>
             {c.email && <p className="text-sm text-muted">{c.email}</p>}
-            <p className="mt-2 text-sm">{[c.address, c.city].filter(Boolean).join(', ') || '—'}</p>
+            <p className="mt-2 text-sm">{[c.address, c.city].filter(Boolean).join(', ') || '-'}</p>
             <div className="mt-4 flex gap-2">
               <a href={`tel:${c.phone}`} className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-line-strong text-sm font-medium hover:bg-surface-2">
                 <Phone className="size-4" /> Appeler

@@ -222,7 +222,7 @@ export default function ProductsList() {
                 <span className="hidden text-sm md:block">
                   <Price p={p} />
                 </span>
-                <span className={cx('tabular hidden text-sm md:block', p.trackInventory && p.stock != null && p.stock <= 3 && 'font-medium text-orange-600')}>{p.type === 'digital' ? '∞' : p.trackInventory ? (p.stock == null ? 'Par variante' : num(p.stock)) : '—'}</span>
+                <span className={cx('tabular hidden text-sm md:block', p.trackInventory && p.stock != null && p.stock <= 3 && 'font-medium text-orange-600')}>{p.type === 'digital' ? '∞' : p.trackInventory ? (p.stock == null ? 'Par variante' : num(p.stock)) : '-'}</span>
                 <span className="tabular hidden text-sm md:block">{num(p.sales)}</span>
                 <div className="relative z-[1] flex items-center gap-1 md:contents">
                   <Switch size="sm" checked={p.isActive} onChange={(v) => toggle.mutate({ id: p.id, isActive: v }, { onError: (e) => toast.error(e) })} ariaLabel={p.isActive ? `Désactiver ${p.name}` : `Activer ${p.name}`} />

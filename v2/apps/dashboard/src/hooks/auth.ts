@@ -60,7 +60,7 @@ export function useCurrentStore() {
   return { storeId: id, store, me: me ?? null, role: store?.role ?? (me?.isPlatformAdmin ? 'owner' : null) }
 }
 
-/** Identifiant numérique de la boutique de l'URL — utilisé par tous les hooks de ressources. */
+/** Identifiant numérique de la boutique de l'URL, utilisé par tous les hooks de ressources. */
 export function useStoreId(): string {
   const { storeId } = useParams()
   return storeId ?? ''

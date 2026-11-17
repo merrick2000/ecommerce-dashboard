@@ -18,7 +18,7 @@ export const currencyLabel = (c: string) => (FCFA.has(c) ? 'FCFA' : c)
 export const num = (n: number | null | undefined) => nf0.format(Number(n ?? 0))
 
 export function percent(n: number | null | undefined): string {
-  if (n == null) return '—'
+  if (n == null) return '-'
   return `${nf.format(n)} %`
 }
 
@@ -26,8 +26,8 @@ const dateFmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short
 const dateTimeFmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 const shortDay = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' })
 
-export const date = (d: string | Date | null | undefined) => (d ? dateFmt.format(new Date(d)) : '—')
-export const dateTime = (d: string | Date | null | undefined) => (d ? dateTimeFmt.format(new Date(d)) : '—')
+export const date = (d: string | Date | null | undefined) => (d ? dateFmt.format(new Date(d)) : '-')
+export const dateTime = (d: string | Date | null | undefined) => (d ? dateTimeFmt.format(new Date(d)) : '-')
 export const day = (d: string) => shortDay.format(new Date(`${d}T00:00:00`))
 
 const rtf = new Intl.RelativeTimeFormat('fr', { numeric: 'auto' })
@@ -47,7 +47,7 @@ export const phoneDigits = (p: string | null | undefined) => (p ?? '').replace(/
 
 /** +22997000001 → +229 97 00 00 01 (lecture plus facile au téléphone). */
 export function prettyPhone(p: string | null | undefined): string {
-  if (!p) return '—'
+  if (!p) return '-'
   const m = /^\+(\d{3})(\d+)$/.exec(p)
   if (!m) return p
   return `+${m[1]} ${m[2]!.replace(/(\d{2})(?=\d)/g, '$1 ')}`

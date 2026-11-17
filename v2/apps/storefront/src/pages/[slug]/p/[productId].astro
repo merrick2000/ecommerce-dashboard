@@ -1,5 +1,5 @@
 ---
-/** Page de vente — HTML d'abord, mise en cache (aucune donnée personnelle ici). */
+/** Page de vente, HTML d'abord, mise en cache (aucune donnée personnelle ici). */
 import Footer from '../../../components/Footer.astro'
 import Layout from '../../../components/Layout.astro'
 import Block from '../../../components/sales/Block.astro'
@@ -47,7 +47,7 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebo
 ---
 
 <Layout
-  title={`${product.name} — ${store.name}`}
+  title={`${product.name} | ${store.name}`}
   description={description}
   lang={store.locale}
   canonical={absoluteUrl(Astro.locals, `/p/${product.id}`)}

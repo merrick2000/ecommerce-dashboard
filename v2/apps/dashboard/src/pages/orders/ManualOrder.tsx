@@ -69,7 +69,7 @@ function LineRow({
               wrapClass="col-span-2 sm:col-span-1"
               value={line.variantId ?? ''}
               onChange={(e) => onChange({ ...line, variantId: e.target.value ? Number(e.target.value) : null })}
-              options={[{ value: '', label: '—' }, ...variants.map((v) => ({ value: String(v.id), label: `${v.name}${v.stock != null ? ` (stock ${v.stock})` : ''}` }))]}
+              options={[{ value: '', label: '-' }, ...variants.map((v) => ({ value: String(v.id), label: `${v.name}${v.stock != null ? ` (stock ${v.stock})` : ''}` }))]}
             />
           ) : (
             <div className="hidden sm:block" />
@@ -216,7 +216,7 @@ export default function ManualOrder() {
                 label="Zone de livraison"
                 value={c.deliveryZoneId}
                 onChange={(e) => setC({ ...c, deliveryZoneId: e.target.value })}
-                options={[{ value: '', label: 'Aucune' }, ...(zones.data ?? []).map((z) => ({ value: String(z.id), label: `${z.name} — ${money(z.fee, currency)}` }))]}
+                options={[{ value: '', label: 'Aucune' }, ...(zones.data ?? []).map((z) => ({ value: String(z.id), label: `${z.name} | ${money(z.fee, currency)}` }))]}
               />
               <Input label="Frais de livraison" inputMode="decimal" placeholder={String(autoFee)} value={c.shippingFee} onChange={(e) => setC({ ...c, shippingFee: e.target.value })} suffix={currencyLabel(currency)} hint="Vide = tarif de la zone" error={errors.shippingFee} />
               <Select label="Paiement" value={c.paymentMethod} onChange={(e) => setC({ ...c, paymentMethod: e.target.value as PaymentMethod })} options={PAYMENT_METHODS.map((m) => ({ value: m, label: PAYMENT_METHOD_LABEL[m] }))} />

@@ -25,7 +25,7 @@ function rangeFor(days: number) {
 }
 
 function Delta({ current, previous, invert }: { current: number; previous: number; invert?: boolean }) {
-  if (!previous && !current) return <span className="text-[12px] text-subtle">—</span>
+  if (!previous && !current) return <span className="text-[12px] text-subtle">-</span>
   if (!previous) return <span className="text-[12px] text-subtle">nouveau</span>
   const pct = Math.round(((current - previous) / previous) * 100)
   const up = pct >= 0
@@ -263,7 +263,7 @@ function GettingStarted({ base }: { base: string }) {
       {link && (
         <div className="mt-3 rounded-lg bg-surface-2 p-3">
           <p className="text-sm font-medium">Partagez votre page de vente pour recevoir vos premières commandes</p>
-          <p className="mt-0.5 text-[13px] text-muted">« {first!.name} » — à mettre dans vos pubs, votre bio ou sur WhatsApp.</p>
+          <p className="mt-0.5 text-[13px] text-muted">« {first!.name} » : à mettre dans vos pubs, votre bio ou sur WhatsApp.</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <code className="min-w-0 flex-1 truncate rounded-md border border-line bg-surface px-2 py-1.5 text-[13px]">{link}</code>
             <button

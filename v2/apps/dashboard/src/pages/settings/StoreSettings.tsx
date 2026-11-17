@@ -61,7 +61,7 @@ function StoreForm({ store, canEdit }: { store: Store; canEdit: boolean }) {
           <div className="grid gap-4 sm:grid-cols-2">
             <Input label="Nom" value={form.name} onChange={(e) => set({ name: e.target.value })} error={errors.name} />
             <Input label="Identifiant (slug)" value={form.slug} onChange={(e) => set({ slug: e.target.value.toLowerCase() })} error={errors.slug} autoCapitalize="off" />
-            <Select label="Devise" value={form.currency} onChange={(e) => set({ currency: e.target.value })} options={CURRENCIES.map((c) => ({ value: c, label: `${c} — ${CURRENCY_NAME[c] ?? c}` }))} error={errors.currency} />
+            <Select label="Devise" value={form.currency} onChange={(e) => set({ currency: e.target.value })} options={CURRENCIES.map((c) => ({ value: c, label: `${c} | ${CURRENCY_NAME[c] ?? c}` }))} error={errors.currency} />
             <Select label="Langue" value={form.locale} onChange={(e) => set({ locale: e.target.value })} options={LOCALES.map((l) => ({ value: l, label: l === 'fr' ? 'Français' : 'English' }))} />
             <Select label="Pays" value={form.country} onChange={(e) => set({ country: e.target.value })} options={COUNTRIES.map((c) => ({ value: c.code, label: c.name }))} />
           </div>

@@ -56,7 +56,7 @@ export const users = pgTable('users', {
   name: varchar('name', { length: 255 }).notNull(),
   phone: varchar('phone', { length: 30 }),
   country: varchar('country', { length: 2 }),
-  /** bcrypt (hérité de Laravel) ou argon2id (nouveaux comptes) — Bun.password gère les deux. */
+  /** bcrypt (hérité de Laravel) ou argon2id (nouveaux comptes), Bun.password gère les deux. */
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   isPlatformAdmin: boolean('is_platform_admin').notNull().default(false),
   /** Identifiant Google (« sub ») quand le compte est relié à Google. */
@@ -132,7 +132,7 @@ export const checkoutSettings = pgTable('checkout_settings', {
   updatedAt: updatedAt(),
 })
 
-/** Identifiants des moyens de paiement — PAR boutique, chiffrés. */
+/** Identifiants des moyens de paiement, PAR boutique, chiffrés. */
 export const paymentAccounts = pgTable(
   'payment_accounts',
   {
@@ -305,7 +305,7 @@ export const orders = pgTable(
     address: varchar('address', { length: 500 }),
     deliveryZoneId: fk('delivery_zone_id').references(() => deliveryZones.id, { onDelete: 'set null' }),
     customerNote: varchar('customer_note', { length: 500 }),
-    /** digital | physical | mixed — pour filtrer vite sans joindre les lignes. */
+    /** digital | physical | mixed, pour filtrer vite sans joindre les lignes. */
     kind: varchar('kind', { length: 10 }).$type<ProductType | 'mixed'>().notNull(),
     subtotal: money('subtotal').notNull(),
     discount: money('discount').notNull().default(0),
@@ -338,7 +338,7 @@ export const orders = pgTable(
     /** Partagé pixel ↔ Conversions API. */
     eventId: varchar('event_id', { length: 64 }).notNull(),
     trackingContext: jsonb('tracking_context').$type<{ ip?: string; userAgent?: string; fbp?: string; fbc?: string }>(),
-    /** Marque l'envoi unique des effets de bord (emails, CAPI…) — idempotence. */
+    /** Marque l'envoi unique des effets de bord (emails, CAPI…), idempotence. */
     fulfilledEffectsAt: ts('fulfilled_effects_at'),
     metadata: jsonb('metadata').$type<Record<string, unknown>>(),
     createdAt: createdAt(),
@@ -372,7 +372,7 @@ export const orderItems = pgTable(
   (t) => [index('order_items_order_idx').on(t.orderId), index('order_items_product_idx').on(t.productId)],
 )
 
-/** Historique d'une commande (statuts, appels, notes) — affiché en timeline. */
+/** Historique d'une commande (statuts, appels, notes), affiché en timeline. */
 export const orderEvents = pgTable(
   'order_events',
   {

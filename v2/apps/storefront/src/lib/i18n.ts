@@ -5,7 +5,7 @@
 const fr = {
   page: {
     buyNow: 'Commander maintenant',
-    orderCod: 'Commander — paiement à la livraison',
+    orderCod: 'Commander (paiement à la livraison)',
     off: 'de réduction',
     save: 'Économisez',
     inStockLow: (n: number) => `Plus que ${n} en stock`,
@@ -68,7 +68,7 @@ const fr = {
     promoApplied: 'Code {0} appliqué : {1}',
     promoInvalid: 'Code invalide',
     remove: 'Retirer',
-    submitCod: 'Commander — paiement à la livraison',
+    submitCod: 'Commander (paiement à la livraison)',
     submitPay: 'Commander et payer',
     submitLead: 'Être recontacté',
     sending: 'Envoi en cours…',
@@ -159,7 +159,7 @@ export type Dict = typeof fr
 const en: Dict = {
   page: {
     buyNow: 'Order now',
-    orderCod: 'Order — pay on delivery',
+    orderCod: 'Order (pay on delivery)',
     off: 'off',
     save: 'Save',
     inStockLow: (n) => `Only ${n} left in stock`,
@@ -222,7 +222,7 @@ const en: Dict = {
     promoApplied: 'Code {0} applied: {1}',
     promoInvalid: 'Invalid code',
     remove: 'Remove',
-    submitCod: 'Order — pay on delivery',
+    submitCod: 'Order (pay on delivery)',
     submitPay: 'Order and pay',
     submitLead: 'Get a call back',
     sending: 'Sending…',

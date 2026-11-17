@@ -39,7 +39,7 @@ export default function OrderLive(p: OrderLiveProps) {
   const [stalled, setStalled] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Purchase : COD dès la commande, paiement en ligne une fois payé — une seule fois par commande.
+  // Purchase : COD dès la commande, paiement en ligne une fois payé, une seule fois par commande.
   useEffect(() => {
     const isSale = p.paymentStatus === 'paid' || (p.paymentMethod === 'cod' && p.fulfillmentStatus !== 'cancelled')
     const saved = getJSON<{ fb: string | null; tt: string | null; productId: string; name: string; storeId: string }>(`sf_o_${p.token}`)

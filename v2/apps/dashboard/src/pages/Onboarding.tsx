@@ -76,7 +76,7 @@ export default function Onboarding() {
             />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Select label="Pays" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} options={COUNTRIES.map((c) => ({ value: c.code, label: c.name }))} error={errors.country} />
-              <Select label="Devise" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} options={CURRENCIES.map((c) => ({ value: c, label: `${c} — ${CURRENCY_NAME[c] ?? c}` }))} error={errors.currency} />
+              <Select label="Devise" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} options={CURRENCIES.map((c) => ({ value: c, label: `${c} | ${CURRENCY_NAME[c] ?? c}` }))} error={errors.currency} />
             </div>
             <Button type="submit" variant="primary" size="lg" className="w-full" loading={create.isPending}>
               Créer la boutique

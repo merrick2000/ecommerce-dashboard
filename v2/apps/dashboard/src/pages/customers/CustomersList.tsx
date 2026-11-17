@@ -62,7 +62,7 @@ export default function CustomersList() {
                     <p className="tabular text-[13px] text-muted">{prettyPhone(c.phone)}</p>
                   </div>
                   <p className="tabular text-right font-medium md:hidden">{money(c.totalSpent, currency)}</p>
-                  <p className="truncate text-[13px] text-muted md:text-sm md:text-fg">{c.city ?? '—'}</p>
+                  <p className="truncate text-[13px] text-muted md:text-sm md:text-fg">{c.city ?? '-'}</p>
                   <p className="text-right text-[12px] text-subtle md:hidden">
                     {num(c.ordersCount)} cmd · {num(c.deliveredCount)} livrées{c.returnedCount ? ` · ${num(c.returnedCount)} retours` : ''}
                   </p>

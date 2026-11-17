@@ -52,7 +52,7 @@ export function toMsisdn(phone: string, country: string): string {
   return code + d.replace(/^0+/, '')
 }
 
-/** Numéro local (sans indicatif) — certains providers (FeexPay) le veulent ainsi ou avec indicatif selon le pays. */
+/** Numéro local (sans indicatif), certains providers (FeexPay) le veulent ainsi ou avec indicatif selon le pays. */
 export function toLocal(phone: string, country: string): string {
   const full = toMsisdn(phone, country)
   const code = DIAL_CODES[country]

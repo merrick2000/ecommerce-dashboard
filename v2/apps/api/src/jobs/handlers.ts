@@ -51,7 +51,7 @@ async function notifySeller(o: Loaded, headline: string) {
   await sendTelegram(
     `${headline} <b>${escapeHtml(o.store.name)}</b>\n` +
       `${o.lines.map(escapeHtml).join('\n')}\n` +
-      `💰 ${escapeHtml(formatMoney(o.order.total, o.order.currency))} — ${escapeHtml(methodLabel)}\n` +
+      `💰 ${escapeHtml(formatMoney(o.order.total, o.order.currency))} | ${escapeHtml(methodLabel)}\n` +
       `👤 ${escapeHtml(o.order.customerName)} ${escapeHtml(o.order.customerPhone)}${o.order.city ? `\n📍 ${escapeHtml(o.order.city)}` : ''}`,
   )
 }
@@ -82,7 +82,7 @@ export async function handleOrderPaid({ orderId }: { orderId: string }) {
   if (failed.length) {
     // On libère le verrou pour que pg-boss réessaie (les envois réussis peuvent être répétés : acceptable).
     await db.update(orders).set({ fulfilledEffectsAt: null }).where(eq(orders.id, orderId))
-    throw new Error(`order.paid: ${failed.length} envoi(s) en échec — ${failed.map((f) => (f as PromiseRejectedResult).reason).join('; ')}`)
+    throw new Error(`order.paid: ${failed.length} envoi(s) en échec, ${failed.map((f) => (f as PromiseRejectedResult).reason).join('; ')}`)
   }
 }
 

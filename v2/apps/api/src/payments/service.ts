@@ -20,7 +20,7 @@ const MAX_ATTEMPTS_PER_HOUR = 5
 /** Tolérance d'arrondi (les providers arrondissent à l'unité supérieure). */
 const AMOUNT_TOLERANCE = 1
 
-/** Fabrique de clients — remplaçable en test. */
+/** Fabrique de clients, remplaçable en test. */
 export let makeClient = (provider: PaymentProvider, mode: ProviderMode, c: Record<string, string>): PaymentProviderClient | null => {
   switch (provider) {
     case 'feexpay':
@@ -111,7 +111,7 @@ export type PublicPaymentResponse =
 
 /**
  * Lance le paiement d'une commande. Essaie les providers dans l'ordre de routage
- * (repli automatique) et limite le nombre de tentatives — l'ancien code permettait
+ * (repli automatique) et limite le nombre de tentatives, l'ancien code permettait
  * de spammer des demandes USSD vers n'importe quel numéro.
  */
 export async function initiatePayment(token: string, input: { country: string; network: string; phone: string }): Promise<PublicPaymentResponse> {
@@ -254,7 +254,7 @@ export async function refreshOrderPayment(orderId: string): Promise<'paid' | 'pe
   return anyPending ? 'pending' : 'failed'
 }
 
-/** Statut pour le polling du storefront — limité côté route pour ne pas marteler les providers. */
+/** Statut pour le polling du storefront, limité côté route pour ne pas marteler les providers. */
 export async function paymentStatus(token: string) {
   const [order] = await db.select({ id: orders.id, paymentStatus: orders.paymentStatus }).from(orders).where(eq(orders.accessToken, token)).limit(1)
   if (!order) throw notFound('Commande')

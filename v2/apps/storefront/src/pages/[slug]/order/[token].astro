@@ -1,5 +1,5 @@
 ---
-/** Page commande — données personnelles : jamais en cache. */
+/** Page commande, données personnelles : jamais en cache. */
 import Footer from '../../../components/Footer.astro'
 import Layout from '../../../components/Layout.astro'
 import Message from '../../../components/Message.astro'
@@ -43,7 +43,7 @@ const numItems = o?.items.reduce((s, i) => s + i.quantity, 0) ?? 1
   !o || !store ? (
     <Message title={t.notFound} text={T.errors.notFoundText} code="404" />
   ) : (
-    <Layout title={`${t.title} ${o.orderNumber} — ${store.name}`} lang={store.locale} noindex>
+    <Layout title={`${t.title} ${o.orderNumber} | ${store.name}`} lang={store.locale} noindex>
       <header class="top">
         <div class="wrap">
           <a href={storeUrl(Astro.locals, '/')}>{store.name}</a>

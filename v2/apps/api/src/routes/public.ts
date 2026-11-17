@@ -133,7 +133,7 @@ export const publicRoutes = new Hono<AppEnv>()
       201,
     )
   })
-  /** Vue publique d'une commande — par jeton opaque uniquement (plus d'ID séquentiel). */
+  /** Vue publique d'une commande, par jeton opaque uniquement (plus d'ID séquentiel). */
   .get('/orders/:token', v('param', z.object({ token: z.string().min(20).max(64) })), async (c) => {
     const [order] = await db.select().from(orders).where(eq(orders.accessToken, c.req.valid('param').token)).limit(1)
     if (!order) throw notFound('Commande')

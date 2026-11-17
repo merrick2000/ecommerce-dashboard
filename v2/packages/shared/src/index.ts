@@ -137,7 +137,7 @@ export const promoSchema = z.object({
 })
 export type Promo = z.infer<typeof promoSchema>
 
-/** Offres par quantité (« 1 pour 10 000, 2 pour 18 000 ») — très utilisées en COD. */
+/** Offres par quantité (« 1 pour 10 000, 2 pour 18 000 »), très utilisées en COD. */
 export const quantityOfferSchema = z.object({
   id: z.string().min(1).max(40),
   quantity: z.coerce.number().int().min(1).max(100),
@@ -201,7 +201,7 @@ export const digitalDeliverySchema = z.discriminatedUnion('type', [
 ])
 
 /**
- * Mode de paiement d'un produit — UN SEUL choix :
+ * Mode de paiement d'un produit, UN SEUL choix :
  * - `native`      : API de paiement interne (FeexPay, FedaPay, PayDunya, PawaPay),
  *                   possible seulement si la boutique a activé au moins un de ces moyens ;
  * - `integration` : paiement hébergé chez une plateforme (Chariow, Maketou) ou lien externe (Selar, autre) ;

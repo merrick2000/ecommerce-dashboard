@@ -1,5 +1,5 @@
 /**
- * Formulaire de commande — le seul JS conséquent de la page de vente.
+ * Formulaire de commande, le seul JS conséquent de la page de vente.
  * Les montants affichés sont indicatifs : l'API recalcule tout (services/pricing.ts).
  */
 import type { PublicOrderCreate, QuantityOffer } from '@zuri/shared'
@@ -350,7 +350,7 @@ export default function OrderForm(p: OrderFormProps) {
   const inv = (f: Field) => (errors[f] ? { 'aria-invalid': true, 'aria-describedby': `e-${f}` } : {})
   const clear = (f: Field) => errors[f] && setErrors({ ...errors, [f]: undefined, form: undefined })
 
-  const submitLabel = busy ? t.sending : leadMode ? t.submitLead : p.method === 'cod' ? t.submitCod : `${p.ctaText} — ${fmtMoney(total)}`
+  const submitLabel = busy ? t.sending : leadMode ? t.submitLead : p.method === 'cod' ? t.submitCod : `${p.ctaText} | ${fmtMoney(total)}`
 
   return (
     <div ref={rootRef}>
@@ -482,7 +482,7 @@ export default function OrderForm(p: OrderFormProps) {
                 <select class="input" data-f="city" value={cityKey} onChange={(e) => (setCityKey(e.currentTarget.value), clear('city'))} {...inv('city')}>
                   <option value="">{t.cityPick}</option>
                   {zones.map((z) => (
-                    <optgroup key={z.id} label={`${z.name} — ${z.fee === 0 ? t.free : fmtMoney(z.fee)}`}>
+                    <optgroup key={z.id} label={`${z.name} | ${z.fee === 0 ? t.free : fmtMoney(z.fee)}`}>
                       {cityOptions
                         .filter((o) => o.zone.id === z.id)
                         .map((o) => (

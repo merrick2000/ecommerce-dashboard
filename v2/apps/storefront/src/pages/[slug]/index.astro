@@ -1,5 +1,5 @@
 ---
-/** Catalogue de la boutique — HTML pur, aucun îlot. */
+/** Catalogue de la boutique, HTML pur, aucun îlot. */
 import Footer from '../../components/Footer.astro'
 import Layout from '../../components/Layout.astro'
 import { ApiError, apiGet } from '../../lib/api'
@@ -27,7 +27,7 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
 const trackCfg = { storeId: store.id, productId: null, fb: null, tt: null }
 ---
 
-<Layout title={store.name} description={`${store.name} — ${t.catalog.products}`} lang={store.locale} canonical={absoluteUrl(Astro.locals, '/')} ogImage={products[0]?.thumbnail} primaryColor={d.primaryColor}>
+<Layout title={store.name} description={`${store.name} | ${t.catalog.products}`} lang={store.locale} canonical={absoluteUrl(Astro.locals, '/')} ogImage={products[0]?.thumbnail} primaryColor={d.primaryColor}>
   <header class="top">
     <div class="wrap"><a href={storeUrl(Astro.locals, '/')}>{store.name}</a></div>
   </header>

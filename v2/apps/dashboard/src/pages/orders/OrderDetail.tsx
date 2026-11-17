@@ -310,7 +310,7 @@ export default function OrderDetail() {
               </Button>
             }
           >
-            <p className="font-medium">{order.customerName ?? '—'}</p>
+            <p className="font-medium">{order.customerName ?? '-'}</p>
             <p className="tabular text-sm text-muted">{prettyPhone(order.customerPhone)}</p>
             {order.customerEmail && <p className="text-sm text-muted">{order.customerEmail}</p>}
             {order.customer && (
@@ -331,7 +331,7 @@ export default function OrderDetail() {
                 <p className="flex items-center gap-1.5 text-[13px] font-medium text-muted">
                   <MapPin className="size-3.5" /> Adresse de livraison
                 </p>
-                <p className="mt-1 text-sm">{[order.address, order.city].filter(Boolean).join(', ') || '—'}</p>
+                <p className="mt-1 text-sm">{[order.address, order.city].filter(Boolean).join(', ') || '-'}</p>
                 {order.zone && <p className="text-[13px] text-muted">Zone : {order.zone.name}{order.zone.etaLabel ? ` · ${order.zone.etaLabel}` : ''}</p>}
               </div>
             )}
@@ -340,7 +340,7 @@ export default function OrderDetail() {
                 <p className="flex items-center gap-1.5 text-[13px] font-medium text-muted">
                   <Truck className="size-3.5" /> Expédition
                 </p>
-                <p className="mt-1 text-sm">{order.courier ?? '—'}</p>
+                <p className="mt-1 text-sm">{order.courier ?? '-'}</p>
                 {order.trackingNumber && <p className="text-[13px] text-muted">Suivi : {order.trackingNumber}</p>}
               </div>
             )}
