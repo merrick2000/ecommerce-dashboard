@@ -291,7 +291,7 @@ export function PreviewImage({ src, dimmed }: { src: string; dimmed?: boolean })
         alt=""
         onLoad={() => setState('ok')}
         onError={() => setState('error')}
-        className={cx('size-full object-cover transition-opacity', state === 'ok' ? 'opacity-100' : 'opacity-0', dimmed && 'opacity-60')}
+        className={cx('size-full object-contain transition-opacity', state === 'ok' ? 'opacity-100' : 'opacity-0', dimmed && 'opacity-60')}
       />
     </>
   )

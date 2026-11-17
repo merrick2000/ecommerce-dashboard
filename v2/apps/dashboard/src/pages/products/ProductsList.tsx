@@ -17,7 +17,7 @@ function Thumb({ src, name }: { src: string | null; name: string }) {
         <ImageOff className="size-5" />
       </div>
     )
-  return <img src={src} alt={name} loading="lazy" onError={() => setBroken(true)} className="size-14 shrink-0 rounded-lg bg-surface-2 object-cover" />
+  return <img src={src} alt={name} loading="lazy" onError={() => setBroken(true)} className="size-14 shrink-0 rounded-lg bg-surface-2 object-contain" />
 }
 
 function Price({ p }: { p: ProductListItem }) {

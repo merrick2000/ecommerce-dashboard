@@ -207,11 +207,38 @@ p {
   margin: 0 0 16px;
 }
 .hero img {
+  display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
+  /* Image entière, jamais recadrée : on garde ses proportions (bornées en hauteur). */
+  max-height: 80vh;
+  object-fit: contain;
   background: var(--surface);
+}
+.gallery {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 8px 0 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.gallery a {
+  flex: 0 0 auto;
+  width: 72%;
+  max-width: 280px;
+  scroll-snap-align: start;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.gallery img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
 }
 .p-name {
   font-size: clamp(1.45rem, 5vw, 2.1rem);
@@ -1140,7 +1167,7 @@ textarea.input {
 .card img {
   width: 100%;
   aspect-ratio: 1;
-  object-fit: cover;
+  object-fit: contain;
   background: var(--surface);
 }
 .card .ph {
