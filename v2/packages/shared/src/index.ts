@@ -524,6 +524,26 @@ export const trackingSettingsSchema = z.object({
   facebookAccessToken: z.string().max(500).nullable().optional(),
 })
 
+export const STICKY_TRIGGERS = ['after_hero', 'immediate', 'scroll'] as const
+export const stickyCtaSchema = z.object({
+  enabled: z.boolean().default(true),
+  /** mobile = téléphones seulement ; all = aussi sur ordinateur. */
+  devices: z.enum(['mobile', 'all']).default('mobile'),
+  position: z.enum(['bottom', 'top']).default('bottom'),
+  /** Quand l'afficher : après l'image principale, tout de suite, ou après X % de défilement. */
+  trigger: z.enum(STICKY_TRIGGERS).default('after_hero'),
+  scrollPercent: z.number().int().min(5).max(90).default(25),
+  /** Le masquer quand le formulaire de commande est à l'écran. */
+  hideNearForm: z.boolean().default(true),
+  /** Vide = texte par défaut. Variables : {produit}, {prix}, {prix_barre}, {boutique}. */
+  text: z.string().max(60).default(''),
+  showPrice: z.boolean().default(true),
+  showThumbnail: z.boolean().default(false),
+  animation: z.enum(['none', 'pulse', 'shake']).default('none'),
+})
+export type StickyCta = z.infer<typeof stickyCtaSchema>
+export const STICKY_CTA_DEFAULTS: StickyCta = stickyCtaSchema.parse({})
+
 export const checkoutSettingsSchema = z.object({
   template: templateSchema.default('classic'),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#f59e0b'),
@@ -541,6 +561,8 @@ export const checkoutSettingsSchema = z.object({
       viewers: z.object({ enabled: z.boolean(), base: z.number().int().min(1).max(500) }).optional(),
     })
     .default({}),
+  /** Bouton d'achat collant qui suit le défilement (page de vente). */
+  stickyCta: stickyCtaSchema.default(STICKY_CTA_DEFAULTS),
   salesPopup: z
     .object({
       enabled: z.boolean().default(false),

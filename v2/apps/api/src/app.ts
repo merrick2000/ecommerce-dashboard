@@ -18,6 +18,19 @@ import { sql } from './db/client'
 export const app = new Hono<AppEnv>()
 
 if (!isProd && process.env.NODE_ENV !== 'test') app.use(logger())
+
+/** Production : journal des écritures, des erreurs et des requêtes lentes (visible dans les logs Dokploy). */
+if (isProd) {
+  app.use('/api/*', async (c, next) => {
+    const start = performance.now()
+    await next()
+    const ms = Math.round(performance.now() - start)
+    const status = c.res.status
+    if (status >= 500 || ms > 2000 || (c.req.method !== 'GET' && c.req.method !== 'HEAD')) {
+      console.log(`[http] ${c.req.method} ${c.req.path} ${status} ${ms}ms`)
+    }
+  })
+}
 app.use(secureHeaders())
 
 // Derrière le Worker : seules les requêtes portant le secret partagé sont acceptées.

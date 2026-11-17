@@ -28,6 +28,8 @@ export async function proxyApi(request: Request, env: Env): Promise<Response> {
     headers,
     body: request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body,
     redirect: 'manual',
+    // Jamais d'attente infinie : 30 s pour l'API, 10 min pour les envois de fichiers.
+    signal: AbortSignal.timeout(url.pathname.includes('/uploads/') ? 600_000 : 30_000),
   }
   try {
     const res = await fetch(target, init)
@@ -35,8 +37,11 @@ export async function proxyApi(request: Request, env: Env): Promise<Response> {
     // Les réponses authentifiées ne doivent jamais être mises en cache par un intermédiaire.
     if (!res.headers.has('cache-control')) out.headers.set('cache-control', 'private, no-store')
     return out
-  } catch {
-    return Response.json({ error: 'Service temporairement indisponible', code: 'origin_unreachable' }, { status: 502 })
+  } catch (err) {
+    if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+      return Response.json({ error: 'Le serveur met trop de temps à répondre. Réessayez dans un instant.', code: 'origin_timeout' }, { status: 504 })
+    }
+    return Response.json({ error: 'Service temporairement indisponible. Réessayez dans un instant.', code: 'origin_unreachable' }, { status: 502 })
   }
 }
 

@@ -25,6 +25,15 @@ import { env } from '../lib/env'
 
 export const DEFAULT_CHECKOUT = checkoutSettingsSchema.parse({})
 
+/**
+ * Réglages enregistrés complétés par les valeurs par défaut : une boutique créée avant
+ * l'ajout d'un réglage (ex. bouton collant) le reçoit quand même, sans migration.
+ */
+export function withCheckoutDefaults(settings: unknown) {
+  const r = checkoutSettingsSchema.safeParse(settings ?? {})
+  return r.success ? r.data : { ...DEFAULT_CHECKOUT, ...(settings as object) }
+}
+
 /** Jamais de secret (même chiffré) dans une réponse. */
 const storeView = ({ integrationSecretEnc, ...rest }: typeof stores.$inferSelect) => ({ ...rest, hasIntegrationSecret: Boolean(integrationSecretEnc) })
 
@@ -58,7 +67,7 @@ const storeScoped = new Hono<AppEnv>()
   .get('/checkout-settings', requirePermission('store.settings'), async (c) => {
     const [row] = await db.select().from(checkoutSettings).where(eq(checkoutSettings.storeId, c.get('store').id)).limit(1)
     return c.json({
-      settings: row?.settings ?? DEFAULT_CHECKOUT,
+      settings: withCheckoutDefaults(row?.settings),
       tracking: {
         facebookPixelId: row?.facebookPixelId ?? null,
         facebookTestEventCode: row?.facebookTestEventCode ?? null,

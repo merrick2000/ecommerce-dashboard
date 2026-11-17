@@ -17,7 +17,7 @@ import { v } from '../lib/validate'
 import { createPublicOrder, normalizePhone } from '../services/orders'
 import { displayPrice, evaluatePromoCode } from '../services/pricing'
 import { publicUrl, signedUrl } from '../services/storage'
-import { DEFAULT_CHECKOUT } from './stores'
+import { DEFAULT_CHECKOUT, withCheckoutDefaults } from './stores'
 
 const EVENT_TYPES = [
   'page_view', 'page_leave', 'scroll_25', 'scroll_50', 'scroll_75', 'scroll_100', 'cta_click', 'form_focus',
@@ -107,7 +107,7 @@ export const publicRoutes = new Hono<AppEnv>()
         inStock: !product.trackInventory || product.stock == null || product.stock > 0,
       },
       zones,
-      checkout: cfg?.settings ?? DEFAULT_CHECKOUT,
+      checkout: withCheckoutDefaults(cfg?.settings),
       /** Formulaire effectif : celui du produit s'il est personnalisé, sinon celui de la boutique. */
       orderForm: parseOrderForm(product.content.orderForm ?? cfg?.settings.form),
       tracking: { facebookPixelId: cfg?.facebookPixelId ?? null, tiktokPixelId: cfg?.tiktokPixelId ?? null },
