@@ -10,7 +10,7 @@ export function Logo({ className }: { className?: string }) {
         <rect width="32" height="32" rx="8" fill="#f59e0b" />
         <path d="M20.5 11.5c-.8-1.3-2.4-2-4.4-2-2.7 0-4.6 1.4-4.6 3.5 0 4.6 9.2 2.6 9.2 6.5 0 1.6-1.7 2.8-4.3 2.8-2.1 0-3.8-.8-4.7-2.3" fill="none" stroke="#1c1917" strokeWidth="2.6" strokeLinecap="round" />
       </svg>
-      Sellit
+      Zuri
     </span>
   )
 }

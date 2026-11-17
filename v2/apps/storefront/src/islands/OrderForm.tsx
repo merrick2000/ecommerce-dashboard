@@ -2,7 +2,7 @@
  * Formulaire de commande — le seul JS conséquent de la page de vente.
  * Les montants affichés sont indicatifs : l'API recalcule tout (services/pricing.ts).
  */
-import type { PublicOrderCreate, QuantityOffer } from '@sellit/shared'
+import type { PublicOrderCreate, QuantityOffer } from '@zuri/shared'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { api, fmt } from '../client/http'
 import { DIAL, dialFor, flag, fullPhone, validEmail } from '../client/phone'

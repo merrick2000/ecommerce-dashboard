@@ -1,4 +1,4 @@
-import { loginSchema, registerSchema, type Me } from '@sellit/shared'
+import { loginSchema, registerSchema, type Me } from '@zuri/shared'
 import { eq, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { db } from '../db/client'

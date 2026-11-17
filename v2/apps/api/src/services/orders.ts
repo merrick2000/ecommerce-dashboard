@@ -5,7 +5,7 @@ import {
   type PaymentMethod,
   type PaymentStatus,
   type PublicOrderCreate,
-} from '@sellit/shared'
+} from '@zuri/shared'
 import { and, eq, inArray, isNull, sql as dsql } from 'drizzle-orm'
 import { db, type Tx } from '../db/client'
 import {

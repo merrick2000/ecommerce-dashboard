@@ -1,4 +1,4 @@
-import { deliveryZoneInputSchema } from '@sellit/shared'
+import { deliveryZoneInputSchema } from '@zuri/shared'
 import { MapPin, Pencil, Plus, Trash2, Truck } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { ConfirmDialog, Dialog, useDialogState } from '@/components/Dialog'

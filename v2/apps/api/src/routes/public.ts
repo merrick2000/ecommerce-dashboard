@@ -2,7 +2,7 @@
  * API publique consommée par le storefront (/api/v1). Aucune authentification :
  * chaque route ne renvoie que ce qu'un visiteur a le droit de voir.
  */
-import { NATIVE_PROVIDERS, publicOrderCreateSchema } from '@sellit/shared'
+import { NATIVE_PROVIDERS, publicOrderCreateSchema } from '@zuri/shared'
 import { and, asc, desc, eq, gte, isNull, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'

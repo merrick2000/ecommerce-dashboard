@@ -1,4 +1,4 @@
-import { productInputSchema, type ProductInput } from '@sellit/shared'
+import { productInputSchema, type ProductInput } from '@zuri/shared'
 import { and, asc, desc, eq, inArray, notInArray, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'

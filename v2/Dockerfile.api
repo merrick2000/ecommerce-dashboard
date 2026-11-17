@@ -1,6 +1,6 @@
 # Image unique pour l'API et le worker (même code, commande différente).
-#   API    : docker run … sellit-api
-#   Worker : docker run … sellit-api bun src/worker.ts
+#   API    : docker run … zuri-api
+#   Worker : docker run … zuri-api bun src/worker.ts
 FROM oven/bun:1.3-alpine AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
@@ -8,7 +8,7 @@ COPY packages/shared/package.json packages/shared/
 COPY apps/api/package.json apps/api/
 COPY apps/dashboard/package.json apps/dashboard/
 COPY apps/edge/package.json apps/edge/
-RUN bun install --frozen-lockfile --production --filter @sellit/api
+RUN bun install --frozen-lockfile --production --filter @zuri/api
 
 FROM oven/bun:1.3-alpine
 WORKDIR /app

@@ -1,4 +1,4 @@
-import { NATIVE_PROVIDERS, type PaymentProvider } from '@sellit/shared'
+import { NATIVE_PROVIDERS, type PaymentProvider } from '@zuri/shared'
 import { and, desc, eq, gte, inArray, lte, sql as dsql } from 'drizzle-orm'
 import { db } from '../db/client'
 import { orderEvents, orderItems, orders, paymentAccounts, paymentTransactions, products, stores, type Order } from '../db/schema'

@@ -2,7 +2,7 @@
  * Formes des réponses de l'API publique (/api/v1) telles que renvoyées par
  * apps/api/src/routes/public.ts et routes/payments.ts — c'est le code qui fait foi.
  */
-import type { CheckoutSettings, Currency, FulfillmentStatus, PaymentMethod, PaymentStatus, ProductContent, ProductType, Promo, QuantityOffer } from '@sellit/shared'
+import type { CheckoutSettings, Currency, FulfillmentStatus, PaymentMethod, PaymentStatus, ProductContent, ProductType, Promo, QuantityOffer } from '@zuri/shared'
 
 export interface DisplayPrice {
   currency: string

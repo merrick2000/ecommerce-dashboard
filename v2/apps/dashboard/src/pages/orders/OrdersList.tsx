@@ -1,4 +1,4 @@
-import { FULFILLMENT_STATUSES, FULFILLMENT_TRANSITIONS, PAYMENT_STATUSES, type FulfillmentStatus } from '@sellit/shared'
+import { FULFILLMENT_STATUSES, FULFILLMENT_TRANSITIONS, PAYMENT_STATUSES, type FulfillmentStatus } from '@zuri/shared'
 import { AlertTriangle, ChevronLeft, ChevronRight, Download, Filter, Plus, Search, ShoppingBag, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'

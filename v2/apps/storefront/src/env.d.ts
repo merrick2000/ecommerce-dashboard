@@ -16,9 +16,9 @@ declare namespace Cloudflare {
     API_ORIGIN: string
     /** Secret partagé avec l'API (en-tête x-edge-secret). */
     EDGE_SECRET?: string
-    /** Hôte « plateforme » (ex. shops.sellit.com) : les URLs portent le slug. */
+    /** Hôte « plateforme » (ex. zurisell.store) : les URLs portent le slug. */
     PLATFORM_HOST?: string
-    /** Domaine racine des sous-domaines boutiques (ex. sellit.com). */
+    /** Domaine racine des sous-domaines boutiques (ex. zurisell.store). */
     BASE_DOMAIN?: string
     /** "cloudflare" pour servir les images via /cdn-cgi/image (Image Resizing activé sur la zone). */
     IMAGE_RESIZING?: string

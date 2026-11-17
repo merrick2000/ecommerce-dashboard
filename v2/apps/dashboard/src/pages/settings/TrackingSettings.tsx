@@ -1,4 +1,4 @@
-import { trackingSettingsSchema } from '@sellit/shared'
+import { trackingSettingsSchema } from '@zuri/shared'
 import { CheckCircle2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useToast } from '@/components/Toast'

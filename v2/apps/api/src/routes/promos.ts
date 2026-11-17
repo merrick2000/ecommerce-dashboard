@@ -1,4 +1,4 @@
-import { promoCodeInputSchema } from '@sellit/shared'
+import { promoCodeInputSchema } from '@zuri/shared'
 import { and, desc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'

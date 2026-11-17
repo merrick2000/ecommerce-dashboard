@@ -1,4 +1,4 @@
-import { promoCodeInputSchema } from '@sellit/shared'
+import { promoCodeInputSchema } from '@zuri/shared'
 import { Pencil, Plus, Tag, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { ConfirmDialog, Dialog, useDialogState } from '@/components/Dialog'

@@ -1,4 +1,4 @@
-import { registerSchema } from '@sellit/shared'
+import { registerSchema } from '@zuri/shared'
 import { Lock } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'

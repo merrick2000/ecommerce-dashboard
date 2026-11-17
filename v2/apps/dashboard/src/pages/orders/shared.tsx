@@ -2,7 +2,7 @@
  * Briques partagées liste / détail des commandes : badges, liens d'appel et
  * WhatsApp, boutons de statut limités aux transitions autorisées.
  */
-import { FULFILLMENT_TRANSITIONS, type FulfillmentStatus, type PaymentStatus } from '@sellit/shared'
+import { FULFILLMENT_TRANSITIONS, type FulfillmentStatus, type PaymentStatus } from '@zuri/shared'
 import { Ban, Check, MessageCircle, PackageCheck, Phone, PhoneOff, RotateCcw, Truck, Undo2, type LucideIcon } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { ConfirmDialog, Dialog } from '@/components/Dialog'
@@ -96,7 +96,7 @@ const ACTION_VARIANT: Record<FulfillmentStatus, 'primary' | 'secondary' | 'succe
 /** Ces passages demandent une confirmation (irréversibles ou coûteux). */
 const NEEDS_CONFIRM: FulfillmentStatus[] = ['cancelled', 'returned']
 
-const COURIERS_KEY = 'sellit:couriers'
+const COURIERS_KEY = 'zuri:couriers'
 export function recentCouriers(): string[] {
   try {
     const v: unknown = JSON.parse(readLocal(COURIERS_KEY) ?? '[]')

@@ -8,7 +8,7 @@
  * - Idempotent pour un import dans une base v2 VIDE (refuse sinon).
  * - Tout se fait dans une transaction : en cas d'erreur, rien n'est écrit.
  */
-import { productContentSchema, type CheckoutSettings, type ProductContent, type ProductPayment } from '@sellit/shared'
+import { productContentSchema, type CheckoutSettings, type ProductContent, type ProductPayment } from '@zuri/shared'
 import postgres from 'postgres'
 import { db, sql as target } from './client'
 import * as s from './schema'

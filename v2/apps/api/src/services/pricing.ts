@@ -3,7 +3,7 @@
  * Le serveur est la seule source de vérité des montants : le storefront affiche,
  * l'API recalcule toujours.
  */
-import type { Promo, QuantityOffer } from '@sellit/shared'
+import type { Promo, QuantityOffer } from '@zuri/shared'
 
 export interface PricedProduct {
   price: number

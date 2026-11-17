@@ -1,6 +1,6 @@
 /**
  * Formes des réponses de l'API (dates sérialisées en chaînes ISO).
- * Les entrées (payloads) viennent des schémas zod de @sellit/shared.
+ * Les entrées (payloads) viennent des schémas zod de @zuri/shared.
  */
 import type {
   CheckoutSettings,
@@ -14,7 +14,7 @@ import type {
   ProductType,
   Promo,
   QuantityOffer,
-} from '@sellit/shared'
+} from '@zuri/shared'
 
 export type Iso = string
 
@@ -94,7 +94,7 @@ export interface Product {
   coverImage: string | null
   thumbnail: string | null
   content: ProductContent
-  /** Suit le schéma partagé (modèle de paiement géré par @sellit/shared). */
+  /** Suit le schéma partagé (modèle de paiement géré par @zuri/shared). */
   payment: ProductInput['payment']
   delivery: { type: 'file'; filePath: string | null } | { type: 'external_url'; url: string } | null
   externalProductId: string | null

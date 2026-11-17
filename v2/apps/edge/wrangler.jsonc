@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "sellit-edge",
+  "name": "zuri-app",
   "main": "src/index.ts",
   "compatibility_date": "2026-11-01",
   // Le dashboard (build Vite) est servi directement par Cloudflare ; seul /api/* réveille le Worker.
@@ -15,5 +15,5 @@
     "API_ORIGIN": "https://api-origin.example.com"
   }
   // Secret partagé avec l'API : `wrangler secret put EDGE_SECRET` (même valeur que EDGE_SECRET côté API).
-  // "routes": [{ "pattern": "app.mondomaine.com", "custom_domain": true }]
+  // Activé au premier déploiement : "routes": [{ "pattern": "app.zurisell.store", "custom_domain": true }]
 }

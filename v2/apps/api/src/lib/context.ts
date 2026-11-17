@@ -1,4 +1,4 @@
-import type { StoreRole } from '@sellit/shared'
+import type { StoreRole } from '@zuri/shared'
 import type { Store, User } from '../db/schema'
 
 export type AppEnv = {

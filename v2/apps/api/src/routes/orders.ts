@@ -5,7 +5,7 @@ import {
   orderNoteSchema,
   orderPaymentUpdateSchema,
   orderStatusUpdateSchema,
-} from '@sellit/shared'
+} from '@zuri/shared'
 import { and, asc, count, desc, eq, gte, ilike, inArray, lt, lte, or, sql as dsql, type SQL } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'

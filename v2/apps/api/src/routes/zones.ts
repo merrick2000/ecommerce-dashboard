@@ -1,4 +1,4 @@
-import { deliveryZoneInputSchema } from '@sellit/shared'
+import { deliveryZoneInputSchema } from '@zuri/shared'
 import { and, asc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'

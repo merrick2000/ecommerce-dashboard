@@ -101,11 +101,14 @@ export const pageBlockSchema = z.enum(PAGE_BLOCKS)
 // ─── Briques réutilisables ───────────────────────────────────────────────────
 
 const money = z.coerce.number().min(0).max(1_000_000_000)
+/** Sous-domaines réservés à la plateforme (app.zurisell.store = dashboard…). */
+export const RESERVED_SLUGS = ['app', 'www', 'api', 'admin', 'dashboard', 'mail', 'email', 'static', 'cdn', 'assets', 'help', 'support', 'blog', 'docs', 'status', 'shop', 'store', 'zuri', 'login', 'auth']
 const slug = z
   .string()
   .min(2)
   .max(60)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Lettres minuscules, chiffres et tirets uniquement')
+  .refine((s) => !RESERVED_SLUGS.includes(s), 'Ce nom est réservé, choisissez-en un autre')
 const phone = z.string().trim().min(6).max(25).regex(/^\+?[0-9 ]+$/, 'Numéro invalide')
 const httpUrl = z
   .string()

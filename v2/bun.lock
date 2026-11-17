@@ -6,11 +6,11 @@
       "name": "sellit",
     },
     "apps/api": {
-      "name": "@sellit/api",
+      "name": "@zuri/api",
       "version": "0.1.0",
       "dependencies": {
         "@hono/zod-validator": "^0.9.1",
-        "@sellit/shared": "workspace:*",
+        "@zuri/shared": "workspace:*",
         "drizzle-orm": "^0.45.4",
         "hono": "^4.13.19",
         "pg-boss": "^12.38.2",
@@ -27,15 +27,15 @@
       },
     },
     "apps/dashboard": {
-      "name": "@sellit/dashboard",
+      "name": "@zuri/dashboard",
       "version": "0.1.0",
       "dependencies": {
-        "@sellit/shared": "workspace:*",
         "@tanstack/react-query": "5.107.1",
         "@tiptap/extension-image": "3.34.0",
         "@tiptap/pm": "3.34.0",
         "@tiptap/react": "3.34.0",
         "@tiptap/starter-kit": "3.34.0",
+        "@zuri/shared": "workspace:*",
         "lucide-react": "1.73.0",
         "react": "19.3.1",
         "react-dom": "19.3.1",
@@ -55,7 +55,7 @@
       },
     },
     "apps/edge": {
-      "name": "@sellit/edge",
+      "name": "@zuri/edge",
       "version": "0.1.0",
       "devDependencies": {
         "@cloudflare/workers-types": "^5.20261116.1",
@@ -64,12 +64,12 @@
       },
     },
     "apps/storefront": {
-      "name": "@sellit/storefront",
+      "name": "@zuri/storefront",
       "version": "0.1.0",
       "dependencies": {
         "@astrojs/cloudflare": "14.4.8",
         "@astrojs/preact": "6.1.6",
-        "@sellit/shared": "workspace:*",
+        "@zuri/shared": "workspace:*",
         "astro": "7.4.12",
         "preact": "11.2.0",
       },
@@ -80,7 +80,7 @@
       },
     },
     "packages/shared": {
-      "name": "@sellit/shared",
+      "name": "@zuri/shared",
       "version": "0.1.0",
       "dependencies": {
         "zod": "^4.6.7",
@@ -451,16 +451,6 @@
 
     "@rollup/pluginutils": ["@rollup/pluginutils@5.5.1", "", { "dependencies": { "@types/estree": "^1.0.0", "estree-walker": "^2.0.2", "picomatch": "^4.0.2" }, "peerDependencies": { "rollup": "^1.20.0||^2.0.0||^3.0.0||^4.0.0" }, "optionalPeers": ["rollup"] }, "sha512-P9ZvnfouRu4MSC+ilERaw6FmZs8zqKhpHxEs4aGDGWQAMzQGXnhvCSvoNwokfNvdt7t3Y5Y4p6gStQgezeIqug=="],
 
-    "@sellit/api": ["@sellit/api@workspace:apps/api"],
-
-    "@sellit/dashboard": ["@sellit/dashboard@workspace:apps/dashboard"],
-
-    "@sellit/edge": ["@sellit/edge@workspace:apps/edge"],
-
-    "@sellit/shared": ["@sellit/shared@workspace:packages/shared"],
-
-    "@sellit/storefront": ["@sellit/storefront@workspace:apps/storefront"],
-
     "@shikijs/core": ["@shikijs/core@4.6.0", "", { "dependencies": { "@shikijs/primitive": "4.6.0", "@shikijs/types": "4.6.0", "@shikijs/vscode-textmate": "^10.1.0", "@types/hast": "^3.0.5", "hast-util-to-html": "^9.0.6" } }, "sha512-bfd4OKgvoyXYiYmMRuleA656P4V7M/Du9lcTl38Ngm6KszMj7bq4J1IGZwSYR4c95Tv5UQALtYNWUwaI9UT3xw=="],
 
     "@shikijs/engine-javascript": ["@shikijs/engine-javascript@4.6.0", "", { "dependencies": { "@shikijs/types": "4.6.0", "@shikijs/vscode-textmate": "^10.1.0", "oniguruma-to-es": "^4.3.6" } }, "sha512-K0oqxFoL+kEMdz89mHLFO15Tsbv3kFZ6WR1cXZKMvLSc+oqaM00A6pyga1qSeXB22dP0tTiSApRcGBaKWsEccg=="],
@@ -640,6 +630,16 @@
     "@vscode/emmet-helper": ["@vscode/emmet-helper@2.11.0", "", { "dependencies": { "emmet": "^2.4.3", "jsonc-parser": "^2.3.0", "vscode-languageserver-textdocument": "^1.0.1", "vscode-languageserver-types": "^3.15.1", "vscode-uri": "^3.0.8" } }, "sha512-QLxjQR3imPZPQltfbWRnHU6JecWTF1QSWhx3GAKQpslx7y3Dp6sIIXhKjiUJ/BR9FX8PVthjr9PD6pNwOJfAzw=="],
 
     "@vscode/l10n": ["@vscode/l10n@0.0.18", "", {}, "sha512-KYSIHVmslkaCDyw013pphY+d7x1qV8IZupYfeIfzNA+nsaWHbn5uPuQRvdRFsa9zFzGeudPuoGoZ1Op4jrJXIQ=="],
+
+    "@zuri/api": ["@zuri/api@workspace:apps/api"],
+
+    "@zuri/dashboard": ["@zuri/dashboard@workspace:apps/dashboard"],
+
+    "@zuri/edge": ["@zuri/edge@workspace:apps/edge"],
+
+    "@zuri/shared": ["@zuri/shared@workspace:packages/shared"],
+
+    "@zuri/storefront": ["@zuri/storefront@workspace:apps/storefront"],
 
     "ajv": ["ajv@8.20.0", "", { "dependencies": { "fast-deep-equal": "^3.1.3", "fast-uri": "^3.0.1", "json-schema-traverse": "^1.0.0", "require-from-string": "^2.0.2" } }, "sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA=="],
 

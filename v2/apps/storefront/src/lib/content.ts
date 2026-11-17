@@ -2,7 +2,7 @@
  * Transformations HTML côté serveur (le HTML est déjà nettoyé par l'API) :
  * insertion des CTA dans la description, images paresseuses, extrait SEO, vidéo.
  */
-import type { ProductContent } from '@sellit/shared'
+import type { ProductContent } from '@zuri/shared'
 
 type DescriptionCta = ProductContent['descriptionCtas'][number]
 

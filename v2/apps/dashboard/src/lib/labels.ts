@@ -1,4 +1,4 @@
-import type { FulfillmentStatus, PaymentMethod, PaymentProvider, PaymentStatus, StoreRole } from '@sellit/shared'
+import type { FulfillmentStatus, PaymentMethod, PaymentProvider, PaymentStatus, StoreRole } from '@zuri/shared'
 
 export type Tone = 'neutral' | 'amber' | 'blue' | 'green' | 'red' | 'violet' | 'orange'
 

@@ -1,5 +1,5 @@
 {
-  "name": "sellit",
+  "name": "zuri",
   "private": true,
   "type": "module",
   "workspaces": ["apps/*", "packages/*"],

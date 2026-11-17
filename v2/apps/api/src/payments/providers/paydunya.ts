@@ -28,7 +28,7 @@ export class PayDunya implements PaymentProviderClient {
       headers: this.headers(),
       body: JSON.stringify({
         invoice: { items: { item_0: { name: `Commande ${req.orderNumber}`, quantity: 1, unit_price: amount, total_price: amount } }, total_amount: amount, description: `Commande ${req.orderNumber}` },
-        store: { name: 'Sellit' },
+        store: { name: 'Zuri' },
         custom_data: { order_id: String(req.orderId) },
         actions: { callback_url: req.webhookUrl, return_url: req.returnUrl, cancel_url: req.returnUrl },
       }),

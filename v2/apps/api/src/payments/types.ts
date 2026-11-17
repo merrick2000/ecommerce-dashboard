@@ -1,4 +1,4 @@
-import type { PaymentProvider } from '@sellit/shared'
+import type { PaymentProvider } from '@zuri/shared'
 
 export type ProviderMode = 'sandbox' | 'live'
 

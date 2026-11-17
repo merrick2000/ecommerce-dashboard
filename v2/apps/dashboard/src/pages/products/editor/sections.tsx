@@ -12,7 +12,7 @@ import {
   type ProductContent,
   type ProductInput,
   type QuantityOffer,
-} from '@sellit/shared'
+} from '@zuri/shared'
 import { CreditCard, ExternalLink, FileUp, Paperclip, Star, Trash2, Truck, Wallet } from 'lucide-react'
 import { lazy, Suspense, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'

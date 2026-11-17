@@ -27,7 +27,7 @@ import type {
   Promo,
   QuantityOffer,
   StoreRole,
-} from '@sellit/shared'
+} from '@zuri/shared'
 
 /** Montants : numeric(12,2) lu en `number` (les montants FCFA tiennent large dans un double). */
 const money = (name: string) => numeric(name, { precision: 12, scale: 2, mode: 'number' })

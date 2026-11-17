@@ -2,7 +2,7 @@
  * Client HTTP typé. Même origine (/api), session par cookie httpOnly :
  * aucun jeton n'est manipulé côté JS.
  */
-import type { ApiError as ApiErrorBody } from '@sellit/shared'
+import type { ApiError as ApiErrorBody } from '@zuri/shared'
 
 export interface FieldIssue {
   path: string

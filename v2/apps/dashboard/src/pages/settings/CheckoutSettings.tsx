@@ -1,4 +1,4 @@
-import { checkoutSettingsSchema, CTA_STYLES, PAGE_BLOCKS, TEMPLATES, type CheckoutSettings } from '@sellit/shared'
+import { checkoutSettingsSchema, CTA_STYLES, PAGE_BLOCKS, TEMPLATES, type CheckoutSettings } from '@zuri/shared'
 import { ArrowDown, ArrowUp, Eye, EyeOff } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useToast } from '@/components/Toast'

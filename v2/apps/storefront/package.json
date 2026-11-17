@@ -1,5 +1,5 @@
 {
-  "name": "@sellit/storefront",
+  "name": "@zuri/storefront",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
   "dependencies": {
     "@astrojs/cloudflare": "14.4.8",
     "@astrojs/preact": "6.1.6",
-    "@sellit/shared": "workspace:*",
+    "@zuri/shared": "workspace:*",
     "astro": "7.4.12",
     "preact": "11.2.0"
   },

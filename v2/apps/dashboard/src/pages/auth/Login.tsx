@@ -1,4 +1,4 @@
-import { loginSchema } from '@sellit/shared'
+import { loginSchema } from '@zuri/shared'
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
 import { Button, Input } from '@/components/ui'

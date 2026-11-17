@@ -1,5 +1,5 @@
 /**
- * Worker Cloudflare de l'app Sellit.
+ * Worker Cloudflare de l'app Zuri.
  * - Sert le dashboard (assets statiques, fallback SPA) — configuré dans wrangler.jsonc.
  * - Relaie /api/* vers le serveur d'origine (Dokploy ou autre) sur le même domaine :
  *   pas de CORS, cookies de session first-party.

@@ -1,4 +1,4 @@
-import { checkoutSettingsSchema, storeCreateSchema, storeUpdateSchema, timezoneForCountry, trackingSettingsSchema } from '@sellit/shared'
+import { checkoutSettingsSchema, storeCreateSchema, storeUpdateSchema, timezoneForCountry, trackingSettingsSchema } from '@zuri/shared'
 import { and, eq, ne, or } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { db } from '../db/client'

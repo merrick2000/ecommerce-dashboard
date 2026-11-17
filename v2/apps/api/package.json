@@ -1,5 +1,5 @@
 {
-  "name": "@sellit/api",
+  "name": "@zuri/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@hono/zod-validator": "^0.9.1",
-    "@sellit/shared": "workspace:*",
+    "@zuri/shared": "workspace:*",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.19",
     "pg-boss": "^12.38.2",

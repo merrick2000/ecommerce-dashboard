@@ -1,5 +1,5 @@
 {
-  "name": "@sellit/dashboard",
+  "name": "@zuri/dashboard",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
-    "@sellit/shared": "workspace:*",
+    "@zuri/shared": "workspace:*",
     "@tanstack/react-query": "5.107.1",
     "@tiptap/extension-image": "3.34.0",
     "@tiptap/pm": "3.34.0",

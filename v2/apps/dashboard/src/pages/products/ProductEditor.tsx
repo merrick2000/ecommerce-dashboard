@@ -1,4 +1,4 @@
-import { productContentSchema, productInputSchema, type ProductType } from '@sellit/shared'
+import { productContentSchema, productInputSchema, type ProductType } from '@zuri/shared'
 import { ArrowLeft, Box, FileDown } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useBeforeUnload, useBlocker, useNavigate, useParams } from 'react-router'

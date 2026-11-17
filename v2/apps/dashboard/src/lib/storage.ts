@@ -16,5 +16,5 @@ export function writeLocal(key: string, value: string | null) {
   }
 }
 
-export const LAST_STORE_KEY = 'sellit:lastStore'
-export const THEME_KEY = 'sellit:theme'
+export const LAST_STORE_KEY = 'zuri:lastStore'
+export const THEME_KEY = 'zuri:theme'

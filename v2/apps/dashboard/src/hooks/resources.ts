@@ -3,7 +3,7 @@
  * Chaque mutation invalide ce qu'elle touche ; statuts de commande et
  * activation produit sont optimistes.
  */
-import { FULFILLMENT_TRANSITIONS, type FulfillmentStatus, type PaymentStatus, type PaymentProvider } from '@sellit/shared'
+import { FULFILLMENT_TRANSITIONS, type FulfillmentStatus, type PaymentStatus, type PaymentProvider } from '@zuri/shared'
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { api, type Query } from '@/lib/api'
 import type {

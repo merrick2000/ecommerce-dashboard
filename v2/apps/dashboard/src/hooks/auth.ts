@@ -1,4 +1,4 @@
-import type { Me } from '@sellit/shared'
+import type { Me } from '@zuri/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router'
 import { api, ApiError, request } from '@/lib/api'

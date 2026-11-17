@@ -1,4 +1,4 @@
-import { paymentProviderSchema } from '@sellit/shared'
+import { paymentProviderSchema } from '@zuri/shared'
 import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'

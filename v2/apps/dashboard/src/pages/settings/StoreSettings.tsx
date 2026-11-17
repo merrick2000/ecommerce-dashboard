@@ -1,4 +1,4 @@
-import { CURRENCIES, LOCALES, storeUpdateSchema } from '@sellit/shared'
+import { CURRENCIES, LOCALES, storeUpdateSchema } from '@zuri/shared'
 import { CheckCircle2, Clock } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useToast } from '@/components/Toast'
@@ -69,7 +69,7 @@ function StoreForm({ store, canEdit }: { store: Store; canEdit: boolean }) {
 
         <Card title="Adresse web">
           <div className="space-y-4">
-            <Input label="Sous-domaine" value={form.subdomain} onChange={(e) => set({ subdomain: e.target.value.toLowerCase() })} error={errors.subdomain} suffix=".sellit.com" autoCapitalize="off" />
+            <Input label="Sous-domaine" value={form.subdomain} onChange={(e) => set({ subdomain: e.target.value.toLowerCase() })} error={errors.subdomain} suffix=".zurisell.store" autoCapitalize="off" />
             <div>
               <Input
                 label="Domaine personnalisé"
@@ -79,7 +79,7 @@ function StoreForm({ store, canEdit }: { store: Store; canEdit: boolean }) {
                 onChange={(e) => set({ customDomain: e.target.value.toLowerCase() })}
                 error={errors.customDomain}
                 autoCapitalize="off"
-                hint="Créez un enregistrement CNAME vers sellit.com chez votre registraire."
+                hint="Créez un enregistrement CNAME vers zurisell.store chez votre registraire."
               />
               {store.customDomain && (
                 <p className="mt-2">

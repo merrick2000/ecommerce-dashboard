@@ -1,4 +1,4 @@
-import { PAYMENT_STATUSES, type PaymentStatus } from '@sellit/shared'
+import { PAYMENT_STATUSES, type PaymentStatus } from '@zuri/shared'
 import { AlertTriangle, ArrowLeft, ChevronRight, MapPin, Pencil, Send, Truck } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router'

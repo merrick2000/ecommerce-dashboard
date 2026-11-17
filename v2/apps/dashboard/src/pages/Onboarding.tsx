@@ -1,4 +1,4 @@
-import { CURRENCIES, storeCreateSchema } from '@sellit/shared'
+import { CURRENCIES, storeCreateSchema } from '@zuri/shared'
 import { ArrowLeft, Store } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
@@ -70,7 +70,7 @@ export default function Onboarding() {
                 setForm({ ...form, slug: e.target.value.toLowerCase() })
               }}
               error={errors.slug}
-              hint={form.slug ? `${form.slug}.sellit.com` : 'Lettres minuscules, chiffres et tirets.'}
+              hint={form.slug ? `${form.slug}.zurisell.store` : 'Lettres minuscules, chiffres et tirets.'}
               autoCapitalize="off"
               autoCorrect="off"
             />

@@ -8,9 +8,9 @@ import type { AppEnv } from './context'
 import { randomToken, sha256 } from './crypto'
 import { isProd } from './env'
 import { forbidden, HttpError, notFound } from './errors'
-import type { StoreRole } from '@sellit/shared'
+import type { StoreRole } from '@zuri/shared'
 
-export const SESSION_COOKIE = isProd ? '__Host-sellit_session' : 'sellit_session'
+export const SESSION_COOKIE = isProd ? '__Host-zuri_session' : 'zuri_session'
 const SESSION_TTL_MS = 30 * 24 * 3600 * 1000
 const RENEW_BEFORE_MS = 15 * 24 * 3600 * 1000
 

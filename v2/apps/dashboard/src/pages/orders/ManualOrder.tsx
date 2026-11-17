@@ -1,4 +1,4 @@
-import { manualOrderCreateSchema, PAYMENT_METHODS, type PaymentMethod } from '@sellit/shared'
+import { manualOrderCreateSchema, PAYMENT_METHODS, type PaymentMethod } from '@zuri/shared'
 import { ArrowLeft, Minus, Package, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
