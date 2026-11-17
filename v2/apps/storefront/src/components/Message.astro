@@ -1,0 +1,22 @@
+---
+/** Page légère pour 404 / indisponible / page obsolète. */
+import Layout from './Layout.astro'
+
+interface Props {
+  title: string
+  text: string
+  code?: string
+  action?: { href: string; label: string } | null
+  primaryColor?: string | null
+}
+const { title, text, code, action, primaryColor } = Astro.props
+---
+
+<Layout title={title} noindex primaryColor={primaryColor}>
+  <main class="wrap msg">
+    {code && <p class="big">{code}</p>}
+    <h1>{title}</h1>
+    <p class="muted">{text}</p>
+    {action && <a class="btn" href={action.href}>{action.label}</a>}
+  </main>
+</Layout>

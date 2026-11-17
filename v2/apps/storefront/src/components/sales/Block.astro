@@ -1,0 +1,238 @@
+---
+/**
+ * Un bloc de la page de vente. Même arbre pour les 3 modèles : seul le thème (CSS) change,
+ * donc chaque modèle supporte chaque bloc, dans l'ordre de checkout.pageLayout.
+ */
+import { descriptionWithCtas, lazyImages, parseVideo } from '../../lib/content'
+import { money } from '../../lib/format'
+import { dict } from '../../lib/i18n'
+import type { CheckoutData } from '../../lib/types'
+import { img, imgSrcset } from '../../lib/urls'
+import Urgency from './Urgency.astro'
+
+interface Props {
+  block: string
+  d: CheckoutData
+}
+const { block, d } = Astro.props
+const { product, checkout, store } = d
+const locale = store.locale
+const t = dict(locale).page
+const cur = product.price.currency
+const m = (n: number) => money(n, cur, locale)
+const isCod = product.payment.method === 'cod'
+const content = product.content
+
+// Prix barré : promo produit, sinon prix comparatif.
+const promo = product.promo
+const price = product.price
+const showStrike = promo.display !== 'text_only' && price.regular > price.effective
+const compareAt = !showStrike && product.compareAtPrice && product.compareAtPrice > price.effective ? product.compareAtPrice : null
+const pct = price.promoPercent ?? (compareAt ? Math.round((1 - price.effective / compareAt) * 100) : null)
+const promoText = promo.label && promo.display !== 'strikethrough' ? promo.label : null
+
+const video = block === 'video' && content.video ? parseVideo(content.video.url) : null
+const badges = checkout.trustBadges.length ? checkout.trustBadges : isCod ? t.badgesCod : t.badgesDigital
+const LOGO: Record<string, string> = { mtn: 'MTN MoMo', moov: 'Moov Money', orange: 'Orange Money', wave: 'Wave', free: 'Free Money', airtel: 'Airtel Money', mpesa: 'M-Pesa', visa: 'VISA', mastercard: 'Mastercard', paypal: 'PayPal', celtiis: 'Celtiis', togocom: 'T-Money' }
+---
+
+{
+  block === 'hero_image' && product.coverImage && (
+    <figure class="hero block-flush">
+      <img
+        src={img(product.coverImage, 960)}
+        srcset={imgSrcset(product.coverImage, [480, 720, 960, 1280])}
+        sizes="(min-width: 1024px) 660px, 100vw"
+        width="1280"
+        height="720"
+        alt={product.name}
+        fetchpriority="high"
+        decoding="async"
+      />
+    </figure>
+  )
+}
+
+{
+  block === 'product_name' && (
+    <div class="block">
+      <h1 class="p-name">{product.name}</h1>
+    </div>
+  )
+}
+
+{
+  block === 'price_cta' && (
+    <div class="block" data-sticky-after>
+      <div class="price-row">
+        <span class="price-now">{m(price.effective)}</span>
+        {showStrike && <s class="price-old">{m(price.regular)}</s>}
+        {compareAt && <s class="price-old">{m(compareAt)}</s>}
+        {pct && promo.display === 'strikethrough' && pct > 0 && <span class="price-off">-{pct}%</span>}
+        {promoText && <span class="price-label">{promoText}</span>}
+      </div>
+      {product.inStock ? (
+        <a class={`btn btn-block btn-lg cta-${checkout.ctaStyle}`} href="#commander" data-cta="price">
+          {isCod ? t.orderCod : checkout.ctaText}
+        </a>
+      ) : (
+        <p class="notice warn center">{t.outOfStock}</p>
+      )}
+      <Urgency d={d} />
+      {isCod ? (
+        <p class="center" style="margin:12px 0 0">
+          <span class="cod-tag">✓ {t.badgesCod[0]}</span>
+        </p>
+      ) : (
+        checkout.paymentLogos.length > 0 && (
+          <div class="logos" aria-label="Moyens de paiement">
+            {checkout.paymentLogos.map((l) => (
+              <span class="logo">{LOGO[l] ?? l}</span>
+            ))}
+          </div>
+        )
+      )}
+    </div>
+  )
+}
+
+{
+  video && (
+    <div class="block">
+      {video.kind === 'file' ? (
+        <div class="video">
+          <video src={video.src} controls preload="none" playsinline />
+        </div>
+      ) : (
+        <div class="video" data-video={video.embed}>
+          <button type="button" aria-label={t.playVideo}>
+            {video.thumb && <img src={video.thumb} alt="" loading="lazy" decoding="async" width="480" height="360" />}
+            <span class="play" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+            </span>
+          </button>
+        </div>
+      )}
+      {content.video?.title && <p class="video-title">{content.video.title}</p>}
+    </div>
+  )
+}
+
+{
+  block === 'custom_text' && content.customText && (
+    <div class="block prose" set:html={lazyImages(content.customText)} />
+  )
+}
+
+{
+  block === 'description' && product.description && (
+    <div class="block prose" set:html={descriptionWithCtas(product.description, content.descriptionCtas)} />
+  )
+}
+
+{
+  block === 'features' && content.featuresPosition !== 'hidden' && content.features.length > 0 && (
+    <section class="block">
+      <h2 class="section-title">{t.features}</h2>
+      <ul class="features">
+        {content.features.map((f) => (
+          <li>
+            <span class="check" aria-hidden="true">✓</span>
+            <span>{f}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+{
+  block === 'trust_badges' && (
+    <section class="block">
+      <ul class="badges">
+        {badges.map((b) => (
+          <li>
+            <span class="check" aria-hidden="true">✓</span>
+            {b}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+{
+  block === 'guarantee' && (
+    <section class="block">
+      <div class="guarantee">
+        <span class="seal" aria-hidden="true">🛡</span>
+        <div>
+          <strong>{t.guaranteeTitle}</strong>
+          <p class="muted">{isCod ? t.guaranteeCod : t.guaranteeDigital}</p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+{
+  block === 'testimonials' && content.testimonials.length > 0 && (
+    <section class="block">
+      <h2 class="section-title">{t.testimonials}</h2>
+      {content.testimonialsStyle === 'minimal' ? (
+        <div class="t-minimal">
+          {content.testimonials.map((x) => (
+            <figure class="t-min" style="margin:0">
+              <span class="stars" aria-label={`${x.rating}/5`}>{'★'.repeat(x.rating)}</span>
+              <p>« {x.text} »</p>
+              <figcaption class="t-who">
+                {x.name}
+                {x.city && <span> · {x.city}</span>}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      ) : content.testimonialsStyle === 'highlight' ? (
+        <div class="t-highlight">
+          {content.testimonials.map((x) => (
+            <figure class="t-hl" style="margin:0">
+              <span class="stars" aria-label={`${x.rating}/5`}>{'★'.repeat(x.rating)}</span>
+              <p>{x.text}</p>
+              <figcaption class="t-who">
+                {x.name}
+                {x.city && <span> · {x.city}</span>}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      ) : (
+        <div class="t-cards">
+          {content.testimonials.map((x) => (
+            <figure class="t-card" style="margin:0">
+              <span class="stars" aria-label={`${x.rating}/5`}>{'★'.repeat(x.rating)}</span>
+              <p>{x.text}</p>
+              <figcaption class="t-who">
+                {x.name}
+                {x.city && <span> · {x.city}</span>}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+{
+  block === 'faq' && content.faqs.length > 0 && (
+    <section class="block faq">
+      <h2 class="section-title">{t.faq}</h2>
+      {content.faqs.map((f) => (
+        <details>
+          <summary>{f.question}</summary>
+          <div class="a">{f.answer}</div>
+        </details>
+      ))}
+    </section>
+  )
+}

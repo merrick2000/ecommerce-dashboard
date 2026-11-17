@@ -1,0 +1,47 @@
+---
+import '../styles/global.css'
+import { onColor, safeColor } from '../lib/content'
+
+interface Props {
+  title: string
+  description?: string
+  lang?: string
+  canonical?: string
+  ogImage?: string | null
+  template?: string
+  primaryColor?: string | null
+  noindex?: boolean
+  preconnect?: (string | null)[]
+}
+
+const { title, description, lang = 'fr', canonical, ogImage, template = 'classic', primaryColor, noindex = false, preconnect = [] } = Astro.props
+const accent = safeColor(primaryColor)
+const tpl = ['classic', 'dark_premium', 'minimalist_card'].includes(template) ? template : 'classic'
+const themeColor = tpl === 'dark_premium' ? '#0a0a0c' : accent
+const origins = [...new Set(preconnect.filter((o): o is string => !!o))]
+---
+
+<!doctype html>
+<html lang={lang === 'en' ? 'en' : 'fr'}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    {canonical && <link rel="canonical" href={canonical} />}
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="theme-color" content={themeColor} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    {canonical && <meta property="og:url" content={canonical} />}
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
+    <link rel="icon" href="data:," />
+    {origins.map((o) => <link rel="preconnect" href={o} crossorigin />)}
+    <slot name="head" />
+  </head>
+  <body class={`tpl-${tpl}`} style={`--accent:${accent};--on-accent:${onColor(accent)}`}>
+    <slot />
+  </body>
+</html>

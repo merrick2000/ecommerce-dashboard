@@ -1,0 +1,11 @@
+---
+/** Racine de l'hôte plateforme : pas de vitrine générique (aucun lien sortant). Sur un domaine boutique, la racine est réécrite vers le catalogue. */
+import Message from '../components/Message.astro'
+import { dict } from '../lib/i18n'
+
+export const prerender = false
+Astro.response.status = 404
+const t = dict('fr').errors
+---
+
+<Message title={t.notFound} text={t.notFoundText} code="404" />

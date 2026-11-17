@@ -1,0 +1,12 @@
+---
+/** Ancienne URL /:slug/success?order= (Next.js) : obsolète, on affiche simplement un remerciement. */
+import Message from '../../components/Message.astro'
+import { dict } from '../../lib/i18n'
+import { storeUrl } from '../../lib/urls'
+
+export const prerender = false
+Astro.response.headers.set('Cache-Control', 'no-store')
+const t = dict('fr')
+---
+
+<Message title={t.errors.successTitle} text={t.errors.successText} action={{ href: storeUrl(Astro.locals, '/'), label: t.order.back }} />

@@ -1,0 +1,31 @@
+---
+import { dict } from '../lib/i18n'
+import type { PublicStore } from '../lib/types'
+
+interface Props {
+  store: Pick<PublicStore, 'name' | 'supportPhone' | 'supportEmail' | 'locale'>
+}
+const { store } = Astro.props
+const t = dict(store.locale).footer
+const tel = store.supportPhone?.replace(/[^\d+]/g, '')
+---
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-top">
+      <strong>{store.name}</strong>
+      <span>🔒 {t.secure}</span>
+    </div>
+    {
+      (tel || store.supportEmail) && (
+        <p>
+          {t.support} : {tel && <a href={`tel:${tel}`}>{store.supportPhone}</a>}
+          {tel && store.supportEmail && ' · '}
+          {store.supportEmail && <a href={`mailto:${store.supportEmail}`}>{store.supportEmail}</a>}
+        </p>
+      )
+    }
+    <p class="legal">{t.meta}</p>
+    <p class="legal">© {new Date().getFullYear()} {store.name}. {t.rights}</p>
+  </div>
+</footer>

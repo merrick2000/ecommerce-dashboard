@@ -1,0 +1,134 @@
+---
+/** Page commande — données personnelles : jamais en cache. */
+import Footer from '../../../components/Footer.astro'
+import Layout from '../../../components/Layout.astro'
+import Message from '../../../components/Message.astro'
+import OrderLive from '../../../islands/OrderLive'
+import { ApiError, apiGet } from '../../../lib/api'
+import { money } from '../../../lib/format'
+import { dict } from '../../../lib/i18n'
+import type { PublicOrder } from '../../../lib/types'
+import { storeUrl } from '../../../lib/urls'
+
+export const prerender = false
+
+Astro.response.headers.set('Cache-Control', 'no-store')
+Astro.response.headers.set('Cloudflare-CDN-Cache-Control', 'no-store')
+
+const { slug = '', token = '' } = Astro.params
+let o: PublicOrder | null = null
+if (/^[\w-]{20,64}$/.test(token)) {
+  try {
+    o = await apiGet<PublicOrder>(`/orders/${encodeURIComponent(token)}`)
+  } catch (e) {
+    if (!(e instanceof ApiError && (e.status === 404 || e.status === 422))) throw e
+  }
+}
+// Une commande d'une autre boutique ne s'affiche pas sous ce domaine / slug.
+if (o && o.store && o.store.slug !== slug) o = null
+if (!o) Astro.response.status = 404
+
+const store = o?.store ?? null
+const T = dict(store?.locale)
+const t = T.order
+const m = (n: number) => money(n, o?.currency ?? 'XOF', store?.locale)
+const isCod = o?.paymentMethod === 'cod'
+const fs = o?.fulfillmentStatus
+const stepIndex = fs === 'delivered' ? 3 : fs === 'shipped' ? 2 : fs === 'confirmed' ? 1 : 0
+const statusLabel = o ? (isCod && o.paymentStatus === 'pending' ? t.cod : t[o.paymentStatus as 'paid' | 'pending' | 'failed' | 'refunded']) : ''
+const numItems = o?.items.reduce((s, i) => s + i.quantity, 0) ?? 1
+---
+
+{
+  !o || !store ? (
+    <Message title={t.notFound} text={T.errors.notFoundText} code="404" />
+  ) : (
+    <Layout title={`${t.title} ${o.orderNumber} — ${store.name}`} lang={store.locale} noindex>
+      <header class="top">
+        <div class="wrap">
+          <a href={storeUrl(Astro.locals, '/')}>{store.name}</a>
+        </div>
+      </header>
+      <main class="wrap">
+        <section class="panel">
+          <p class="muted" style="margin:0 0 4px">{t.number}</p>
+          <h1 style="font-size:1.4rem">{o.orderNumber}</h1>
+          <span class={`status ${o.paymentStatus === 'paid' ? 'paid' : o.paymentStatus === 'pending' && !isCod ? 'pending' : ''}`}>{statusLabel}</span>
+
+          {o.items.some((i) => i.productType === 'physical') && !['cancelled', 'returned'].includes(fs!) && (
+            <ol class="steps">
+              {t.steps.map((s, i) => (
+                <li class={i <= stepIndex ? 'on' : ''}>{s}</li>
+              ))}
+            </ol>
+          )}
+          {fs === 'unreachable' && <p class="notice warn" style="margin-top:14px">{t.unreachable}</p>}
+          {fs === 'cancelled' && <p class="notice warn" style="margin-top:14px">{t.cancelled}</p>}
+          {fs === 'returned' && <p class="notice warn" style="margin-top:14px">{t.returned}</p>}
+
+          <OrderLive
+            client:load
+            token={token}
+            slug={store.slug}
+            storeId={store.id}
+            storeCountry={store.country}
+            locale={store.locale}
+            total={o.total}
+            currency={o.currency}
+            eventId={o.eventId}
+            numItems={numItems}
+            paymentMethod={o.paymentMethod}
+            paymentStatus={o.paymentStatus}
+            fulfillmentStatus={o.fulfillmentStatus}
+            canDownload={o.canDownload}
+            t={t}
+            pt={T.pay}
+          />
+        </section>
+
+        <section class="panel">
+          <h2 class="section-title">{t.items}</h2>
+          <ul class="items">
+            {o.items.map((i) => (
+              <li>
+                <span>
+                  {i.quantity > 1 && `${i.quantity} × `}
+                  {i.name}
+                  {i.variantName && <span class="muted"> · {i.variantName}</span>}
+                </span>
+                <strong>{m(i.total)}</strong>
+              </li>
+            ))}
+          </ul>
+          <dl class="summary">
+            <div>
+              <dt>{T.form.subtotal}</dt>
+              <dd>{m(o.subtotal)}</dd>
+            </div>
+            {o.discount > 0 && (
+              <div class="disc">
+                <dt>{T.form.discount}</dt>
+                <dd>-{m(o.discount)}</dd>
+              </div>
+            )}
+            {o.items.some((i) => i.productType === 'physical') && (
+              <div>
+                <dt>{T.form.shipping}</dt>
+                <dd>{o.shippingFee === 0 ? T.form.free : m(o.shippingFee)}</dd>
+              </div>
+            )}
+            <div class="total">
+              <dt>{T.form.total}</dt>
+              <dd>{m(o.total)}</dd>
+            </div>
+          </dl>
+          <p class="muted small" style="margin:12px 0 0">{t.keepPage}</p>
+        </section>
+        <p class="center">
+          <a href={storeUrl(Astro.locals, '/')}>{t.back}</a>
+        </p>
+      </main>
+      <Footer store={store} />
+    </Layout>
+  )
+}

@@ -1,0 +1,13 @@
+---
+import Message from '../components/Message.astro'
+import { dict } from '../lib/i18n'
+
+interface Props {
+  error?: unknown
+}
+export const prerender = false
+Astro.response.headers.set('Cache-Control', 'no-store')
+const t = dict('fr').errors
+---
+
+<Message title={t.unavailable} text={t.unavailableText} action={{ href: Astro.url.pathname, label: t.retry }} />

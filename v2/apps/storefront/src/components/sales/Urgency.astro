@@ -1,0 +1,35 @@
+---
+/** Urgence configurée par le vendeur. Le compte à rebours est persistant par visiteur (localStorage, voir client/page.ts). */
+import { dict } from '../../lib/i18n'
+import type { CheckoutData } from '../../lib/types'
+
+interface Props {
+  d: CheckoutData
+}
+const { d } = Astro.props
+const u = d.checkout.urgency ?? {}
+const t = dict(d.store.locale).page
+const cd = u.countdown?.enabled ? u.countdown : null
+const stock = u.limitedStock?.enabled ? u.limitedStock.remaining : null
+const viewers = u.viewers?.enabled ? u.viewers.base : null
+const show = d.product.inStock && (cd || stock || viewers)
+---
+
+{
+  show && (
+    <div class="urgency">
+      {cd && (
+        <p class="urg" data-countdown={cd.minutes} data-pid={d.product.id} hidden>
+          ⏰ {cd.label || t.countdown} <span class="cd-time">--:--:--</span>
+        </p>
+      )}
+      {stock && <p class="urg">🔥 {t.inStockLow(stock)}</p>}
+      {viewers && (
+        <p class="urg" data-viewers={viewers}>
+          <span class="dot" aria-hidden="true" />
+          <span data-vtext>{t.viewers(viewers)}</span>
+        </p>
+      )}
+    </div>
+  )
+}

@@ -1,0 +1,5 @@
+# Copier en .dev.vars pour `astro dev` / `wrangler dev`
+API_ORIGIN=http://localhost:8787
+PLATFORM_HOST=localhost
+BASE_DOMAIN=sellit.com
+# EDGE_SECRET=même-valeur-que-l-api-24-caracteres-min

@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sellit-storefront",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "compatibility_date": "2026-11-01",
+  "assets": { "binding": "ASSETS" },
+  "observability": { "enabled": true },
+  "vars": {
+    // Serveur qui fait tourner apps/api (même valeur que pour apps/edge).
+    "API_ORIGIN": "https://api-origin.example.com",
+    // Domaine « plateforme » : /:slug, /:slug/p/:id, /:slug/order/:token.
+    "PLATFORM_HOST": "shops.sellit.com",
+    // Sous-domaines boutiques : <sous-domaine>.BASE_DOMAIN (même valeur que BASE_DOMAIN côté API).
+    "BASE_DOMAIN": "sellit.com"
+    // Optionnel : "IMAGE_RESIZING": "cloudflare" si Image Resizing est activé sur la zone (/cdn-cgi/image).
+  }
+  // Secret partagé avec l'API : `wrangler secret put EDGE_SECRET` (même valeur que EDGE_SECRET côté API).
+  // "routes": [
+  //   { "pattern": "shops.sellit.com", "custom_domain": true },
+  //   { "pattern": "*.sellit.com/*", "zone_name": "sellit.com" }
+  // ]
+  // Domaines personnalisés des vendeurs : Cloudflare for SaaS (custom hostnames) pointant vers ce Worker.
+}

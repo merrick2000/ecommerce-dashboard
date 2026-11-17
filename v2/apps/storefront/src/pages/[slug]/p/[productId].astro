@@ -1,0 +1,143 @@
+---
+/** Page de vente — HTML d'abord, mise en cache (aucune donnée personnelle ici). */
+import Footer from '../../../components/Footer.astro'
+import Layout from '../../../components/Layout.astro'
+import Block from '../../../components/sales/Block.astro'
+import OrderForm from '../../../islands/OrderForm'
+import { ApiError, apiGet } from '../../../lib/api'
+import { excerpt, jsonForScript, waLink } from '../../../lib/content'
+import { money } from '../../../lib/format'
+import { dict } from '../../../lib/i18n'
+import type { CheckoutData } from '../../../lib/types'
+import { absoluteUrl, originOf, storeUrl } from '../../../lib/urls'
+
+export const prerender = false
+
+const { slug = '', productId = '' } = Astro.params
+if (!/^\d{1,10}$/.test(productId)) return Astro.rewrite('/404')
+
+let d: CheckoutData
+try {
+  d = await apiGet<CheckoutData>(`/checkout/${encodeURIComponent(slug)}/${productId}`)
+} catch (e) {
+  if (e instanceof ApiError && (e.status === 404 || e.status === 422)) return Astro.rewrite('/404')
+  throw e
+}
+
+const { store, product, checkout, zones, tracking } = d
+const T = dict(store.locale)
+const t = T.page
+const isCod = product.payment.method === 'cod'
+const price = product.price
+const m = (n: number) => money(n, price.currency, store.locale)
+const blocks = checkout.pageLayout.filter((b) => b.visible).map((b) => b.block)
+const ctaLabel = isCod ? t.orderCod : checkout.ctaText
+const wa = product.content.whatsapp
+const waHref = wa?.enabled && wa.phone ? waLink(wa.phone, wa.welcomeMessage || t.whatsappMessage(product.name)) : null
+const description = excerpt(product.description) || excerpt(product.content.customText ?? '') || product.name
+
+const cache = 'public, s-maxage=30, stale-while-revalidate=300'
+Astro.response.headers.set('Cache-Control', cache)
+Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
+
+const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebookPixelId, tt: tracking.tiktokPixelId, value: price.effective, currency: price.currency, name: product.name }
+---
+
+<Layout
+  title={`${product.name} — ${store.name}`}
+  description={description}
+  lang={store.locale}
+  canonical={absoluteUrl(Astro.locals, `/p/${product.id}`)}
+  ogImage={product.coverImage}
+  template={checkout.template}
+  primaryColor={checkout.primaryColor}
+  preconnect={[originOf(product.coverImage)]}
+>
+  <div id="sf-promo" class="promo-bar" role="status" hidden></div>
+
+  <div class="sales">
+    <main class="sales-main">
+      {blocks.map((b) => <Block block={b} d={d} />)}
+    </main>
+
+    <aside class="sales-aside" id="commander" aria-label={t.orderTitle}>
+      <div class="order-box">
+        <h2 class="order-title">{t.orderTitle}</h2>
+        <p class="muted" style="margin-bottom:14px">{product.name} · <strong>{m(price.effective)}</strong></p>
+        {
+          product.inStock && (product.variants.length === 0 || product.variants.some((v) => v.inStock)) ? (
+            <OrderForm
+              client:idle
+              slug={store.slug}
+              storeId={store.id}
+              productId={product.id}
+              productName={product.name}
+              type={product.type}
+              currency={price.currency}
+              locale={store.locale}
+              country={store.country}
+              unit={price}
+              offers={product.offers}
+              variants={product.variants}
+              variantLabel={product.variantLabel}
+              inStock={product.inStock}
+              zones={zones}
+              method={product.payment.method}
+              externalUrl={product.payment.externalUrl}
+              onlineEnabled={d.onlinePaymentEnabled}
+              ctaText={checkout.ctaText}
+              ctaStyle={checkout.ctaStyle}
+              orderBase={storeUrl(Astro.locals, '/order/')}
+              fb={tracking.facebookPixelId}
+              tt={tracking.tiktokPixelId}
+              t={T.form}
+              pt={T.pay}
+            />
+          ) : (
+            <div class="notice warn soldout">
+              <strong>{t.outOfStock}</strong>
+              <p style="margin:6px 0 0">{t.outOfStockText}</p>
+            </div>
+          )
+        }
+      </div>
+    </aside>
+  </div>
+
+  <Footer store={store} />
+
+  {
+    product.inStock && (
+      <div id="sf-sticky" class="sticky" aria-hidden="true">
+        <div class="s-price">
+          {price.regular > price.effective && <s>{m(price.regular)}</s>}
+          {m(price.effective)}
+        </div>
+        <a class={`btn cta-${checkout.ctaStyle === 'large' ? 'default' : checkout.ctaStyle}`} href="#commander" data-cta="sticky">
+          {isCod ? t.buyNow : ctaLabel}
+        </a>
+      </div>
+    )
+  }
+
+  {
+    waHref && (
+      <a class={`wa${wa.position === 'left' ? ' wa-left' : ''}`} href={waHref} target="_blank" rel="noopener" data-wa aria-label={t.whatsapp} title={t.whatsapp}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1l-.9 1.2c-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5.3-.5c.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5.1 4.5 2.5 1 3 .8 3.6.7.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3zM12 21.8c-1.8 0-3.5-.5-5-1.4l-.4-.2-3.7 1 1-3.6-.2-.4C2.7 15.6 2.2 13.8 2.2 12 2.2 6.6 6.6 2.2 12 2.2c2.6 0 5.1 1 6.9 2.9 1.8 1.8 2.9 4.3 2.9 6.9 0 5.4-4.4 9.8-9.8 9.8zm8.3-18.1C18.1 1.5 15.1.2 12 .2 5.5.2.2 5.5.2 12c0 2.1.5 4.1 1.6 5.9L.1 24l6.3-1.6c1.7.9 3.7 1.4 5.6 1.4 6.5 0 11.8-5.3 11.8-11.8 0-3.2-1.2-6.1-3.5-8.3z" />
+        </svg>
+      </a>
+    )
+  }
+
+  {
+    checkout.salesPopup?.enabled && (
+      <div id="sf-popup" class="popup" role="status" aria-live="polite" data-slug={store.slug} data-interval={checkout.salesPopup.intervalSeconds} data-bought={t.justBought} data-from={t.from} data-ago={JSON.stringify(t.ago)} />
+    )
+  }
+
+  <script is:inline type="application/json" id="sf-track" set:html={jsonForScript(trackCfg)} />
+  <script>
+    import '../../../client/page'
+  </script>
+</Layout>

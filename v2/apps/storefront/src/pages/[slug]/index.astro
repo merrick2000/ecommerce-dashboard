@@ -1,0 +1,63 @@
+---
+/** Catalogue de la boutique — HTML pur, aucun îlot. */
+import Footer from '../../components/Footer.astro'
+import Layout from '../../components/Layout.astro'
+import { ApiError, apiGet } from '../../lib/api'
+import { jsonForScript } from '../../lib/content'
+import { money } from '../../lib/format'
+import { dict } from '../../lib/i18n'
+import type { CatalogData } from '../../lib/types'
+import { absoluteUrl, img, storeUrl } from '../../lib/urls'
+
+export const prerender = false
+
+const { slug = '' } = Astro.params
+let d: CatalogData
+try {
+  d = await apiGet<CatalogData>(`/stores/${encodeURIComponent(slug)}`)
+} catch (e) {
+  if (e instanceof ApiError && e.status === 404) return Astro.rewrite('/404')
+  throw e
+}
+const { store, products } = d
+const t = dict(store.locale)
+const cache = 'public, s-maxage=30, stale-while-revalidate=300'
+Astro.response.headers.set('Cache-Control', cache)
+Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
+const trackCfg = { storeId: store.id, productId: null, fb: null, tt: null }
+---
+
+<Layout title={store.name} description={`${store.name} — ${t.catalog.products}`} lang={store.locale} canonical={absoluteUrl(Astro.locals, '/')} ogImage={products[0]?.thumbnail} primaryColor={d.primaryColor}>
+  <header class="top">
+    <div class="wrap"><a href={storeUrl(Astro.locals, '/')}>{store.name}</a></div>
+  </header>
+  <main class="wrap">
+    <h1 class="sr-only">{store.name}</h1>
+    {
+      products.length === 0 ? (
+        <p class="msg muted">{t.catalog.empty}</p>
+      ) : (
+        <div class="grid">
+          {products.map((p, i) => (
+            <a class="card" href={storeUrl(Astro.locals, `/p/${p.id}`)}>
+              {p.thumbnail ? <img src={img(p.thumbnail, 400)} alt="" width="400" height="400" loading={i < 2 ? 'eager' : 'lazy'} decoding="async" /> : <div class="ph" />}
+              <div class="card-b">
+                <p class="card-n">{p.name}</p>
+                <span class="card-p">
+                  {money(p.price.effective, p.price.currency, store.locale)}
+                  {p.price.regular > p.price.effective && <s>{money(p.price.regular, p.price.currency, store.locale)}</s>}
+                </span>
+              </div>
+            </a>
+          ))}
+        </div>
+      )
+    }
+  </main>
+  <Footer store={store} />
+  <script is:inline type="application/json" id="sf-track" set:html={jsonForScript(trackCfg)} />
+  <script>
+    import { startTracking } from '../../client/track'
+    startTracking()
+  </script>
+</Layout>
