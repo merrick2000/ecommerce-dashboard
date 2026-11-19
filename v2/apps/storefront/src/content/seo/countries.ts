@@ -127,6 +127,7 @@ export const COUNTRIES: CountryPage[] = [
       { label: 'FedaPay : pays pris en charge', url: 'https://support.fedapay.com/portal/en/kb/articles/fedapay-fonctionne-t-il-dans-mon-pays' },
       { label: 'PayDunya : opérateurs Mobile Money disponibles', url: 'https://developers.paydunya.com/doc/FR/introduction' },
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
     ],
   },
   {
@@ -254,6 +255,7 @@ export const COUNTRIES: CountryPage[] = [
       { label: 'FedaPay : pays pris en charge', url: 'https://support.fedapay.com/portal/en/kb/articles/fedapay-fonctionne-t-il-dans-mon-pays' },
       { label: 'PayDunya : opérateurs Mobile Money disponibles', url: 'https://developers.paydunya.com/doc/FR/introduction' },
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
     ],
   },
   {
@@ -381,6 +383,7 @@ export const COUNTRIES: CountryPage[] = [
       { label: 'FedaPay : pays pris en charge', url: 'https://support.fedapay.com/portal/en/kb/articles/fedapay-fonctionne-t-il-dans-mon-pays' },
       { label: 'PayDunya : opérateurs Mobile Money disponibles', url: 'https://developers.paydunya.com/doc/FR/introduction' },
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
     ],
   },
   {
@@ -779,6 +782,7 @@ export const COUNTRIES: CountryPage[] = [
       { label: 'FedaPay : pays pris en charge', url: 'https://support.fedapay.com/portal/en/kb/articles/fedapay-fonctionne-t-il-dans-mon-pays' },
       { label: 'PayDunya : opérateurs Mobile Money disponibles', url: 'https://developers.paydunya.com/doc/FR/introduction' },
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
     ],
   },
   {
@@ -1203,6 +1207,7 @@ export const COUNTRIES: CountryPage[] = [
     ],
     sources: [
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
       { label: 'FedaPay : pays pris en charge (Cameroun absent)', url: 'https://support.fedapay.com/portal/en/kb/articles/fedapay-fonctionne-t-il-dans-mon-pays' },
     ],
   },
@@ -1342,6 +1347,7 @@ export const COUNTRIES: CountryPage[] = [
     ],
     sources: [
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
       { label: 'FedaPay : pays pris en charge (Gabon absent)', url: 'https://support.fedapay.com/portal/en/kb/articles/fedapay-fonctionne-t-il-dans-mon-pays' },
     ],
   },
@@ -1468,6 +1474,7 @@ export const COUNTRIES: CountryPage[] = [
     sources: [
       { label: 'FeexPay : FAQ pays disponibles', url: 'https://feexpay.me' },
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
     ],
   },
   {
@@ -1596,6 +1603,7 @@ export const COUNTRIES: CountryPage[] = [
     ],
     sources: [
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
     ],
   },
   {
@@ -2076,6 +2084,7 @@ export const COUNTRIES: CountryPage[] = [
     ],
     sources: [
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
       { label: 'FedaPay : pays pris en charge', url: 'https://support.fedapay.com/portal/en/kb/articles/fedapay-fonctionne-t-il-dans-mon-pays' },
     ],
   },
@@ -2194,6 +2203,7 @@ export const COUNTRIES: CountryPage[] = [
     ],
     sources: [
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
       { label: 'FedaPay : pays pris en charge', url: 'https://support.fedapay.com/portal/en/kb/articles/fedapay-fonctionne-t-il-dans-mon-pays' },
     ],
   },
@@ -2312,6 +2322,7 @@ export const COUNTRIES: CountryPage[] = [
     ],
     sources: [
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
       { label: 'FedaPay : pays pris en charge', url: 'https://support.fedapay.com/portal/en/kb/articles/fedapay-fonctionne-t-il-dans-mon-pays' },
     ],
   },
@@ -2437,6 +2448,7 @@ export const COUNTRIES: CountryPage[] = [
     ],
     sources: [
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
     ],
   },
   {
@@ -2566,6 +2578,7 @@ export const COUNTRIES: CountryPage[] = [
     ],
     sources: [
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
       { label: 'FedaPay : pays pris en charge', url: 'https://support.fedapay.com/portal/en/kb/articles/fedapay-fonctionne-t-il-dans-mon-pays' },
     ],
   },
@@ -2696,6 +2709,7 @@ export const COUNTRIES: CountryPage[] = [
     sources: [
       { label: 'FedaPay : pays pris en charge', url: 'https://support.fedapay.com/portal/en/kb/articles/fedapay-fonctionne-t-il-dans-mon-pays' },
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
     ],
   },
   {
@@ -2825,6 +2839,7 @@ export const COUNTRIES: CountryPage[] = [
     sources: [
       { label: 'FedaPay : pays pris en charge', url: 'https://support.fedapay.com/portal/en/kb/articles/fedapay-fonctionne-t-il-dans-mon-pays' },
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
     ],
   },
   {
@@ -2843,16 +2858,16 @@ export const COUNTRIES: CountryPage[] = [
       en: 'Sell online in Nigeria: online store with cash on delivery | Zuri',
     },
     description: {
-      fr: 'Vendre en ligne au Nigeria : boutique en ligne gratuite en naira, paiement à la livraison, Mobile Money via PawaPay, closers et dropshipping local.',
-      en: 'Sell online in Nigeria: free online store in naira, pay on delivery order form, mobile money through PawaPay, closers team and local dropshipping.',
+      fr: 'Vendre en ligne au Nigeria : boutique en ligne gratuite en naira, paiement à la livraison, closers, dropshipping local et paiement à la livraison d’abord.',
+      en: 'Sell online in Nigeria: free online store in naira, pay on delivery order form, closers team and local dropshipping.',
     },
     h1: {
       fr: 'Vendre en ligne au Nigeria, du formulaire au cash encaissé',
       en: 'Sell online in Nigeria, from order form to cash collected',
     },
     intro: {
-      fr: 'Au Nigeria, l’acheteur en ligne veut une page qui charge vite, un prix clair en naira et la possibilité de payer à la livraison. Zuri te donne tout ça, plus une équipe de closers pour confirmer les commandes et le Mobile Money via ton propre compte PawaPay.',
-      en: 'In Nigeria, online shoppers want a page that loads fast, a clear price in naira and the option to pay on delivery. Zuri gives you all of that, plus a closers team to confirm orders and mobile money collection through your own PawaPay account.',
+      fr: 'Au Nigeria, l’acheteur en ligne veut une page qui charge vite, un prix clair en naira et la possibilité de payer à la livraison. Zuri te donne tout ça, plus une équipe de closers pour confirmer les commandes avant l’envoi.',
+      en: 'In Nigeria, online shoppers want a page that loads fast, a clear price in naira and the option to pay on delivery. Zuri gives you all of that, plus a closers team to confirm orders before shipping.',
     },
     market: [
       {
@@ -2860,8 +2875,8 @@ export const COUNTRIES: CountryPage[] = [
         en: 'Nigeria is one of the most active markets on the continent for social selling. Instagram and WhatsApp sit at the heart of trade, Facebook is still strong for ads, and TikTok does a lot of the product discovery. Many sellers start with a WhatsApp catalogue and DMs, then move to a proper order page once volume grows.',
       },
       {
-        fr: 'Côté paiement, le virement bancaire instantané est très courant, tout comme les applis de paiement comme OPay, PalmPay ou Moniepoint. Le paiement à la livraison (« pay on delivery ») reste pourtant le moyen le plus sûr de convaincre un client qui ne te connaît pas, surtout après une pub. Pour le Mobile Money, Zuri passe par ton compte PawaPay, qui couvre MTN et Airtel au Nigeria. L’argent va sur ton compte, jamais chez Zuri.',
-        en: 'On payments, instant bank transfers are very common, and so are payment apps like OPay, PalmPay and Moniepoint. Pay on delivery is still the safest way to convince a buyer who does not know you, especially after an ad. For mobile money, Zuri works through your own PawaPay account, which covers MTN and Airtel in Nigeria. The money goes to your account, never to Zuri.',
+        fr: 'Côté paiement, le virement bancaire instantané est très courant, tout comme les applis de paiement comme OPay, PalmPay ou Moniepoint. Le paiement à la livraison (« pay on delivery ») reste pourtant le moyen le plus sûr de convaincre un client qui ne te connaît pas, surtout après une pub. Pour le Mobile Money, Zuri se connecte à ton compte PawaPay, mais au Nigeria MTN et Airtel y sont réservés aux comptes Entreprise de PawaPay (page officielle de ses offres) : vérifie ton éligibilité avec eux, et compte d’abord sur le paiement à la livraison.',
+        en: 'On payments, instant bank transfers are very common, and so are payment apps like OPay, PalmPay and Moniepoint. Pay on delivery is still the safest way to convince a buyer who does not know you, especially after an ad. For mobile money, Zuri connects to your own PawaPay account, but in Nigeria MTN and Airtel are only available on PawaPay’s Enterprise plan (per its official plans page): check your eligibility with them, and rely on pay on delivery first.',
       },
       {
         fr: 'La livraison est le vrai défi. À Lagos, les embouteillages rendent les livraisons de l’après-midi incertaines, et les livreurs à moto restent la solution la plus rapide pour le dernier kilomètre. Entre États, tu passes par des sociétés de logistique ou des agences de transport. Les livraisons en dehors de ta ville prennent plus de temps, et c’est là que les clients injoignables et les colis refusés coûtent le plus cher.',
@@ -2921,8 +2936,8 @@ export const COUNTRIES: CountryPage[] = [
       {
         q: { fr: 'Comment encaisser par Mobile Money au Nigeria ?', en: 'How do I collect mobile money in Nigeria?' },
         a: {
-          fr: 'Connecte ton propre compte PawaPay à Zuri. PawaPay couvre MTN et Airtel au Nigeria. Le paiement arrive sur ton compte PawaPay ; Zuri ne garde jamais l’argent.',
-          en: 'Connect your own PawaPay account to Zuri. PawaPay covers MTN and Airtel in Nigeria. Payments land in your PawaPay account; Zuri never holds the money.',
+          fr: 'Au Nigeria, MTN et Airtel ne sont proposés par PawaPay qu’avec son offre Entreprise. Si ton compte y a accès, connecte-le à Zuri : le paiement arrive sur ton compte PawaPay et Zuri ne garde jamais l’argent. Sinon, le paiement à la livraison fonctionne partout.',
+          en: 'In Nigeria, PawaPay only offers MTN and Airtel on its Enterprise plan. If your account has access, connect it to Zuri: payments land in your PawaPay account and Zuri never holds the money. Otherwise, pay on delivery works everywhere.',
         },
       },
       {
@@ -2949,6 +2964,7 @@ export const COUNTRIES: CountryPage[] = [
     ],
     sources: [
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
     ],
   },
   {
@@ -3073,6 +3089,7 @@ export const COUNTRIES: CountryPage[] = [
     ],
     sources: [
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
     ],
   },
   {
@@ -3091,16 +3108,16 @@ export const COUNTRIES: CountryPage[] = [
       en: 'Sell online in Kenya: online store with cash on delivery | Zuri',
     },
     description: {
-      fr: 'Vendre en ligne au Kenya : boutique en ligne gratuite, paiement à la livraison et M-Pesa via PawaPay, closers et pub TikTok. Idéal pour le dropshipping.',
-      en: 'Sell online in Kenya with a free online store: pay on delivery, M-Pesa via PawaPay, order confirmation team and TikTok ads. Built for local dropshipping.',
+      fr: 'Vendre en ligne au Kenya : boutique en ligne gratuite, paiement à la livraison, closers et pub TikTok. Idéal pour le dropshipping.',
+      en: 'Sell online in Kenya with a free online store: pay on delivery, order confirmation team and TikTok ads. Built for local dropshipping.',
     },
     h1: {
       fr: 'Vendre en ligne au Kenya, du statut WhatsApp au paiement M-Pesa',
       en: 'Sell online in Kenya, from WhatsApp status to M-Pesa payment',
     },
     intro: {
-      fr: 'Au Kenya, M-Pesa fait partie du quotidien et beaucoup de clients préfèrent payer quand le colis arrive. Avec Zuri, tu crées une boutique légère en shillings, tu reçois des commandes en paiement à la livraison et tu peux encaisser M-Pesa sur ton propre compte PawaPay.',
-      en: 'In Kenya, M-Pesa is part of daily life, yet many buyers still want to pay when the parcel reaches them. Zuri gives you a light store priced in shillings, a pay on delivery order form, and M-Pesa collection through your own PawaPay account.',
+      fr: 'Au Kenya, M-Pesa fait partie du quotidien et beaucoup de clients préfèrent payer quand le colis arrive. Avec Zuri, tu crées une boutique légère en shillings, tu reçois des commandes en paiement à la livraison, et ton client peut régler le livreur par M-Pesa.',
+      en: 'In Kenya, M-Pesa is part of daily life, yet many buyers still want to pay when the parcel reaches them. Zuri gives you a light store priced in shillings, a pay on delivery order form, and customers can pay the rider with M-Pesa.',
     },
     market: [
       {
@@ -3126,8 +3143,8 @@ export const COUNTRIES: CountryPage[] = [
         en: 'Show prices in KES with round amounts that are easy to type into M-Pesa. Zuri supports the Kenyan shilling, so your buyer sees exactly what they will pay.',
       },
       {
-        fr: 'Propose deux options dans ton formulaire : paiement à la livraison et paiement M-Pesa en ligne via ton compte PawaPay. Le client qui te fait déjà confiance paie tout de suite, les autres paient au livreur.',
-        en: 'Offer two options in your order form: pay on delivery and online M-Pesa payment through your own PawaPay account. Buyers who already trust you pay right away, the others pay the rider.',
+        fr: 'Garde le paiement à la livraison et laisse le client payer le livreur par M-Pesa. Le paiement M-Pesa en ligne via PawaPay n’est ouvert qu’aux comptes Entreprise de PawaPay au Kenya : vérifie ton éligibilité avec eux.',
+        en: 'Keep pay on delivery and let customers pay the rider with M-Pesa. Online M-Pesa through PawaPay is only available on PawaPay’s Enterprise plan in Kenya: check your eligibility with them.',
       },
       {
         fr: 'Crée tes zones de livraison par ville : Nairobi en boda boda avec un tarif, puis Mombasa, Kisumu, Nakuru et Eldoret avec un tarif colis et un délai plus long. Le client voit les frais avant de valider, donc moins de refus.',
@@ -3165,8 +3182,8 @@ export const COUNTRIES: CountryPage[] = [
       {
         q: { fr: 'Comment encaisser M-Pesa avec Zuri au Kenya ?', en: 'How do I collect M-Pesa payments with Zuri in Kenya?' },
         a: {
-          fr: 'Zuri se connecte à ton propre compte PawaPay, qui prend en charge M-Pesa au Kenya. L’argent arrive chez PawaPay sur ton compte marchand : Zuri ne détient jamais tes fonds. Tu peux aussi garder le paiement à la livraison en parallèle.',
-          en: 'Zuri connects to your own PawaPay account, which supports M-Pesa in Kenya. The money lands in your PawaPay merchant account: Zuri never holds your funds. You can keep pay on delivery running at the same time.',
+          fr: 'Zuri se connecte à ton propre compte PawaPay, mais au Kenya M-Pesa n’y est proposé qu’avec l’offre Entreprise de PawaPay. Si tu y as accès, l’argent arrive sur ton compte marchand et Zuri ne détient jamais tes fonds. Sinon, le paiement à la livraison (avec M-Pesa au livreur) reste la solution simple.',
+          en: 'Zuri connects to your own PawaPay account, but in Kenya M-Pesa is only offered on PawaPay’s Enterprise plan. If you have access, money lands in your merchant account and Zuri never holds your funds. Otherwise, pay on delivery (with M-Pesa to the rider) is the simple option.',
         },
       },
       {
@@ -3193,6 +3210,7 @@ export const COUNTRIES: CountryPage[] = [
     ],
     sources: [
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
       { label: 'Safaricom (M-Pesa)', url: 'https://www.safaricom.co.ke' },
     ],
   },
@@ -3442,6 +3460,7 @@ export const COUNTRIES: CountryPage[] = [
     ],
     sources: [
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
     ],
   },
   {
@@ -3691,6 +3710,7 @@ export const COUNTRIES: CountryPage[] = [
     ],
     sources: [
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
     ],
   },
   {
@@ -3709,21 +3729,21 @@ export const COUNTRIES: CountryPage[] = [
       en: 'Sell online in Tanzania: online store with cash on delivery | Zuri',
     },
     description: {
-      fr: 'Vendre en ligne en Tanzanie : boutique en ligne gratuite, paiement à la livraison, Mobile Money M-Pesa, Airtel ou Tigo via pawaPay, dropshipping local.',
-      en: 'Sell online in Tanzania: free online store, cash on delivery, M-Pesa, Airtel, Tigo and Halotel Mobile Money via pawaPay, and delivery fees by city.',
+      fr: 'Vendre en ligne en Tanzanie : boutique en ligne gratuite, paiement à la livraison, Mobile Money Airtel, Tigo et Halotel via pawaPay, dropshipping local.',
+      en: 'Sell online in Tanzania: free online store, cash on delivery, Airtel, Tigo and Halotel Mobile Money via pawaPay, and delivery fees by city.',
     },
     h1: {
       fr: 'Vendre en ligne en Tanzanie avec une boutique pensée pour le mobile',
       en: 'Sell online in Tanzania with a store built for mobile',
     },
     intro: {
-      fr: 'En Tanzanie, le téléphone sert à tout : discuter, regarder des vidéos et payer. Avec Zuri, tu montes une boutique qui charge vite même sur une connexion faible, tu prends les commandes en paiement à la livraison et tu encaisses M-Pesa, Airtel, Tigo ou Halotel via ton compte pawaPay.',
-      en: 'In Tanzania, the phone does everything: chatting, watching videos and paying. With Zuri you build a store that loads fast even on a weak connection, take cash on delivery orders, and collect M-Pesa, Airtel, Tigo or Halotel payments through your own pawaPay account.',
+      fr: 'En Tanzanie, le téléphone sert à tout : discuter, regarder des vidéos et payer. Avec Zuri, tu montes une boutique qui charge vite même sur une connexion faible, tu prends les commandes en paiement à la livraison et tu encaisses Airtel, Tigo ou Halotel via ton compte pawaPay (M-Pesa avec l’offre Entreprise de pawaPay).',
+      en: 'In Tanzania, the phone does everything: chatting, watching videos and paying. With Zuri you build a store that loads fast even on a weak connection, take cash on delivery orders, and collect Airtel, Tigo or Halotel payments through your own pawaPay account (M-Pesa on pawaPay’s Enterprise plan).',
     },
     market: [
       {
-        fr: 'Le marché tanzanien a une particularité : plusieurs portefeuilles Mobile Money se partagent les clients. M-Pesa de Vodacom, Airtel Money, Mixx by Yas (l’ancien Tigo Pesa) et HaloPesa sont tous utilisés. Un client sur Airtel ne veut pas forcément passer par un agent pour payer sur un autre réseau. pawaPay couvre ces quatre opérateurs, ce qui t’évite de perdre une vente à cause du réseau du client.',
-        en: 'Tanzania has one key feature: several Mobile Money wallets share the market. Vodacom M-Pesa, Airtel Money, Mixx by Yas (formerly Tigo Pesa) and HaloPesa are all widely used. A customer on Airtel does not want to find an agent just to pay on another network. pawaPay covers all four operators, so you do not lose a sale because of the buyer’s network.',
+        fr: 'Le marché tanzanien a une particularité : plusieurs portefeuilles Mobile Money se partagent les clients. M-Pesa de Vodacom, Airtel Money, Mixx by Yas (l’ancien Tigo Pesa) et HaloPesa sont tous utilisés. Un client sur Airtel ne veut pas forcément passer par un agent pour payer sur un autre réseau. pawaPay couvre Airtel, Tigo et Halotel, et Vodacom M-Pesa avec son offre Entreprise : vérifie ce que ton compte permet.',
+        en: 'Tanzania has one key feature: several Mobile Money wallets share the market. Vodacom M-Pesa, Airtel Money, Mixx by Yas (formerly Tigo Pesa) and HaloPesa are all widely used. A customer on Airtel does not want to find an agent just to pay on another network. pawaPay covers Airtel, Tigo and Halotel, plus Vodacom M-Pesa on its Enterprise plan: check what your account allows.',
       },
       {
         fr: 'Dar es Salaam est le cœur du commerce en ligne, avec Kariakoo, le grand marché où beaucoup de vendeurs s’approvisionnent. Arusha, Mwanza et Dodoma suivent, et Zanzibar a ses propres réalités, avec beaucoup de commerce lié au tourisme. Dans les villes, la livraison se fait en boda boda ou en bajaji ; entre les villes, les colis voyagent souvent par bus.',
@@ -3748,8 +3768,8 @@ export const COUNTRIES: CountryPage[] = [
         en: 'Zuri does not display Tanzanian shillings yet, so price in USD and state the shilling amount in your text or on the confirmation call.',
       },
       {
-        fr: 'Connecte ton compte pawaPay pour accepter M-Pesa, Airtel, Tigo et Halotel. Vérifie avec pawaPay les conditions d’ouverture et la devise d’encaissement.',
-        en: 'Connect your pawaPay account to accept M-Pesa, Airtel, Tigo and Halotel. Check account requirements and settlement currency with pawaPay.',
+        fr: 'Connecte ton compte pawaPay pour accepter Airtel, Tigo et Halotel (M-Pesa avec l’offre Entreprise). Vérifie avec pawaPay les conditions d’ouverture et la devise d’encaissement.',
+        en: 'Connect your pawaPay account to accept Airtel, Tigo and Halotel (M-Pesa on the Enterprise plan). Check account requirements and settlement currency with pawaPay.',
       },
       {
         fr: 'Si tu achètes à Kariakoo, prends tes propres photos et vidéos. Les clients voient les mêmes visuels chez tous les vendeurs ; une vidéo du vrai produit en main fait la différence.',
@@ -3791,8 +3811,8 @@ export const COUNTRIES: CountryPage[] = [
       {
         q: { fr: 'Comment encaisser M-Pesa en Tanzanie ?', en: 'How do I accept M-Pesa in Tanzania?' },
         a: {
-          fr: 'pawaPay prend en charge Vodacom (M-Pesa), Airtel, Tigo et Halotel en Tanzanie. Tu connectes ton compte pawaPay à Zuri et l’argent arrive chez toi. Zuri ne détient jamais les fonds.',
-          en: 'pawaPay supports Vodacom (M-Pesa), Airtel, Tigo and Halotel in Tanzania. You connect your pawaPay account to Zuri and the money lands with you. Zuri never holds the funds.',
+          fr: 'pawaPay prend en charge Airtel, Tigo et Halotel en Tanzanie, et Vodacom (M-Pesa) avec son offre Entreprise. Tu connectes ton compte pawaPay à Zuri et l’argent arrive chez toi. Zuri ne détient jamais les fonds.',
+          en: 'pawaPay supports Airtel, Tigo and Halotel in Tanzania, plus Vodacom (M-Pesa) on its Enterprise plan. You connect your pawaPay account to Zuri and the money lands with you. Zuri never holds the funds.',
         },
       },
       {
@@ -3819,6 +3839,7 @@ export const COUNTRIES: CountryPage[] = [
     ],
     sources: [
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
     ],
   },
   {
@@ -3943,6 +3964,7 @@ export const COUNTRIES: CountryPage[] = [
     ],
     sources: [
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
     ],
   },
   {
@@ -4052,6 +4074,7 @@ export const COUNTRIES: CountryPage[] = [
     sources: [
       { label: 'FedaPay : pays pris en charge', url: 'https://support.fedapay.com/portal/en/kb/articles/fedapay-fonctionne-t-il-dans-mon-pays' },
       { label: 'pawaPay : opérateurs par pays', url: 'https://docs.pawapay.io/v2/docs/providers' },
+      { label: 'pawaPay : offres et opérateurs réservés à l’offre Entreprise (novembre 2026)', url: 'https://pawapay.io/plans' },
       { label: 'FeexPay : FAQ pays disponibles', url: 'https://feexpay.me' },
       { label: 'PayDunya : opérateurs Mobile Money disponibles', url: 'https://developers.paydunya.com/doc/FR/introduction' },
     ],
