@@ -1,0 +1,66 @@
+---
+/** Frise interactive du Black Friday, de J-30 à J+3. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const steps =
+  lang === 'fr'
+    ? [
+        ['J-30', 'Choisir', 'Choisis 2 ou 3 produits phares, réserve le stock par écrit, recalcule ta marge avec la remise.'],
+        ['J-15', 'Préparer', 'Pages de vente, prix barré, packs, 3 accroches vidéo par produit, closers formés.'],
+        ['J-7', 'Chauffer', 'Annonce l’opération sur Facebook, TikTok, statut WhatsApp. Lance quelques pubs d’annonce.'],
+        ['Jour J', 'Exécuter', 'Ouvre tôt, confirme chaque commande dans l’heure, surveille le stock deux fois par jour.'],
+        ['J+3', 'Livrer', 'Livre d’abord les plus anciennes commandes, rappelle la veille, suis chaque retour.'],
+      ]
+    : [
+        ['D-30', 'Choose', 'Pick 2 or 3 hero products, lock stock in writing, redo your margin with the discount.'],
+        ['D-15', 'Prepare', 'Sales pages, strike through prices, bundles, 3 video hooks per product, closers trained.'],
+        ['D-7', 'Warm up', 'Announce it on Facebook, TikTok, WhatsApp status. Run a few teaser ads.'],
+        ['D-day', 'Execute', 'Open early, confirm every order within the hour, check stock twice a day.'],
+        ['D+3', 'Deliver', 'Ship the oldest orders first, call the day before, track every return.'],
+      ]
+---
+
+<WFrame lang={lang} kind="interactive" title={lang === 'fr' ? 'Ton mois de Black Friday, étape par étape' : 'Your Black Friday month, step by step'} caption={lang === 'fr' ? 'Touche une étape pour voir quoi faire.' : 'Tap a step to see what to do.'}>
+  <div class="mk-tl" data-tabs>
+    <div class="mk-tl-line"><span class="mk-tl-progress" data-progress></span></div>
+    <div class="mk-tl-steps" role="tablist">
+      {
+        steps.map(([d, n], i) => (
+          <button type="button" role="tab" aria-selected={i === 0 ? 'true' : 'false'} data-tab={i} class="mk-tl-step">
+            <span class="mk-tl-dot" />
+            <b>{d}</b>
+            <span>{n}</span>
+          </button>
+        ))
+      }
+    </div>
+    {
+      steps.map(([d, n, txt], i) => (
+        <div class="mk-tl-panel" role="tabpanel" data-panel={i} hidden={i !== 0}>
+          <b>
+            {d} · {n}
+          </b>
+          <p>{txt}</p>
+        </div>
+      ))
+    }
+  </div>
+</WFrame>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-tabs]')) {
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-tab]')]
+    const show = (i: number) => {
+      tabs.forEach((t, n) => t.setAttribute('aria-selected', String(n === i)))
+      root.querySelectorAll<HTMLElement>('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== String(i)))
+      const bar = root.querySelector<HTMLElement>('[data-progress]')
+      if (bar) bar.style.width = `${(i / Math.max(1, tabs.length - 1)) * 100}%`
+    }
+    tabs.forEach((t, i) => t.addEventListener('click', () => show(i)))
+    show(0)
+  }
+</script>

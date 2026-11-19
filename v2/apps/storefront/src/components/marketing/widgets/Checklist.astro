@@ -1,0 +1,58 @@
+---
+/** Liste à cocher : progression visible, mémorisée dans le navigateur. */
+import { t } from '../../../content/seo'
+import type { L10n, Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  items: L10n[]
+  lang: Lang
+}
+const { items, lang } = Astro.props
+const key = 'zuri-cl-' + items.map((i) => i.fr.slice(0, 6)).join('').replace(/\W/g, '').slice(0, 40)
+const L = lang === 'fr' ? { title: 'Coche au fur et à mesure', done: 'Tout est prêt, bravo.', of: 'sur' } : { title: 'Tick as you go', done: 'All set, well done.', of: 'of' }
+---
+
+<WFrame lang={lang} kind="interactive" title={L.title}>
+  <div class="mk-cl" data-cl data-key={key} data-of={L.of} data-done={L.done}>
+    <div class="mk-cl-bar"><span data-cl-fill></span></div>
+    <p class="mk-cl-count" data-cl-count></p>
+    <ul>
+      {
+        items.map((i, n) => (
+          <li>
+            <label>
+              <input type="checkbox" data-i={n} />
+              <span>{t(i, lang)}</span>
+            </label>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</WFrame>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-cl]')) {
+    const boxes = [...root.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
+    const key = root.dataset.key ?? ''
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) ?? '[]') as number[]
+      saved.forEach((i) => boxes[i] && (boxes[i].checked = true))
+    } catch {
+      /* stockage indisponible */
+    }
+    const run = () => {
+      const n = boxes.filter((b) => b.checked).length
+      root.querySelector<HTMLElement>('[data-cl-fill]')!.style.width = `${(n / boxes.length) * 100}%`
+      root.querySelector<HTMLElement>('[data-cl-count]')!.textContent = n === boxes.length ? (root.dataset.done ?? '') : `${n} ${root.dataset.of} ${boxes.length}`
+      root.classList.toggle('is-done', n === boxes.length)
+      try {
+        localStorage.setItem(key, JSON.stringify(boxes.flatMap((b, i) => (b.checked ? [i] : []))))
+      } catch {
+        /* stockage indisponible */
+      }
+    }
+    root.addEventListener('change', run)
+    run()
+  }
+</script>

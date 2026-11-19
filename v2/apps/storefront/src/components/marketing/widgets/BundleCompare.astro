@@ -1,0 +1,41 @@
+---
+/** Comparaison animée : 1, 2 ou 3 unités, panier et marge par commande. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const fr = lang === 'fr'
+const fmt = new Intl.NumberFormat(fr ? 'fr-FR' : 'en-US')
+// Exemple : prix 14 900, coût 4 000, livraison 1 500, remises 15 % et 25 % (arrondies à la centaine).
+const rows = [
+  { q: 1, price: 14900, margin: 9400 },
+  { q: 2, price: 25300, margin: 15800 },
+  { q: 3, price: 33500, margin: 20000 },
+]
+const max = 33500
+---
+
+<WFrame lang={lang} kind="animated" title={fr ? 'L’effet d’un pack sur ta marge' : 'What a bundle does to your margin'} caption={fr ? 'Exemple en FCFA : produit à 14 900, coût 4 000, livraison 1 500, remises de 15 % et 25 %. La livraison et la pub ne se paient qu’une fois.' : 'Example in FCFA: product at 14,900, cost 4,000, delivery 1,500, 15% and 25% discounts. Delivery and ads are paid only once.'}>
+  <div class="mk-bc">
+    {
+      rows.map((r, i) => (
+        <div class="mk-bc-col" style={`--i:${i}`}>
+          <div class="mk-bc-bars">
+            <span class="mk-bc-price" style={`--h:${(r.price / max) * 100}%`} />
+            <span class="mk-bc-margin" style={`--h:${(r.margin / max) * 100}%`} />
+          </div>
+          <b>{r.q === 1 ? (fr ? '1 unité' : '1 unit') : fr ? `Pack de ${r.q}` : `${r.q}-pack`}</b>
+          <span>{fmt.format(r.price)}</span>
+          <span class="mk-bc-m">+{fmt.format(r.margin)}</span>
+        </div>
+      ))
+    }
+  </div>
+  <p class="mk-bc-legend">
+    <span><i class="mk-bc-k1" />{fr ? 'Prix payé' : 'Price paid'}</span>
+    <span><i class="mk-bc-k2" />{fr ? 'Ta marge avant pub' : 'Your margin before ads'}</span>
+  </p>
+  <button type="button" class="mk-replay" data-replay>{fr ? 'Rejouer' : 'Replay'}</button>
+</WFrame>

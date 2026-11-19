@@ -1,0 +1,39 @@
+---
+/** Schéma animé du dropshipping local : qui fait quoi, et où passe l'argent. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const fr = lang === 'fr'
+const nodes: [string, string][] = fr
+  ? [
+      ['Le client', 'commande sur ta page'],
+      ['Toi', 'confirmes par appel ou WhatsApp'],
+      ['Le fournisseur', 'prépare le colis'],
+      ['Le livreur', 'livre et encaisse'],
+      ['Ta marge', 'reversée après livraison'],
+    ]
+  : [
+      ['Customer', 'orders on your page'],
+      ['You', 'confirm by call or WhatsApp'],
+      ['Supplier', 'packs the parcel'],
+      ['Rider', 'delivers and collects cash'],
+      ['Your margin', 'paid out after delivery'],
+    ]
+---
+
+<WFrame lang={lang} kind="animated" title={fr ? 'Le dropshipping local en 5 étapes' : 'Local dropshipping in 5 steps'} caption={fr ? 'Fixe par écrit avec ton fournisseur qui paie le retour d’un colis refusé, et sous combien de jours il te reverse ta marge.' : 'Agree in writing with your supplier who pays for refused parcel returns, and how many days before your margin is paid.'}>
+  <ol class="mk-df">
+    {
+      nodes.map(([n, d], i) => (
+        <li style={`--i:${i}`} class:list={[i === nodes.length - 1 && 'mk-df-last']}>
+          <span class="mk-df-n">{i + 1}</span>
+          <b>{n}</b>
+          <span>{d}</span>
+        </li>
+      ))
+    }
+  </ol>
+</WFrame>

@@ -1,0 +1,75 @@
+---
+/** Calendrier interactif des temps forts de l'année. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const fr = lang === 'fr'
+const months = fr ? ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'] : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const events: string[][] = fr
+  ? [
+      ['Reprise de janvier : petits prix, santé, sport.'],
+      ['Saint-Valentin le 14 : parfums, bijoux, coffrets.'],
+      ['Journée de la femme le 8 mars. Ramadan selon le calendrier lunaire : cuisine, tenues.'],
+      ['Pâques. Fin du Ramadan possible selon l’année (Korité) : tenues, beauté.'],
+      ['Fête des mères dans plusieurs pays : beauté, bijoux, sacs.'],
+      ['Fête des pères. Tabaski possible selon l’année : couteaux, congélateurs, tenues.'],
+      ['Vacances : jeux, ventilateurs, offres pour la diaspora qui rentre.'],
+      ['Vacances et fêtes nationales dans plusieurs pays.'],
+      ['Rentrée scolaire : sacs, fournitures, chaussures.'],
+      ['Fin de rentrée. Prépare ton stock et tes vidéos pour novembre.'],
+      ['Black Friday fin novembre : packs, prix barrés.'],
+      ['Noël et fin d’année : jouets, déco, cadeaux emballés.'],
+    ]
+  : [
+      ['January restart: low prices, health, fitness.'],
+      ['Valentine’s Day on the 14th: perfume, jewelry, gift boxes.'],
+      ['Women’s Day on March 8. Ramadan follows the lunar calendar: kitchen, outfits.'],
+      ['Easter. End of Ramadan possible depending on the year (Eid): outfits, beauty.'],
+      ['Mother’s Day in several countries: beauty, jewelry, bags.'],
+      ['Father’s Day. Eid al-Adha possible depending on the year: knives, freezers, outfits.'],
+      ['Holidays: games, fans, offers for the diaspora coming home.'],
+      ['Holidays and national days in several countries.'],
+      ['Back to school: bags, supplies, shoes.'],
+      ['After back to school. Prepare stock and videos for November.'],
+      ['Black Friday in late November: bundles, strike through prices.'],
+      ['Christmas and New Year: toys, decorations, wrapped gifts.'],
+    ]
+const hot = [1, 2, 5, 8, 10, 11]
+---
+
+<WFrame lang={lang} kind="interactive" title={fr ? 'Ton année de vendeur en un coup d’œil' : 'Your selling year at a glance'} caption={fr ? 'Les dates religieuses bougent chaque année : vérifie-les dès janvier.' : 'Religious holidays move every year: check the dates in January.'}>
+  <div class="mk-cal" data-tabs>
+    <div class="mk-cal-grid" role="tablist">
+      {
+        months.map((m, i) => (
+          <button type="button" role="tab" data-tab={i} aria-selected={i === 10 ? 'true' : 'false'} class:list={['mk-cal-m', hot.includes(i) && 'is-hot']}>
+            {m}
+          </button>
+        ))
+      }
+    </div>
+    {
+      events.map((e, i) => (
+        <div class="mk-tl-panel" role="tabpanel" data-panel={i} hidden={i !== 10}>
+          <b>{months[i]}</b>
+          <p>{e[0]}</p>
+        </div>
+      ))
+    }
+  </div>
+</WFrame>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('.mk-cal[data-tabs]')) {
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-tab]')]
+    tabs.forEach((t, i) =>
+      t.addEventListener('click', () => {
+        tabs.forEach((x, n) => x.setAttribute('aria-selected', String(n === i)))
+        root.querySelectorAll<HTMLElement>('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== String(i)))
+      }),
+    )
+  }
+</script>

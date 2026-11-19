@@ -1,0 +1,26 @@
+---
+/** Course animée : page légère contre page lourde sur une connexion lente. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const fr = lang === 'fr'
+---
+
+<WFrame lang={lang} kind="animated" title={fr ? 'Sur une connexion lente, chaque seconde fait fuir des clients' : 'On a slow connection, every second loses customers'} caption={fr ? 'Illustration. Poids JavaScript mesurés : page Zuri 23 Ko, médiane mobile 632 Ko (HTTP Archive 2025). Google : 53 % des visites mobiles abandonnées au-delà de 3 secondes.' : 'Illustration. Measured JavaScript weight: Zuri page 23 KB, mobile median 632 KB (HTTP Archive 2025). Google: 53% of mobile visits abandoned after 3 seconds.'}>
+  <div class="mk-sr">
+    <div class="mk-sr-lane mk-sr-fast">
+      <p>{fr ? 'Page légère, 23 Ko de JavaScript' : 'Light page, 23 KB of JavaScript'}</p>
+      <span class="mk-sr-track"><i></i></span>
+      <b class="mk-sr-done">{fr ? 'Prête, le client commande' : 'Ready, customer orders'}</b>
+    </div>
+    <div class="mk-sr-lane mk-sr-slow">
+      <p>{fr ? 'Page lourde, 632 Ko de JavaScript' : 'Heavy page, 632 KB of JavaScript'}</p>
+      <span class="mk-sr-track"><i></i></span>
+      <b class="mk-sr-done">{fr ? 'Encore en chargement, le client est parti' : 'Still loading, customer left'}</b>
+    </div>
+  </div>
+  <button type="button" class="mk-replay" data-replay>{fr ? 'Rejouer' : 'Replay'}</button>
+</WFrame>

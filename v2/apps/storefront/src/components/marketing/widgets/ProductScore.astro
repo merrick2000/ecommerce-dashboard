@@ -1,0 +1,52 @@
+---
+/** Grille de notation d'un produit : cocher les critères, la jauge donne un verdict. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const fr = lang === 'fr'
+const crit = fr
+  ? ['Il résout un problème visible ou fait envie tout de suite', 'Il se montre bien en vidéo de 15 secondes', 'On ne le trouve pas facilement au marché du coin', 'Prix de vente au moins 3 fois le coût d’achat', 'Léger, solide, facile à livrer', 'Peu de tailles, de couleurs ou de risques de retour']
+  : ['It solves a visible problem or creates instant desire', 'It shows well in a 15 second video', 'It is not easy to find at the local market', 'Selling price at least 3 times the purchase cost', 'Light, sturdy, easy to deliver', 'Few sizes, colors or return risks']
+const V = fr ? ['À éviter', 'À creuser', 'À tester vite', 'Candidat gagnant'] : ['Avoid', 'Dig deeper', 'Test it fast', 'Winning candidate']
+---
+
+<WFrame lang={lang} kind="interactive" title={fr ? 'Ton produit a-t-il le profil d’un gagnant ?' : 'Does your product look like a winner?'} caption={fr ? 'Pense à un produit précis et coche ce qui est vrai.' : 'Think of one specific product and tick what is true.'}>
+  <div class="mk-ps" data-ps data-v={JSON.stringify(V)}>
+    <div class="mk-ps-gauge">
+      <svg viewBox="0 0 120 70" aria-hidden="true"><path d="M10 64a50 50 0 0 1 100 0" class="mk-ps-track"></path><path d="M10 64a50 50 0 0 1 100 0" class="mk-ps-fill" data-arc pathLength="100"></path></svg>
+      <p><b data-score>0/6</b><span data-verdict></span></p>
+    </div>
+    <ul>
+      {
+        crit.map((c) => (
+          <li>
+            <label>
+              <input type="checkbox" />
+              <span>{c}</span>
+            </label>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</WFrame>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-ps]')) {
+    const V = JSON.parse(root.dataset.v ?? '[]') as string[]
+    const boxes = [...root.querySelectorAll<HTMLInputElement>('input')]
+    const run = () => {
+      const n = boxes.filter((b) => b.checked).length
+      root.querySelector<SVGPathElement>('[data-arc]')!.style.strokeDasharray = `${(n / boxes.length) * 100} 100`
+      root.querySelector<HTMLElement>('[data-score]')!.textContent = `${n}/${boxes.length}`
+      const lvl = n <= 2 ? 0 : n === 3 ? 1 : n === 4 ? 2 : 3
+      root.querySelector<HTMLElement>('[data-verdict]')!.textContent = V[lvl] ?? ''
+      root.dataset.level = String(lvl)
+    }
+    root.addEventListener('change', run)
+    run()
+  }
+</script>

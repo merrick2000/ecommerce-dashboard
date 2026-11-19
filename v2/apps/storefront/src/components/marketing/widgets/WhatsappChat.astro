@@ -1,0 +1,47 @@
+---
+/** Illustration animée : la conversation WhatsApp de confirmation et de rappel. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const fr = lang === 'fr'
+const msgs: [string, 'in' | 'out', string][] = fr
+  ? [
+      ['Bonjour Aïcha, ici Ma Boutique. Merci pour votre commande : montre X1 à 14 900 FCFA, paiement à la livraison. On vous livre demain matin à Cocody ?', 'out', '10:02'],
+      ['Oui c’est bon, demain matin', 'in', '10:05'],
+      ['Parfait, c’est confirmé. Le livreur vous appellera 30 minutes avant.', 'out', '10:05'],
+      ['Bonjour Aïcha, votre montre arrive ce matin. Montant à préparer : 14 900 FCFA.', 'out', '08:15'],
+      ['Je suis là, merci', 'in', '08:17'],
+    ]
+  : [
+      ['Hello Amina, this is My Store. Thank you for your order: X1 watch at ₦25,000, pay on delivery. Shall we deliver tomorrow morning in Lekki?', 'out', '10:02'],
+      ['Yes that works, tomorrow morning', 'in', '10:05'],
+      ['Great, it’s confirmed. The rider will call you 30 minutes before.', 'out', '10:05'],
+      ['Hello Amina, your watch arrives this morning. Amount to prepare: ₦25,000.', 'out', '08:15'],
+      ['I’m home, thanks', 'in', '08:17'],
+    ]
+---
+
+<WFrame lang={lang} kind="animated" title={fr ? 'Deux messages qui évitent un colis refusé' : 'Two messages that prevent a refused parcel'} caption={fr ? 'Confirmation dans l’heure, rappel le jour J. Crée tes messages avec notre générateur gratuit.' : 'Confirm within the hour, remind on delivery day. Create yours with our free generator.'}>
+  <div class="mk-wa-wrap">
+    <div class="mk-phone mk-wa">
+      <div class="mk-wa-top"><span class="mk-wa-av">M</span><b>{fr ? 'Ma Boutique' : 'My Store'}</b></div>
+      <div class="mk-wa-feed">
+        {
+          msgs.map(([t, d, h], i) => (
+            <>
+              {i === 3 && <p class="mk-wa-day" style={`--i:${i}`}>{fr ? 'Le lendemain' : 'Next day'}</p>}
+              <p class={`mk-wa-msg mk-wa-${d}`} style={`--i:${i}`}>
+                {t}
+                <small>{h}</small>
+              </p>
+            </>
+          ))
+        }
+      </div>
+    </div>
+    <button type="button" class="mk-replay" data-replay>{fr ? 'Rejouer' : 'Replay'}</button>
+  </div>
+</WFrame>

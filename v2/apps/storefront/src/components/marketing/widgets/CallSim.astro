@@ -1,0 +1,72 @@
+---
+/** Simulation d'appel de confirmation : choisir la réponse du client, voir la bonne réplique. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const fr = lang === 'fr'
+type Node = { say: string; options: [string, string][] }
+const tree: Record<string, Node> = fr
+  ? {
+      start: { say: 'Bonjour, c’est Awa de la boutique Ma Boutique. Vous avez commandé la montre X1 hier soir, c’est bien vous ?', options: [['Oui, c’est moi', 'yes'], ['Je n’ai rien commandé', 'no'], ['C’est un peu cher', 'price']] },
+      yes: { say: 'Parfait. Je vous la fais livrer demain à Cocody, vous serez disponible le matin ou l’après-midi ?', options: [['Le matin', 'end'], ['Je ne suis pas sûr', 'unsure']] },
+      no: { say: 'Pas de souci. Quelqu’un de votre entourage a peut-être utilisé votre numéro ? Je vous décris le produit : une montre connectée noire à 14 900 FCFA.', options: [['Ah oui, c’est ma sœur', 'yes'], ['Non, annulez', 'cancel']] },
+      price: { say: 'Je comprends. Vous ne payez qu’à la livraison, après avoir vu la montre. Et si vous en prenez deux, la deuxième est à moitié prix.', options: [['D’accord, une seule', 'yes'], ['Je prends les deux', 'yes']] },
+      unsure: { say: 'Aucun problème. Je note demain après-midi et le livreur vous appelle 30 minutes avant d’arriver. Ça vous va ?', options: [['Oui, parfait', 'end']] },
+      end: { say: 'C’est noté. Vous recevrez un message WhatsApp avec le récapitulatif. Merci et bonne journée !', options: [['Recommencer', 'start']] },
+      cancel: { say: 'C’est annulé, merci d’avoir pris le temps de répondre. Bonne journée !', options: [['Recommencer', 'start']] },
+    }
+  : {
+      start: { say: 'Hello, this is Awa from My Store. You ordered the X1 watch last night, is that you?', options: [['Yes, that’s me', 'yes'], ['I didn’t order anything', 'no'], ['It’s a bit expensive', 'price']] },
+      yes: { say: 'Great. I’ll have it delivered tomorrow in Lekki. Will you be available in the morning or the afternoon?', options: [['Morning', 'end'], ['I’m not sure', 'unsure']] },
+      no: { say: 'No problem. Maybe someone close to you used your number? Here is the product: a black smart watch at ₦25,000.', options: [['Oh yes, my sister', 'yes'], ['No, cancel it', 'cancel']] },
+      price: { say: 'I understand. You only pay on delivery, after seeing the watch. And if you take two, the second one is half price.', options: [['OK, just one', 'yes'], ['I’ll take two', 'yes']] },
+      unsure: { say: 'No problem. I’ll book tomorrow afternoon and the rider will call you 30 minutes before arriving. Is that OK?', options: [['Yes, perfect', 'end']] },
+      end: { say: 'Done. You will get a WhatsApp message with the summary. Thank you and have a good day!', options: [['Start again', 'start']] },
+      cancel: { say: 'It’s cancelled, thank you for your time. Have a good day!', options: [['Start again', 'start']] },
+    }
+---
+
+<WFrame lang={lang} kind="interactive" title={fr ? 'Joue le client, regarde comment le closer répond' : 'Play the customer, see how the closer replies'} caption={fr ? 'Exemple de script. Adapte le prénom, le produit et le ton à ta boutique.' : 'Sample script. Adapt the name, product and tone to your store.'}>
+  <div class="mk-cs" data-cs data-tree={JSON.stringify(tree)} data-you={fr ? 'Client' : 'Customer'} data-closer="Closer">
+    <div class="mk-cs-log" data-log aria-live="polite"></div>
+    <div class="mk-cs-opts" data-opts></div>
+  </div>
+</WFrame>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-cs]')) {
+    const tree = JSON.parse(root.dataset.tree ?? '{}') as Record<string, { say: string; options: [string, string][] }>
+    const log = root.querySelector<HTMLElement>('[data-log]')!
+    const opts = root.querySelector<HTMLElement>('[data-opts]')!
+    const bubble = (txt: string, who: 'closer' | 'you') => {
+      const p = document.createElement('p')
+      p.className = `mk-cs-msg mk-cs-${who}`
+      p.textContent = txt
+      log.append(p)
+      log.scrollTop = log.scrollHeight
+    }
+    const go = (id: string) => {
+      const n = tree[id]
+      if (!n) return
+      if (id === 'start') log.replaceChildren()
+      bubble(n.say, 'closer')
+      opts.replaceChildren(
+        ...n.options.map(([label, next]) => {
+          const b = document.createElement('button')
+          b.type = 'button'
+          b.className = 'mk-cs-opt'
+          b.textContent = label
+          b.addEventListener('click', () => {
+            if (next !== 'start') bubble(label, 'you')
+            go(next)
+          })
+          return b
+        }),
+      )
+    }
+    go('start')
+  }
+</script>

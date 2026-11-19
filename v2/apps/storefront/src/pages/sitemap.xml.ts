@@ -1,4 +1,4 @@
-/** Plan du site marketing (français et anglais, avec liens hreflang). */
+/** Plan du site marketing au format sitemaps.org standard (lisible, une balise par ligne). Les liens de langue sont dans chaque page (hreflang). */
 import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
 import { ALTERNATIVES, COMPARISONS, COUNTRIES, GUIDES, PATHS, alternativePath, comparisonPath, countryPath, guidePath } from '../content/seo'
@@ -6,26 +6,44 @@ import { TOOLS } from '../content/seo/tools'
 
 export const prerender = false
 
+/** Date de dernière mise à jour des contenus (à changer quand les contenus évoluent). */
+const LASTMOD = '2026-11-19T00:00:00.000Z'
+
+type Entry = { path: string; changefreq: 'daily' | 'weekly' | 'monthly'; priority: string }
+
 export const GET: APIRoute = () => {
   const base = `https://${env.PLATFORM_HOST && env.PLATFORM_HOST !== 'localhost' ? env.PLATFORM_HOST : 'zurisell.store'}`
-  const pairs: { fr: string; en: string; priority: string }[] = [
-    { fr: PATHS.home.fr, en: PATHS.home.en, priority: '1.0' },
-    { fr: PATHS.countries.fr, en: PATHS.countries.en, priority: '0.8' },
-    { fr: PATHS.guides.fr, en: PATHS.guides.en, priority: '0.8' },
-    { fr: PATHS.alternatives.fr, en: PATHS.alternatives.en, priority: '0.8' },
-    { fr: PATHS.comparisons.fr, en: PATHS.comparisons.en, priority: '0.7' },
-    { fr: PATHS.tools.fr, en: PATHS.tools.en, priority: '0.8' },
-    ...TOOLS.map((x) => ({ fr: `${PATHS.tools.fr}/${x.slug.fr}`, en: `${PATHS.tools.en}/${x.slug.en}`, priority: '0.8' })),
-    ...COUNTRIES.map((c) => ({ fr: countryPath(c.slug, 'fr'), en: countryPath(c.slug, 'en'), priority: '0.7' })),
-    ...GUIDES.map((g) => ({ fr: guidePath(g.slug.fr, 'fr'), en: guidePath(g.slug.en, 'en'), priority: '0.7' })),
-    ...ALTERNATIVES.map((a) => ({ fr: alternativePath(a.slug, 'fr'), en: alternativePath(a.slug, 'en'), priority: '0.7' })),
-    ...COMPARISONS.map((c) => ({ fr: comparisonPath(c.slug, 'fr'), en: comparisonPath(c.slug, 'en'), priority: '0.6' })),
+  const both = (fr: string, en: string, changefreq: Entry['changefreq'], priority: string): Entry[] => [
+    { path: fr, changefreq, priority },
+    { path: en, changefreq, priority },
   ]
-  const url = (loc: string, p: { fr: string; en: string; priority: string }) =>
-    `<url><loc>${base}${loc}</loc><xhtml:link rel="alternate" hreflang="fr" href="${base}${p.fr}"/><xhtml:link rel="alternate" hreflang="en" href="${base}${p.en}"/><xhtml:link rel="alternate" hreflang="x-default" href="${base}${p.fr}"/><priority>${p.priority}</priority></url>`
+  const entries: Entry[] = [
+    ...both(PATHS.home.fr, PATHS.home.en, 'daily', '1'),
+    ...both(PATHS.guides.fr, PATHS.guides.en, 'weekly', '0.9'),
+    ...both(PATHS.tools.fr, PATHS.tools.en, 'weekly', '0.9'),
+    ...both(PATHS.countries.fr, PATHS.countries.en, 'weekly', '0.8'),
+    ...both(PATHS.alternatives.fr, PATHS.alternatives.en, 'weekly', '0.8'),
+    ...both(PATHS.comparisons.fr, PATHS.comparisons.en, 'weekly', '0.7'),
+    ...TOOLS.flatMap((x) => both(`${PATHS.tools.fr}/${x.slug.fr}`, `${PATHS.tools.en}/${x.slug.en}`, 'monthly', '0.8')),
+    ...GUIDES.flatMap((g) => both(guidePath(g.slug.fr, 'fr'), guidePath(g.slug.en, 'en'), 'monthly', '0.8')),
+    ...COUNTRIES.flatMap((c) => both(countryPath(c.slug, 'fr'), countryPath(c.slug, 'en'), 'monthly', '0.7')),
+    ...ALTERNATIVES.flatMap((a) => both(alternativePath(a.slug, 'fr'), alternativePath(a.slug, 'en'), 'monthly', '0.7')),
+    ...COMPARISONS.flatMap((c) => both(comparisonPath(c.slug, 'fr'), comparisonPath(c.slug, 'en'), 'monthly', '0.6')),
+  ]
+  const loc = (p: string) => `${base}${p}`
   const body = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
-${pairs.flatMap((p) => [url(p.fr, p), url(p.en, p)]).join('\n')}
-</urlset>`
-  return new Response(body, { headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=3600' } })
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${entries
+  .map(
+    (e) => `  <url>
+    <loc>${loc(e.path)}</loc>
+    <lastmod>${LASTMOD}</lastmod>
+    <changefreq>${e.changefreq}</changefreq>
+    <priority>${e.priority}</priority>
+  </url>`,
+  )
+  .join('\n')}
+</urlset>
+`
+  return new Response(body, { headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=3600', 'x-robots-tag': 'noindex' } })
 }

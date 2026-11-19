@@ -2,6 +2,9 @@
 /** Rendu des blocs de contenu SEO (texte brut, aucune injection HTML). */
 import { env } from 'cloudflare:workers'
 import { t } from '../../content/seo'
+import Widget from './widgets/Widget.astro'
+import Checklist from './widgets/Checklist.astro'
+import VideoEmbed from './VideoEmbed.astro'
 import type { Block, Lang } from '../../content/seo'
 
 interface Props {
@@ -61,6 +64,12 @@ const cta = lang === 'fr' ? 'Créer ma boutique gratuitement' : 'Create my store
             </table>
           </div>
         )
+      if (b.type === 'widget') return <Widget id={b.id} lang={lang} />
+      if (b.type === 'video') {
+        const v = b.videos[lang]
+        return v ? <VideoEmbed video={v} lang={lang} /> : null
+      }
+      if (b.type === 'checklist') return <Checklist items={b.items} lang={lang} />
       if (b.type === 'cta')
         return (
           <div class="mk-inline-cta">

@@ -1,0 +1,48 @@
+---
+/** Aiguillage des illustrations et éléments interactifs des articles. */
+import type { Lang, WidgetId } from '../../../content/seo'
+import CodFunnel from './CodFunnel.astro'
+import BfTimeline from './BfTimeline.astro'
+import DeliveryJourney from './DeliveryJourney.astro'
+import WhatsappChat from './WhatsappChat.astro'
+import AdBudget from './AdBudget.astro'
+import Hook3s from './Hook3s.astro'
+import PixelFlow from './PixelFlow.astro'
+import MomoPayment from './MomoPayment.astro'
+import SpeedRace from './SpeedRace.astro'
+import PageAnatomy from './PageAnatomy.astro'
+import ProductScore from './ProductScore.astro'
+import SeasonCalendar from './SeasonCalendar.astro'
+import CloserPay from './CloserPay.astro'
+import DropshipFlow from './DropshipFlow.astro'
+import MarginBars from './MarginBars.astro'
+import BundleCompare from './BundleCompare.astro'
+import CallSim from './CallSim.astro'
+
+interface Props {
+  id: WidgetId
+  lang: Lang
+}
+const { id, lang } = Astro.props
+const C = {
+  'cod-funnel': CodFunnel,
+  'bf-timeline': BfTimeline,
+  'delivery-journey': DeliveryJourney,
+  'whatsapp-chat': WhatsappChat,
+  'ad-budget': AdBudget,
+  'hook-3s': Hook3s,
+  'pixel-flow': PixelFlow,
+  'momo-payment': MomoPayment,
+  'speed-race': SpeedRace,
+  'page-anatomy': PageAnatomy,
+  'product-score': ProductScore,
+  'season-calendar': SeasonCalendar,
+  'closer-pay': CloserPay,
+  'dropship-flow': DropshipFlow,
+  'margin-bars': MarginBars,
+  'bundle-compare': BundleCompare,
+  'call-sim': CallSim,
+}[id]
+---
+
+{C && <C lang={lang} />}

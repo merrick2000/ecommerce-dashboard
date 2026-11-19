@@ -1,0 +1,45 @@
+---
+/** Entonnoir interactif : de 100 commandes reçues aux commandes livrées. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const L = {
+  fr: { title: '100 commandes reçues, combien deviennent de l’argent ?', conf: 'Taux de confirmation', deliv: 'Taux de livraison', received: 'Reçues', confirmed: 'Confirmées', delivered: 'Livrées', refused: 'refusées à la porte', lost: 'jamais confirmées', cap: 'Bouge les curseurs : chaque point gagné sur la confirmation ou la livraison, c’est de l’argent encaissé en plus.' },
+  en: { title: '100 orders received, how many turn into cash?', conf: 'Confirmation rate', deliv: 'Delivery rate', received: 'Received', confirmed: 'Confirmed', delivered: 'Delivered', refused: 'refused at the door', lost: 'never confirmed', cap: 'Move the sliders: every point gained on confirmation or delivery is extra cash collected.' },
+}[lang]
+---
+
+<WFrame lang={lang} kind="interactive" title={L.title} caption={L.cap}>
+  <div class="mk-fn" data-fn>
+    <div class="mk-fn-row"><span class="mk-fn-lbl">{L.received}</span><span class="mk-fn-bar"><i style="width:100%"></i></span><b>100</b></div>
+    <div class="mk-fn-row"><span class="mk-fn-lbl">{L.confirmed}</span><span class="mk-fn-bar"><i data-b="c"></i></span><b data-v="c"></b></div>
+    <div class="mk-fn-row mk-fn-win"><span class="mk-fn-lbl">{L.delivered}</span><span class="mk-fn-bar"><i data-b="d"></i></span><b data-v="d"></b></div>
+    <p class="mk-fn-loss"><span data-v="l"></span> {L.lost} · <span data-v="r"></span> {L.refused}</p>
+    <label class="mk-range"><span>{L.conf} <b data-o="conf"></b></span><input type="range" min="30" max="100" value="70" name="conf" /></label>
+    <label class="mk-range"><span>{L.deliv} <b data-o="deliv"></b></span><input type="range" min="30" max="100" value="80" name="deliv" /></label>
+  </div>
+</WFrame>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-fn]')) {
+    const get = (n: string) => Number(root.querySelector<HTMLInputElement>(`[name="${n}"]`)!.value)
+    const set = (sel: string, v: string) => root.querySelectorAll<HTMLElement>(sel).forEach((e) => (e.textContent = v))
+    const run = () => {
+      const c = Math.round(get('conf'))
+      const d = Math.round((c * get('deliv')) / 100)
+      root.querySelector<HTMLElement>('[data-b="c"]')!.style.width = `${c}%`
+      root.querySelector<HTMLElement>('[data-b="d"]')!.style.width = `${d}%`
+      set('[data-v="c"]', String(c))
+      set('[data-v="d"]', String(d))
+      set('[data-v="l"]', String(100 - c))
+      set('[data-v="r"]', String(c - d))
+      set('[data-o="conf"]', `${get('conf')} %`)
+      set('[data-o="deliv"]', `${get('deliv')} %`)
+    }
+    root.addEventListener('input', run)
+    run()
+  }
+</script>

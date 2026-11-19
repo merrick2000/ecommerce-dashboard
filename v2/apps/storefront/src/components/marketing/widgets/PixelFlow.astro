@@ -1,0 +1,25 @@
+---
+/** Schéma animé : pixel (navigateur) et API serveur envoient le même achat, la plateforme le compte une fois. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const fr = lang === 'fr'
+---
+
+<WFrame lang={lang} kind="animated" title={fr ? 'Deux signaux, un seul achat compté' : 'Two signals, one purchase counted'} caption={fr ? 'Le même identifiant d’événement (event_id) permet à Meta ou TikTok de fusionner les deux envois.' : 'The same event ID (event_id) lets Meta or TikTok merge both signals.'}>
+  <div class="mk-pf">
+    <svg viewBox="0 0 640 230" aria-hidden="true">
+      <path d="M190 55 C300 55 330 115 440 115" class="mk-pf-path"></path>
+      <path d="M190 175 C300 175 330 115 440 115" class="mk-pf-path"></path>
+      <g><rect x="20" y="25" width="170" height="60" rx="14" class="mk-pf-node"></rect><text x="105" y="52" class="mk-pf-t">{fr ? 'Navigateur' : 'Browser'}</text><text x="105" y="72" class="mk-pf-s">Pixel</text></g>
+      <g><rect x="20" y="145" width="170" height="60" rx="14" class="mk-pf-node"></rect><text x="105" y="172" class="mk-pf-t">{fr ? 'Ton serveur' : 'Your server'}</text><text x="105" y="192" class="mk-pf-s">{fr ? 'API Conversions' : 'Conversions API'}</text></g>
+      <g><rect x="440" y="80" width="180" height="70" rx="14" class="mk-pf-node mk-pf-dest"></rect><text x="530" y="110" class="mk-pf-t">Meta / TikTok</text><text x="530" y="132" class="mk-pf-s mk-pf-ok">{fr ? '1 achat compté' : '1 purchase counted'}</text></g>
+      <g class="mk-pf-dot mk-pf-d1"><rect x="-38" y="-12" width="76" height="24" rx="12"></rect><text y="5">id 123</text></g>
+      <g class="mk-pf-dot mk-pf-d2"><rect x="-38" y="-12" width="76" height="24" rx="12"></rect><text y="5">id 123</text></g>
+    </svg>
+  </div>
+  <button type="button" class="mk-replay" data-replay>{fr ? 'Rejouer' : 'Replay'}</button>
+</WFrame>

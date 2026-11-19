@@ -1,0 +1,49 @@
+---
+/** Simulateur de rémunération d'un closer : fixe + prime par commande livrée. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const L = {
+  fr: { title: 'Combien payer ton closer ?', fixed: 'Fixe par mois', bonus: 'Prime par commande livrée', n: 'Commandes livrées par mois', total: 'Salaire du mois', per: 'Coût par commande livrée', share: 'Part variable', cap: 'Exemple en FCFA. Une prime sur les commandes livrées (pas seulement confirmées) aligne le closer sur ton vrai résultat.' },
+  en: { title: 'How much should you pay your closer?', fixed: 'Fixed pay per month', bonus: 'Bonus per delivered order', n: 'Delivered orders per month', total: 'Monthly pay', per: 'Cost per delivered order', share: 'Variable share', cap: 'Example in local currency. A bonus on delivered orders (not just confirmed ones) aligns the closer with your real result.' },
+}[lang]
+---
+
+<WFrame lang={lang} kind="interactive" title={L.title} caption={L.cap}>
+  <div class="mk-ab" data-cp data-locale={lang === 'fr' ? 'fr-FR' : 'en-US'}>
+    <label class="mk-range"><span>{L.fixed} <b data-o="f"></b></span><input type="range" name="f" min="0" max="150000" step="5000" value="50000" /></label>
+    <label class="mk-range"><span>{L.bonus} <b data-o="b"></b></span><input type="range" name="b" min="0" max="1000" step="50" value="250" /></label>
+    <label class="mk-range"><span>{L.n} <b data-o="n"></b></span><input type="range" name="n" min="50" max="800" step="10" value="300" /></label>
+    <div class="mk-ab-out">
+      <div class="mk-ab-real"><span>{L.total}</span><b data-v="t"></b></div>
+      <div><span>{L.per}</span><b data-v="p"></b></div>
+      <div><span>{L.share}</span><b data-v="s"></b></div>
+    </div>
+    <div class="mk-cp-bar"><span data-bar-f></span><span data-bar-b></span></div>
+  </div>
+</WFrame>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-cp]')) {
+    const fmt = new Intl.NumberFormat(root.dataset.locale, { maximumFractionDigits: 0 })
+    const g = (n: string) => Number(root.querySelector<HTMLInputElement>(`[name="${n}"]`)!.value)
+    const s = (k: string, v: string) => (root.querySelector<HTMLElement>(k)!.textContent = v)
+    const run = () => {
+      const v = g('b') * g('n')
+      const t = g('f') + v
+      s('[data-o="f"]', fmt.format(g('f')))
+      s('[data-o="b"]', fmt.format(g('b')))
+      s('[data-o="n"]', String(g('n')))
+      s('[data-v="t"]', fmt.format(t))
+      s('[data-v="p"]', fmt.format(t / g('n')))
+      s('[data-v="s"]', t ? `${Math.round((v / t) * 100)} %` : '-')
+      root.querySelector<HTMLElement>('[data-bar-f]')!.style.flex = String(g('f') || 0.0001)
+      root.querySelector<HTMLElement>('[data-bar-b]')!.style.flex = String(v || 0.0001)
+    }
+    root.addEventListener('input', run)
+    run()
+  }
+</script>

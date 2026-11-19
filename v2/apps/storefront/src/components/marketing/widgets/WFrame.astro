@@ -1,0 +1,51 @@
+---
+/** Cadre commun des illustrations et éléments interactifs insérés dans les articles. */
+import type { Lang } from '../../../content/seo'
+interface Props {
+  lang: Lang
+  kind: 'interactive' | 'animated'
+  title: string
+  caption?: string
+  class?: string
+}
+const { lang, kind, title, caption, class: cls } = Astro.props
+const badge = kind === 'interactive' ? (lang === 'fr' ? 'À toi de jouer' : 'Try it') : lang === 'fr' ? 'En image' : 'In pictures'
+---
+
+<figure class:list={['mk-w', `mk-w-${kind}`, cls]} data-w>
+  <div class="mk-w-head">
+    <span class="mk-w-badge">{badge}</span>
+    <p class="mk-w-title">{title}</p>
+  </div>
+  <div class="mk-w-body">
+    <slot />
+  </div>
+  {caption && <figcaption class="mk-w-cap">{caption}</figcaption>}
+</figure>
+
+<script>
+  // Lance les animations quand l'illustration entre à l'écran.
+  const els = document.querySelectorAll<HTMLElement>('[data-w]')
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries)
+          if (e.isIntersecting) {
+            e.target.classList.add('is-in')
+            io.unobserve(e.target)
+          }
+      },
+      { threshold: 0.3 },
+    )
+    els.forEach((el) => io.observe(el))
+  } else els.forEach((el) => el.classList.add('is-in'))
+  // Bouton « Rejouer » : relance les animations CSS du cadre.
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-replay]'))
+    btn.addEventListener('click', () => {
+      const f = btn.closest<HTMLElement>('[data-w]')
+      if (!f) return
+      f.classList.remove('is-in')
+      void f.offsetWidth
+      f.classList.add('is-in')
+    })
+</script>

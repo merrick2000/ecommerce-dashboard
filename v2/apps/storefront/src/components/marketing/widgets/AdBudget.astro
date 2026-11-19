@@ -1,0 +1,51 @@
+---
+/** Simulateur : budget pub par jour, coût par commande, taux de livraison. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const L = {
+  fr: { title: 'Ce que ton budget pub achète vraiment', budget: 'Budget par jour', cpo: 'Coût par commande (affiché par la plateforme)', rate: 'Commandes livrées sur 100 reçues', orders: 'Commandes par jour', delivered: 'Livrées par jour', real: 'Vrai coût par commande livrée', cap: 'Exemple en FCFA. Compare toujours le coût par commande livrée à ta marge, jamais le coût affiché.' },
+  en: { title: 'What your ad budget really buys', budget: 'Budget per day', cpo: 'Cost per order (shown by the platform)', rate: 'Delivered orders out of 100 received', orders: 'Orders per day', delivered: 'Delivered per day', real: 'Real cost per delivered order', cap: 'Example in local currency. Always compare cost per delivered order with your margin, never the displayed cost.' },
+}[lang]
+---
+
+<WFrame lang={lang} kind="interactive" title={L.title} caption={L.cap}>
+  <div class="mk-ab" data-ab data-locale={lang === 'fr' ? 'fr-FR' : 'en-US'}>
+    <label class="mk-range"><span>{L.budget} <b data-o="b"></b></span><input type="range" name="b" min="5000" max="100000" step="5000" value="20000" /></label>
+    <label class="mk-range"><span>{L.cpo} <b data-o="c"></b></span><input type="range" name="c" min="500" max="6000" step="100" value="2000" /></label>
+    <label class="mk-range"><span>{L.rate} <b data-o="r"></b></span><input type="range" name="r" min="30" max="90" step="1" value="56" /></label>
+    <div class="mk-ab-out">
+      <div><span>{L.orders}</span><b data-v="o"></b></div>
+      <div><span>{L.delivered}</span><b data-v="d"></b></div>
+      <div class="mk-ab-real"><span>{L.real}</span><b data-v="real"></b></div>
+    </div>
+    <div class="mk-ab-dots" data-dots aria-hidden="true"></div>
+  </div>
+</WFrame>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-ab]')) {
+    const fmt = new Intl.NumberFormat(root.dataset.locale, { maximumFractionDigits: 0 })
+    const g = (n: string) => Number(root.querySelector<HTMLInputElement>(`[name="${n}"]`)!.value)
+    const s = (k: string, v: string) => (root.querySelector<HTMLElement>(k)!.textContent = v)
+    const dots = root.querySelector<HTMLElement>('[data-dots]')!
+    const run = () => {
+      const o = g('b') / g('c')
+      const d = (o * g('r')) / 100
+      s('[data-o="b"]', fmt.format(g('b')))
+      s('[data-o="c"]', fmt.format(g('c')))
+      s('[data-o="r"]', String(g('r')))
+      s('[data-v="o"]', fmt.format(o))
+      s('[data-v="d"]', fmt.format(d))
+      s('[data-v="real"]', d > 0 ? fmt.format(g('b') / d) : '-')
+      const total = Math.min(60, Math.round(o))
+      const ok = Math.round((total * g('r')) / 100)
+      dots.replaceChildren(...Array.from({ length: total }, (_, i) => Object.assign(document.createElement('i'), { className: i < ok ? 'ok' : '' })))
+    }
+    root.addEventListener('input', run)
+    run()
+  }
+</script>

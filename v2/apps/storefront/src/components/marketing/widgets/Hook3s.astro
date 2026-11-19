@@ -1,0 +1,36 @@
+---
+/** Illustration animée : accroche faible contre accroche forte dans les 3 premières secondes. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const fr = lang === 'fr'
+---
+
+<WFrame lang={lang} kind="animated" title={fr ? 'Les 3 secondes qui décident de tout' : 'The 3 seconds that decide everything'} caption={fr ? 'Illustration. Commence par le problème ou le résultat, jamais par ton logo.' : 'Illustration. Open with the problem or the result, never your logo.'}>
+  <div class="mk-hk">
+    <div class="mk-hk-col">
+      <div class="mk-phone mk-hk-phone mk-hk-weak">
+        <span class="mk-hk-bar"><i></i></span>
+        <p class="mk-hk-scene">{fr ? 'Logo de la boutique, musique, « Bienvenue chez nous »' : 'Store logo, music, “Welcome to our store”'}</p>
+        <span class="mk-hk-swipe">{fr ? 'Il fait défiler' : 'Scrolled away'}</span>
+      </div>
+      <p class="mk-hk-label mk-neg-ink">{fr ? 'Accroche faible' : 'Weak hook'}</p>
+    </div>
+    <div class="mk-hk-col">
+      <div class="mk-phone mk-hk-phone mk-hk-strong">
+        <span class="mk-hk-bar"><i></i></span>
+        <p class="mk-hk-scene">
+          <span class="mk-hk-s1">{fr ? '« Tes chaussures puent après 2 heures ? »' : '“Shoes smell after 2 hours?”'}</span>
+          <span class="mk-hk-s2">{fr ? 'Le produit en action, gros plan' : 'Product in action, close up'}</span>
+          <span class="mk-hk-s3">{fr ? 'Le résultat, la cliente sourit' : 'The result, customer smiles'}</span>
+        </p>
+        <span class="mk-hk-watch">{fr ? 'Il regarde jusqu’au bout' : 'Watched to the end'}</span>
+      </div>
+      <p class="mk-hk-label mk-pos-ink">{fr ? 'Accroche forte' : 'Strong hook'}</p>
+    </div>
+  </div>
+  <button type="button" class="mk-replay" data-replay>{fr ? 'Rejouer' : 'Replay'}</button>
+</WFrame>

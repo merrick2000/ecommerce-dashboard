@@ -1,0 +1,54 @@
+---
+/** Illustration animée : le parcours d'une commande en paiement à la livraison. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const fr = lang === 'fr'
+const steps = fr ? ['Commande sur la page', 'Appel de confirmation', 'Le livreur part', 'Livré, payé en cash ou Mobile Money'] : ['Order on the page', 'Confirmation call', 'Rider on the way', 'Delivered, paid in cash or Mobile Money']
+---
+
+<WFrame lang={lang} kind="animated" title={fr ? 'Le trajet d’une commande, du clic à l’argent' : 'An order’s journey, from click to cash'} caption={fr ? 'Chaque étape est un endroit où tu peux perdre la vente, ou la sécuriser.' : 'Every step is a place where you can lose the sale, or lock it in.'}>
+  <div class="mk-dj">
+    <svg viewBox="0 0 640 170" class="mk-dj-svg" aria-hidden="true">
+      <rect x="0" y="128" width="640" height="6" rx="3" fill="#e7e5e4"></rect>
+      <line x1="10" y1="131" x2="630" y2="131" stroke="#a8a29e" stroke-width="2" stroke-dasharray="10 10" class="mk-dj-road"></line>
+      <g transform="translate(20 50)">
+        <rect width="70" height="78" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></rect>
+        <rect x="0" y="0" width="70" height="18" rx="6" fill="#f59e0b"></rect>
+        <rect x="12" y="34" width="20" height="44" rx="3" fill="#fff" stroke="#f59e0b"></rect>
+        <rect x="40" y="34" width="20" height="20" rx="3" fill="#fff" stroke="#f59e0b"></rect>
+      </g>
+      <g transform="translate(548 46)">
+        <path d="M0 36L36 6l36 30v46H0z" fill="#dcfce7" stroke="#15803d" stroke-width="2"></path>
+        <rect x="26" y="50" width="20" height="32" rx="3" fill="#fff" stroke="#15803d"></rect>
+      </g>
+      <g class="mk-dj-moto">
+        <circle cx="16" cy="118" r="11" fill="#1c1917"></circle>
+        <circle cx="62" cy="118" r="11" fill="#1c1917"></circle>
+        <circle cx="16" cy="118" r="4" fill="#d6d3d1"></circle>
+        <circle cx="62" cy="118" r="4" fill="#d6d3d1"></circle>
+        <path d="M14 112h30l10-14h10l-6 16" fill="none" stroke="#1c1917" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"></path>
+        <rect x="2" y="82" width="26" height="22" rx="4" fill="#f59e0b"></rect>
+        <circle cx="42" cy="70" r="8" fill="#57534e"></circle>
+        <path d="M40 78l-6 22h16" fill="none" stroke="#57534e" stroke-width="6" stroke-linecap="round"></path>
+      </g>
+      <g class="mk-dj-cash" transform="translate(590 20)">
+        <rect width="34" height="20" rx="4" fill="#15803d"></rect>
+        <circle cx="17" cy="10" r="5" fill="#dcfce7"></circle>
+      </g>
+    </svg>
+    <ol class="mk-dj-steps">
+      {
+        steps.map((s, i) => (
+          <li style={`--i:${i}`}>
+            <span>{i + 1}</span>
+            {s}
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</WFrame>

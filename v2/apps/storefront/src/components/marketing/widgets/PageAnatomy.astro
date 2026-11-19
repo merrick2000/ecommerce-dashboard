@@ -1,0 +1,65 @@
+---
+/** Anatomie d'une page de vente : toucher une section du téléphone pour voir son rôle. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const fr = lang === 'fr'
+const parts: [string, string][] = fr
+  ? [
+      ['Titre et photo', 'Le bénéfice principal en une phrase, une photo du produit en situation. Le visiteur décide ici s’il reste.'],
+      ['Prix et offre', 'Prix clair, prix barré si la remise est vraie, packs « 2 achetés ». Pas de surprise à la livraison.'],
+      ['Bénéfices', '3 à 5 bénéfices concrets, pas des caractéristiques techniques. « Tient toute la journée » plutôt que « 3000 mAh ».'],
+      ['Preuves', 'Vidéos et photos de vrais clients, avis avec prénom et ville. C’est ce qui rassure en paiement à la livraison.'],
+      ['Formulaire', 'Nom, téléphone, ville, quartier. Rien de plus. Le bouton dit ce qui va se passer : « Commander, je paie à la livraison ».'],
+      ['Questions', 'Délais, zone de livraison, retours, garantie. Chaque question répondue est un appel de moins pour tes closers.'],
+    ]
+  : [
+      ['Headline and photo', 'The main benefit in one sentence, a photo of the product in use. Visitors decide here whether to stay.'],
+      ['Price and offer', 'Clear price, strike through price only if the discount is real, buy 2 bundles. No surprise at delivery.'],
+      ['Benefits', '3 to 5 concrete benefits, not specs. “Lasts all day” rather than “3000 mAh”.'],
+      ['Proof', 'Real customer videos and photos, reviews with first name and city. That is what builds trust with cash on delivery.'],
+      ['Order form', 'Name, phone, city, area. Nothing more. The button says what happens: “Order, I pay on delivery”.'],
+      ['Questions', 'Delivery times and areas, returns, warranty. Each answered question is one less call for your closers.'],
+    ]
+---
+
+<WFrame lang={lang} kind="interactive" title={fr ? 'Les 6 blocs d’une page qui vend' : 'The 6 blocks of a page that sells'} caption={fr ? 'Touche un bloc du téléphone.' : 'Tap a block on the phone.'}>
+  <div class="mk-pa" data-tabs>
+    <div class="mk-phone mk-pa-phone" role="tablist">
+      {
+        parts.map(([n], i) => (
+          <button type="button" role="tab" data-tab={i} aria-selected={i === 0 ? 'true' : 'false'} class={`mk-pa-b mk-pa-b${i}`}>
+            <span>{n}</span>
+          </button>
+        ))
+      }
+    </div>
+    <div class="mk-pa-text">
+      {
+        parts.map(([n, d], i) => (
+          <div role="tabpanel" data-panel={i} hidden={i !== 0} class="mk-tl-panel">
+            <b>
+              {i + 1}. {n}
+            </b>
+            <p>{d}</p>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</WFrame>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('.mk-pa[data-tabs]')) {
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-tab]')]
+    tabs.forEach((t, i) =>
+      t.addEventListener('click', () => {
+        tabs.forEach((x, n) => x.setAttribute('aria-selected', String(n === i)))
+        root.querySelectorAll<HTMLElement>('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== String(i)))
+      }),
+    )
+  }
+</script>

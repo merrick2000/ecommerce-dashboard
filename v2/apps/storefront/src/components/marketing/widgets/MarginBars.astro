@@ -1,0 +1,40 @@
+---
+/** Barre animée : où partent les 20 000 FCFA d'une vente (exemple du guide de marge). */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const fr = lang === 'fr'
+// Exemple chiffré du guide (100 commandes, 56 livrées), ramené à une commande livrée.
+const parts: [string, number, string][] = [
+  [fr ? 'Produit' : 'Product', 6000, '#a8a29e'],
+  [fr ? 'Livraisons et retours' : 'Delivery and returns', 2125, '#78716c'],
+  [fr ? 'Emballage' : 'Packaging', 625, '#d6d3d1'],
+  [fr ? 'Publicité' : 'Advertising', 4464, '#f59e0b'],
+  [fr ? 'Ton bénéfice' : 'Your profit', 6786, '#15803d'],
+]
+const total = 20000
+const fmt = new Intl.NumberFormat(fr ? 'fr-FR' : 'en-US')
+---
+
+<WFrame lang={lang} kind="animated" title={fr ? 'Où partent les 20 000 FCFA d’une vente livrée' : 'Where the 20,000 FCFA of a delivered sale goes'} caption={fr ? 'Exemple de notre guide sur la marge en COD, ramené à une commande livrée : vendu 20 000, acheté 6 000, il reste environ 6 790 FCFA, pas 14 000.' : 'Example from our COD margin guide, per delivered order: sold at 20,000, bought at 6,000, about 6,790 FCFA is left, not 14,000.'}>
+  <div class="mk-mb">
+    <div class="mk-mb-bar">
+      {parts.map(([n, v, c], i) => <span style={`--w:${(v / total) * 100}%;--c:${c};--i:${i}`} title={n} />)}
+    </div>
+    <ul class="mk-mb-legend">
+      {
+        parts.map(([n, v, c], i) => (
+          <li style={`--c:${c};--i:${i}`}>
+            <i />
+            {n}
+            <b>{fmt.format(v)} FCFA</b>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+  <button type="button" class="mk-replay" data-replay>{fr ? 'Rejouer' : 'Replay'}</button>
+</WFrame>

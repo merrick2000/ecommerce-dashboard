@@ -1,0 +1,36 @@
+---
+/** Vidéo YouTube en chargement léger : miniature seule, le lecteur ne charge qu'au clic (aucun cookie avant). */
+import type { Lang, VideoRef } from '../../content/seo'
+interface Props {
+  video: VideoRef
+  lang: Lang
+}
+const { video, lang } = Astro.props
+const clean = (s: string) => s.replace(/\s*[—–]\s*/g, ', ')
+const title = clean(video.title)
+const label = lang === 'fr' ? 'Vidéo recommandée' : 'Recommended video'
+const play = lang === 'fr' ? `Lire la vidéo : ${title}` : `Play video: ${title}`
+---
+
+<figure class="mk-video" data-yt={video.id} data-title={title}>
+  <button type="button" class="mk-video-btn" aria-label={play}>
+    <img src={`https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`} alt="" width="480" height="360" loading="lazy" decoding="async" />
+    <span class="mk-video-play" aria-hidden="true"></span>
+  </button>
+  <figcaption>
+    <span class="mk-w-badge">{label}</span> <b>{title}</b>, {clean(video.channel)} (YouTube)
+  </figcaption>
+</figure>
+
+<script>
+  for (const fig of document.querySelectorAll<HTMLElement>('[data-yt]')) {
+    fig.querySelector('button')?.addEventListener('click', (e) => {
+      const iframe = document.createElement('iframe')
+      iframe.src = `https://www.youtube-nocookie.com/embed/${fig.dataset.yt}?autoplay=1&rel=0`
+      iframe.title = fig.dataset.title ?? 'YouTube'
+      iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
+      iframe.allowFullscreen = true
+      ;(e.currentTarget as HTMLElement).replaceWith(iframe)
+    })
+  }
+</script>

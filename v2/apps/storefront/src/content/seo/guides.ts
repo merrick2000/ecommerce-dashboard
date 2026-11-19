@@ -1,4 +1,4 @@
-import type { GuidePage } from './types'
+import type { GuidePage, VideoRef, WidgetId } from './types'
 
 /**
  * Guides (SEO programmatique) du site Zuri, en français et en anglais.
@@ -31,6 +31,9 @@ const cta = (titleFr: string, titleEn: string, fr: string, en: string): Block =>
   title: { fr: titleFr, en: titleEn },
   text: { fr, en },
 })
+const w = (id: WidgetId): Block => ({ type: 'widget', id })
+const video = (videos: { fr?: VideoRef; en?: VideoRef }): Block => ({ type: 'video', videos })
+const checklist = (items: [string, string][], _ordered = false): Block => ({ type: 'checklist', items: items.map(([fr, en]) => ({ fr, en })) })
 const faq = (qFr: string, qEn: string, aFr: string, aEn: string): Faq => ({
   q: { fr: qFr, en: qEn },
   a: { fr: aFr, en: aEn },
@@ -121,6 +124,7 @@ const blackFriday: GuidePage = {
       'Les jours qui suivent sont ceux où tu gagnes ou perds ton argent. Priorise les livraisons des commandes confirmées les plus anciennes, rappelle les clients la veille de la livraison et suis les colis retournés un par un. Le Cyber Monday peut servir de deuxième vague pour écouler le stock restant.',
       'The days after are where you make or lose your money. Deliver the oldest confirmed orders first, call customers the day before delivery and track every returned parcel. Cyber Monday works as a second wave to move remaining stock.',
     ),
+    w('bf-timeline'),
     h2('Les offres qui marchent en COD', 'Offers that work with cash on delivery'),
     p(
       'Une grosse remise n’est pas toujours la meilleure offre. En paiement à la livraison, une offre qui augmente le panier moyen est souvent plus rentable, car tes frais de livraison et ton coût publicitaire restent les mêmes par colis.',
@@ -137,6 +141,7 @@ const blackFriday: GuidePage = {
       'Les montants ci-dessus sont des exemples : adapte-les à ton coût d’achat. Sur Zuri, tu peux créer des packs par quantité, afficher le prix barré et régler des frais de livraison différents par ville, ce qui te permet de proposer la livraison offerte seulement là où tes livreurs sont les moins chers.',
       'The amounts above are examples: adjust them to your purchase cost. On Zuri you can set up quantity bundles, show a strike through price and set different delivery fees per city, so you can offer free delivery only where your couriers cost the least.',
     ),
+    w('bundle-compare'),
     h2('Stock, livreurs et closers : le nerf de la guerre', 'Stock, couriers and closers: where it is won'),
     p(
       'Prévois ton stock à partir de tes ventes habituelles, pas de tes rêves. Si tu fais habituellement 20 commandes par jour, prépare-toi à en gérer plusieurs fois plus pendant le pic, mais ne commande pas un stock que tu ne pourras pas écouler en décembre. Garde une réserve chez ton fournisseur plutôt que tout chez toi.',
@@ -162,6 +167,7 @@ const blackFriday: GuidePage = {
       ['Créatives : montre le produit en main, le prix avant et après, la date de fin et la phrase « paiement à la livraison ».', 'Creatives: show the product in hand, the before and after price, the end date and the words "pay on delivery".'],
       ['Mesure : envoie les vraies commandes à Meta et TikTok avec le pixel et l’API Conversions, pour que les plateformes trouvent des acheteurs, pas des curieux.', 'Tracking: send real orders to Meta and TikTok with the pixel and Conversions API, so the platforms find buyers, not browsers.'],
     ]),
+    video({"fr": {"id": "-cRCI0KXbvc", "title": "La Stratégie Complète pour Réussir ton Black Friday 2025 en Ecommerce", "channel": "Nath Debaque"}, "en": {"id": "xdz3f06e4xU", "title": "How to Prepare for Black Friday: 5 Ecommerce Tips That Actually Work", "channel": "Hostinger Academy"}}),
     h2('Un compte à rebours honnête', 'An honest countdown'),
     p(
       'Le compte à rebours fonctionne parce qu’il donne une vraie raison d’agir maintenant. Il doit donc être vrai : si ta promo finit dimanche à minuit, elle finit dimanche à minuit. Un compteur qui recommence à chaque visite se remarque vite, surtout quand les clients partagent tes liens dans les groupes WhatsApp, et il détruit la confiance dont tu as besoin pour qu’ils paient le livreur. Même règle pour le stock limité affiché : n’affiche que des quantités réelles.',
@@ -185,7 +191,7 @@ const blackFriday: GuidePage = {
       'Picture a store in Abidjan that usually gets around fifteen orders a day on two products. For Black Friday it plans a one week campaign, from Monday to Cyber Monday. It reserves three times its usual stock with the supplier, adds an evening and weekend closer, and tells its two couriers they will also work on Sunday. The ad budget is split this way: a small amount on warm up days, the bulk from Friday to Sunday, and the rest for Cyber Monday. It is only an example, but it shows the idea: every step is planned before the first franc is spent.',
     ),
     h2('La check-list de la veille', 'The night before checklist'),
-    list([
+    checklist([
       ['Les pages Black Friday sont en ligne, testées sur téléphone, avec le bon prix et la bonne date de fin.', 'Black Friday pages are live, tested on a phone, with the right price and end date.'],
       ['Les codes promo fonctionnent et expirent à la bonne date.', 'Promo codes work and expire on the right date.'],
       ['Les pubs sont validées par la plateforme et programmées.', 'Ads are approved by the platform and scheduled.'],
@@ -250,6 +256,7 @@ const seasonal: GuidePage = {
       [['Black Friday', 'Black Friday'], ['Fin novembre', 'Late November'], ['Tout, surtout électronique et beauté', 'Everything, especially electronics and beauty'], ['Packs, prix barré, livraison offerte', 'Bundles, strike through price, free delivery']],
       [['Noël et fin d’année', 'Christmas and New Year'], ['Décembre', 'December'], ['Jouets, déco, tenues, cadeaux, boissons', 'Toys, decorations, outfits, gifts'], ['Cadeau emballé, livraison garantie avant le 24', 'Gift wrapped, delivered before the 24th']],
     ]),
+    w('season-calendar'),
     h2('Les fêtes nationales, un rendez-vous souvent oublié', 'National holidays, an often missed opportunity'),
     p(
       'Les fêtes d’indépendance sont des moments de fierté et de sorties : tenues aux couleurs du pays, accessoires, drapeaux, articles de fête. Quelques dates : Sénégal le 4 avril, Togo le 27 avril, Cameroun le 20 mai (fête nationale), RDC le 30 juin, Bénin le 1er août, Niger le 3 août, Côte d’Ivoire le 7 août, Congo le 15 août, Gabon le 17 août, Mali le 22 septembre, Guinée le 2 octobre, Burkina Faso le 11 décembre. Une petite collection « aux couleurs du pays » lancée deux semaines avant peut très bien marcher.',
@@ -275,6 +282,7 @@ const seasonal: GuidePage = {
       'Pour une fête, le client veut le produit avant le jour J. Écris clairement sur ta page : « Commande avant le 20 décembre à Dakar, livré avant Noël ». C’est une urgence vraie, et elle évite les colis refusés parce qu’ils arrivent trop tard.',
       'For a holiday, customers want the product before the day. Write it clearly on your page: "Order before December 20 in Dakar, delivered before Christmas". It is real urgency, and it prevents parcels being refused for arriving too late.',
     ),
+    video({"fr": {"id": "xlwd4eChl30", "title": "Le calendrier secret des e-commerçants qui gagnent vraiment", "channel": "Myril SEKOU, Ecommerce Afrique"}, "en": {"id": "vHpxJ1LLgP8", "title": "Ecommerce Promotion Strategy: Building a Merchandising Calendar", "channel": "Omnisend Webinars"}}),
     h2('Idées d’offres par fête, prêtes à l’emploi', 'Ready to use offer ideas'),
     h3('Ramadan et Korité', 'Ramadan and Eid al-Fitr'),
     p(
@@ -301,6 +309,7 @@ const seasonal: GuidePage = {
       'Fin novembre et décembre forment souvent la période la plus chargée. Fais le Black Friday pour attirer de nouveaux clients, puis recontacte-les pour Noël. Un client qui a été bien livré en novembre est le client le plus facile à convaincre en décembre.',
       'Late November and December are often the busiest period. Use Black Friday to win new customers, then reach them again for Christmas. A customer who got a smooth delivery in November is the easiest one to convince in December.',
     ),
+    w('bundle-compare'),
     h2('Construire ton propre calendrier en 30 minutes', 'Build your own calendar in 30 minutes'),
     p(
       'Prends un cahier ou un tableur avec douze lignes, une par mois. Sur chaque ligne, note les fêtes de ton pays, les périodes de salaire, la météo (saison des pluies, chaleur, harmattan) et les événements locaux comme les festivals ou les grands matchs. Ajoute ensuite, pour chaque temps fort, la date à laquelle tu dois commencer à préparer : en général quatre semaines avant. En 30 minutes, tu as un plan de l’année que tu peux suivre sans courir.',
@@ -383,6 +392,7 @@ const tips25: GuidePage = {
       'Ouvre ta page sur un téléphone d’entrée de gamme, avec les données mobiles et non le wifi. Si elle met du temps à s’afficher, retire les vidéos en lecture automatique et compresse les images. Les pages Zuri sont conçues pour ça : environ 23 Ko de JavaScript mesurés.',
       'Open your page on a budget phone, on mobile data rather than wifi. If it is slow to show up, remove autoplay videos and compress images. Zuri pages are built for this: about 23 KB of JavaScript measured.',
     ),
+    w('page-anatomy'),
     h2('Commande et confirmation COD', 'Ordering and COD confirmation'),
     list([
       ['11. Garde un formulaire court : nom, téléphone, ville, quartier. Chaque champ en plus fait fuir des clients.', '11. Keep the form short: name, phone, city, neighborhood. Every extra field drives people away.'],
@@ -391,6 +401,7 @@ const tips25: GuidePage = {
       ['14. Rappelle ou écris la veille de la livraison pour annoncer l’arrivée du livreur et le montant exact à préparer.', '14. Call or message the day before delivery to announce the courier and the exact amount to have ready.'],
       ['15. Suis tes deux chiffres clés chaque semaine : taux de confirmation et taux de livraison. Ce sont eux qui disent si tu gagnes de l’argent.', '15. Track your two key numbers every week: confirmation rate and delivery rate. They tell you whether you make money.'],
     ]),
+    w('cod-funnel'),
     h2('Livraison', 'Delivery'),
     list([
       ['16. Livre vite. Un client livré le lendemain refuse beaucoup moins qu’un client qui attend une semaine.', '16. Deliver fast. A customer served the next day refuses far less often than one who waits a week.'],
@@ -405,6 +416,7 @@ const tips25: GuidePage = {
       ['22. Installe le pixel Facebook, l’API Conversions et le pixel TikTok, et envoie les vraies commandes. Sans données, la plateforme cible au hasard.', '22. Install the Facebook pixel, Conversions API and TikTok pixel, and send real orders. Without data, the platform targets blindly.'],
       ['23. Juge tes pubs sur le coût par commande livrée, pas sur le coût par commande. Une pub qui donne des commandes pas chères mais jamais livrées te fait perdre de l’argent.', '23. Judge ads by cost per delivered order, not cost per order. An ad that brings cheap orders that never get delivered loses you money.'],
     ]),
+    video({"fr": {"id": "e7xpqNHciHI", "title": "7 Erreurs à Éviter pour réussir en E-commerce en Afrique !", "channel": "Myril SEKOU, Ecommerce Afrique"}, "en": {"id": "jzZPplA0O-I", "title": "How To Start An Ecommerce Business In Nigeria (Full Step-by-Step Guide)", "channel": "Damini Williams"}}),
     h2('Paiement et fidélisation', 'Payment and repeat customers'),
     list([
       ['24. Propose le Mobile Money en plus du paiement à la livraison. Selon la Banque mondiale (Global Findex 2025), 40 % des adultes d’Afrique subsaharienne avaient un compte Mobile Money en 2024. Ceux qui paient d’avance refusent rarement le colis.', '24. Offer Mobile Money alongside cash on delivery. According to the World Bank (Global Findex 2025), 40% of adults in Sub-Saharan Africa had a mobile money account in 2024. People who pay upfront rarely refuse the parcel.'],
@@ -449,6 +461,7 @@ const tips25: GuidePage = {
       'Prenons un exemple simple. Une boutique vend une crème à 10 000 FCFA et reçoit 20 commandes livrées par jour, toutes à l’unité. Elle ajoute un pack de 2 à 17 000 FCFA. Si un quart des clients choisit le pack, le chiffre encaissé passe de 200 000 FCFA à 235 000 FCFA, avec le même nombre de livraisons et le même budget publicitaire. Les 35 000 FCFA en plus sont presque entièrement de la marge, moins le coût d’achat des crèmes supplémentaires. C’est un exemple de calcul, pas une promesse : teste avec tes propres produits et regarde combien de clients prennent le pack.',
       'Here is a simple example. A store sells a cream at 10,000 FCFA and gets 20 delivered orders a day, all single units. It adds a 2 pack at 17,000 FCFA. If a quarter of customers choose the pack, cash collected goes from 200,000 FCFA to 235,000 FCFA, with the same number of deliveries and the same ad budget. The extra 35,000 FCFA is almost all margin, minus the cost of the extra creams. This is an example calculation, not a promise: test it with your own products and see how many customers actually take the bundle. Then try a 3 pack, or a free gift on the 2 pack, and compare the results.',
     ),
+    w('bundle-compare'),
     h2('Ce qu’il faut retenir', 'Key takeaways'),
     list([
       ['Vends un résultat, pas un objet, et montre-le dans les trois premières secondes de ta vidéo.', 'Sell a result, not an object, and show it in the first three seconds of your video.'],
@@ -512,6 +525,7 @@ const facebookAds: GuidePage = {
       'En COD, c’est encore plus important. L’algorithme de Meta cherche des personnes qui ressemblent à celles qui ont commandé. Si tu lui envoies toutes les commandes, y compris les fausses et les farceurs, il trouvera plus de faux acheteurs. Envoie un événement d’achat propre, avec le bon montant et la devise, et si ton outil le permet, mets l’accent sur les commandes réelles. Zuri intègre le pixel Facebook, l’API Conversions et le pixel TikTok : il suffit de coller tes identifiants.',
       'With cash on delivery this matters even more. Meta’s algorithm looks for people similar to those who ordered. If you send every order, including fake ones and pranksters, it will find more fake buyers. Send a clean purchase event with the right amount and currency, and if your tool allows it, focus on real orders. Zuri has the Facebook pixel, Conversions API and TikTok pixel built in: you just paste your IDs.',
     ),
+    w('pixel-flow'),
     h2('La structure de campagne simple qui marche', 'A simple campaign structure that works'),
     p(
       'Inutile de faire compliqué. Pour un vendeur qui démarre, une structure simple suffit et permet de comprendre ce qui marche.',
@@ -541,6 +555,7 @@ const facebookAds: GuidePage = {
       ['Des sous-titres, car beaucoup regardent sans le son.', 'Captions, because many people watch without sound.'],
       ['La langue de tes clients : français simple, et pourquoi pas une version en langue locale.', 'Your customers’ language: simple French, and why not a version in a local language.'],
     ]),
+    w('hook-3s'),
     h2('Tester des produits sans se ruiner', 'Testing products without going broke'),
     p(
       'Le test, c’est mettre un petit budget sur un produit pendant quelques jours pour voir s’il trouve des acheteurs à un coût acceptable. Fixe avant de commencer un coût par commande maximum, calculé à partir de ta marge (voir le guide sur le calcul de marge en COD). Si après avoir dépensé l’équivalent de deux ou trois fois ce montant tu n’as aucune commande, arrête ou change de vidéo. Si tu as des commandes à un bon coût, confirme-les vite pour voir si elles se livrent.',
@@ -551,6 +566,7 @@ const facebookAds: GuidePage = {
       'Ne commence pas avec une somme que tu ne peux pas perdre. Exemple : si ton produit te laisse 7 000 FCFA de marge par commande livrée, un budget de test de 5 000 à 10 000 FCFA par jour pendant trois à cinq jours te donne une première idée sans mettre ton capital en danger. Augmente ensuite le budget par paliers raisonnables sur ce qui est rentable, plutôt que de le multiplier d’un coup.',
       'Do not start with money you cannot afford to lose. Example: if your product leaves 7,000 FCFA margin per delivered order, a test budget of 5,000 to 10,000 FCFA a day for three to five days gives you a first read without risking your capital. Then raise the budget in reasonable steps on what is profitable, instead of multiplying it overnight.',
     ),
+    video({"fr": {"id": "vsMgjWncfBs", "title": "Ecom en Afrique: Comment lancer des publicités Facebook Ads (Formation Gratuite)", "channel": "Waly Ecom"}, "en": {"id": "p8pthMjKKXk", "title": "What You NEED To Know To Get Started With Facebook Ads", "channel": "Ben Heath"}}),
     h2('Lire les chiffres : coût par commande ou coût par commande livrée', 'Reading numbers: cost per order vs cost per delivered order'),
     p(
       'C’est le point le plus important de ce guide. Le gestionnaire de publicités te donne un coût par achat. En COD, ce chiffre est trompeur, car toutes les commandes ne sont ni confirmées ni livrées. Le seul chiffre qui compte est le coût publicitaire par commande livrée.',
@@ -569,6 +585,7 @@ const facebookAds: GuidePage = {
       'Ces chiffres sont un exemple pour illustrer le calcul, pas une moyenne. Dans cet exemple, le coût réel est le double du coût affiché. Si ta marge par commande livrée est de 2 500 FCFA, cette pub te fait perdre de l’argent alors qu’elle semble bonne dans le gestionnaire. Zuri calcule pour toi le taux de confirmation, le taux de livraison et le chiffre encaissé : il te suffit de diviser ta dépense par le nombre de commandes livrées.',
       'These numbers are an example to show the math, not an average. Here the real cost is double the displayed cost. If your margin per delivered order is 2,500 FCFA, this ad loses money even though it looks good in Ads Manager. Zuri calculates your confirmation rate, delivery rate and cash collected: you just divide spend by delivered orders.',
     ),
+    w('ad-budget'),
     h2('Quand couper, quand augmenter', 'When to cut, when to scale'),
     list([
       ['Coupe une publicité qui dépense sans commande après une somme fixée à l’avance.', 'Cut an ad that spends with no orders after a preset amount.'],
@@ -678,6 +695,7 @@ const tiktokAds: GuidePage = {
       'Sur TikTok, le pouce décide très vite. Commence par un mouvement, une question directe ou un résultat surprenant. Évite les logos et les introductions. Exemples d’accroches : « Regarde ce que cette brosse fait à mes baskets », « Ma mère m’a demandé où j’ai acheté ça », « 5 000 FCFA et je ne repasse plus mes habits ». Tourne plusieurs débuts pour la même vidéo et garde celui qui retient le plus.',
       'On TikTok the thumb decides fast. Open with movement, a direct question or a surprising result. Skip logos and intros. Example hooks: "Watch what this brush does to my sneakers", "My mum asked where I bought this", "5,000 FCFA and I never iron again". Shoot several openings for the same video and keep the one that holds attention best.',
     ),
+    w('hook-3s'),
     h2('Passer à TikTok Ads', 'Moving to TikTok Ads'),
     p(
       'Une fois que tu sais quelles vidéos plaisent, crée un compte dans TikTok Ads Manager. Vérifie d’abord que la publicité est disponible pour ton pays et ton moyen de paiement : les conditions varient selon les marchés, et TikTok les détaille dans son centre d’aide.',
@@ -698,11 +716,13 @@ const tiktokAds: GuidePage = {
       'Sur Zuri, le pixel TikTok est intégré : tu colles ton identifiant de pixel dans les réglages de ta boutique, et les événements de commande sont envoyés automatiquement.',
       'On Zuri the TikTok pixel is built in: paste your pixel ID in your store settings, and order events are sent automatically.',
     ),
+    w('pixel-flow'),
     h2('TikTok et paiement à la livraison', 'TikTok and cash on delivery'),
     p(
       'Le public TikTok est souvent plus jeune et plus impulsif. Ça veut dire des commandes rapides, mais aussi plus de commandes non sérieuses. Trois réflexes : un formulaire court mais avec le quartier, une confirmation par appel dans l’heure, et un message clair sur la page : « Tu paies à la livraison, après avoir vu le produit ». Pour les produits plus chers, proposer le Mobile Money ou un petit acompte filtre les commandes fantômes.',
       'TikTok audiences are often younger and more impulsive. That means fast orders, but also more non serious ones. Three habits: a short form that still asks for the neighborhood, a confirmation call within the hour, and a clear message on the page: "You pay on delivery, after seeing the product". For pricier items, offering Mobile Money or a small deposit filters out ghost orders.',
     ),
+    video({"fr": {"id": "UdaCDnXvcns", "title": "Comment Lancer une Publicité TikTok Ads en Afrique", "channel": "Myril SEKOU, Ecommerce Afrique"}, "en": {"id": "yFBEGV3VAPU", "title": "How to Use TikTok Ads for your Business", "channel": "HubSpot Marketing"}}),
     h2('Lire tes résultats', 'Reading your results'),
     p(
       'Ne te laisse pas impressionner par les vues. Une vidéo à 100 000 vues qui donne 5 commandes livrées vaut moins qu’une vidéo à 10 000 vues qui en donne 30. Suis par vidéo : commandes, taux de confirmation, taux de livraison. Pour les pubs, calcule comme sur Facebook le coût par commande livrée, en divisant la dépense par le nombre de colis réellement payés.',
@@ -714,6 +734,7 @@ const tiktokAds: GuidePage = {
       'Ajoute un code promo différent dans chaque vidéo organique (par exemple TIKTOK1, TIKTOK2). Quand une commande arrive avec ce code, tu sais exactement quelle vidéo l’a déclenchée. Les codes promo se créent en quelques secondes sur Zuri.',
       'Use a different promo code in each organic video (for example TIKTOK1, TIKTOK2). When an order comes in with that code, you know exactly which video triggered it. Promo codes take seconds to create on Zuri.',
     ),
+    w('ad-budget'),
     h2('Le plan sur 30 jours', 'The 30 day plan'),
     list([
       ['Semaine 1 : publie une vidéo par jour sur 2 ou 3 produits, avec des accroches différentes.', 'Week 1: post one video a day on 2 or 3 products, with different hooks.'],
@@ -801,6 +822,7 @@ const reduceReturns: GuidePage = {
       'Chacune de ces causes a sa solution. Note la raison de chaque retour pendant un mois : tu sauras où agir en priorité. Les mauvaises surprises sur le prix pèsent lourd partout dans le monde : dans les enquêtes de Baymard Institute, les coûts ajoutés (livraison, frais, taxes) sont la première raison citée par les acheteurs qui abandonnent leur commande en ligne, devant les délais de livraison trop longs.',
       'Each cause has its own fix. Log the reason for every return for a month: you will know where to act first. Price surprises weigh heavily everywhere: in Baymard Institute’s surveys, added costs (shipping, fees, taxes) are the top reason shoppers give for abandoning an online order, ahead of slow delivery.',
     ),
+    w('cod-funnel'),
     h2('Avant la commande : une page honnête et claire', 'Before the order: an honest, clear page'),
     list([
       ['Montre le vrai produit, sous plusieurs angles, avec sa taille réelle (en main, à côté d’un objet connu).', 'Show the real product from several angles, with its real size (in hand, next to a familiar object).'],
@@ -824,6 +846,7 @@ const reduceReturns: GuidePage = {
       'Un client qui ne décroche pas n’est pas forcément un faux client. Envoie un message WhatsApp avec le nom de ta boutique et le produit, puis rappelle à un autre moment (midi, soir). Sur Zuri, le statut « injoignable » te permet de retrouver ces commandes et de les relancer au bon moment.',
       'A customer who does not pick up is not necessarily fake. Send a WhatsApp message with your store name and the product, then call back at another time (midday, evening). On Zuri, the "unreachable" status lets you find these orders and follow up at the right time.',
     ),
+    w('whatsapp-chat'),
     h2('Avant la livraison : le rappel qui change tout', 'Before delivery: the reminder that changes everything'),
     p(
       'La veille ou le matin même, envoie un message simple : « Bonjour Awa, ta commande de 2 crèmes arrive demain entre 10 h et 13 h. Montant à préparer : 17 000 FCFA. Le livreur t’appellera. » Ce rappel permet au client de préparer l’argent, de prévenir s’il est absent, ou d’annuler avant que tu paies le trajet.',
@@ -834,11 +857,13 @@ const reduceReturns: GuidePage = {
       'Le délai est l’un des facteurs les plus importants. Plus un colis met de temps à arriver, plus le client a de chances d’avoir changé d’avis ou dépensé son argent. Pour les grandes villes, vise une livraison le jour même ou le lendemain. Si tu livres en province, sois clair sur le délai et confirme à nouveau juste avant l’envoi.',
       'Delivery time is one of the most important factors. The longer a parcel takes, the more likely the customer has changed their mind or spent the money. In big cities aim for same day or next day delivery. If you ship to smaller towns, be clear about the delay and confirm again right before dispatch.',
     ),
+    w('delivery-journey'),
     h2('L’acompte Mobile Money, en option', 'The optional Mobile Money deposit'),
     p(
       'Pour les produits chers, les commandes en province ou les clients qui ont déjà refusé, demande un petit acompte par Mobile Money, ou propose le paiement complet avec un avantage (livraison offerte, petit cadeau). Garde-le optionnel pour la majorité des clients : beaucoup préfèrent encore payer à la livraison, et forcer l’acompte peut faire baisser les commandes. Avec Zuri, le Mobile Money passe par tes propres comptes chez FeexPay, FedaPay, PayDunya ou PawaPay : l’argent arrive directement chez toi.',
       'For expensive items, orders to distant towns or customers who refused before, ask for a small Mobile Money deposit, or offer full upfront payment with a perk (free delivery, small gift). Keep it optional for most customers: many still prefer paying on delivery, and forcing a deposit can reduce orders. With Zuri, Mobile Money goes through your own FeexPay, FedaPay, PayDunya or PawaPay accounts: the money lands directly with you.',
     ),
+    video({"fr": {"id": "-HgeMaqgisE", "title": "Beaucoup de Ventes, Peu de Livraisons : QUE FAIRE (Ecom Afrique) ?", "channel": "Myril SEKOU, Ecommerce Afrique"}, "en": {"id": "yd4J3xcb_Ug", "title": "The Top Causes of Failed Deliveries in E-Commerce in Nigeria and How to Fix Them", "channel": "Samgreen Naija"}}),
     h2('La liste noire', 'The blacklist'),
     p(
       'Garde une liste des numéros qui ont refusé sans raison ou qui ont passé de fausses commandes. Quand un de ces numéros recommande, demande un acompte ou le paiement complet avant d’envoyer le livreur. Reste juste : un client qui a eu un vrai empêchement une fois n’est pas un fraudeur. Partage la règle avec tes closers pour que tout le monde l’applique de la même façon.',
@@ -946,6 +971,7 @@ const confirmationScript: GuidePage = {
       'Demander « Demain matin ou demain après-midi ? » engage plus le client que « Tu es disponible demain ? ». Il choisit un moment, et il s’organise pour être là.',
       'Asking "Tomorrow morning or afternoon?" commits the customer more than "Are you free tomorrow?". They pick a time, and they plan to be there.',
     ),
+    w('call-sim'),
     h2('Script 2 : la proposition d’ajout (sans forcer)', 'Script 2: the add on offer (without pushing)'),
     p(
       'Après la confirmation, une seule proposition, simple : « Au passage, beaucoup de clients prennent 2 lampes pour la chambre et le salon : la deuxième est à 8 000 FCFA au lieu de 12 000 FCFA, sans frais de livraison en plus. Ça t’intéresse ou on reste sur une ? » Si c’est non, on n’insiste pas. Un client qui se sent forcé risque de refuser le colis.',
@@ -976,11 +1002,13 @@ const confirmationScript: GuidePage = {
       '« Pas de souci, on s’adapte. Tu veux être livré où exactement, et c’est près de quoi ? » Note la nouvelle adresse, vérifie que la ville est dans tes zones de livraison et annonce les nouveaux frais si la ville change : « À Bingerville, la livraison est à 2 000 FCFA au lieu de 1 000, donc 14 000 FCFA au total. C’est bon pour toi ? » Pour un report de date, fixe une date précise, jamais « la semaine prochaine ».',
       '"No problem, we’ll adjust. Where exactly would you like delivery, and what is it near?" Note the new address, check that the city is in your delivery zones and announce the new fee if the city changes: "Delivery to Bingerville is 2,000 FCFA instead of 1,000, so 14,000 FCFA in total. Is that OK?" For a date change, set a specific date, never "next week".',
     ),
+    video({"fr": {"id": "n5glTAqHruo", "title": "Béni TOSSOU révèle les secrets du closing", "channel": "Myril SEKOU, Ecommerce Afrique"}}),
     h2('Script 6 : le rappel avant livraison', 'Script 6: the pre delivery reminder'),
     p(
       '« Bonjour Moussa, c’est BelleMaison. Ta lampe solaire arrive aujourd’hui entre 10 h et 13 h. Montant à préparer : 13 000 FCFA. Le livreur, Koffi, t’appellera avant de passer. À tout à l’heure ! »',
       '"Hi Moussa, it’s BelleMaison. Your solar lamp arrives today between 10am and 1pm. Amount to have ready: 13,000 FCFA. The courier, Koffi, will call before coming. See you soon!"',
     ),
+    w('whatsapp-chat'),
     h2('Les erreurs qui font perdre des commandes', 'Mistakes that lose orders'),
     list([
       ['Appeler le lendemain : le client a oublié ou acheté ailleurs.', 'Calling the next day: the customer forgot or bought elsewhere.'],
@@ -1093,6 +1121,7 @@ const closers: GuidePage = {
       ['Écoute : se présente-t-il bien ? vérifie-t-il le prix total et l’adresse ? reste-t-il calme ?', 'Listen: do they introduce themselves well? check the total price and address? stay calm?'],
       ['Demande-lui d’écrire le message WhatsApp pour un client injoignable : tu vois son niveau d’écrit.', 'Ask them to write the WhatsApp message for an unreachable customer: you see their writing.'],
     ], true),
+    w('call-sim'),
     h2('Former en une journée', 'Training in one day'),
     p(
       'Un nouveau closer doit connaître trois choses : les produits, le script et l’outil. Le matin, présente chaque produit (prix, packs, utilisation, questions fréquentes, garantie) et les zones de livraison avec leurs frais. L’après-midi, fais-lui écouter tes appels, puis laisse-le appeler pendant que tu écoutes. Corrige tout de suite, avec bienveillance. Le lendemain, il travaille seul mais tu réécoutes quelques appels.',
@@ -1126,6 +1155,7 @@ const closers: GuidePage = {
       'Un closer régulier peut être considéré comme un salarié selon la loi de ton pays, avec des obligations (contrat, salaire minimum, cotisations). Les règles varient d’un pays à l’autre. Renseigne-toi auprès de l’inspection du travail ou d’un comptable local avant de fixer un contrat ou une rémunération uniquement variable.',
       'A regular closer may count as an employee under your country’s law, with obligations (contract, minimum wage, social contributions). Rules vary by country. Check with the labor inspectorate or a local accountant before setting a contract or purely commission based pay.',
     ),
+    w('closer-pay'),
     h2('Suivre le travail sans espionner', 'Tracking work without micromanaging'),
     p(
       'Tu n’as pas besoin d’écouter tous les appels. Suis quelques indicateurs par closer chaque semaine, et discute avec chacun de ses chiffres.',
@@ -1141,6 +1171,7 @@ const closers: GuidePage = {
       'Un closer avec un taux de confirmation très élevé mais un taux de livraison faible confirme probablement trop facilement. Un closer avec un délai d’appel long a peut-être trop de commandes : ajoute quelqu’un sur ce créneau.',
       'A closer with a very high confirmation rate but a low delivery rate is probably confirming too easily. A closer with slow call times may have too many orders: add someone on that shift.',
     ),
+    w('cod-funnel'),
     h2('Organiser l’équipe', 'Organizing the team'),
     list([
       ['Découpe la journée en créneaux pour couvrir les heures de pointe, y compris le week-end.', 'Split the day into shifts to cover peak hours, including weekends.'],
@@ -1152,6 +1183,7 @@ const closers: GuidePage = {
       'Sur Zuri, chaque closer a son accès, les commandes sont attribuées automatiquement au premier disponible, et tu vois les statuts et le taux de confirmation en direct. Tu sais à tout moment qui traite quoi, sans tableur partagé.',
       'On Zuri each closer has their own access, orders are assigned automatically to the first available one, and you see statuses and confirmation rate live. You always know who is handling what, without a shared spreadsheet.',
     ),
+    video({"fr": {"id": "KZCChrmDJb0", "title": "E-commerce en Afrique : 5 qualités d’un excellent closeur", "channel": "Landry Cyrille"}}),
     h2('Garder ses bons closers', 'Keeping your good closers'),
     p(
       'Recruter et former coûte du temps. Un bon closer qui part, c’est une semaine de chiffres en baisse. Pour les garder : paie à l’heure, toujours, et explique clairement le calcul de la prime. Donne-leur les moyens de bien travailler (crédit d’appel, forfait internet, fiche produit à jour). Reconnais les bons résultats devant l’équipe. Et écoute ce qu’ils remontent : ce sont eux qui entendent tous les jours ce que les clients pensent de tes produits, de tes prix et de tes livreurs.',
@@ -1234,6 +1266,7 @@ const localDropshipping: GuidePage = {
       ['Le produit part de chez le fournisseur (ou de ton petit stock) avec un livreur.', 'The product leaves the supplier (or your small stock) with a courier.'],
       ['Le client paie à la livraison ou par Mobile Money, tu paies ensuite le fournisseur selon votre accord.', 'The customer pays on delivery or by Mobile Money, then you pay the supplier according to your deal.'],
     ], true),
+    w('dropship-flow'),
     h2('Les deux modèles : stock chez le fournisseur ou petit stock', 'Two models: supplier held stock or a small stock'),
     table([
       [['', ''], ['Stock chez le fournisseur', 'Supplier held stock'], ['Petit stock chez toi', 'Small stock at your place']],
@@ -1283,11 +1316,13 @@ const localDropshipping: GuidePage = {
       'Sur Zuri, tu règles des zones et des frais de livraison par ville, et chaque commande passe de « confirmée » à « expédiée », puis « livrée » ou « retournée ». Le chiffre encaissé se calcule tout seul, ce qui facilite le point avec le livreur.',
       'On Zuri you set delivery zones and fees per city, and each order moves from "confirmed" to "shipped", then "delivered" or "returned". Cash collected is calculated automatically, which makes reconciling with the courier easier.',
     ),
+    w('delivery-journey'),
     h2('Calculer sa marge en dropshipping local', 'Working out your local dropshipping margin'),
     p(
       'Exemple pour illustrer le calcul : tu achètes un mixeur 9 000 FCFA au fournisseur et tu le vends 18 000 FCFA. Ça ressemble à 9 000 FCFA de bénéfice, mais il faut retirer la livraison (par exemple 1 500 FCFA), la pub par commande livrée (par exemple 3 000 FCFA) et ta part des colis retournés (livraisons payées pour rien). Il te reste peut-être 3 500 FCFA, voire moins si ton taux de livraison est faible. Fais toujours ce calcul avant de lancer un produit.',
       'Example to show the math: you buy a blender for 9,000 FCFA from the supplier and sell it for 18,000 FCFA. That looks like 9,000 FCFA profit, but you must subtract delivery (say 1,500 FCFA), ad cost per delivered order (say 3,000 FCFA) and your share of returned parcels (deliveries paid for nothing). You may be left with 3,500 FCFA, or less if your delivery rate is low. Always run this math before launching a product.',
     ),
+    w('margin-bars'),
     h2('Les risques à connaître', 'Risks to know about'),
     list([
       ['Rupture de stock chez le fournisseur en pleine campagne pub : garde un deuxième fournisseur pour tes produits phares.', 'Supplier stockout mid campaign: keep a second supplier for your hero products.'],
@@ -1296,6 +1331,7 @@ const localDropshipping: GuidePage = {
       ['Argent bloqué chez les livreurs : fais les comptes chaque jour.', 'Cash stuck with couriers: reconcile every day.'],
       ['Produits interdits ou réglementés (médicaments, certains cosmétiques) : renseigne-toi sur la loi de ton pays et les règles publicitaires de Meta et TikTok.', 'Banned or regulated products (medicines, some cosmetics): check your country’s law and Meta’s and TikTok’s advertising policies.'],
     ]),
+    video({"fr": {"id": "xJgk3kG0Kk0", "title": "Dropshipping ou E-commerce en Afrique : Quel business choisir ?", "channel": "Myril SEKOU, Ecommerce Afrique"}, "en": {"id": "K1ldTc4-ifQ", "title": "Easiest Way To Start Dropshipping in Nigeria (Full Course)", "channel": "Damini Williams"}}),
     h2('Démarrer cette semaine', 'Start this week'),
     list([
       ['Jour 1 : liste 10 produits disponibles localement qui résolvent un problème clair.', 'Day 1: list 10 locally available products that solve a clear problem.'],
@@ -1390,6 +1426,7 @@ const winningProduct: GuidePage = {
       'Le verre, l’électronique fragile et les vêtements à tailles multiplient les retours en COD (cassé, pas la bonne taille). Ce n’est pas interdit, mais commence par des produits plus simples.',
       'Glass, fragile electronics and sized clothing multiply COD returns (broken, wrong size). It is not forbidden, but start with simpler products.',
     ),
+    w('product-score'),
     h2('Où trouver des idées', 'Where to find ideas'),
     h3('La bibliothèque publicitaire Meta', 'Meta Ad Library'),
     p(
@@ -1430,6 +1467,7 @@ const winningProduct: GuidePage = {
       'Dans cet exemple, les produits refusés reviennent en stock et peuvent être revendus, donc on ne compte que le coût des produits livrés. En revanche, on paie la livraison des colis refusés. Si ton livreur facture aussi le retour, ajoute-le. Le guide sur le calcul de marge en COD détaille chaque ligne.',
       'In this example, refused products go back into stock and can be resold, so only delivered products are counted as cost. However, you pay delivery for refused parcels. If your courier also charges for returns, add that. The COD profit guide details every line.',
     ),
+    w('margin-bars'),
     h2('Tester un produit en quelques jours', 'Testing a product in a few days'),
     list([
       ['Prépare 3 à 5 vidéos avec des accroches différentes et une page de vente simple.', 'Prepare 3 to 5 videos with different hooks and a simple sales page.'],
@@ -1444,6 +1482,7 @@ const winningProduct: GuidePage = {
       'Si un produit ne marche pas, demande-toi d’abord si c’est la vidéo, l’offre ou la page. Change un seul élément à la fois. Mais ne t’acharne pas : après deux ou trois essais sérieux sans résultat, passe au produit suivant.',
       'If a product does not work, first ask whether it is the video, the offer or the page. Change one thing at a time. But do not get stuck: after two or three serious attempts with no result, move on.',
     ),
+    video({"fr": {"id": "yaXQkduYRtY", "title": "Comment trouver des produits gagnants pour l'E-commerce en Afrique", "channel": "Waly Ecom"}, "en": {"id": "w9fYuUOd1f8", "title": "How To Pick Winning Products To Sell On Amazon & Shopify, A Complete Tutorial", "channel": "MyWifeQuitHerJob Ecommerce Channel"}}),
     h2('Les signaux d’un vrai gagnant', 'Signs of a real winner'),
     list([
       ['Les commandes arrivent à un coût sous ton maximum dès les premiers jours.', 'Orders arrive below your maximum cost from the first days.'],
@@ -1545,6 +1584,7 @@ const salesPage: GuidePage = {
       'C’est pour cette raison que les pages de vente Zuri sont ultra légères : environ 23 Ko de JavaScript mesurés, pensées pour la 3G.',
       'That is why Zuri sales pages are ultra light: about 23 KB of JavaScript measured, built for 3G.',
     ),
+    w('speed-race'),
     h2('La structure section par section', 'The structure, section by section'),
     h3('1. Le titre : la promesse', '1. The headline: the promise'),
     p(
@@ -1604,6 +1644,7 @@ const salesPage: GuidePage = {
       'Certains clients veulent poser une question avant de commander. Un bouton WhatsApp discret leur permet de te parler. Réponds vite, et renvoie-les vers le formulaire pour enregistrer la commande proprement.',
       'Some customers want to ask a question before ordering. A discreet WhatsApp button lets them reach you. Reply fast, and send them back to the form so the order is recorded properly.',
     ),
+    w('page-anatomy'),
     h2('Les erreurs qui tuent la conversion', 'Mistakes that kill conversion'),
     list([
       ['Une page trop longue avant le premier bouton de commande.', 'A page that is too long before the first order button.'],
@@ -1617,6 +1658,7 @@ const salesPage: GuidePage = {
       'Même avec une excellente page, beaucoup de visiteurs partent sans commander. Selon Baymard Institute, qui compile des dizaines d’études, le taux moyen d’abandon de panier en ligne est d’environ 70 %. Avec la relance des paniers abandonnés de Zuri, les personnes qui ont commencé à remplir le formulaire peuvent être recontactées, avec un code promo si tu le souhaites.',
       'Even with an excellent page, many visitors leave without ordering. According to Baymard Institute, which compiles dozens of studies, the average online cart abandonment rate is about 70%. With Zuri’s abandoned cart recovery, people who started the form can be contacted again, with a promo code if you like.',
     ),
+    w('whatsapp-chat'),
     h2('Exemple de page pour un produit à 12 000 FCFA', 'Example page for a 12,000 FCFA product'),
     list([
       ['Titre : « Plus jamais dans le noir pendant les coupures » et, dessous, « Paiement à la livraison partout à Cotonou ».', 'Headline: "Never in the dark during power cuts again" and below, "Pay on delivery anywhere in Cotonou".'],
@@ -1632,6 +1674,7 @@ const salesPage: GuidePage = {
       'Les prix et la garantie sont des exemples : mets les tiens, et ne promets que ce que tu peux tenir. Ce plan tient sur un seul écran de téléphone par section, et le client peut commander à tout moment grâce au bouton collant.',
       'Prices and guarantee are examples: use your own, and only promise what you can deliver. This layout fits one phone screen per section, and the customer can order at any time thanks to the sticky button.',
     ),
+    video({"fr": {"id": "hbSyEPC-HaY", "title": "Structure de page produit en E-COMMERCE : Comment CONVERTIR ?", "channel": "Thomas Giraud, The Deployer"}, "en": {"id": "kFWPkoOx_ao", "title": "How to Optimize Your Shopify Store for Higher Conversions", "channel": "Learn With Shopify"}}),
     h2('Améliorer la page avec tes chiffres', 'Improving the page with your numbers'),
     p(
       'Une page n’est jamais finie. Regarde chaque semaine combien de visiteurs commencent le formulaire et combien le valident, puis teste un seul changement à la fois : un autre titre, une autre première image, un pack différent. Garde la version qui donne le plus de commandes livrées, pas seulement le plus de commandes.',
@@ -1720,6 +1763,7 @@ const pixelCapi: GuidePage = {
       'Si le pixel et l’API Conversions envoient tous les deux la même commande, Meta risque de la compter deux fois. Pour l’éviter, chaque événement envoyé par les deux canaux doit porter le même nom d’événement et le même identifiant d’événement (event_id). Meta reconnaît alors qu’il s’agit d’un seul événement et le déduplique. C’est la partie technique la plus importante : une mauvaise déduplication gonfle tes résultats et fausse l’optimisation.',
       'If both the pixel and the Conversions API send the same order, Meta may count it twice. To avoid this, each event sent through both channels must carry the same event name and the same event ID (event_id). Meta then recognizes it as a single event and deduplicates it. This is the most important technical part: bad deduplication inflates results and skews optimization.',
     ),
+    w('pixel-flow'),
     h2('Installer le pixel et l’API Conversions', 'Setting up the pixel and Conversions API'),
     list([
       ['Dans le Gestionnaire d’événements de Meta, crée un jeu de données (pixel) lié à ton portefeuille business.', 'In Meta Events Manager, create a dataset (pixel) linked to your business portfolio.'],
@@ -1749,6 +1793,7 @@ const pixelCapi: GuidePage = {
       'Meta te dit combien de commandes la pub a générées. Seul ton outil sait combien ont été livrées. Sur Zuri, le taux de confirmation, le taux de livraison et le chiffre encaissé te permettent de calculer le vrai coût par commande livrée.',
       'Meta tells you how many orders the ad generated. Only your tool knows how many were delivered. On Zuri, confirmation rate, delivery rate and cash collected let you work out the real cost per delivered order.',
     ),
+    w('cod-funnel'),
     h2('Les erreurs fréquentes', 'Common mistakes'),
     list([
       ['Installer le pixel deux fois (dans le thème et dans une application), ce qui double les événements.', 'Installing the pixel twice (in the theme and an app), doubling events.'],
@@ -1757,6 +1802,7 @@ const pixelCapi: GuidePage = {
       ['Mauvaise devise ou montant à zéro.', 'Wrong currency or zero value.'],
       ['Utiliser le pixel d’un ancien compte publicitaire bloqué.', 'Using the pixel from an old blocked ad account.'],
     ]),
+    video({"fr": {"id": "8vBJYuFrsBU", "title": "Comment installer le PIXEL META en 2026 ?", "channel": "HubSpot France"}, "en": {"id": "ytNnSVodsA4", "title": "How to Correctly Install Facebook / Meta Conversions API + Event Deduplication", "channel": "Stape"}}),
     h2('Et TikTok ?', 'What about TikTok?'),
     p(
       'TikTok fonctionne sur le même principe avec son propre pixel et son API Events. Si tu fais de la pub sur les deux plateformes, installe les deux pixels. Zuri intègre le pixel Facebook, l’API Conversions et le pixel TikTok.',
@@ -1774,7 +1820,7 @@ const pixelCapi: GuidePage = {
       ['Diagnostics : les alertes sur les événements en double, les paramètres manquants ou les montants incorrects. Lis-les et corrige-les.', 'Diagnostics: alerts about duplicate events, missing parameters or wrong values. Read and fix them.'],
     ]),
     h2('La check-list en 5 minutes', 'The 5 minute checklist'),
-    list([
+    checklist([
       ['Un seul pixel installé, pas de doublon dans le thème ou une autre application.', 'Only one pixel installed, no duplicate in the theme or another app.'],
       ['PageView, ViewContent, InitiateCheckout et Purchase visibles dans l’outil de test.', 'PageView, ViewContent, InitiateCheckout and Purchase visible in the test tool.'],
       ['Purchase avec montant réel et devise XOF ou XAF.', 'Purchase with real value and XOF or XAF currency.'],
@@ -1847,6 +1893,7 @@ const mobileMoney: GuidePage = {
       'Tu ne te connectes pas directement à chaque opérateur (Orange Money, MTN MoMo, Moov Money, Wave, etc.). Tu passes par un agrégateur de paiement, qui regroupe plusieurs opérateurs et plusieurs pays derrière une seule intégration. Le client choisit son opérateur, saisit son numéro, valide sur son téléphone, et l’agrégateur te confirme le paiement. L’argent est ensuite reversé sur ton compte selon les conditions du prestataire.',
       'You do not connect to each operator directly (Orange Money, MTN MoMo, Moov Money, Wave and so on). You go through a payment aggregator, which bundles several operators and countries behind one integration. The customer picks their operator, enters their number, approves on their phone, and the aggregator confirms the payment to you. Money is then paid out to your account according to the provider’s terms.',
     ),
+    w('momo-payment'),
     h2('Les principaux prestataires', 'The main providers'),
     table([
       [['Prestataire', 'Provider'], ['Présentation', 'Overview'], ['À vérifier chez eux', 'Check with them']],
@@ -1892,11 +1939,13 @@ const mobileMoney: GuidePage = {
       'Solde insuffisant, code mal saisi, réseau coupé : beaucoup de paiements échouent pour des raisons simples. Rappelle le client, propose de réessayer ou de passer en paiement à la livraison. La relance des paniers abandonnés de Zuri aide aussi à récupérer ces commandes.',
       'Low balance, wrong PIN, dropped network: many payments fail for simple reasons. Call the customer, offer to retry or switch to cash on delivery. Zuri’s abandoned cart recovery also helps win these orders back.',
     ),
+    video({"fr": {"id": "ZKrndxVcGFo", "title": "Comment ajouter le Paiement par Mobile Money à votre site en Afrique facilement ?", "channel": "Vander Otis"}, "en": {"id": "AaTt56Z6K18", "title": "How to Add Mobile Money Payment to Your Website, Woocommerce Payment Gateway", "channel": "WebCraft Africa"}}),
     h2('Acompte Mobile Money et COD', 'Mobile Money deposits and COD'),
     p(
       'Tu peux combiner les deux : un acompte par Mobile Money pour les commandes à risque (produits chers, villes éloignées, clients ayant déjà refusé), et le reste à la livraison. Exemple : pour une commande de 45 000 FCFA livrée à 300 km, un acompte de 5 000 FCFA couvre ton coût de livraison si le client refuse. Garde ce principe pour les cas à risque, pas pour tout le monde.',
       'You can combine both: a Mobile Money deposit for risky orders (expensive items, distant towns, customers who refused before), and the rest on delivery. Example: for a 45,000 FCFA order delivered 300 km away, a 5,000 FCFA deposit covers your delivery cost if the customer refuses. Keep this for risky cases, not everyone.',
     ),
+    w('delivery-journey'),
     h2('Sécurité et bonnes pratiques', 'Security and good practice'),
     list([
       ['Ne partage jamais tes clés d’API de production par WhatsApp ou e-mail.', 'Never share your live API keys over WhatsApp or email.'],
@@ -1999,6 +2048,7 @@ const codProfit: GuidePage = {
       ['Coûts = produits livrés + livraisons aller (confirmées) + retours (refusées) + pub (100 commandes) + autres coûts.', 'Costs = delivered products + outbound deliveries (confirmed) + returns (refused) + ads (100 orders) + other costs.'],
       ['Bénéfice = chiffre encaissé moins coûts. Bénéfice par commande livrée = bénéfice divisé par commandes livrées.', 'Profit = cash collected minus costs. Profit per delivered order = profit divided by delivered orders.'],
     ], true),
+    w('cod-funnel'),
     h2('Exemple chiffré', 'Worked example'),
     p(
       'Attention : les chiffres ci-dessous sont un exemple inventé pour illustrer la méthode. Ce ne sont pas des moyennes du marché. Remplace-les par les tiens.',
@@ -2035,6 +2085,7 @@ const codProfit: GuidePage = {
       'Dans cet exemple, le produit vendu 20 000 FCFA rapporte environ 6 790 FCFA par commande livrée, et non 14 000 FCFA comme le laisserait croire la simple différence entre prix de vente et prix d’achat. Les produits refusés sont supposés revenir en stock en bon état, donc seuls les produits livrés comptent comme coût d’achat. Si une partie des produits revient abîmée, ajoute leur coût.',
       'In this example, the product sold at 20,000 FCFA earns about 6,790 FCFA per delivered order, not 14,000 FCFA as the simple gap between selling price and cost would suggest. Refused products are assumed to return to stock in good condition, so only delivered products count as purchase cost. If some come back damaged, add their cost.',
     ),
+    w('margin-bars'),
     h2('Ce qui fait varier ta marge', 'What moves your margin'),
     p(
       'Refais le calcul en changeant un seul chiffre à la fois, et tu verras ce qui compte le plus. Dans cet exemple, si le taux de livraison passe de 80 % à 60 %, il n’y a plus que 42 commandes livrées : le chiffre encaissé tombe à 840 000 FCFA, alors que la pub et les livraisons aller restent presque les mêmes. Le bénéfice fond fortement. À l’inverse, améliorer la confirmation et la livraison est souvent plus rentable que baisser le coût de la pub.',
@@ -2059,6 +2110,7 @@ const codProfit: GuidePage = {
       'Le gestionnaire de publicités te montre un coût par achat basé sur les commandes reçues. C’est utile pour comparer tes pubs entre elles, mais ta rentabilité se juge sur la commande livrée. Dans l’exemple, 2 500 FCFA par commande reçue deviennent environ 4 460 FCFA par commande livrée.',
       'Ads Manager shows a cost per purchase based on orders received. It is useful to compare ads with each other, but profitability is judged on delivered orders. In the example, 2,500 FCFA per order received becomes about 4,460 FCFA per delivered order.',
     ),
+    video({"fr": {"id": "65VqyA-sQh8", "title": "Définir tes prix grâce au calcul de la marge", "channel": "Tete de biz"}, "en": {"id": "e5r7-KT6mQ0", "title": "Ecommerce Contribution Margin Explained", "channel": "LedgerGurus: Ecommerce Accounting Experts"}}),
     h2('Fais-le chaque semaine', 'Do it every week'),
     list([
       ['Exporte ou relève tes commandes de la semaine par produit.', 'Export or note your week’s orders per product.'],
@@ -2084,6 +2136,7 @@ const codProfit: GuidePage = {
       'Le calcul sert aussi à choisir où mettre ton budget. Un produit vendu 25 000 FCFA avec un taux de livraison faible peut rapporter moins par commande livrée qu’un produit à 12 000 FCFA qui se livre très bien. Fais le calcul pour chaque produit avec ses propres taux, puis classe-les par bénéfice par commande reçue : c’est ce chiffre qui te dit combien tu peux payer en pub pour chaque nouvelle commande.',
       'The math also helps you decide where to put your budget. A product sold at 25,000 FCFA with a low delivery rate can earn less per delivered order than a 12,000 FCFA product that delivers very well. Run the math for each product with its own rates, then rank them by profit per order received: that number tells you how much you can pay in ads for each new order.',
     ),
+    w('product-score'),
     h2('Ton seuil de rentabilité en taux de livraison', 'Your break even delivery rate'),
     p(
       'Une autre façon d’utiliser le calcul : chercher le taux de livraison en dessous duquel tu perds de l’argent. Reprends l’exemple et baisse le taux de livraison petit à petit jusqu’à ce que le bénéfice tombe à zéro. Tu obtiens un seuil. Si ton taux réel est proche de ce seuil, ta boutique est fragile : la moindre mauvaise semaine te fait perdre de l’argent. Si tu es bien au-dessus, tu as de la marge pour augmenter tes budgets pub. Refais ce calcul pour chaque nouveau produit, car chaque produit a ses propres taux.',

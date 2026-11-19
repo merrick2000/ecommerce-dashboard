@@ -1,0 +1,57 @@
+---
+/** Simulation de paiement Mobile Money sur téléphone : opérateur, numéro, validation, reçu. */
+import type { Lang } from '../../../content/seo'
+import WFrame from './WFrame.astro'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const fr = lang === 'fr'
+const L = fr
+  ? { title: 'Un paiement Mobile Money, vu par ton client', pick: 'Choisis ton moyen de paiement', num: 'Ton numéro', pay: 'Payer 14 900 FCFA', wait: 'Valide le paiement sur ton téléphone avec ton code secret', ok: 'Paiement reçu', okText: 'Ta commande est confirmée. Un reçu t’a été envoyé.', again: 'Recommencer', cap: 'Simulation : aucun paiement réel. Le client valide toujours avec son code, sur son propre téléphone.' }
+  : { title: 'A Mobile Money payment, seen by your customer', pick: 'Choose how to pay', num: 'Your number', pay: 'Pay 14,900 FCFA', wait: 'Approve the payment on your phone with your PIN', ok: 'Payment received', okText: 'Your order is confirmed. A receipt has been sent.', again: 'Start again', cap: 'Simulation: no real payment. The customer always approves with their PIN, on their own phone.' }
+const ops = ['MTN MoMo', 'Moov Money', 'Orange Money', 'Wave']
+---
+
+<WFrame lang={lang} kind="interactive" title={L.title} caption={L.cap}>
+  <div class="mk-mm-wrap">
+    <div class="mk-phone mk-mm" data-mm data-step="0">
+      <div class="mk-mm-s" data-s="0">
+        <p class="mk-mm-h">{L.pick}</p>
+        <div class="mk-mm-ops">{ops.map((o, i) => <button type="button" class:list={['mk-mm-op', i === 0 && 'is-on']} data-op>{o}</button>)}</div>
+        <p class="mk-mm-h">{L.num}</p>
+        <p class="mk-mm-num">01 97 00 00 00</p>
+        <button type="button" class="mk-mm-pay" data-next>{L.pay}</button>
+      </div>
+      <div class="mk-mm-s" data-s="1">
+        <span class="mk-mm-pulse" aria-hidden="true"></span>
+        <p class="mk-mm-h">{L.wait}</p>
+      </div>
+      <div class="mk-mm-s" data-s="2">
+        <span class="mk-mm-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+        <p class="mk-mm-ok">{L.ok}</p>
+        <p class="mk-mm-h">{L.okText}</p>
+        <button type="button" class="mk-mm-again" data-again>{L.again}</button>
+      </div>
+    </div>
+  </div>
+</WFrame>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-mm]')) {
+    let timer = 0
+    const step = (n: number) => (root.dataset.step = String(n))
+    root.querySelectorAll<HTMLButtonElement>('[data-op]').forEach((b) =>
+      b.addEventListener('click', () => {
+        root.querySelectorAll('[data-op]').forEach((x) => x.classList.remove('is-on'))
+        b.classList.add('is-on')
+      }),
+    )
+    root.querySelector('[data-next]')!.addEventListener('click', () => {
+      step(1)
+      clearTimeout(timer)
+      timer = window.setTimeout(() => step(2), 2200)
+    })
+    root.querySelector('[data-again]')!.addEventListener('click', () => step(0))
+  }
+</script>

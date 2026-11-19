@@ -34,6 +34,37 @@ export type Block =
   | { type: 'table'; rows: L10n[][] }
   /** Appel à l'action vers l'inscription (texte du bouton facultatif). */
   | { type: 'cta'; title: L10n; text: L10n }
+  /** Illustration animée ou élément interactif (voir components/marketing/widgets). */
+  | { type: 'widget'; id: WidgetId }
+  /** Liste à cocher interactive (progression enregistrée dans le navigateur). */
+  | { type: 'checklist'; items: L10n[] }
+  /** Vidéo YouTube recommandée, par langue (affichée seulement si la langue a une vidéo). */
+  | { type: 'video'; videos: { fr?: VideoRef; en?: VideoRef } }
+
+export interface VideoRef {
+  id: string
+  title: string
+  channel: string
+}
+
+export type WidgetId =
+  | 'cod-funnel'
+  | 'bf-timeline'
+  | 'delivery-journey'
+  | 'whatsapp-chat'
+  | 'ad-budget'
+  | 'hook-3s'
+  | 'pixel-flow'
+  | 'momo-payment'
+  | 'speed-race'
+  | 'page-anatomy'
+  | 'product-score'
+  | 'season-calendar'
+  | 'closer-pay'
+  | 'dropship-flow'
+  | 'margin-bars'
+  | 'bundle-compare'
+  | 'call-sim'
 
 export interface Faq {
   q: L10n
