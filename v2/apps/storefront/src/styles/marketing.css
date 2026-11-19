@@ -1144,3 +1144,145 @@ svg {
 .mk-section-dark .mk-hero-cta {
   margin-top: 32px;
 }
+
+/* ─── Couleurs des icônes ─── */
+.mk-pain-ico {
+  color: var(--red);
+}
+.mk-feature-ico {
+  color: var(--amber-ink);
+}
+.mk-weapon-ico {
+  color: var(--amber);
+}
+.mk-notif-ico svg,
+.mk-pain-ico svg,
+.mk-feature-ico svg,
+.mk-weapon-ico svg {
+  display: block;
+}
+.mk-cod-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mk-inline-ico {
+  display: inline-flex;
+  vertical-align: -3px;
+}
+
+/* ─── Bandeau pays ─── */
+.mk-countries {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  padding: 16px 0;
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Urgence dans la maquette */
+.mk-screen-urgency {
+  margin-top: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--red-soft);
+  color: var(--red);
+  font-weight: 700;
+  font-size: 0.62rem;
+}
+
+/* ─── Ton argent reste à toi ─── */
+.mk-zero-points {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0 0;
+  display: grid;
+  gap: 10px;
+  font-weight: 600;
+  max-width: 46ch;
+}
+.mk-zero-points li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.mk-zero-points svg {
+  flex: none;
+  margin-top: 3px;
+}
+
+/* ─── Vitesse ─── */
+.mk-speed {
+  display: grid;
+  gap: 12px;
+}
+.mk-speed-stat {
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 18px 20px;
+}
+.mk-speed-stat b {
+  display: block;
+  font-size: 2.2rem;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--amber-ink);
+}
+.mk-speed-stat span {
+  display: block;
+  margin-top: 6px;
+}
+.mk-speed-stat small,
+.mk-speed-bars small {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--subtle);
+}
+.mk-speed-bars {
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: #fafaf9;
+  padding: 18px 20px;
+  display: grid;
+  gap: 12px;
+}
+.mk-speed-bars > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  font-size: 0.9rem;
+}
+.mk-speed-bars i {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+  background: #78716c;
+  min-width: 10px;
+}
+.mk-speed-bars .zuri i {
+  background: var(--amber);
+}
+.mk-speed-bars em {
+  font-style: normal;
+  font-weight: 800;
+}
+.mk-speed-bars .zuri em {
+  color: var(--amber);
+}
+
+/* ─── Ligne de total du tableau ─── */
+.mk-total-row th,
+.mk-total-row td {
+  font-weight: 800;
+  background: #fafaf9;
+}
+.mk-total-row td.mk-col-zuri {
+  background: var(--amber-soft);
+}
