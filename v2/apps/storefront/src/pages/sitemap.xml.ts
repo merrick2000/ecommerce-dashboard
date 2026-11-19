@@ -32,6 +32,7 @@ export const GET: APIRoute = () => {
   ]
   const loc = (p: string) => `${base}${p}`
   const body = `<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="/sitemap.xsl"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${entries
   .map(
@@ -45,5 +46,5 @@ ${entries
   .join('\n')}
 </urlset>
 `
-  return new Response(body, { headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=3600', 'x-robots-tag': 'noindex' } })
+  return new Response(body, { headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=300, must-revalidate' } })
 }
