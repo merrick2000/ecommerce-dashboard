@@ -1,12 +1,12 @@
 import { FULFILLMENT_STATUSES, FULFILLMENT_TRANSITIONS, PAYMENT_STATUSES, type FulfillmentStatus } from '@zuri/shared'
-import { ChevronLeft, ChevronRight, Download, Filter, Plus, Search, ShoppingBag, X } from 'lucide-react'
+import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, Download, Filter, Plus, Search, ShoppingBag, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { ConfirmDialog, Dialog } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, ButtonLink, buttonClass, Checkbox, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Segmented, Select } from '@/components/ui'
 import { useCan, useCurrentStore } from '@/hooks/auth'
-import { ordersCsvUrl, useBulkOrderStatus, useOrders } from '@/hooks/resources'
+import { ordersCsvUrl, useArchiveOrders, useBulkOrderStatus, useOrders } from '@/hooks/resources'
 import { useDebounced } from '@/hooks/useDebounced'
 import type { Query } from '@/lib/api'
 import { money, prettyPhone, relative } from '@/lib/format'
@@ -117,8 +117,9 @@ function FiltersDialog({ open, onClose, params, apply }: { open: boolean; onClos
   )
 }
 
-function BulkBar({ ids, orders, onDone }: { ids: string[]; orders: OrderListItem[]; onDone: () => void }) {
+function BulkBar({ ids, orders, onDone, archivedView }: { ids: string[]; orders: OrderListItem[]; onDone: () => void; archivedView: boolean }) {
   const bulk = useBulkOrderStatus()
+  const archive = useArchiveOrders()
   const toast = useToast()
   const [ship, setShip] = useState(false)
   const [confirm, setConfirm] = useState<FulfillmentStatus | null>(null)
@@ -164,6 +165,19 @@ function BulkBar({ ids, orders, onDone }: { ids: string[]; orders: OrderListItem
               {TRANSITION_ACTION[to]}
             </Button>
           ))}
+          <Button
+            size="sm"
+            variant="secondary"
+            loading={archive.isPending}
+            onClick={() =>
+              archive.mutate(
+                { ids, archived: !archivedView },
+                { onSuccess: (r) => (toast.success(archivedView ? `${r.updated} commande(s) désarchivée(s)` : `${r.updated} commande(s) archivée(s)`), onDone()), onError: (e) => toast.error(e) },
+              )
+            }
+          >
+            {archivedView ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />} {archivedView ? 'Désarchiver' : 'Archiver'}
+          </Button>
           <Button size="sm" variant="ghost" onClick={onDone} aria-label="Tout désélectionner">
             <X className="size-4" />
           </Button>
@@ -211,8 +225,10 @@ export default function OrdersList() {
     // Inclure toute la journée de fin.
     to: to ? `${to}T23:59:59` : undefined,
     assigned: params.get('assigned') || undefined,
+    archived: params.get('archived') === '1' ? 'only' : undefined,
     page,
   }
+  const archivedView = params.get('archived') === '1'
   const assigned = params.get('assigned') ?? ''
   const { data, error, isPending, refetch, isFetching } = useOrders(query)
 
@@ -293,6 +309,17 @@ export default function OrdersList() {
               <span className={cx('tabular rounded-full px-1.5 text-[11px]', status === t.key ? 'bg-bg/20' : 'bg-surface-2')}>{t.n}</span>
             </button>
           ))}
+          <button
+            role="tab"
+            aria-selected={archivedView}
+            onClick={() => update({ archived: archivedView ? '' : '1' })}
+            className={cx(
+              'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium whitespace-nowrap transition-colors',
+              archivedView ? 'border-fg bg-fg text-bg' : 'border-dashed border-line-strong bg-surface text-muted hover:text-fg',
+            )}
+          >
+            <Archive className="size-3.5" /> Archivées
+          </button>
         </div>
       </div>
 
@@ -410,7 +437,7 @@ export default function OrdersList() {
           setFiltersOpen(false)
         }}
       />
-      {canUpdate && selected.length > 0 && <BulkBar ids={selected} orders={rows} onDone={() => setSelected([])} />}
+      {canUpdate && selected.length > 0 && <BulkBar ids={selected} orders={rows} archivedView={archivedView} onDone={() => setSelected([])} />}
     </>
   )
 }

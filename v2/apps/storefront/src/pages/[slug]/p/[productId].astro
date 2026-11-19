@@ -4,6 +4,7 @@ import Footer from '../../../components/Footer.astro'
 import Layout from '../../../components/Layout.astro'
 import Block from '../../../components/sales/Block.astro'
 import OrderBox from '../../../components/sales/OrderBox.astro'
+import PausedNotice from '../../../components/sales/PausedNotice.astro'
 import { ApiError, apiGet } from '../../../lib/api'
 import { excerpt, jsonForScript, waLink } from '../../../lib/content'
 import { money } from '../../../lib/format'
@@ -23,7 +24,7 @@ let d: CheckoutData
 try {
   d = await apiGet<CheckoutData>(`/checkout/${encodeURIComponent(slug)}/${productId}`)
 } catch (e) {
-  if (e instanceof ApiError && (e.status === 404 || e.status === 422)) return Astro.rewrite('/404')
+  if (e instanceof ApiError && (e.status === 404 || e.status === 410 || e.status === 422)) return Astro.rewrite('/404')
   throw e
 }
 
@@ -85,7 +86,7 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebo
           {!titleAbove && blocks.includes('product_name') && <Block block="product_name" d={d} />}
           {blocks.includes('price_cta') && <Block block="price_cta" d={d} inline />}
           <section class="split-order" id="commander" aria-label={t.orderTitle}>
-            <OrderBox d={d} orderBase={storeUrl(Astro.locals, '/order/')} compact />
+            {store.status === 'paused' ? <PausedNotice message={store.pauseMessage} locale={store.locale} /> : <OrderBox d={d} orderBase={storeUrl(Astro.locals, '/order/')} compact />}
           </section>
         </div>
         <main class="split-rest">
@@ -99,7 +100,7 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebo
         </main>
 
         <aside class="sales-aside" id="commander" aria-label={t.orderTitle}>
-          <OrderBox d={d} orderBase={storeUrl(Astro.locals, '/order/')} />
+          {store.status === 'paused' ? <PausedNotice message={store.pauseMessage} locale={store.locale} /> : <OrderBox d={d} orderBase={storeUrl(Astro.locals, '/order/')} />}
         </aside>
       </div>
     )

@@ -1,6 +1,7 @@
 import { productIdSchema, productInputSchema, type ProductInput } from '@zuri/shared'
 import { and, asc, desc, eq, inArray, notInArray, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
+import { assertWithinLimit, planForStore } from '../services/platform'
 import { z } from 'zod'
 import { db, type Tx } from '../db/client'
 import { orderItems, orders, productVariants, products, storeMemberProducts, type Product } from '../db/schema'
@@ -81,6 +82,8 @@ export const productRoutes = new Hono<AppEnv>()
   .post('/', requirePermission('products.edit'), v('json', productInputSchema), async (c) => {
     const store = c.get('store')
     const input = c.req.valid('json')
+    const [{ n } = { n: 0 }] = await db.select({ n: dsql<number>`count(*)::int` }).from(products).where(eq(products.storeId, store.id))
+    assertWithinLimit(await planForStore(store.id), 'products', n)
     const id = await createProduct(c.get('access'), store, input)
     await logActivity(c, { entityType: 'product', entityId: id, entityLabel: input.name, action: 'created', message: 'Produit créé', productIds: [id] })
     return c.json(await loadProduct(store.id, id), 201)

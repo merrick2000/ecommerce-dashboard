@@ -41,8 +41,8 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr'
 const otherPath = alternate[other] ?? PATHS.home[other]
 
 const T = {
-  fr: { how: 'Comment ça marche', features: 'Fonctionnalités', pricing: 'Tarif', faq: 'Questions', login: 'Se connecter', signup: 'Créer ma boutique', skip: 'Aller au contenu', tagline: 'La boutique en ligne pensée pour le paiement à la livraison et le Mobile Money, en Afrique.', product: 'Produit', resources: 'Ressources', countries: 'Vendre par pays', guides: 'Guides', tools: 'Outils gratuits', cities: 'Vendre par ville', niches: 'Vendre par métier', alternatives: 'Alternatives', compare: 'Comparatifs', account: 'Compte', popular: 'Guides populaires', bottom: 'Fait pour les vendeurs d’Afrique.', home: 'Accueil', langLabel: 'English', allCountries: 'Tous les pays' },
-  en: { how: 'How it works', features: 'Features', pricing: 'Pricing', faq: 'FAQ', login: 'Log in', signup: 'Create my store', skip: 'Skip to content', tagline: 'The online store built for cash on delivery and Mobile Money, in Africa.', product: 'Product', resources: 'Resources', countries: 'Sell by country', guides: 'Guides', tools: 'Free tools', cities: 'Sell by city', niches: 'Sell by category', alternatives: 'Alternatives', compare: 'Comparisons', account: 'Account', popular: 'Popular guides', bottom: 'Built for sellers across Africa.', home: 'Home', langLabel: 'Français', allCountries: 'All countries' },
+  fr: { how: 'Comment ça marche', features: 'Fonctionnalités', pricing: 'Tarif', faq: 'Questions', login: 'Se connecter', signup: 'Créer ma boutique', skip: 'Aller au contenu', tagline: 'La boutique en ligne pensée pour le paiement à la livraison et le Mobile Money, en Afrique.', product: 'Produit', resources: 'Ressources', countries: 'Vendre par pays', guides: 'Guides', tools: 'Outils gratuits', cities: 'Vendre par ville', niches: 'Vendre par métier', best: 'Meilleurs outils', alternatives: 'Alternatives', compare: 'Comparatifs', account: 'Compte', popular: 'Guides populaires', bottom: 'Fait pour les vendeurs d’Afrique.', home: 'Accueil', langLabel: 'English', allCountries: 'Tous les pays' },
+  en: { how: 'How it works', features: 'Features', pricing: 'Pricing', faq: 'FAQ', login: 'Log in', signup: 'Create my store', skip: 'Skip to content', tagline: 'The online store built for cash on delivery and Mobile Money, in Africa.', product: 'Product', resources: 'Resources', countries: 'Sell by country', guides: 'Guides', tools: 'Free tools', cities: 'Sell by city', niches: 'Sell by category', best: 'Best tools', alternatives: 'Alternatives', compare: 'Comparisons', account: 'Account', popular: 'Popular guides', bottom: 'Built for sellers across Africa.', home: 'Home', langLabel: 'Français', allCountries: 'All countries' },
 }[lang]
 
 // Pied de page : liens internes vers les pages les plus utiles (maillage SEO).
@@ -102,6 +102,19 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
     <meta name="twitter:description" content={description} />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23f59e0b'/%3E%3Cpath d='M10.5 10.5h11l-11 11h11' fill='none' stroke='%231c1917' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
     {[...jsonLd, ...crumbsLd].map((data) => <script type="application/ld+json" set:html={JSON.stringify(data)} />)}
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="2ed31424-94e4-42f7-96bb-bb2ef20f6418" data-domains="zurisell.store"></script>
+    <script is:inline>
+      /* Provenance du visiteur (premier contact), lue à l'inscription sur app.zurisell.store. Aucune donnée personnelle. */
+      try {
+        if (location.hostname.endsWith('zurisell.store') && !document.cookie.includes('zuri_src=')) {
+          var q = new URLSearchParams(location.search), r = ''
+          try { r = document.referrer ? new URL(document.referrer).hostname : '' } catch (e) {}
+          if (r.endsWith('zurisell.store')) r = ''
+          var src = { s: q.get('utm_source') || '', m: q.get('utm_medium') || '', c: q.get('utm_campaign') || '', r: r, l: location.pathname, t: new Date().toISOString().slice(0, 10) }
+          document.cookie = 'zuri_src=' + encodeURIComponent(JSON.stringify(src)) + ';domain=.zurisell.store;path=/;max-age=7776000;samesite=lax;secure'
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <a class="skip" href="#contenu">{T.skip}</a>
@@ -176,6 +189,7 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
           <a href={PATHS.tools[lang]}>{T.tools}</a>
           <a href={PATHS.niches[lang]}>{T.niches}</a>
           <a href={PATHS.cities[lang]}>{T.cities}</a>
+          <a href={PATHS.best[lang]}>{T.best}</a>
         </nav>
         <nav aria-label={T.countries}>
           <p class="mk-footer-title">{T.countries}</p>
@@ -189,5 +203,33 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
       </div>
       <div class="mk-wrap mk-footer-bottom">© {new Date().getFullYear()} Zuri. {T.bottom}</div>
     </footer>
+    <script is:inline>
+      /* Événements Umami : clics vers l'inscription (avec la page d'origine). */
+      document.querySelectorAll('a[href*="/register"]').forEach(function (a) {
+        a.setAttribute('data-umami-event', 'clic-inscription')
+        a.setAttribute('data-umami-event-page', location.pathname)
+      })
+      /* Événements Umami : outils, illustrations interactives, vidéos (une fois par élément). */
+      ;(function () {
+        var seen = new WeakSet()
+        var track = function (name, data) { try { window.umami && window.umami.track(name, data) } catch (e) {} }
+        var onUse = function (e) {
+          var t = e.target
+          if (!(t instanceof Element)) return
+          var tool = t.closest('.mk-tool')
+          if (tool && !seen.has(tool)) { seen.add(tool); track('outil-utilise', { outil: tool.getAttribute('data-tool'), page: location.pathname }) }
+          var w = t.closest('[data-w]')
+          if (w && !seen.has(w) && w.querySelector('input,button')) { seen.add(w); var ti = w.querySelector('.mk-w-title'); track('illustration-utilisee', { titre: ti ? ti.textContent : '', page: location.pathname }) }
+          var v = t.closest('[data-yt]')
+          if (v && !seen.has(v)) { seen.add(v); track('video-lancee', { video: v.getAttribute('data-yt'), page: location.pathname }) }
+        }
+        document.addEventListener('input', onUse, true)
+        document.addEventListener('click', onUse, true)
+      })()
+      /* Lien d'inscription : page d'origine transmise pour la provenance. */
+      document.querySelectorAll('a[href*="/register"]').forEach(function (a) {
+        try { var u = new URL(a.href); u.searchParams.set('from', location.pathname); a.href = u.toString() } catch (e) {}
+      })
+    </script>
   </body>
 </html>

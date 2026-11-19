@@ -65,6 +65,7 @@ export const requireAuth = createMiddleware<AppEnv>(async (c, next) => {
   if (row.expiresAt.getTime() - Date.now() < RENEW_BEFORE_MS) {
     await db.update(sessions).set({ expiresAt: new Date(Date.now() + SESSION_TTL_MS) }).where(eq(sessions.id, sid))
   }
+  if (row.user.disabledAt) throw new HttpError(403, 'Ce compte est suspendu. Contacte le support Zuri.', 'account_disabled')
   c.set('user', row.user)
   c.set('sessionId', sid)
   await next()
@@ -87,6 +88,7 @@ export const requireStore = () =>
       .where(eq(stores.id, storeId))
       .limit(1)
     if (!row) throw notFound('Boutique')
+    if (row.store.closedAt && !user.isPlatformAdmin) throw notFound('Boutique')
     const access = await loadAccess(storeId, user.id, row.member, user.isPlatformAdmin)
     if (!access) throw notFound('Boutique')
     c.set('store', row.store)

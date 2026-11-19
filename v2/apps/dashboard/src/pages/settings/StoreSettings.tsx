@@ -7,6 +7,7 @@ import { useStoreInfo, useUpdateStore } from '@/hooks/resources'
 import { serverErrors, strOrNull, validate, type Errors } from '@/lib/form'
 import { COUNTRIES, CURRENCY_NAME } from '@/lib/labels'
 import type { Store } from '@/lib/types'
+import { StoreLifecycle } from './StoreLifecycle'
 
 const toForm = (s: Store) => ({
   name: s.name,
@@ -120,5 +121,10 @@ export function StoreSettings({ canEdit }: { canEdit: boolean }) {
   const { data, error, isPending, refetch } = useStoreInfo()
   if (error && !data) return <ErrorState error={error} onRetry={() => void refetch()} />
   if (isPending) return <Skeleton className="h-96 rounded-xl" />
-  return <StoreForm key={data.updatedAt} store={data} canEdit={canEdit} />
+  return (
+    <div className="space-y-4">
+      <StoreForm key={data.updatedAt} store={data} canEdit={canEdit} />
+      <StoreLifecycle store={data} />
+    </div>
+  )
 }

@@ -12,3 +12,6 @@ export function storefrontProductUrl(storeSlug: string, productId: string): stri
 
 /** Page d'aperçu du formulaire de commande (affichable seulement dans le dashboard). */
 export const formPreviewUrl = (storeSlug: string, productId: string) => `${storefrontProductUrl(storeSlug, productId)}/apercu?notrack`
+
+/** Page d'accueil (catalogue) d'une boutique. */
+export const storefrontUrl = (storeSlug: string) => (DEV_BASE ? `${DEV_BASE}/${storeSlug}` : `https://${storeSlug}.zurisell.store`)

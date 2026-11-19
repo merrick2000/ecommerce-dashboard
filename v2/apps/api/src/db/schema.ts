@@ -31,6 +31,9 @@ import type {
   MemberOptions,
   NotificationPrefs,
   StoreRole,
+  StoreStatus,
+  SignupSource,
+  PlanId,
 } from '@zuri/shared'
 
 /** Montants : numeric(12,2) lu en `number` (les montants FCFA tiennent large dans un double). */
@@ -67,6 +70,12 @@ export const users = pgTable('users', {
   avatarUrl: varchar('avatar_url', { length: 500 }),
   /** Conversation Telegram reliée au compte (notifications). */
   telegramChatId: varchar('telegram_chat_id', { length: 32 }),
+  /** Provenance à l'inscription (premier contact sur le site marketing + page d'origine). */
+  signupSource: jsonb('signup_source').$type<SignupSource>(),
+  /** Compte suspendu par l'administration de la plateforme (connexion refusée). */
+  disabledAt: ts('disabled_at'),
+  /** Options activées pour ce compte (ex. paiements en ligne), réglées par le super admin. */
+  features: jsonb('features').$type<Record<string, boolean>>(),
   lastLoginAt: ts('last_login_at'),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -187,6 +196,12 @@ export const stores = pgTable('stores', {
   supportEmail: varchar('support_email', { length: 255 }),
   /** Secret (chiffré) des webhooks d'intégration entrants (ventes Selar via n8n…). */
   integrationSecretEnc: text('integration_secret_enc'),
+  /** active | paused (boutique fermée temporairement, aucune commande) | closed (fermée définitivement). */
+  status: varchar('status', { length: 10 }).$type<StoreStatus>().notNull().default('active'),
+  pausedAt: ts('paused_at'),
+  /** Message affiché aux visiteurs pendant la pause. */
+  pauseMessage: varchar('pause_message', { length: 300 }),
+  closedAt: ts('closed_at'),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 })
@@ -498,11 +513,14 @@ export const orders = pgTable(
     assignedTo: fk('assigned_to').references(() => users.id, { onDelete: 'set null' }),
     assignedAt: ts('assigned_at'),
     metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+    /** Commande archivée : masquée des listes par défaut, toujours consultable et comptée dans les statistiques. */
+    archivedAt: ts('archived_at'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     index('orders_store_created_idx').on(t.storeId, t.createdAt),
+    index('orders_store_archived_idx').on(t.storeId, t.archivedAt),
     index('orders_store_fulfillment_idx').on(t.storeId, t.fulfillmentStatus),
     index('orders_store_payment_idx').on(t.storeId, t.paymentStatus),
     index('orders_customer_idx').on(t.customerId),
@@ -651,3 +669,50 @@ export type DeliveryZone = typeof deliveryZones.$inferSelect
 export type PromoCode = typeof promoCodes.$inferSelect
 export type Customer = typeof customers.$inferSelect
 export type PaymentAccount = typeof paymentAccounts.$inferSelect
+
+// ─── Plateforme : réglages, abonnements ──────────────────────────────────────
+
+/** Réglages globaux de la plateforme (clé → valeur JSON), modifiés par le super admin. */
+export const platformSettings = pgTable('platform_settings', {
+  key: varchar('key', { length: 60 }).primaryKey(),
+  value: jsonb('value').$type<unknown>().notNull(),
+  updatedAt: updatedAt(),
+})
+
+/** Abonnement d'un compte (un par compte, couvre toutes ses boutiques). */
+export const subscriptions = pgTable('subscriptions', {
+  userId: fk('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  plan: varchar('plan', { length: 20 }).$type<PlanId>().notNull(),
+  /** Fin de la période payée ou offerte. Après cette date, le compte repasse à l'offre gratuite (ou expirée). */
+  currentPeriodEnd: ts('current_period_end').notNull(),
+  /** offered (offert par la plateforme) | paid */
+  source: varchar('source', { length: 10 }).notNull().default('paid'),
+  note: varchar('note', { length: 300 }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+})
+
+/** Paiements d'abonnement (Mobile Money via FedaPay, FeexPay ou pawaPay, sur le compte de la plateforme). */
+export const billingPayments = pgTable(
+  'billing_payments',
+  {
+    id: id(),
+    userId: fk('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    plan: varchar('plan', { length: 20 }).$type<PlanId>().notNull(),
+    months: smallint('months').notNull(),
+    amount: integer('amount').notNull(),
+    currency: varchar('currency', { length: 5 }).notNull(),
+    provider: varchar('provider', { length: 20 }).$type<PaymentProvider>().notNull(),
+    providerRef: varchar('provider_ref', { length: 255 }),
+    /** pending | paid | failed */
+    status: varchar('status', { length: 10 }).notNull().default('pending'),
+    phone: varchar('phone', { length: 30 }),
+    paidAt: ts('paid_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('billing_payments_user_idx').on(t.userId, t.createdAt), index('billing_payments_ref_idx').on(t.providerRef)],
+)

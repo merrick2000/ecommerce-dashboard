@@ -14,6 +14,7 @@ import { sha256 } from '../lib/crypto'
 import { enqueue } from '../jobs/queue'
 import { loginContext, recordLogin, sendPasswordReset } from '../services/account'
 import { acceptInvitation, previewInvitation } from '../services/team'
+import { planForUser, readSignupSource, resolveFeatures } from '../services/platform'
 
 /** Inscription ouverte à tous ? (lu à chaque appel). « false » : seul le premier compte, outil perso. */
 const registrationOpen = () => env.REGISTRATION_OPEN !== 'false'
@@ -23,10 +24,10 @@ const DUMMY_HASH = await Bun.password.hash('dummy-password-for-timing', { algori
 
 export async function loadMe(user: User): Promise<Me> {
   const rows = await db
-    .select({ id: stores.id, name: stores.name, slug: stores.slug, currency: stores.currency, member: storeMembers })
+    .select({ id: stores.id, name: stores.name, slug: stores.slug, currency: stores.currency, status: stores.status, member: storeMembers })
     .from(storeMembers)
     .innerJoin(stores, eq(stores.id, storeMembers.storeId))
-    .where(eq(storeMembers.userId, user.id))
+    .where(and(eq(storeMembers.userId, user.id), isNull(stores.closedAt)))
     .orderBy(stores.name)
   const list = await Promise.all(
     rows.map(async ({ member, ...r }) => {
@@ -39,6 +40,8 @@ export async function loadMe(user: User): Promise<Me> {
     email: user.email,
     name: user.name,
     isPlatformAdmin: user.isPlatformAdmin,
+    features: await resolveFeatures(user),
+    plan: await planForUser(user),
     stores: list,
   }
 }
@@ -49,6 +52,7 @@ export const authRoutes = new Hono<AppEnv>()
     const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
     const ok = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH)
     if (!user || !ok) throw new HttpError(401, 'Email ou mot de passe incorrect', 'invalid_credentials')
+    if (user.disabledAt) throw new HttpError(403, 'Ce compte est suspendu. Contacte le support Zuri.', 'account_disabled')
     // Rehash progressif des anciens mots de passe bcrypt vers argon2id.
     const patch: Partial<User> = { lastLoginAt: new Date() }
     if (!user.passwordHash.startsWith('$argon2')) patch.passwordHash = await hashPassword(password)
@@ -72,6 +76,7 @@ export const authRoutes = new Hono<AppEnv>()
         country: input.country,
         passwordHash: await hashPassword(input.password),
         isPlatformAdmin: count === 0, // le tout premier compte administre la plateforme
+        signupSource: readSignupSource(c, 'password', input.source?.from),
         lastLoginAt: new Date(),
       })
       .returning()
@@ -87,7 +92,7 @@ export const authRoutes = new Hono<AppEnv>()
     const preview = await previewInvitation(input.token)
     if (!preview || preview.expired || preview.accepted) throw new HttpError(400, 'Cette invitation n’est plus valable. Demandez-en une nouvelle.', 'invite_invalid')
     if (preview.hasAccount) throw new HttpError(409, 'Un compte existe déjà avec cet email : connectez-vous pour rejoindre l’équipe.', 'email_taken')
-    const [user] = await db.insert(users).values({ email: preview.email, name: input.name, passwordHash: await hashPassword(input.password), lastLoginAt: new Date() }).returning()
+    const [user] = await db.insert(users).values({ email: preview.email, name: input.name, passwordHash: await hashPassword(input.password), signupSource: readSignupSource(c, 'invite'), lastLoginAt: new Date() }).returning()
     if (!user) throw new Error('Création du compte échouée')
     await acceptInvitation(user, input.token)
     await createSession(c, user.id)

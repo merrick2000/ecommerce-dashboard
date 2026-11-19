@@ -1,6 +1,8 @@
 import { PAYMENT_PROVIDERS, paymentProviderSchema, type PaymentProvider } from '@zuri/shared'
 import { and, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
+import { HttpError } from '../lib/errors'
+import { assertFeature, planForStore, resolveFeatures } from '../services/platform'
 import { z } from 'zod'
 import { db } from '../db/client'
 import { paymentAccounts } from '../db/schema'
@@ -59,6 +61,8 @@ export const paymentAccountRoutes = new Hono<AppEnv>()
     const storeId = c.get('store').id
     const { provider } = c.req.valid('param')
     const body = c.req.valid('json')
+    if (!(await resolveFeatures(c.get('user'))).onlinePayments) throw new HttpError(403, 'Les paiements en ligne ne sont pas encore ouverts sur ton compte. Le paiement à la livraison reste disponible.', 'online_payments_disabled')
+    await assertFeature(await planForStore(storeId), 'onlinePayments')
     const [row] = await db.select().from(paymentAccounts).where(and(eq(paymentAccounts.storeId, storeId), eq(paymentAccounts.provider, provider))).limit(1)
     const creds = decryptJson<Creds>(row?.credentialsEnc, {})
     for (const m of ['sandbox', 'live'] as const) {

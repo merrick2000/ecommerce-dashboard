@@ -9,6 +9,7 @@ import {
   type PaymentStatus,
   type PublicOrderCreate,
 } from '@zuri/shared'
+import { HttpError } from '../lib/errors'
 import { and, eq, inArray, isNull, sql as dsql } from 'drizzle-orm'
 import { db, type Tx } from '../db/client'
 import {
@@ -57,7 +58,8 @@ export interface CreatedOrder {
 export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestContext): Promise<CreatedOrder> {
   const result = await db.transaction(async (tx) => {
     const [store] = await tx.select().from(stores).where(eq(stores.slug, input.storeSlug)).limit(1)
-    if (!store) throw notFound('Boutique')
+    if (!store || store.closedAt) throw notFound('Boutique')
+    if (store.status === 'paused') throw new HttpError(409, 'Cette boutique est en pause : les commandes reprendront bientôt.', 'store_paused')
 
     // FOR UPDATE : deux commandes simultanées ne peuvent pas vendre le même dernier article.
     const [product] = await tx

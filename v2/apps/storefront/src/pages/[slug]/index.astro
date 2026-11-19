@@ -2,6 +2,7 @@
 /** Catalogue de la boutique, HTML pur, aucun îlot. */
 import Footer from '../../components/Footer.astro'
 import Layout from '../../components/Layout.astro'
+import PausedNotice from '../../components/sales/PausedNotice.astro'
 import { ApiError, apiGet } from '../../lib/api'
 import { jsonForScript } from '../../lib/content'
 import { money } from '../../lib/format'
@@ -16,7 +17,7 @@ let d: CatalogData
 try {
   d = await apiGet<CatalogData>(`/stores/${encodeURIComponent(slug)}`)
 } catch (e) {
-  if (e instanceof ApiError && e.status === 404) return Astro.rewrite('/404')
+  if (e instanceof ApiError && (e.status === 404 || e.status === 410)) return Astro.rewrite('/404')
   throw e
 }
 const { store, products } = d
@@ -32,6 +33,7 @@ const trackCfg = { storeId: store.id, productId: null, fb: null, tt: null }
     <div class="wrap wrap-wide"><a href={storeUrl(Astro.locals, '/')}>{store.name}</a></div>
   </header>
   <main class="wrap wrap-wide">
+    {store.status === 'paused' && <div style="margin:12px 0"><PausedNotice message={store.pauseMessage} locale={store.locale} /></div>}
     <h1 class="sr-only">{store.name}</h1>
     {
       products.length === 0 ? (

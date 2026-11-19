@@ -276,7 +276,7 @@ export const RESERVED_SLUGS = [
   'tarifs', 'prix', 'pricing', 'fonctionnalites', 'features', 'alternatives', 'alternative', 'comparatif', 'comparatifs', 'compare', 'vs',
   'guides', 'guide', 'ressources', 'pays', 'outils', 'modeles', 'exemples', 'metiers', 'cas', 'temoignages', 'partenaires', 'affiliation',
   'cgu', 'cgv', 'confidentialite', 'mentions-legales', 'legal', 'contact', 'a-propos', 'about', 'presse', 'carrieres', 'sitemap', 'robots',
-  'en', 'fr', 'countries', 'privacy', 'terms', 'tools', 'img', 'og', 'images', 'villes', 'ville', 'cities', 'vendre', 'sell', 'bonus', 'offre',
+  'en', 'fr', 'countries', 'privacy', 'terms', 'tools', 'img', 'og', 'images', 'villes', 'ville', 'cities', 'vendre', 'sell', 'bonus', 'offre', 'meilleur', 'meilleure', 'meilleurs', 'best', 'abonnement', 'billing',
 ]
 const slug = z
   .string()
@@ -720,6 +720,8 @@ export const orderListQuerySchema = z.object({
   to: z.coerce.date().optional(),
   /** me = mes commandes, none = non attribuées, ou l'id d'un membre. */
   assigned: z.union([z.enum(['me', 'none']), z.coerce.number().int().positive()]).optional(),
+  /** Commandes archivées : exclues par défaut, « only » pour ne voir qu'elles, « all » pour tout. */
+  archived: z.enum(['only', 'all']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(50),
 })
@@ -737,6 +739,8 @@ export const registerSchema = z.object({
   password: z.string().min(10, '10 caractères minimum').max(200),
   phone: phone.optional(),
   country: z.string().length(2).toUpperCase().optional(),
+  /** Page du site marketing d'où vient le clic « Créer ma boutique ». */
+  source: z.object({ from: z.string().max(200).optional() }).optional(),
 })
 
 export const forgotPasswordSchema = z.object({
@@ -757,7 +761,10 @@ export interface Me {
   email: string
   name: string
   isPlatformAdmin: boolean
-  stores: { id: string; name: string; slug: string; role: StoreRole; currency: Currency; permissions: Permission[]; productIds: string[] | null }[]
+  /** Options du compte (paiements en ligne, abonnement…) : déjà résolues avec les réglages globaux. */
+  features: { onlinePayments: boolean; billing: boolean }
+  plan: EffectivePlan
+  stores: { id: string; name: string; slug: string; role: StoreRole; currency: Currency; permissions: Permission[]; productIds: string[] | null; status: StoreStatus }[]
 }
 
 export interface Paginated<T> {
@@ -830,3 +837,101 @@ export interface PushPayload {
   /** Joue le son « encaissement » côté app ouverte. */
   sound?: 'sale' | 'soft'
 }
+
+
+// ─── Boutiques : statut ──────────────────────────────────────────────────────
+
+export const STORE_STATUSES = ['active', 'paused', 'closed'] as const
+export type StoreStatus = (typeof STORE_STATUSES)[number]
+export const storePauseSchema = z.object({ message: z.string().trim().max(300).optional() })
+/** Fermeture définitive : l'utilisateur retape le nom exact de la boutique. */
+export const storeCloseSchema = z.object({ confirmName: z.string().trim().min(1).max(255) })
+
+// ─── Provenance des inscriptions ─────────────────────────────────────────────
+
+export interface SignupSource {
+  /** utm_source, utm_medium, utm_campaign du premier contact. */
+  utmSource?: string
+  utmMedium?: string
+  utmCampaign?: string
+  /** Domaine du site qui a envoyé le visiteur (google.com, facebook.com…). */
+  referrer?: string
+  /** Première page vue sur le site marketing. */
+  landing?: string
+  /** Page d'où le visiteur a cliqué sur « Créer ma boutique ». */
+  from?: string
+  firstSeen?: string
+  method?: 'password' | 'google' | 'invite'
+}
+export const signupSourceInputSchema = z
+  .object({ from: z.string().max(200).optional() })
+  .optional()
+
+// ─── Formules et abonnements ─────────────────────────────────────────────────
+
+export const PLAN_IDS = ['free', 'starter', 'pro', 'business'] as const
+export type PlanId = (typeof PLAN_IDS)[number]
+
+export interface PlanDef {
+  id: PlanId
+  name: string
+  /** Prix mensuel en FCFA (XOF). 0 = gratuit. */
+  priceXof: number
+  /** Limites (null = illimité). */
+  limits: { stores: number | null; products: number | null; ordersPerMonth: number | null; members: number | null }
+  features: { onlinePayments: boolean; aiImport: boolean; team: boolean; capi: boolean }
+  highlight?: boolean
+}
+
+/** Grille proposée (FCFA par mois). Paiement annuel : 12 mois pour le prix de 10. */
+export const PLANS: Record<PlanId, PlanDef> = {
+  free: { id: 'free', name: 'Gratuit', priceXof: 0, limits: { stores: 1, products: 10, ordersPerMonth: 100, members: 1 }, features: { onlinePayments: false, aiImport: false, team: false, capi: true } },
+  starter: { id: 'starter', name: 'Starter', priceXof: 4900, limits: { stores: 1, products: null, ordersPerMonth: 1000, members: 3 }, features: { onlinePayments: true, aiImport: true, team: true, capi: true } },
+  pro: { id: 'pro', name: 'Pro', priceXof: 9900, limits: { stores: 3, products: null, ordersPerMonth: null, members: 10 }, features: { onlinePayments: true, aiImport: true, team: true, capi: true }, highlight: true },
+  business: { id: 'business', name: 'Business', priceXof: 24900, limits: { stores: 10, products: null, ordersPerMonth: null, members: null }, features: { onlinePayments: true, aiImport: true, team: true, capi: true } },
+}
+export const BILLING_MONTHS = [1, 12] as const
+export const priceFor = (plan: PlanId, months: number) => (months >= 12 ? PLANS[plan].priceXof * 10 : PLANS[plan].priceXof * months)
+
+/** Calendrier de lancement. */
+export const LAUNCH = {
+  /** Jusqu'à cette date : tout est gratuit et illimité pour tout le monde. */
+  unlimitedUntil: '2026-11-30T23:59:59Z',
+  /** Comptes créés avant unlimitedUntil : formule Pro offerte jusqu'à cette date (1 mois offert). */
+  earlyBirdUntil: '2026-12-31T23:59:59Z',
+  /** L'offre gratuite limitée existe jusqu'à cette date ; ensuite, une formule payante est nécessaire. */
+  freePlanUntil: '2026-12-25T23:59:59Z',
+}
+
+export interface EffectivePlan {
+  plan: PlanId
+  /** launch : gratuit illimité du lancement · early : mois offert · subscription : payé ou offert par l'admin · free : offre gratuite · expired : plus de formule active. */
+  reason: 'launch' | 'early' | 'subscription' | 'free' | 'expired'
+  /** Date de fin de la situation actuelle (ISO), si elle en a une. */
+  until: string | null
+  limits: PlanDef['limits']
+  features: PlanDef['features']
+}
+
+export function effectivePlan(input: { createdAt: Date | string; subscription?: { plan: PlanId; currentPeriodEnd: Date | string } | null; now?: Date }): EffectivePlan {
+  const now = (input.now ?? new Date()).getTime()
+  const created = new Date(input.createdAt).getTime()
+  const unlimited = Date.parse(LAUNCH.unlimitedUntil)
+  const early = Date.parse(LAUNCH.earlyBirdUntil)
+  const free = Date.parse(LAUNCH.freePlanUntil)
+  const make = (plan: PlanId, reason: EffectivePlan['reason'], until: number | null): EffectivePlan => ({ plan, reason, until: until ? new Date(until).toISOString() : null, limits: PLANS[plan].limits, features: PLANS[plan].features })
+  const sub = input.subscription
+  if (sub && new Date(sub.currentPeriodEnd).getTime() > now) return make(sub.plan, 'subscription', new Date(sub.currentPeriodEnd).getTime())
+  if (now <= unlimited) return { ...make('business', 'launch', unlimited), limits: { stores: null, products: null, ordersPerMonth: null, members: null } }
+  if (created <= unlimited && now <= early) return make('pro', 'early', early)
+  if (now <= free) return make('free', 'free', free)
+  return { ...make('free', 'expired', null), limits: { stores: 1, products: 0, ordersPerMonth: 0, members: 1 } }
+}
+
+export const billingCheckoutSchema = z.object({
+  plan: z.enum(['starter', 'pro', 'business']),
+  months: z.union([z.literal(1), z.literal(12)]),
+  phone: z.string().trim().min(6).max(30),
+  country: z.string().length(2),
+  network: z.string().min(1).max(30),
+})

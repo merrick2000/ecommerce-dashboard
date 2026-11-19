@@ -57,6 +57,13 @@
       "when": 1794900797423,
       "tag": "0007_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795123658020,
+      "tag": "0008_great_wendell_vaughn",
+      "breakpoints": true
     }
   ]
 }

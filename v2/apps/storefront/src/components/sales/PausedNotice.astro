@@ -1,0 +1,29 @@
+---
+/** Boutique en pause : remplace le formulaire de commande. */
+interface Props {
+  message?: string | null
+  locale?: string
+}
+const { message, locale = 'fr' } = Astro.props
+const en = locale.startsWith('en')
+---
+
+<div class="paused-notice" role="status">
+  <p class="paused-title">{en ? 'This store is taking a short break' : 'La boutique fait une petite pause'}</p>
+  <p>{message || (en ? 'Orders are closed for now. Please come back soon.' : 'Les commandes sont fermées pour le moment. Revenez très bientôt.')}</p>
+</div>
+
+<style>
+  .paused-notice {
+    padding: 18px;
+    border-radius: 14px;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    color: #78350f;
+    text-align: center;
+  }
+  .paused-title {
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+</style>

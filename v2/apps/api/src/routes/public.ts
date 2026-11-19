@@ -11,7 +11,7 @@ import { checkoutSettings, deliveryZones, downloads, leads, orderItems, orders, 
 import type { AppEnv } from '../lib/context'
 import { sha256 } from '../lib/crypto'
 import { env } from '../lib/env'
-import { badRequest, notFound } from '../lib/errors'
+import { badRequest, HttpError, notFound } from '../lib/errors'
 import { clientIp, rateLimit } from '../lib/rate-limit'
 import { v } from '../lib/validate'
 import { createPublicOrder, normalizePhone } from '../services/orders'
@@ -27,10 +27,11 @@ const EVENT_TYPES = [
 async function storeBySlug(slug: string) {
   const [store] = await db.select().from(stores).where(eq(stores.slug, slug)).limit(1)
   if (!store) throw notFound('Boutique')
+  if (store.closedAt) throw new HttpError(410, 'Cette boutique est fermée', 'store_closed')
   return store
 }
 
-const publicStore = (s: typeof stores.$inferSelect) => ({ id: s.id, name: s.name, slug: s.slug, currency: s.currency, locale: s.locale, country: s.country, supportPhone: s.supportPhone, supportEmail: s.supportEmail })
+const publicStore = (s: typeof stores.$inferSelect) => ({ id: s.id, status: s.status, pauseMessage: s.pauseMessage, name: s.name, slug: s.slug, currency: s.currency, locale: s.locale, country: s.country, supportPhone: s.supportPhone, supportEmail: s.supportEmail })
 
 export const publicRoutes = new Hono<AppEnv>()
   /** Résolution sous-domaine / domaine perso → slug (appelé par le Worker/middleware). */

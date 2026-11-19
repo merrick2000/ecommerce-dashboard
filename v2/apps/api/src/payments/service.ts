@@ -1,4 +1,6 @@
 import { NATIVE_PROVIDERS, type PaymentProvider } from '@zuri/shared'
+import { resolveFeatures, storeOwner } from '../services/platform'
+import { refreshBillingByRef } from '../services/billing'
 import { and, desc, eq, gte, inArray, lte, sql as dsql } from 'drizzle-orm'
 import { db } from '../db/client'
 import { orderEvents, orderItems, orders, paymentAccounts, paymentTransactions, products, stores, type Order } from '../db/schema'
@@ -48,7 +50,7 @@ interface LoadedAccount {
   client: PaymentProviderClient
 }
 
-async function loadAccounts(storeId: string, onlyEnabled = true): Promise<LoadedAccount[]> {
+export async function loadAccounts(storeId: string, onlyEnabled = true): Promise<LoadedAccount[]> {
   const rows = await db
     .select()
     .from(paymentAccounts)
@@ -62,10 +64,12 @@ async function loadAccounts(storeId: string, onlyEnabled = true): Promise<Loaded
   })
 }
 
-const webhookUrl = (provider: string, token: string) => `${env.APP_URL.replace(/\/$/, '')}/api/v1/webhooks/${provider}/${token}`
+export const webhookUrl = (provider: string, token: string) => `${env.APP_URL.replace(/\/$/, '')}/api/v1/webhooks/${provider}/${token}`
 
 /** Pays et réseaux réellement payables pour cette boutique (selon les moyens activés). */
 export async function availableNetworks(storeId: string) {
+  const owner = await storeOwner(storeId)
+  if (!owner || !(await resolveFeatures(owner)).onlinePayments) return []
   const enabled = new Set((await loadAccounts(storeId)).map((a) => a.provider as string))
   const out: { country: string; networks: string[] }[] = []
   for (const [country, networks] of Object.entries(ROUTING)) {
@@ -283,7 +287,11 @@ export async function handleWebhook(provider: PaymentProvider, webhookToken: str
     .innerJoin(orders, eq(orders.id, paymentTransactions.orderId))
     .where(and(eq(paymentTransactions.provider, provider), eq(paymentTransactions.providerRef, ref), eq(orders.storeId, account.storeId)))
     .limit(1)
-  if (!tx) return
+  if (!tx) {
+    // Paiement d'abonnement (encaissé sur le compte de la plateforme) ?
+    await refreshBillingByRef(provider, ref)
+    return
+  }
   await db.update(paymentTransactions).set({ webhookPayload: payload as object }).where(eq(paymentTransactions.id, tx.id))
   await refreshOrderPayment(tx.orderId)
 }

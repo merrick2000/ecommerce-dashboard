@@ -12,6 +12,9 @@ export interface DisplayPrice {
 }
 
 export interface PublicStore {
+  /** active | paused (commandes fermées) */
+  status?: 'active' | 'paused' | 'closed'
+  pauseMessage?: string | null
   id: string
   name: string
   slug: string

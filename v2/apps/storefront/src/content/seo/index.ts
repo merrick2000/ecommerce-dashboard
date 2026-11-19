@@ -20,6 +20,7 @@ export const PATHS = {
   tools: { fr: '/outils', en: '/en/tools' },
   cities: { fr: '/villes', en: '/en/cities' },
   niches: { fr: '/vendre', en: '/en/sell' },
+  best: { fr: '/meilleur', en: '/en/best' },
 } as const
 
 export const countryPath = (slug: string, lang: Lang) => `${PATHS.countries[lang]}/${slug}`
@@ -27,6 +28,7 @@ export const guidePath = (slug: string, lang: Lang) => `${PATHS.guides[lang]}/${
 export const alternativePath = (slug: string, lang: Lang) => `${PATHS.alternatives[lang]}/${slug}`
 export const cityPath = (slug: string, lang: Lang) => `${PATHS.cities[lang]}/${slug}`
 export const nichePath = (slug: string, lang: Lang) => `${PATHS.niches[lang]}/${slug}`
+export const bestPath = (slug: string, lang: Lang) => `${PATHS.best[lang]}/${slug}`
 export const comparisonPath = (slug: string, lang: Lang) => `${PATHS.comparisons[lang]}/${slug}`
 
 export const findCountry = (slug: string) => COUNTRIES.find((c) => c.slug === slug)
@@ -73,3 +75,7 @@ export { NICHES } from './niches'
 export { CITIES } from './cities'
 import { NICHES as _NICHES } from './niches'
 export const findNiche = (slug: string, lang: Lang) => _NICHES.find((n) => n.slug[lang] === slug)
+
+export { BEST_PAGES } from './best'
+import { BEST_PAGES as _BEST } from './best'
+export const findBest = (slug: string, lang: Lang) => _BEST.find((b) => b.slug[lang] === slug)

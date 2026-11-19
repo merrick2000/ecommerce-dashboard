@@ -1,0 +1,42 @@
+---
+import MarketingLayout from '../MarketingLayout.astro'
+import CtaBand from '../CtaBand.astro'
+import { BEST_PAGES, PATHS, bestPath, t } from '../../../content/seo'
+import type { Lang } from '../../../content/seo'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const fr = lang === 'fr'
+const other: Lang = fr ? 'en' : 'fr'
+const M = fr
+  ? { label: 'Classements', title: 'Les meilleurs outils pour vendre en ligne en Afrique (classements 2026) | Zuri', description: 'Meilleure plateforme e-commerce, meilleures alternatives à Shopify, meilleur site de boutique gratuite, Mobile Money : nos classements argumentés.', h1: 'Les meilleurs outils pour vendre en ligne en Afrique', intro: 'Des classements argumentés, avec nos critères, les forces et les limites de chaque outil, et des prix vérifiés.', general: 'Classements', countries: 'Par pays' }
+  : { label: 'Rankings', title: 'The best tools to sell online in Africa (2026 rankings) | Zuri', description: 'Best ecommerce platform, best Shopify alternatives, best free store builder, Mobile Money gateways: our reasoned rankings.', h1: 'The best tools to sell online in Africa', intro: 'Reasoned rankings, with our criteria, each tool’s strengths and limits, and verified prices.', general: 'Rankings', countries: 'By country' }
+const general = BEST_PAGES.filter((b) => !b.country)
+const byCountry = BEST_PAGES.filter((b) => b.country)
+---
+
+<MarketingLayout title={M.title} description={M.description} canonicalPath={PATHS.best[lang]} lang={lang} alternate={{ [lang]: PATHS.best[lang], [other]: PATHS.best[other] }} breadcrumbs={[{ label: M.label }]} ogImage={`/og/${lang}/hub/meilleur.jpg`} ogImageAlt={M.h1}>
+  <section class="mk-page-hero">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">{M.label}</span>
+      <h1 class="mk-h1 mk-h1-page">{M.h1}</h1>
+      <p class="mk-hero-sub">{M.intro}</p>
+    </div>
+  </section>
+  <div class="mk-wrap mk-hub">
+    <h2 class="mk-h2-sm">{M.general}</h2>
+    <div class="mk-cards">
+      {general.map((b) => (
+        <a class="mk-card" href={bestPath(b.slug[lang], lang)}>
+          <span class="mk-card-kicker">Top {b.items.length}</span>
+          <span class="mk-card-title">{t(b.h1, lang)}</span>
+          <span class="mk-card-text">{t(b.description, lang)}</span>
+        </a>
+      ))}
+    </div>
+    <h2 class="mk-h2-sm" style="margin-top:32px">{M.countries}</h2>
+    <div class="mk-chips">{byCountry.map((b) => <a class="mk-chip" href={bestPath(b.slug[lang], lang)}>{t(b.h1, lang)}</a>)}</div>
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

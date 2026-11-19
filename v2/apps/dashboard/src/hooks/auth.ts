@@ -35,7 +35,7 @@ export function useLogin() {
 export function useRegister() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { name: string; email: string; password: string; phone?: string }) => api.post<Me>('/auth/register', body),
+    mutationFn: (body: { name: string; email: string; password: string; phone?: string; source?: { from?: string } }) => api.post<Me>('/auth/register', body),
     onSuccess: (me) => qc.setQueryData(meKey, me),
   })
 }

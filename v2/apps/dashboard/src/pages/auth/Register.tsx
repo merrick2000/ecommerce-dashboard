@@ -36,7 +36,8 @@ export default function Register() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    const payload = { ...form, phone: form.phone.trim() || undefined }
+    const from = new URLSearchParams(window.location.search).get('from')
+    const payload = { ...form, phone: form.phone.trim() || undefined, source: from ? { from: from.slice(0, 200) } : undefined }
     const v = validate(registerSchema, payload)
     if (v.errors) return setErrors(v.errors)
     setErrors({})

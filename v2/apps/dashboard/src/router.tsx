@@ -21,6 +21,19 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <HomeRedirect /> },
           { path: 'onboarding', lazy: page(() => import('@/pages/Onboarding')) },
+          { path: 'billing', lazy: page(() => import('@/pages/billing/Billing')) },
+          {
+            path: 'admin',
+            lazy: page(() => import('@/pages/admin/AdminShell')),
+            errorElement: <RouteError />,
+            children: [
+              { index: true, lazy: page(() => import('@/pages/admin/Overview')) },
+              { path: 'users', lazy: page(() => import('@/pages/admin/Users')) },
+              { path: 'users/:userId', lazy: page(() => import('@/pages/admin/UserDetail')) },
+              { path: 'stores', lazy: page(() => import('@/pages/admin/Stores')) },
+              { path: 'settings', lazy: page(() => import('@/pages/admin/Settings')) },
+            ],
+          },
           {
             path: 'stores/:storeId',
             element: <AppShell />,

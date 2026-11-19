@@ -1,0 +1,119 @@
+---
+import MarketingLayout from '../MarketingLayout.astro'
+import FaqList from '../FaqList.astro'
+import Sources from '../Sources.astro'
+import CtaBand from '../CtaBand.astro'
+import Blocks from '../Blocks.astro'
+import { BEST_PAGES, COUNTRIES, PATHS, bestPath, t } from '../../../content/seo'
+import type { BestPage, Lang } from '../../../content/seo'
+
+interface Props {
+  page: BestPage
+  lang: Lang
+}
+const { page: b, lang } = Astro.props
+const fr = lang === 'fr'
+const L = fr
+  ? { best: 'Classements', criteria: 'Nos critères', ranking: 'Le classement', name: 'Outil', score: 'Note', for: 'Idéal pour', price: 'Prix', pros: 'Points forts', cons: 'Limites', verdict: 'Notre verdict', others: 'Autres classements', visit: 'Voir le site', updated: 'Mis à jour en novembre 2026' }
+  : { best: 'Rankings', criteria: 'Our criteria', ranking: 'The ranking', name: 'Tool', score: 'Score', for: 'Best for', price: 'Price', pros: 'Strengths', cons: 'Limits', verdict: 'Our verdict', others: 'Other rankings', visit: 'Visit website', updated: 'Updated November 2026' }
+const items = [...b.items].sort((x, y) => y.score - x.score)
+const country = b.country ? COUNTRIES.find((c) => c.slug === b.country) : null
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: t(b.h1, lang),
+    itemListOrder: 'https://schema.org/ItemListOrderDescending',
+    numberOfItems: items.length,
+    itemListElement: items.map((it, i) => ({ '@type': 'ListItem', position: i + 1, name: it.name, url: it.url })),
+  },
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: b.faqs.map((f) => ({ '@type': 'Question', name: t(f.q, lang), acceptedAnswer: { '@type': 'Answer', text: t(f.a, lang) } })) },
+]
+const others = BEST_PAGES.filter((x) => x.slug.fr !== b.slug.fr && (!!x.country === !!b.country ? true : !x.country)).slice(0, 14)
+---
+
+<MarketingLayout
+  title={t(b.title, lang)}
+  description={t(b.description, lang)}
+  canonicalPath={bestPath(b.slug[lang], lang)}
+  lang={lang}
+  alternate={{ fr: bestPath(b.slug.fr, 'fr'), en: bestPath(b.slug.en, 'en') }}
+  breadcrumbs={[{ label: L.best, href: PATHS.best[lang] }, { label: t(b.h1, lang) }]}
+  jsonLd={jsonLd}
+  ogImage={`/og/${lang}/meilleur/${b.slug.fr}.jpg`}
+  ogImageAlt={t(b.h1, lang)}
+>
+  <section class="mk-page-hero">
+    <div class="mk-wrap mk-narrow">
+      <span class="mk-eyebrow">{L.best}{country ? ` · ${t(country.name, lang)}` : ''} · {L.updated}</span>
+      <h1 class="mk-h1 mk-h1-page">{t(b.h1, lang)}</h1>
+      <p class="mk-hero-sub">{t(b.intro, lang)}</p>
+    </div>
+  </section>
+  <div class="mk-wrap mk-narrow">
+    <div class="mk-prose">
+      <h2>{L.ranking}</h2>
+    </div>
+    <ol class="mk-podium">
+      {
+        items.map((it, i) => (
+          <li class:list={['mk-rank', i === 0 && 'mk-rank-top']}>
+            <span class="mk-rank-n">{i + 1}</span>
+            <div class="mk-rank-main">
+              <p class="mk-rank-name">{it.name}</p>
+              <p class="mk-rank-for">{t(it.bestFor, lang)}</p>
+            </div>
+            <div class="mk-rank-score" aria-label={`${L.score} ${it.score}/10`}>
+              <b>{it.score.toFixed(1).replace('.0', '')}</b>
+              <small>/10</small>
+              <span class="mk-rank-bar"><i style={`width:${it.score * 10}%`} /></span>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+    <div class="mk-prose">
+      <h2>{L.criteria}</h2>
+      <ul>{b.criteria.map((c) => <li>{t(c, lang)}</li>)}</ul>
+    </div>
+    {
+      items.map((it, i) => (
+        <section class="mk-best-item" id={`n${i + 1}`}>
+          <div class="mk-best-head">
+            <span class="mk-rank-n">{i + 1}</span>
+            <h2>{it.name}</h2>
+            <span class="mk-best-score">{it.score.toFixed(1).replace('.0', '')}/10</span>
+          </div>
+          <p class="mk-best-meta">
+            <b>{L.for} :</b> {t(it.bestFor, lang)} · <b>{L.price} :</b> {t(it.price, lang)}
+          </p>
+          <div class="mk-best-cols">
+            <div>
+              <p class="mk-best-label mk-pos-ink">{L.pros}</p>
+              <ul class="mk-best-pros">{it.pros.map((p) => <li>{t(p, lang)}</li>)}</ul>
+            </div>
+            <div>
+              <p class="mk-best-label mk-neg-ink">{L.cons}</p>
+              <ul class="mk-best-cons">{it.cons.map((p) => <li>{t(p, lang)}</li>)}</ul>
+            </div>
+          </div>
+          <a class="mk-best-link" href={it.url} rel="nofollow noopener" target="_blank">
+            {L.visit} : {it.url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
+          </a>
+        </section>
+      ))
+    }
+    <Blocks blocks={b.blocks} lang={lang} />
+    <div class="mk-verdict">
+      <p class="mk-verdict-title">{L.verdict}</p>
+      <p>{t(b.verdict, lang)}</p>
+    </div>
+    <FaqList faqs={b.faqs} lang={lang} />
+    <Sources sources={b.sources} lang={lang} />
+    <section class="mk-block">
+      <h2 class="mk-h2-sm">{L.others}</h2>
+      <div class="mk-chips">{others.map((x) => <a class="mk-chip" href={bestPath(x.slug[lang], lang)}>{t(x.h1, lang)}</a>)}</div>
+    </section>
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

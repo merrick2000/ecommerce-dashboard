@@ -207,3 +207,37 @@ export interface NichePage {
   /** Slugs (fr) de guides liés. */
   related: string[]
 }
+
+/** Une entrée d'un classement « meilleur X » (honnête : forces, limites, prix sourcé). */
+export interface BestItem {
+  name: string
+  url: string
+  /** Pour qui c'est le meilleur choix. */
+  bestFor: L10n
+  /** Prix d'entrée tel que publié (avec la date de relevé dans la source), ou « gratuit », ou « sur devis ». */
+  price: L10n
+  pros: L10n[]
+  cons: L10n[]
+  /** Note sur 10 selon les critères de la page (cohérente et justifiée). */
+  score: number
+}
+
+/** Page « meilleur X pour Y » / « best X » : classement argumenté avec critères. */
+export interface BestPage {
+  slug: L10n
+  title: L10n
+  description: L10n
+  h1: L10n
+  intro: L10n
+  /** Critères de classement (4 à 6), expliqués. */
+  criteria: L10n[]
+  items: BestItem[]
+  /** Contenu complémentaire : comment choisir, erreurs, etc. */
+  blocks: Block[]
+  /** Verdict final nuancé. */
+  verdict: L10n
+  faqs: Faq[]
+  sources: Source[]
+  /** Pays concerné (slug de countries.ts) si la page est déclinée par pays. */
+  country?: string
+}

@@ -2,6 +2,9 @@ import type { Permission } from '@zuri/shared'
 import {
   Bell,
   Check,
+  Crown,
+  PauseCircle,
+  Shield,
   PanelLeftClose,
   PanelLeftOpen,
   Activity,
@@ -243,6 +246,18 @@ export function AppShell() {
             </NavLink>
           ))}
         </nav>
+        <div className={cx('space-y-0.5 border-t border-line py-2', collapsed ? 'px-2' : 'px-3')}>
+          <NavLink to="/billing" title={collapsed ? 'Abonnement' : undefined} className={cx('flex items-center gap-3 rounded-lg py-2 text-sm font-medium text-muted hover:bg-surface-2 hover:text-fg', collapsed ? 'justify-center' : 'px-3')}>
+            <Crown className="size-[18px] shrink-0" aria-hidden />
+            {collapsed ? <span className="sr-only">Abonnement</span> : 'Abonnement'}
+          </NavLink>
+          {me?.isPlatformAdmin && (
+            <NavLink to="/admin" title={collapsed ? 'Super admin' : undefined} className={cx('flex items-center gap-3 rounded-lg py-2 text-sm font-medium text-muted hover:bg-surface-2 hover:text-fg', collapsed ? 'justify-center' : 'px-3')}>
+              <Shield className="size-[18px] shrink-0" aria-hidden />
+              {collapsed ? <span className="sr-only">Super admin</span> : 'Super admin'}
+            </NavLink>
+          )}
+        </div>
         <div className="border-t border-line p-3">
           <div className={cx('flex items-center gap-2', collapsed && 'flex-col')}>
             {!collapsed && (
@@ -272,6 +287,22 @@ export function AppShell() {
       </header>
 
       <main className="mx-auto w-full max-w-6xl px-4 pt-4 pb-28 sm:px-6 lg:px-8 lg:pt-8 lg:pb-12">
+        {store?.status === 'paused' && (
+          <NavLink to={href('settings')} className="mb-4 flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+            <PauseCircle className="size-4 shrink-0" /> Ta boutique est en pause : personne ne peut commander. <span className="font-semibold underline">Rouvrir</span>
+          </NavLink>
+        )}
+        {me?.plan && ['early', 'free', 'expired'].includes(me.plan.reason) && (
+          <NavLink to="/billing" className="mb-4 flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-3 text-sm hover:border-accent">
+            <Crown className="size-4 shrink-0 text-accent" />
+            <span className="flex-1">
+              {me.plan.reason === 'early' && <>Ton mois offert en Pro se termine le {new Date(me.plan.until!).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'UTC' })}.</>}
+              {me.plan.reason === 'free' && <>Tu es sur l’offre gratuite (limitée) jusqu’au {new Date(me.plan.until!).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'UTC' })}.</>}
+              {me.plan.reason === 'expired' && <>L’offre gratuite est terminée : choisis une formule pour continuer.</>}
+            </span>
+            <span className="font-semibold text-accent">Voir les formules</span>
+          </NavLink>
+        )}
         <Outlet />
       </main>
 
@@ -302,6 +333,16 @@ export function AppShell() {
               {item.label}
             </NavLink>
           ))}
+          <NavLink to="/billing" className="flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-medium hover:bg-surface-2">
+            <Crown className="size-5 text-muted" aria-hidden />
+            Abonnement
+          </NavLink>
+          {me?.isPlatformAdmin && (
+            <NavLink to="/admin" className="flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-medium hover:bg-surface-2">
+              <Shield className="size-5 text-muted" aria-hidden />
+              Super admin
+            </NavLink>
+          )}
           <NavLink to="/onboarding" className="flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-medium hover:bg-surface-2">
             <Plus className="size-5 text-muted" aria-hidden />
             Nouvelle boutique

@@ -3,7 +3,7 @@ import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
 import { ALTERNATIVES, COMPARISONS, COUNTRIES, GUIDES, PATHS, alternativePath, comparisonPath, countryPath, guidePath } from '../content/seo'
 import { TOOLS } from '../content/seo/tools'
-import { CITIES, NICHES, cityPath, nichePath } from '../content/seo'
+import { BEST_PAGES, CITIES, NICHES, bestPath, cityPath, nichePath } from '../content/seo'
 
 export const prerender = false
 
@@ -26,6 +26,8 @@ export const GET: APIRoute = () => {
     ...both(PATHS.alternatives.fr, PATHS.alternatives.en, 'weekly', '0.8'),
     ...both(PATHS.comparisons.fr, PATHS.comparisons.en, 'weekly', '0.7'),
     ...both(PATHS.niches.fr, PATHS.niches.en, 'weekly', '0.8'),
+    ...both(PATHS.best.fr, PATHS.best.en, 'weekly', '0.9'),
+    ...BEST_PAGES.flatMap((b) => both(bestPath(b.slug.fr, 'fr'), bestPath(b.slug.en, 'en'), 'monthly', b.country ? '0.8' : '0.9')),
     ...both(PATHS.cities.fr, PATHS.cities.en, 'weekly', '0.8'),
     ...TOOLS.flatMap((x) => both(`${PATHS.tools.fr}/${x.slug.fr}`, `${PATHS.tools.en}/${x.slug.en}`, 'monthly', '0.8')),
     ...GUIDES.flatMap((g) => both(guidePath(g.slug.fr, 'fr'), guidePath(g.slug.en, 'en'), 'monthly', '0.8')),

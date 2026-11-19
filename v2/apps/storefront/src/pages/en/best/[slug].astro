@@ -1,0 +1,9 @@
+---
+import BestView from '../../../components/marketing/views/BestView.astro'
+import { findBest } from '../../../content/seo'
+export const prerender = false
+const page = findBest(Astro.params.slug ?? '', 'en')
+if (!page) return Astro.rewrite('/404')
+---
+
+<BestView page={page} lang="en" />

@@ -22,6 +22,10 @@ export interface Store {
   id: string
   name: string
   slug: string
+  status: 'active' | 'paused' | 'closed'
+  pauseMessage: string | null
+  pausedAt: Iso | null
+  closedAt: Iso | null
   subdomain: string | null
   customDomain: string | null
   customDomainVerifiedAt: Iso | null

@@ -1,4 +1,4 @@
-import { checkoutSettingsSchema, storeCreateSchema, storeUpdateSchema, timezoneForCountry, trackingSettingsSchema } from '@zuri/shared'
+import { checkoutSettingsSchema, storeCloseSchema, storeCreateSchema, storePauseSchema, storeUpdateSchema, timezoneForCountry, trackingSettingsSchema } from '@zuri/shared'
 import { and, eq, ne, or } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { db } from '../db/client'
@@ -24,6 +24,8 @@ import { uploadRoutes } from './uploads'
 import { zoneRoutes } from './zones'
 import { rotateIntegrationSecret } from './integrations'
 import { env } from '../lib/env'
+import { HttpError } from '../lib/errors'
+import { assertWithinLimit, countOwnedStores, planForUser } from '../services/platform'
 
 export const DEFAULT_CHECKOUT = checkoutSettingsSchema.parse({})
 
@@ -53,8 +55,38 @@ async function assertUnique(fields: { slug?: string; subdomain?: string | null; 
   if (hit) throw conflict('Ce slug, sous-domaine ou domaine est déjà utilisé', 'store_taken')
 }
 
+/** Pause et fermeture : réservées au propriétaire (et au super admin). */
+function assertOwner(c: { get: (k: 'access' | 'user') => any }) {
+  if (c.get('access').role !== 'owner' && !c.get('user').isPlatformAdmin) throw new HttpError(403, 'Seul le propriétaire peut faire cette action', 'owner_only')
+}
+
 const storeScoped = new Hono<AppEnv>()
   .get('/', (c) => c.json(storeView(c.get('store'))))
+  /** Mettre la boutique en pause : la page reste visible avec un message, les commandes sont refusées. */
+  .post('/pause', v('json', storePauseSchema), async (c) => {
+    assertOwner(c)
+    const store = c.get('store')
+    const [row] = await db.update(stores).set({ status: 'paused', pausedAt: new Date(), pauseMessage: c.req.valid('json').message || null }).where(eq(stores.id, store.id)).returning()
+    await logActivity(c, { entityType: 'store', entityId: store.id, action: 'paused', message: 'Boutique mise en pause' })
+    return c.json(storeView(row!))
+  })
+  .post('/resume', async (c) => {
+    assertOwner(c)
+    const store = c.get('store')
+    if (store.closedAt && !c.get('user').isPlatformAdmin) throw new HttpError(409, 'Cette boutique est fermée définitivement', 'store_closed')
+    const [row] = await db.update(stores).set({ status: 'active', pausedAt: null, closedAt: null }).where(eq(stores.id, store.id)).returning()
+    await logActivity(c, { entityType: 'store', entityId: store.id, action: 'resumed', message: 'Boutique rouverte' })
+    return c.json(storeView(row!))
+  })
+  /** Fermeture définitive : la boutique disparaît (pages, liens, tableau de bord). Les données sont conservées pour l'historique. */
+  .post('/close', v('json', storeCloseSchema), async (c) => {
+    assertOwner(c)
+    const store = c.get('store')
+    if (c.req.valid('json').confirmName !== store.name) throw new HttpError(422, 'Le nom saisi ne correspond pas au nom de la boutique', 'confirm_mismatch')
+    await db.update(stores).set({ status: 'closed', closedAt: new Date() }).where(eq(stores.id, store.id))
+    await logActivity(c, { entityType: 'store', entityId: store.id, action: 'closed', message: 'Boutique fermée définitivement' })
+    return c.json({ ok: true })
+  })
   .patch('/', requirePermission('store.settings'), v('json', storeUpdateSchema), async (c) => {
     const store = c.get('store')
     const input = c.req.valid('json')
@@ -124,6 +156,8 @@ export const storeRoutes = new Hono<AppEnv>()
   .use(requireAuth)
   .post('/', v('json', storeCreateSchema), async (c) => {
     const input = c.req.valid('json')
+    const user = c.get('user')
+    if (!user.isPlatformAdmin) assertWithinLimit(await planForUser(user), 'stores', await countOwnedStores(user.id))
     await assertUnique({ slug: input.slug, subdomain: input.slug })
     const store = await db.transaction(async (tx) => {
       const [s] = await tx.insert(stores).values({ ...input, subdomain: input.slug, timezone: timezoneForCountry(input.country) }).returning()

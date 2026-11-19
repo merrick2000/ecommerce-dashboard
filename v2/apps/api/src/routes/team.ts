@@ -1,6 +1,7 @@
 import { canGrantRole, invitationCreateSchema, invitationIdSchema, memberUpdateSchema, permissionsFor, ROLE_LABELS, type TeamInvitation, type TeamMember } from '@zuri/shared'
 import { and, asc, eq, gt, inArray, isNull, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
+import { assertFeature, assertWithinLimit, planForStore } from '../services/platform'
 import { z } from 'zod'
 import { db } from '../db/client'
 import { orders, storeInvitations, storeMemberProducts, storeMembers, users } from '../db/schema'
@@ -110,6 +111,10 @@ export const teamRoutes = new Hono<AppEnv>()
     const store = c.get('store')
     const user = c.get('user')
     const input = c.req.valid('json')
+    const [{ n } = { n: 0 }] = await db.select({ n: dsql<number>`count(*)::int` }).from(storeMembers).where(eq(storeMembers.storeId, store.id))
+    const plan = await planForStore(store.id)
+    await assertFeature(plan, 'team')
+    assertWithinLimit(plan, 'members', n)
     const { invitation, token } = await createInvitation({ userId: user.id, name: user.name, role: c.get('role') }, store, input)
     await logActivity(c, { entityType: 'team', entityId: invitation.id, entityLabel: input.email, action: 'invited', message: `Invitation envoyée (${ROLE_LABELS[input.role]})` })
     return c.json({ invitation: invitationView(invitation, user.name), inviteUrl: inviteUrl(token) }, 201)

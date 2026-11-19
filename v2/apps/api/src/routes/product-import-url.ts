@@ -6,6 +6,7 @@
  */
 import { productInputSchema } from '@zuri/shared'
 import { Hono } from 'hono'
+import { assertFeature, planForStore } from '../services/platform'
 import { z } from 'zod'
 import { requirePermission } from '../lib/auth'
 import type { AppEnv } from '../lib/context'
@@ -46,6 +47,7 @@ export const productImportUrlRoutes = new Hono<AppEnv>()
   /** Fonctions disponibles (le bouton « Proposer des améliorations » n'apparaît que si l'IA est configurée). */
   .get('/config', (c) => c.json({ aiAvailable: aiAvailable() }))
   .post('/preview', rateLimit({ key: 'import-url', limit: 20, windowSec: 600 }), v('json', z.object({ url: z.string().trim().url().max(2000) })), async (c) => {
+    await assertFeature(await planForStore(c.get('store').id), 'aiImport')
     const preview = await previewFromUrl(c.req.valid('json').url, c.get('store').currency)
     return c.json({ ...preview, aiAvailable: aiAvailable() })
   })

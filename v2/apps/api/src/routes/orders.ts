@@ -8,7 +8,7 @@ import {
   orderIdSchema,
   orderAssignSchema,
 } from '@zuri/shared'
-import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, lt, lte, or, sql as dsql, type SQL } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, lte, or, sql as dsql, type SQL } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { Hono } from 'hono'
 import { z } from 'zod'
@@ -87,6 +87,8 @@ function listFilters(storeId: string, q: z.infer<typeof orderListQuerySchema>, a
   if (q.assigned === 'me') conds.push(eq(orders.assignedTo, access.userId))
   else if (q.assigned === 'none') conds.push(isNull(orders.assignedTo))
   else if (typeof q.assigned === 'number') conds.push(eq(orders.assignedTo, q.assigned))
+  if (q.archived === 'only') conds.push(isNotNull(orders.archivedAt))
+  else if (q.archived !== 'all') conds.push(isNull(orders.archivedAt))
   if (q.type) conds.push(eq(orders.kind, q.type))
   if (q.paymentStatus) conds.push(eq(orders.paymentStatus, q.paymentStatus))
   if (q.fulfillmentStatus) conds.push(eq(orders.fulfillmentStatus, q.fulfillmentStatus))
@@ -244,6 +246,19 @@ export const orderRoutes = new Hono<AppEnv>()
     }
     await notifyStatus(c.get('store').id, c.get('user'), done, body.fulfillmentStatus)
     return c.json({ results })
+  })
+  /** Archiver ou désarchiver des commandes (masquées des listes, toujours comptées dans les statistiques). */
+  .post('/archive', requirePermission('orders.update'), v('json', z.object({ ids: z.array(orderIdSchema).min(1).max(500), archived: z.boolean() })), async (c) => {
+    const { ids, archived } = c.req.valid('json')
+    const store = c.get('store')
+    const scope = orderScope(c.get('access'))
+    const rows = await db
+      .update(orders)
+      .set({ archivedAt: archived ? new Date() : null })
+      .where(and(eq(orders.storeId, store.id), inArray(orders.id, ids), ...(scope ? [scope] : [])))
+      .returning({ id: orders.id })
+    if (rows.length) await db.insert(orderEvents).values(rows.map((r) => ({ orderId: r.id, type: 'edited', message: archived ? 'Commande archivée' : 'Commande désarchivée', userId: c.get('user').id })))
+    return c.json({ updated: rows.length })
   })
   .post('/:id/payment', requirePermission('orders.payment'), v('param', idParam), v('json', orderPaymentUpdateSchema), async (c) => {
     const { id } = c.req.valid('param')

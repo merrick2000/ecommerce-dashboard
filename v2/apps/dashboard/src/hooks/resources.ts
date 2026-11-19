@@ -239,6 +239,16 @@ export function useOrderStatus() {
   })
 }
 
+/** Archiver ou désarchiver des commandes (masquées des listes, gardées dans les statistiques). */
+export function useArchiveOrders() {
+  const s = useStoreId()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { ids: string[]; archived: boolean }) => api.post<{ updated: number }>(`${base(s)}/orders/archive`, body),
+    onSettled: () => refreshAfterOrderChange(qc, s),
+  })
+}
+
 export function useBulkOrderStatus() {
   const s = useStoreId()
   const qc = useQueryClient()

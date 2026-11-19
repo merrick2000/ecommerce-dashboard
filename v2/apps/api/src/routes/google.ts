@@ -7,6 +7,7 @@
  * URI de redirection à déclarer chez Google : {APP_URL}/api/auth/google/callback
  */
 import { createHash } from 'node:crypto'
+import { readSignupSource } from '../services/platform'
 import { eq, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
@@ -152,6 +153,7 @@ export const googleRoutes = new Hono<AppEnv>()
           // Mot de passe inutilisable : le compte se connecte avec Google (il pourra en définir un plus tard).
           passwordHash: await hashPassword(randomToken(32)),
           isPlatformAdmin: count === 0,
+          signupSource: readSignupSource(c, invited ? 'invite' : 'google'),
         })
         .returning()
     }
