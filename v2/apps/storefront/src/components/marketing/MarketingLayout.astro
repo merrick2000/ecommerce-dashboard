@@ -7,6 +7,7 @@ import '../../styles/marketing.css'
 import { env } from 'cloudflare:workers'
 import { COUNTRIES, GUIDES, PATHS, countryPath, guidePath, t } from '../../content/seo'
 import type { Lang } from '../../content/seo'
+import PromoBar from './offer/PromoBar.astro'
 
 interface Crumb {
   label: string
@@ -40,8 +41,8 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr'
 const otherPath = alternate[other] ?? PATHS.home[other]
 
 const T = {
-  fr: { how: 'Comment ça marche', features: 'Fonctionnalités', pricing: 'Tarif', faq: 'Questions', login: 'Se connecter', signup: 'Créer ma boutique', skip: 'Aller au contenu', tagline: 'La boutique en ligne pensée pour le paiement à la livraison et le Mobile Money, en Afrique.', product: 'Produit', resources: 'Ressources', countries: 'Vendre par pays', guides: 'Guides', tools: 'Outils gratuits', alternatives: 'Alternatives', compare: 'Comparatifs', account: 'Compte', popular: 'Guides populaires', bottom: 'Fait pour les vendeurs d’Afrique.', home: 'Accueil', langLabel: 'English', allCountries: 'Tous les pays' },
-  en: { how: 'How it works', features: 'Features', pricing: 'Pricing', faq: 'FAQ', login: 'Log in', signup: 'Create my store', skip: 'Skip to content', tagline: 'The online store built for cash on delivery and Mobile Money, in Africa.', product: 'Product', resources: 'Resources', countries: 'Sell by country', guides: 'Guides', tools: 'Free tools', alternatives: 'Alternatives', compare: 'Comparisons', account: 'Account', popular: 'Popular guides', bottom: 'Built for sellers across Africa.', home: 'Home', langLabel: 'Français', allCountries: 'All countries' },
+  fr: { how: 'Comment ça marche', features: 'Fonctionnalités', pricing: 'Tarif', faq: 'Questions', login: 'Se connecter', signup: 'Créer ma boutique', skip: 'Aller au contenu', tagline: 'La boutique en ligne pensée pour le paiement à la livraison et le Mobile Money, en Afrique.', product: 'Produit', resources: 'Ressources', countries: 'Vendre par pays', guides: 'Guides', tools: 'Outils gratuits', cities: 'Vendre par ville', niches: 'Vendre par métier', alternatives: 'Alternatives', compare: 'Comparatifs', account: 'Compte', popular: 'Guides populaires', bottom: 'Fait pour les vendeurs d’Afrique.', home: 'Accueil', langLabel: 'English', allCountries: 'Tous les pays' },
+  en: { how: 'How it works', features: 'Features', pricing: 'Pricing', faq: 'FAQ', login: 'Log in', signup: 'Create my store', skip: 'Skip to content', tagline: 'The online store built for cash on delivery and Mobile Money, in Africa.', product: 'Product', resources: 'Resources', countries: 'Sell by country', guides: 'Guides', tools: 'Free tools', cities: 'Sell by city', niches: 'Sell by category', alternatives: 'Alternatives', compare: 'Comparisons', account: 'Account', popular: 'Popular guides', bottom: 'Built for sellers across Africa.', home: 'Home', langLabel: 'Français', allCountries: 'All countries' },
 }[lang]
 
 // Pied de page : liens internes vers les pages les plus utiles (maillage SEO).
@@ -104,6 +105,7 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
   </head>
   <body>
     <a class="skip" href="#contenu">{T.skip}</a>
+    <PromoBar lang={lang} href={signupUrl} />
     <header class="mk-header">
       <div class="mk-wrap mk-header-row">
         <a class="mk-logo" href={home} aria-label="Zuri">
@@ -172,6 +174,8 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
           <a href={PATHS.alternatives[lang]}>{T.alternatives}</a>
           <a href={PATHS.comparisons[lang]}>{T.compare}</a>
           <a href={PATHS.tools[lang]}>{T.tools}</a>
+          <a href={PATHS.niches[lang]}>{T.niches}</a>
+          <a href={PATHS.cities[lang]}>{T.cities}</a>
         </nav>
         <nav aria-label={T.countries}>
           <p class="mk-footer-title">{T.countries}</p>

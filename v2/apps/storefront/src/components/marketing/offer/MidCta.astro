@@ -1,0 +1,25 @@
+---
+/** Transition vers l'inscription entre deux sections : une phrase, un bouton, le rappel de l'offre. */
+import { offerActive } from '../../../content/seo/offer'
+import type { Lang } from '../../../content/seo'
+interface Props {
+  lang: Lang
+  href: string
+  text: string
+  button?: string
+  tone?: 'light' | 'amber' | 'dark'
+}
+const { lang, href, text, button, tone = 'light' } = Astro.props
+const fr = lang === 'fr'
+const note = offerActive() ? (fr ? 'Gratuit, 1 mois offert jusqu’au 30 novembre. Sans carte bancaire.' : 'Free, 1 month on us until November 30. No credit card.') : fr ? 'Gratuit, sans carte bancaire.' : 'Free, no credit card.'
+---
+
+<div class={`mk-mid mk-mid-${tone}`}>
+  <div class="mk-wrap mk-mid-row">
+    <p class="mk-mid-text">{text}</p>
+    <div class="mk-mid-act">
+      <a class="mk-btn mk-btn-amber" href={href}>{button ?? (fr ? 'Créer ma boutique gratuitement' : 'Create my store for free')}</a>
+      <small>{note}</small>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,100 @@
+---
+import MarketingLayout from '../MarketingLayout.astro'
+import FaqList from '../FaqList.astro'
+import Sources from '../Sources.astro'
+import CtaBand from '../CtaBand.astro'
+import Blocks from '../Blocks.astro'
+import NicheArt from '../NicheArt.astro'
+import Widget from '../widgets/Widget.astro'
+import { env } from 'cloudflare:workers'
+import { GUIDES, IMG, OG, PATHS, guidePath, nichePath, t } from '../../../content/seo'
+import { NICHES } from '../../../content/seo/niches'
+import { CITIES } from '../../../content/seo/cities'
+import type { Lang, NichePage } from '../../../content/seo'
+
+interface Props {
+  niche: NichePage
+  lang: Lang
+}
+const { niche: n, lang } = Astro.props
+const fr = lang === 'fr'
+const appOrigin = import.meta.env.DEV ? 'http://localhost:5173' : (env.APP_ORIGIN ?? `https://app.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
+const L = fr
+  ? { niches: 'Vendre par métier', why: 'Pourquoi ça se vend bien en ligne', products: 'Idées de produits à proposer', ads: 'Dans tes pubs, à éviter absolument', adsText: 'Ces erreurs font refuser tes publicités ou bloquer ton compte publicitaire.', related: 'Guides pour aller plus loin', others: 'Autres métiers', cities: 'Vendre dans ta ville', cta: 'Créer ma boutique gratuitement', cta2: 'Lire le guide offert' }
+  : { niches: 'Sell by category', why: 'Why it sells well online', products: 'Product ideas to offer', ads: 'In your ads, never do this', adsText: 'These mistakes get ads rejected or your ad account restricted.', related: 'Guides to go further', others: 'Other categories', cities: 'Sell in your city', cta: 'Create my store for free', cta2: 'Read the free guide' }
+const related = n.related.map((s) => GUIDES.find((g) => g.slug.fr === s)).filter((g) => !!g)
+const bonus = GUIDES.find((g) => g.slug.fr === 'guide-offert-produit-gagnant-pub-facebook')
+const jsonLd = [
+  { '@context': 'https://schema.org', '@type': 'Article', headline: t(n.h1, lang), description: t(n.description, lang), inLanguage: lang, author: { '@type': 'Organization', name: 'Zuri' } },
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: n.faqs.map((f) => ({ '@type': 'Question', name: t(f.q, lang), acceptedAnswer: { '@type': 'Answer', text: t(f.a, lang) } })) },
+]
+---
+
+<MarketingLayout
+  title={t(n.title, lang)}
+  description={t(n.description, lang)}
+  canonicalPath={nichePath(n.slug[lang], lang)}
+  lang={lang}
+  alternate={{ fr: nichePath(n.slug.fr, 'fr'), en: nichePath(n.slug.en, 'en') }}
+  breadcrumbs={[{ label: L.niches, href: PATHS.niches[lang] }, { label: t(n.name, lang) }]}
+  jsonLd={jsonLd}
+  ogImage={OG.niche(n.slug.fr, lang)}
+  ogImageAlt={t(n.h1, lang)}
+>
+  <section class="mk-page-hero">
+    <div class="mk-wrap mk-niche-hero">
+      <div>
+        <span class="mk-eyebrow">{L.niches}</span>
+        <h1 class="mk-h1 mk-h1-page">{t(n.h1, lang)}</h1>
+        <p class="mk-hero-sub">{t(n.intro, lang)}</p>
+        <div class="mk-hero-cta">
+          <a class="mk-btn mk-btn-amber" href={`${appOrigin}/register`}>{L.cta}</a>
+          {bonus && <a class="mk-btn-ghost" href={guidePath(bonus.slug[lang], lang)}>{L.cta2}</a>}
+        </div>
+      </div>
+      <NicheArt icon={n.icon} accent={n.accent} name={t(n.name, lang)} lang={lang} />
+    </div>
+  </section>
+
+  <div class="mk-wrap mk-narrow">
+    <div class="mk-prose">
+      <h2>{L.why}</h2>
+      {n.why.map((p) => <p>{t(p, lang)}</p>)}
+      <h2>{L.products}</h2>
+      <ul>{n.products.map((p) => <li>{t(p, lang)}</li>)}</ul>
+      <Widget id="product-score" lang={lang} />
+    </div>
+    <Blocks blocks={n.blocks} lang={lang} />
+    <div class="mk-prose">
+      <Widget id="bundle-compare" lang={lang} />
+      <h2>{L.ads}</h2>
+      <p>{L.adsText}</p>
+      <ul class="mk-donts">{n.adRules.map((r) => <li>{t(r, lang)}</li>)}</ul>
+    </div>
+    <FaqList faqs={n.faqs} lang={lang} />
+    <Sources sources={n.sources} lang={lang} />
+    {
+      related.length > 0 && (
+        <section class="mk-block">
+          <h2 class="mk-h2-sm">{L.related}</h2>
+          <div class="mk-cards">
+            {related.map((g) => (
+              <a class="mk-card" href={guidePath(g!.slug[lang], lang)}>
+                <img class="mk-card-img" src={IMG.guide(g!.slug.fr)} alt="" width="1280" height="720" loading="lazy" decoding="async" />
+                <span class="mk-card-kicker">Guide</span>
+                <span class="mk-card-title">{t(g!.h1, lang)}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )
+    }
+    <section class="mk-block">
+      <h2 class="mk-h2-sm">{L.others}</h2>
+      <div class="mk-chips">{NICHES.filter((x) => x.slug.fr !== n.slug.fr).map((x) => <a class="mk-chip" href={nichePath(x.slug[lang], lang)}>{t(x.name, lang)}</a>)}</div>
+      <h2 class="mk-h2-sm" style="margin-top:24px">{L.cities}</h2>
+      <div class="mk-chips">{CITIES.slice(0, 12).map((c) => <a class="mk-chip" href={`${PATHS.cities[lang]}/${c.slug}`}>{c.name}</a>)}</div>
+    </section>
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

@@ -5,8 +5,14 @@
  */
 import MarketingLayout from '../../components/marketing/MarketingLayout.astro'
 import Icon from '../../components/marketing/Icon.astro'
+import MidCta from '../../components/marketing/offer/MidCta.astro'
+import LaunchOffer from '../../components/marketing/offer/LaunchOffer.astro'
+import BonusGuide from '../../components/marketing/offer/BonusGuide.astro'
+import StickyCta from '../../components/marketing/offer/StickyCta.astro'
+import Countdown from '../../components/marketing/offer/Countdown.astro'
+import { offerActive } from '../../content/seo/offer'
 import { env } from 'cloudflare:workers'
-import { COUNTRIES, GUIDES, countryPath, guidePath, t } from '../../content/seo'
+import { CITIES, COUNTRIES, GUIDES, NICHES, cityPath, countryPath, guidePath, nichePath, t } from '../../content/seo'
 
 export const prerender = false
 
@@ -56,7 +62,7 @@ const shopifyStack = [
 ]
 
 const faqs = [
-  { q: 'Can I create an online store for free?', a: 'Yes. Zuri is free during the launch phase: unlimited orders, every feature included and 0% commission on your sales. When paid plans arrive, you will be told in advance.' },
+  { q: 'Can I create an online store for free?', a: 'Yes. Zuri is free until November 30: unlimited orders, every feature included and 0% commission on your sales. After November 30, Zuri becomes a paid service, and sellers who sign up before November 30 get their first month free.' },
   { q: 'Do I need a credit card?', a: 'No. Sign up with your email or your Google account, no card and no dollars needed.' },
   { q: 'Does Shopify work in Africa?', a: 'You can open a Shopify store from Africa, but the subscription is paid in dollars by card, Shopify Payments is not available in any African country according to Shopify’s official list, and the COD form, bundles, countdown or reviews come from paid apps. Zuri includes all of that, with Mobile Money.' },
   { q: 'Does Zuri hold my money?', a: 'Never. Mobile Money payments go straight to your own FeexPay, FedaPay, PayDunya or PawaPay account, and cash on delivery is collected by you or your rider. Zuri takes no commission and holds no payment.' },
@@ -91,10 +97,16 @@ const jsonLd = [
           <a class="mk-btn-ghost" href="#comment">See how it works</a>
         </div>
         <ul class="mk-reassure">
-          <li>Free during launch</li>
+          <li>1 month free before November 30</li>
           <li>No credit card</li>
           <li>Everything included, no apps to pay for</li>
         </ul>
+        {offerActive() && (
+          <a class="mk-hero-offer" href={signup}>
+            <span class="mk-hero-offer-tag">Launch offer</span>
+            <span>Sign up before November 30: 1 month free. Ends in <Countdown lang="en" /></span>
+          </a>
+        )}
       </div>
       <div class="mk-visual" aria-hidden="true">
         <div class="mk-phone">
@@ -170,6 +182,8 @@ const jsonLd = [
     </div>
   </section>
 
+  <MidCta lang="en" href={signup} tone="amber" text="Sound familiar? Zuri fixes all of it in one store built for cash on delivery." />
+
   <section class="mk-section mk-section-dark" id="comment">
     <div class="mk-wrap">
       <span class="mk-eyebrow">How it works</span>
@@ -192,6 +206,8 @@ const jsonLd = [
       </div>
     </div>
   </section>
+
+  <MidCta lang="en" href={signup} tone="light" text="From ad to cash, everything is ready. Your store is live in minutes, from your phone." button="Launch my store" />
 
   <section class="mk-section">
     <div class="mk-wrap mk-split">
@@ -239,6 +255,8 @@ const jsonLd = [
     </div>
   </section>
 
+  <MidCta lang="en" href={signup} tone="amber" text="Countdown, limited stock, bundles, sales popups: all one click away, no apps to pay for." button="Turn these on for free" />
+
   <section class="mk-section">
     <div class="mk-wrap">
       <span class="mk-eyebrow">Shopify alternative</span>
@@ -283,6 +301,8 @@ const jsonLd = [
     </div>
   </section>
 
+  <BonusGuide lang="en" href={signup} />
+
   <section class="mk-section mk-section-alt">
     <div class="mk-wrap">
       <span class="mk-eyebrow">Resources</span>
@@ -308,6 +328,12 @@ const jsonLd = [
           ))
         }
       </div>
+      <div class="mk-chips" style="margin-top:12px">
+        {CITIES.filter((c) => ['lagos', 'abuja', 'accra', 'kumasi', 'nairobi', 'kigali', 'abidjan', 'dakar'].includes(c.slug)).map((c) => <a class="mk-chip" href={cityPath(c.slug, 'en')}>Sell in {c.name}</a>)}
+        {NICHES.slice(0, 6).map((n) => <a class="mk-chip" href={nichePath(n.slug.en, 'en')}>{t(n.name, 'en')}</a>)}
+        <a class="mk-chip" href="/en/cities">All cities</a>
+        <a class="mk-chip" href="/en/sell">All categories</a>
+      </div>
     </div>
   </section>
 
@@ -332,7 +358,10 @@ const jsonLd = [
           <li>Multiple stores</li>
         </ul>
         <a class="mk-btn mk-btn-amber" href={signup}>Create my store for free</a>
-        <p class="mk-price-note">When paid plans arrive, you will be told in advance.</p>
+        <p class="mk-price-note">Zuri becomes paid after November 30. Sign up before then and your first month is free.</p>
+      </div>
+      <div style="margin-top:24px">
+        <LaunchOffer lang="en" href={signup} />
       </div>
     </div>
   </section>
@@ -355,6 +384,8 @@ const jsonLd = [
       </div>
     </div>
   </section>
+
+  <StickyCta lang="en" href={signup} />
 
   <section class="mk-section mk-section-dark mk-final">
     <div class="mk-wrap">

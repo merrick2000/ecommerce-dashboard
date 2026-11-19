@@ -161,3 +161,49 @@ export interface ComparisonPage {
   faqs: Faq[]
   sources: Source[]
 }
+
+/** Page « vendre par ville » (une grande ville africaine). */
+export interface CityPage {
+  /** Identifiant d'URL identique dans les deux langues (ex. « abidjan »). */
+  slug: string
+  name: string
+  /** Slug du pays dans countries.ts. */
+  country: string
+  /** Communes ou quartiers connus (6 à 10), servent aux zones de livraison. */
+  areas: string[]
+  title: L10n
+  description: L10n
+  h1: L10n
+  intro: L10n
+  /** 2 ou 3 paragraphes propres à la ville (commerce, livraison, habitudes), factuels et prudents. */
+  local: L10n[]
+  /** Conseils de livraison et de zones propres à la ville (4 à 6). */
+  delivery: L10n[]
+  faqs: Faq[]
+}
+
+/** Page « vendre par métier / type de produit » (vêtements, cosmétiques, perruques…). */
+export interface NichePage {
+  slug: L10n
+  /** Nom de l'icône (components/marketing/Icon.astro) pour l'illustration. */
+  icon: string
+  /** Couleur d'accent de l'illustration (hex). */
+  accent: string
+  name: L10n
+  title: L10n
+  description: L10n
+  h1: L10n
+  intro: L10n
+  /** Pourquoi ce type de produit se vend bien en ligne en Afrique (3 à 4 paragraphes). */
+  why: L10n[]
+  /** Idées de produits précis (6 à 10). */
+  products: L10n[]
+  /** Contenu principal : sections h2/p/list/tip/table (guide pratique pour ce métier). */
+  blocks: Block[]
+  /** Ce qu'il ne faut pas faire dans les pubs Facebook/TikTok pour ce type de produit (règles publicitaires). */
+  adRules: L10n[]
+  faqs: Faq[]
+  sources: Source[]
+  /** Slugs (fr) de guides liés. */
+  related: string[]
+}

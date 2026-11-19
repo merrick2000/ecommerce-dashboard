@@ -1,0 +1,68 @@
+---
+/** Illustration vectorielle d'une ville (horizon, route, livreur, repère). Variations déterministes selon le nom. */
+interface Props {
+  name: string
+  areas: string[]
+  lang: 'fr' | 'en'
+}
+const { name, areas, lang } = Astro.props
+let seed = [...name].reduce((s, ch) => (s * 31 + ch.charCodeAt(0)) >>> 0, 7)
+const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) % 1000) / 1000
+const palettes = [
+  ['#fde68a', '#f59e0b', '#b45309'],
+  ['#bbf7d0', '#22c55e', '#15803d'],
+  ['#bae6fd', '#0ea5e9', '#0369a1'],
+  ['#fecaca', '#f97316', '#c2410c'],
+  ['#ddd6fe', '#8b5cf6', '#6d28d9'],
+]
+const [soft, mid, deep] = palettes[Math.floor(rnd() * palettes.length)]!
+const back = Array.from({ length: 11 }, (_, i) => ({ x: i * 62 - 10, w: 44 + rnd() * 26, h: 60 + rnd() * 90 }))
+const front = Array.from({ length: 9 }, (_, i) => ({ x: i * 78 + 10, w: 50 + rnd() * 24, h: 40 + rnd() * 70, win: rnd() > 0.35 }))
+const pins = areas.slice(0, 4).map((a, i) => ({ a, x: 70 + i * 150 + rnd() * 30, y: 70 + rnd() * 50 }))
+---
+
+<figure class="mk-art">
+  <svg viewBox="0 0 640 300" role="img" aria-label={lang === 'fr' ? `Illustration : livraison à ${name}` : `Illustration: delivery in ${name}`}>
+    <defs>
+      <linearGradient id={`sky-${seed}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color={soft}></stop><stop offset="1" stop-color="#fffbeb"></stop></linearGradient>
+    </defs>
+    <rect width="640" height="300" fill={`url(#sky-${seed})`}></rect>
+    <circle cx="540" cy="70" r="34" fill="#fff" opacity="0.7"></circle>
+    <g fill={mid} opacity="0.35">{back.map((b) => <rect x={b.x} y={230 - b.h} width={b.w} height={b.h} rx="4"></rect>)}</g>
+    <g>
+      {
+        front.map((b) => (
+          <g>
+            <rect x={b.x} y={232 - b.h} width={b.w} height={b.h} rx="5" fill={deep} opacity="0.85"></rect>
+            {b.win && <rect x={b.x + 10} y={242 - b.h} width={b.w - 20} height="8" rx="2" fill="#fef3c7" opacity="0.8"></rect>}
+            {b.win && b.h > 60 && <rect x={b.x + 10} y={256 - b.h} width={b.w - 20} height="8" rx="2" fill="#fef3c7" opacity="0.6"></rect>}
+          </g>
+        ))
+      }
+    </g>
+    <rect y="232" width="640" height="68" fill="#44403c"></rect>
+    <line x1="0" y1="266" x2="640" y2="266" stroke="#fef3c7" stroke-width="4" stroke-dasharray="22 18" class="mk-art-road"></line>
+    <g class="mk-art-moto">
+      <circle cx="16" cy="276" r="11" fill="#1c1917" stroke="#fafaf9" stroke-width="2"></circle>
+      <circle cx="62" cy="276" r="11" fill="#1c1917" stroke="#fafaf9" stroke-width="2"></circle>
+      <path d="M14 270h30l10-14h10l-6 16" fill="none" stroke="#fafaf9" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"></path>
+      <rect x="2" y="240" width="26" height="22" rx="4" fill="#f59e0b"></rect>
+      <circle cx="42" cy="228" r="8" fill="#fafaf9"></circle>
+      <path d="M40 236l-6 22h16" fill="none" stroke="#fafaf9" stroke-width="6" stroke-linecap="round"></path>
+    </g>
+    {
+      pins.map((p, i) => (
+        <g class="mk-art-pin" style={`--i:${i}`} transform={`translate(${p.x} ${p.y})`}>
+          <path d="M0 0c-11 0-19 8-19 18 0 13 19 30 19 30s19-17 19-30C19 8 11 0 0 0z" fill="#1c1917"></path>
+          <circle cx="0" cy="18" r="7" fill="#f59e0b"></circle>
+          <rect x="24" y="6" width={p.a.length * 7.4 + 18} height="24" rx="12" fill="#fff"></rect>
+          <text x={33} y="23" font-size="13" font-weight="700" fill="#1c1917" font-family="ui-sans-serif, system-ui, sans-serif">{p.a}</text>
+        </g>
+      ))
+    }
+    <g transform="translate(24 24)">
+      <rect width={name.length * 13 + 40} height="40" rx="20" fill="#1c1917"></rect>
+      <text x="20" y="26" font-size="19" font-weight="800" fill="#fff" font-family="ui-sans-serif, system-ui, sans-serif">{name}</text>
+    </g>
+  </svg>
+</figure>

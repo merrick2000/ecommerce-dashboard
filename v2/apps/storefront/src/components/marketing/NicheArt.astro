@@ -1,0 +1,26 @@
+---
+/** Illustration vectorielle d'un métier : grande icône, cartes produit et téléphone de commande. */
+import Icon from './Icon.astro'
+interface Props {
+  icon: string
+  accent: string
+  name: string
+  lang: 'fr' | 'en'
+}
+const { icon, accent, name, lang } = Astro.props
+const fr = lang === 'fr'
+---
+
+<figure class="mk-art mk-niche-art" style={`--ac:${accent}`} aria-label={fr ? `Illustration : vendre ${name.toLowerCase()} en ligne` : `Illustration: selling ${name.toLowerCase()} online`} role="img">
+  <div class="mk-na-blob"></div>
+  <div class="mk-na-ico" aria-hidden="true"><Icon name={icon as never} /></div>
+  <div class="mk-na-card mk-na-c1" aria-hidden="true"><span></span><b></b><i>{fr ? 'Pack de 2' : '2-pack'}</i></div>
+  <div class="mk-na-card mk-na-c2" aria-hidden="true"><span></span><b></b><i>{fr ? 'Livraison 24 h' : '24h delivery'}</i></div>
+  <div class="mk-na-phone" aria-hidden="true">
+    <span class="mk-na-img"><Icon name={icon as never} /></span>
+    <span class="mk-na-line"></span>
+    <span class="mk-na-line mk-na-short"></span>
+    <span class="mk-na-btn">{fr ? 'Commander, je paie à la livraison' : 'Order, pay on delivery'}</span>
+  </div>
+  <div class="mk-na-toast" aria-hidden="true">{fr ? 'Nouvelle commande' : 'New order'}</div>
+</figure>

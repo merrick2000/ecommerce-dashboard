@@ -1,0 +1,40 @@
+---
+/** Compte à rebours jusqu'à la fin de l'offre (rendu serveur, mis à jour chaque seconde dans le navigateur). */
+import { OFFER, OFFER_DEADLINE } from '../../../content/seo/offer'
+import type { Lang } from '../../../content/seo'
+interface Props {
+  lang: Lang
+  variant?: 'inline' | 'boxes'
+}
+const { lang, variant = 'inline' } = Astro.props
+const u = OFFER[lang].units
+const ms = Math.max(0, Date.parse(OFFER_DEADLINE) - Date.now())
+const parts = [Math.floor(ms / 864e5), Math.floor(ms / 36e5) % 24, Math.floor(ms / 6e4) % 60, Math.floor(ms / 1e3) % 60]
+const pad = (n: number) => String(n).padStart(2, '0')
+---
+
+<span class:list={['mk-cd', `mk-cd-${variant}`]} data-cd={OFFER_DEADLINE} role="timer" aria-live="off">
+  {
+    parts.map((p, i) => (
+      <span class="mk-cd-u">
+        <b data-cd-i={i}>{i === 0 ? p : pad(p)}</b>
+        <small>{u[i]}</small>
+      </span>
+    ))
+  }
+</span>
+
+<script>
+  const tick = () => {
+    for (const el of document.querySelectorAll<HTMLElement>('[data-cd]')) {
+      const ms = Math.max(0, Date.parse(el.dataset.cd ?? '') - Date.now())
+      const v = [Math.floor(ms / 864e5), Math.floor(ms / 36e5) % 24, Math.floor(ms / 6e4) % 60, Math.floor(ms / 1e3) % 60]
+      el.querySelectorAll<HTMLElement>('[data-cd-i]').forEach((b) => {
+        const i = Number(b.dataset.cdI)
+        b.textContent = i === 0 ? String(v[0]) : String(v[i]).padStart(2, '0')
+      })
+    }
+  }
+  tick()
+  setInterval(tick, 1000)
+</script>

@@ -1,0 +1,39 @@
+---
+/** Encadré « offre de lancement » : date limite, compte à rebours, avantages, bouton. */
+import Countdown from './Countdown.astro'
+import Icon from '../Icon.astro'
+import { OFFER, offerActive } from '../../../content/seo/offer'
+import type { Lang } from '../../../content/seo'
+interface Props {
+  lang: Lang
+  href: string
+  dark?: boolean
+}
+const { lang, href, dark = false } = Astro.props
+const o = OFFER[lang]
+const fr = lang === 'fr'
+---
+
+{
+  offerActive() && (
+    <div class:list={['mk-offer', dark && 'mk-offer-dark']}>
+      <div class="mk-offer-head">
+        <span class="mk-offer-tag">{fr ? 'Offre de lancement' : 'Launch offer'}</span>
+        <span class="mk-offer-until">{fr ? `Jusqu’au ${o.deadline}` : `Until ${o.deadline}`}</span>
+      </div>
+      <p class="mk-offer-title">{o.title}</p>
+      <p class="mk-offer-text">{o.text}</p>
+      <Countdown lang={lang} variant="boxes" />
+      <ul class="mk-offer-points">
+        {o.points.map((p) => (
+          <li>
+            <Icon name="check" size={18} /> {p}
+          </li>
+        ))}
+      </ul>
+      <a class="mk-btn mk-btn-amber mk-offer-btn" href={href}>
+        {fr ? 'Je crée ma boutique, 1 mois offert' : 'Create my store, 1 month free'}
+      </a>
+    </div>
+  )
+}

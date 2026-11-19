@@ -1,0 +1,9 @@
+---
+import NicheView from '../../../components/marketing/views/NicheView.astro'
+import { findNiche } from '../../../content/seo'
+export const prerender = false
+const item = findNiche(Astro.params.slug ?? '', 'en')
+if (!item) return Astro.rewrite('/404')
+---
+
+<NicheView niche={item} lang="en" />

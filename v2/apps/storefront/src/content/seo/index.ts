@@ -18,11 +18,15 @@ export const PATHS = {
   alternatives: { fr: '/alternatives', en: '/en/alternatives' },
   comparisons: { fr: '/comparatif', en: '/en/compare' },
   tools: { fr: '/outils', en: '/en/tools' },
+  cities: { fr: '/villes', en: '/en/cities' },
+  niches: { fr: '/vendre', en: '/en/sell' },
 } as const
 
 export const countryPath = (slug: string, lang: Lang) => `${PATHS.countries[lang]}/${slug}`
 export const guidePath = (slug: string, lang: Lang) => `${PATHS.guides[lang]}/${slug}`
 export const alternativePath = (slug: string, lang: Lang) => `${PATHS.alternatives[lang]}/${slug}`
+export const cityPath = (slug: string, lang: Lang) => `${PATHS.cities[lang]}/${slug}`
+export const nichePath = (slug: string, lang: Lang) => `${PATHS.niches[lang]}/${slug}`
 export const comparisonPath = (slug: string, lang: Lang) => `${PATHS.comparisons[lang]}/${slug}`
 
 export const findCountry = (slug: string) => COUNTRIES.find((c) => c.slug === slug)
@@ -60,5 +64,12 @@ export const OG = {
   guide: (frSlug: string, lang: Lang) => `/og/${lang}/guides/${frSlug}.jpg`,
   alternative: (slug: string, lang: Lang) => `/og/${lang}/alternatives/${slug}.jpg`,
   comparison: (slug: string, lang: Lang) => `/og/${lang}/comparatif/${slug}.jpg`,
-  hub: (key: 'pays' | 'guides' | 'alternatives' | 'comparatif' | 'outils' | 'home', lang: Lang) => `/og/${lang}/hub/${key}.jpg`,
+  hub: (key: 'pays' | 'guides' | 'alternatives' | 'comparatif' | 'outils' | 'home' | 'villes' | 'vendre', lang: Lang) => `/og/${lang}/hub/${key}.jpg`,
+  city: (slug: string, lang: Lang) => `/og/${lang}/villes/${slug}.jpg`,
+  niche: (frSlug: string, lang: Lang) => `/og/${lang}/vendre/${frSlug}.jpg`,
 }
+
+export { NICHES } from './niches'
+export { CITIES } from './cities'
+import { NICHES as _NICHES } from './niches'
+export const findNiche = (slug: string, lang: Lang) => _NICHES.find((n) => n.slug[lang] === slug)

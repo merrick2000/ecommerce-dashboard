@@ -1,0 +1,72 @@
+---
+/** Page d'accueil des sections villes et métiers. */
+import MarketingLayout from '../MarketingLayout.astro'
+import CtaBand from '../CtaBand.astro'
+import Icon from '../Icon.astro'
+import { COUNTRIES, PATHS, cityPath, nichePath, t } from '../../../content/seo'
+import { CITIES } from '../../../content/seo/cities'
+import { NICHES } from '../../../content/seo/niches'
+import type { Lang } from '../../../content/seo'
+
+interface Props {
+  kind: 'cities' | 'niches'
+  lang: Lang
+}
+const { kind, lang } = Astro.props
+const other: Lang = lang === 'fr' ? 'en' : 'fr'
+const M = {
+  cities: {
+    fr: { label: 'Vendre par ville', title: 'Vendre en ligne dans ta ville : Abidjan, Dakar, Cotonou, Douala… | Zuri', description: 'Guides pour vendre en ligne ville par ville en Afrique : zones de livraison par quartier, paiement à la livraison, Mobile Money.', h1: 'Vendre en ligne dans ta ville', intro: 'Zones de livraison quartier par quartier, moyens de paiement et conseils de terrain, pour les grandes villes d’Afrique.' },
+    en: { label: 'Sell by city', title: 'Sell online in your city: Lagos, Accra, Nairobi, Abidjan… | Zuri', description: 'City by city guides to selling online in Africa: delivery zones by area, cash on delivery, Mobile Money.', h1: 'Sell online in your city', intro: 'Delivery zones area by area, payment methods and field tips for Africa’s major cities.' },
+  },
+  niches: {
+    fr: { label: 'Vendre par métier', title: 'Vendre en ligne par métier : vêtements, cosmétiques, perruques… | Zuri', description: 'Guides pratiques pour vendre en ligne selon ton type de produit : photos, prix, packs, livraison et règles publicitaires à respecter.', h1: 'Vendre en ligne selon ton métier', intro: 'Chaque type de produit a ses règles : photos, tailles, packs, risques de refus et pubs autorisées. Choisis le tien.' },
+    en: { label: 'Sell by category', title: 'Sell online by category: clothes, cosmetics, wigs… | Zuri', description: 'Practical guides to selling online by product type: photos, pricing, bundles, delivery and ad rules to follow.', h1: 'Sell online by product category', intro: 'Every product type has its own rules: photos, sizes, bundles, refusal risks and allowed ads. Pick yours.' },
+  },
+}[kind][lang]
+const groups = COUNTRIES.map((c) => ({ c, cities: CITIES.filter((x) => x.country === c.slug) })).filter((g) => g.cities.length)
+---
+
+<MarketingLayout title={M.title} description={M.description} canonicalPath={PATHS[kind][lang]} lang={lang} alternate={{ [lang]: PATHS[kind][lang], [other]: PATHS[kind][other] }} breadcrumbs={[{ label: M.label }]} ogImage={`/og/${lang}/hub/${kind === 'cities' ? 'villes' : 'vendre'}.jpg`} ogImageAlt={M.h1}>
+  <section class="mk-page-hero">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">{M.label}</span>
+      <h1 class="mk-h1 mk-h1-page">{M.h1}</h1>
+      <p class="mk-hero-sub">{M.intro}</p>
+    </div>
+  </section>
+  <div class="mk-wrap mk-hub">
+    {
+      kind === 'cities' &&
+        groups.map((g) => (
+          <section class="mk-block">
+            <h2 class="mk-h2-sm">{t(g.c.name, lang)}</h2>
+            <div class="mk-cards">
+              {g.cities.map((c) => (
+                <a class="mk-card" href={cityPath(c.slug, lang)}>
+                  <span class="mk-card-kicker">{c.areas.slice(0, 3).join(' · ')}</span>
+                  <span class="mk-card-title">{lang === 'fr' ? `Vendre en ligne à ${c.name}` : `Sell online in ${c.name}`}</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        ))
+    }
+    {
+      kind === 'niches' && (
+        <div class="mk-cards">
+          {NICHES.map((n) => (
+            <a class="mk-card" href={nichePath(n.slug[lang], lang)}>
+              <span class="mk-feature-ico" style={`color:${n.accent}`} aria-hidden="true">
+                <Icon name={n.icon as never} />
+              </span>
+              <span class="mk-card-title">{t(n.h1, lang)}</span>
+              <span class="mk-card-text">{t(n.description, lang)}</span>
+            </a>
+          ))}
+        </div>
+      )
+    }
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

@@ -1,0 +1,9 @@
+---
+import CityView from '../../components/marketing/views/CityView.astro'
+import { findCity } from '../../content/seo/cities'
+export const prerender = false
+const item = findCity(Astro.params.slug ?? '')
+if (!item) return Astro.rewrite('/404')
+---
+
+<CityView city={item} lang="fr" />

@@ -8,8 +8,14 @@
  */
 import MarketingLayout from '../components/marketing/MarketingLayout.astro'
 import Icon from '../components/marketing/Icon.astro'
+import MidCta from '../components/marketing/offer/MidCta.astro'
+import LaunchOffer from '../components/marketing/offer/LaunchOffer.astro'
+import BonusGuide from '../components/marketing/offer/BonusGuide.astro'
+import StickyCta from '../components/marketing/offer/StickyCta.astro'
+import Countdown from '../components/marketing/offer/Countdown.astro'
+import { offerActive } from '../content/seo/offer'
 import { env } from 'cloudflare:workers'
-import { COUNTRIES, GUIDES, countryPath, guidePath, t } from '../content/seo'
+import { CITIES, COUNTRIES, GUIDES, NICHES, cityPath, countryPath, guidePath, nichePath, t } from '../content/seo'
 
 export const prerender = false
 
@@ -87,7 +93,7 @@ const who = [
 ]
 
 const faqs = [
-  { q: 'Peut-on créer une boutique en ligne gratuitement ?', a: 'Oui. Zuri est gratuit pendant la phase de lancement : commandes illimitées, toutes les fonctions incluses et 0 % de commission sur tes ventes. Quand des offres payantes arriveront, tu seras prévenu à l’avance.' },
+  { q: 'Peut-on créer une boutique en ligne gratuitement ?', a: 'Oui. Zuri est gratuit jusqu’au 30 novembre : commandes illimitées, toutes les fonctions incluses et 0 % de commission sur tes ventes. Ensuite, Zuri devient payant, et les vendeurs inscrits avant le 30 novembre ont leur premier mois offert.' },
   { q: 'Il me faut une carte bancaire ?', a: 'Non. Tu crées ta boutique avec ton email ou ton compte Google, sans carte et sans dollars.' },
   { q: 'Shopify fonctionne-t-il en Afrique ?', a: 'Tu peux ouvrir une boutique Shopify depuis l’Afrique, mais l’abonnement se paie en dollars par carte, Shopify Payments n’est disponible dans aucun pays africain selon la liste officielle de Shopify, et le formulaire COD, les packs, le compte à rebours ou les avis passent par des applis payantes. Zuri inclut tout ça, en FCFA, avec le Mobile Money.' },
   { q: 'Comment intégrer Mobile Money à mon site ?', a: 'Avec Zuri, tu connectes ton compte FeexPay, FedaPay, PayDunya ou PawaPay depuis tes paramètres, et tes clients paient par Orange Money, MTN MoMo, Moov Money ou Wave selon leur pays. Pas une ligne de code.' },
@@ -144,10 +150,16 @@ const jsonLd = [
           <a class="mk-btn-ghost" href="#comment">Voir comment ça marche</a>
         </div>
         <ul class="mk-reassure">
-          <li>Gratuit pendant le lancement</li>
+          <li>1 mois offert avant le 30 novembre</li>
           <li>Sans carte bancaire</li>
           <li>Tout inclus, aucune appli à payer</li>
         </ul>
+        {offerActive() && (
+          <a class="mk-hero-offer" href={signup}>
+            <span class="mk-hero-offer-tag">Offre de lancement</span>
+            <span>Inscris-toi avant le 30 novembre : 1 mois offert. Fin dans <Countdown lang="fr" /></span>
+          </a>
+        )}
       </div>
 
       <div class="mk-visual" aria-hidden="true">
@@ -210,6 +222,8 @@ const jsonLd = [
       <p class="mk-pain-close">Le problème n’est pas ton produit. C’est la route entre la pub et l’argent. Zuri la répare, de bout en bout.</p>
     </div>
   </section>
+
+  <MidCta lang="fr" href={signup} tone="amber" text="Tu te reconnais ? Zuri règle tout ça dans une seule boutique, pensée pour le paiement à la livraison." />
 
   <!-- ─── Paiement à la livraison et Mobile Money ─── -->
   <section class="mk-section">
@@ -287,6 +301,8 @@ const jsonLd = [
       </div>
     </div>
   </section>
+
+  <MidCta lang="fr" href={signup} tone="light" text="De la pub au cash, tout est déjà prêt. Ta boutique est en ligne en quelques minutes, depuis ton téléphone." button="Je lance ma boutique" />
 
   <!-- ─── Vitesse ─── -->
   <section class="mk-section">
@@ -373,6 +389,8 @@ const jsonLd = [
     </div>
   </section>
 
+  <MidCta lang="fr" href={signup} tone="amber" text="Compte à rebours, stock limité, packs, popup des ventes : tout s’active en un clic, sans appli à payer." button="Activer ces leviers gratuitement" />
+
   <!-- ─── Tout inclus vs applis Shopify ─── -->
   <section class="mk-section">
     <div class="mk-wrap">
@@ -420,6 +438,8 @@ const jsonLd = [
     </div>
   </section>
 
+  <MidCta lang="fr" href={signup} tone="dark" text="Garde tes dollars pour ta pub. Ici, tout est inclus et tu ne paies aucune commission." button="Créer ma boutique, 1 mois offert" />
+
   <!-- ─── Fonctionnalités ─── -->
   <section class="mk-section mk-section-alt" id="fonctions">
     <div class="mk-wrap">
@@ -459,6 +479,8 @@ const jsonLd = [
     </div>
   </section>
 
+  <BonusGuide lang="fr" href={signup} />
+
   <!-- ─── Ressources (guides et pays) ─── -->
   <section class="mk-section">
     <div class="mk-wrap">
@@ -486,6 +508,12 @@ const jsonLd = [
           ))
         }
       </div>
+      <div class="mk-chips" style="margin-top:12px">
+        {CITIES.slice(0, 8).map((c) => <a class="mk-chip" href={cityPath(c.slug, 'fr')}>Vendre à {c.name}</a>)}
+        {NICHES.slice(0, 6).map((n) => <a class="mk-chip" href={nichePath(n.slug.fr, 'fr')}>{t(n.name, 'fr')}</a>)}
+        <a class="mk-chip" href="/villes">Toutes les villes</a>
+        <a class="mk-chip" href="/vendre">Tous les métiers</a>
+      </div>
     </div>
   </section>
 
@@ -511,7 +539,10 @@ const jsonLd = [
           <li>Plusieurs boutiques</li>
         </ul>
         <a class="mk-btn mk-btn-amber" href={signup}>Créer ma boutique gratuitement</a>
-        <p class="mk-price-note">Quand des offres payantes arriveront, tu seras prévenu à l’avance.</p>
+        <p class="mk-price-note">Zuri devient payant après le 30 novembre. Inscrit avant cette date, ton premier mois est offert.</p>
+      </div>
+      <div style="margin-top:24px">
+        <LaunchOffer lang="fr" href={signup} />
       </div>
     </div>
   </section>
@@ -535,6 +566,8 @@ const jsonLd = [
       </div>
     </div>
   </section>
+
+  <StickyCta lang="fr" href={signup} />
 
   <!-- ─── CTA final ─── -->
   <section class="mk-section mk-section-dark mk-final">

@@ -1,0 +1,85 @@
+---
+import MarketingLayout from '../MarketingLayout.astro'
+import FaqList from '../FaqList.astro'
+import CtaBand from '../CtaBand.astro'
+import CityArt from '../CityArt.astro'
+import Widget from '../widgets/Widget.astro'
+import { env } from 'cloudflare:workers'
+import { COUNTRIES, GUIDES, IMG, OG, PATHS, cityPath, countryPath, guidePath, t } from '../../../content/seo'
+import { CITIES } from '../../../content/seo/cities'
+import type { CityPage, Lang } from '../../../content/seo'
+
+interface Props {
+  city: CityPage
+  lang: Lang
+}
+const { city: c, lang } = Astro.props
+const country = COUNTRIES.find((x) => x.slug === c.country)!
+const fr = lang === 'fr'
+const appOrigin = import.meta.env.DEV ? 'http://localhost:5173' : (env.APP_ORIGIN ?? `https://app.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
+const L = fr
+  ? { cities: 'Vendre par ville', local: `Le commerce en ligne à ${c.name}`, zones: `Tes zones de livraison à ${c.name}`, zonesText: 'Crée une zone par commune ou quartier, avec son prix et son délai. Exemples :', delivery: `Livrer à ${c.name} sans perdre de colis`, pay: 'Encaisser tes clients', cur: 'Devise', mm: 'Mobile Money', cod: 'Paiement à la livraison', codText: 'Ton client paie en recevant son colis.', country: `Tout sur la vente en ligne ${country.inName}`, others: 'Autres villes', guides: 'Guides utiles', cta: 'Créer ma boutique gratuitement', cta2: 'Voir comment ça marche' }
+  : { cities: 'Sell by city', local: `Online selling in ${c.name}`, zones: `Your delivery zones in ${c.name}`, zonesText: 'Create one zone per commune or area, with its own price and delay. Examples:', delivery: `Delivering in ${c.name} without losing parcels`, pay: 'Getting paid', cur: 'Currency', mm: 'Mobile Money', cod: 'Cash on delivery', codText: 'Your customer pays when the parcel arrives.', country: `Everything about selling online in ${country.name.en}`, others: 'Other cities', guides: 'Useful guides', cta: 'Create my store for free', cta2: 'See how it works' }
+const sameCountry = CITIES.filter((x) => x.slug !== c.slug && x.country === c.country)
+const others = [...sameCountry, ...CITIES.filter((x) => x.country !== c.country)].slice(0, 10)
+const guides = ['reduire-retours-paiement-livraison', 'script-confirmation-commande', 'publicite-facebook-paiement-livraison'].map((s) => GUIDES.find((g) => g.slug.fr === s)!).filter(Boolean)
+const jsonLd = [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: c.faqs.map((f) => ({ '@type': 'Question', name: t(f.q, lang), acceptedAnswer: { '@type': 'Answer', text: t(f.a, lang) } })) }]
+---
+
+<MarketingLayout
+  title={t(c.title, lang)}
+  description={t(c.description, lang)}
+  canonicalPath={cityPath(c.slug, lang)}
+  lang={lang}
+  alternate={{ fr: cityPath(c.slug, 'fr'), en: cityPath(c.slug, 'en') }}
+  breadcrumbs={[{ label: L.cities, href: PATHS.cities[lang] }, { label: c.name }]}
+  jsonLd={jsonLd}
+  ogImage={OG.city(c.slug, lang)}
+  ogImageAlt={t(c.h1, lang)}
+>
+  <section class="mk-page-hero">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">{L.cities} · {t(country.name, lang)}</span>
+      <h1 class="mk-h1 mk-h1-page">{t(c.h1, lang)}</h1>
+      <p class="mk-hero-sub">{t(c.intro, lang)}</p>
+      <div class="mk-hero-cta">
+        <a class="mk-btn mk-btn-amber" href={`${appOrigin}/register`}>{L.cta}</a>
+        <a class="mk-btn-ghost" href={`${PATHS.home[lang] === '/' ? '' : PATHS.home[lang]}/#comment`}>{L.cta2}</a>
+      </div>
+      <CityArt name={c.name} areas={c.areas} lang={lang} />
+    </div>
+  </section>
+
+  <div class="mk-wrap mk-page-grid">
+    <article class="mk-prose">
+      <h2>{L.local}</h2>
+      {c.local.map((p) => <p>{t(p, lang)}</p>)}
+      <h2>{L.zones}</h2>
+      <p>{L.zonesText}</p>
+      <div class="mk-chips mk-chips-zones">{c.areas.map((a) => <span class="mk-chip">{a}</span>)}</div>
+      <Widget id="delivery-journey" lang={lang} />
+      <h2>{L.delivery}</h2>
+      <ol>{c.delivery.map((d) => <li>{t(d, lang)}</li>)}</ol>
+      <Widget id="cod-funnel" lang={lang} />
+      <p><a href={countryPath(country.slug, lang)}>{L.country}</a></p>
+      <FaqList faqs={c.faqs} lang={lang} />
+    </article>
+    <aside class="mk-side">
+      <div class="mk-side-card">
+        <p class="mk-side-title">{L.pay}</p>
+        <p><b>{L.cur} :</b> {t(country.currency.label, lang)} ({country.currency.code})</p>
+        {country.mobileMoney.length > 0 && <p><b>{L.mm} :</b> {country.mobileMoney.join(', ')}</p>}
+        <p><b>{L.cod} :</b> {L.codText}</p>
+      </div>
+      <div class="mk-side-card">
+        <p class="mk-side-title">{L.others}</p>
+        <div class="mk-chips">{others.map((o) => <a class="mk-chip" href={cityPath(o.slug, lang)}>{o.name}</a>)}</div>
+      </div>
+      <div class="mk-side-card">
+        <p class="mk-side-title">{L.guides}</p>
+        {guides.map((g) => <p><a href={guidePath(g.slug[lang], lang)}>{t(g.h1, lang)}</a></p>)}
+      </div>
+    </aside>
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

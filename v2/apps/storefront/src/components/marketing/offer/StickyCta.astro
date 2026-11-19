@@ -1,0 +1,32 @@
+---
+/** Barre d'inscription fixe en bas de l'écran sur téléphone (apparaît après le premier écran). */
+import Countdown from './Countdown.astro'
+import { offerActive } from '../../../content/seo/offer'
+import type { Lang } from '../../../content/seo'
+interface Props {
+  lang: Lang
+  href: string
+}
+const { lang, href } = Astro.props
+const fr = lang === 'fr'
+---
+
+<div class="mk-sticky" data-sticky hidden>
+  <div class="mk-sticky-txt">
+    <b>{offerActive() ? (fr ? '1 mois offert' : '1 month free') : fr ? 'Gratuit' : 'Free'}</b>
+    {offerActive() && <Countdown lang={lang} />}
+  </div>
+  <a class="mk-btn mk-btn-amber mk-btn-sm" href={href}>{fr ? 'Créer ma boutique' : 'Create my store'}</a>
+</div>
+
+<script>
+  const bar = document.querySelector<HTMLElement>('[data-sticky]')
+  if (bar) {
+    const onScroll = () => {
+      const show = window.scrollY > window.innerHeight * 0.8 && window.innerHeight + window.scrollY < document.body.scrollHeight - 500
+      bar.hidden = !show
+    }
+    addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+  }
+</script>

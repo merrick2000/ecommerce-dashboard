@@ -1,4 +1,5 @@
 import type { GuidePage, VideoRef, WidgetId } from './types'
+import { BONUS_GUIDE } from './guide-bonus'
 
 /**
  * Guides (SEO programmatique) du site Zuri, en français et en anglais.
@@ -2172,6 +2173,7 @@ const codProfit: GuidePage = {
 }
 
 export const GUIDES: GuidePage[] = [
+  BONUS_GUIDE,
   blackFriday,
   seasonal,
   tips25,

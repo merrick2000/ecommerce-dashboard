@@ -1,0 +1,50 @@
+---
+/** Section « guide offert » : couverture illustrée, sommaire, double appel à l'action. */
+import Icon from '../Icon.astro'
+import { GUIDES, guidePath } from '../../../content/seo'
+import type { Lang } from '../../../content/seo'
+interface Props {
+  lang: Lang
+  href: string
+}
+const { lang, href } = Astro.props
+const fr = lang === 'fr'
+const g = GUIDES.find((x) => x.slug.fr === 'guide-offert-produit-gagnant-pub-facebook')
+const items = fr
+  ? ['La méthode en 5 étapes pour trouver un produit gagnant', 'Où chercher : Bibliothèque publicitaire Meta, TikTok, marchés, statuts WhatsApp', 'Le calcul de marge qui évite de vendre à perte', 'Créer des pubs qui arrêtent le pouce : accroches et formats', 'Lancer ta campagne Facebook pas à pas en 2026', 'Les règles Meta à respecter pour ne pas te faire bloquer', 'Ton plan d’action sur 30 jours et la check-list de lancement']
+  : ['The 5 step method to find a winning product', 'Where to look: Meta Ad Library, TikTok, markets, WhatsApp statuses', 'The margin math that stops you selling at a loss', 'Ads that stop the scroll: hooks and formats', 'Launching your Facebook campaign step by step in 2026', 'Meta rules to follow so your account doesn’t get blocked', 'Your 30 day action plan and launch checklist']
+---
+
+{
+  g && (
+    <section class="mk-section mk-bonus" id="guide-offert">
+      <div class="mk-wrap mk-bonus-grid">
+        <div class="mk-book" aria-hidden="true">
+          <div class="mk-book-cover">
+            <span class="mk-book-tag">{fr ? 'Offert' : 'Free'}</span>
+            <span class="mk-book-ico"><Icon name="target" size={44} /></span>
+            <b>{fr ? 'Produit gagnant et pub Facebook en Afrique' : 'Winning products and Facebook ads in Africa'}</b>
+            <span class="mk-book-year">{fr ? 'Édition 2026' : '2026 edition'}</span>
+            <span class="mk-book-brand">Zuri</span>
+          </div>
+        </div>
+        <div>
+          <span class="mk-eyebrow">{fr ? 'Le guide offert' : 'The free guide'}</span>
+          <h2 class="mk-h2">{fr ? 'Trouve ton produit gagnant et réussis ta pub Facebook, sans te faire bloquer.' : 'Find your winning product and nail your Facebook ads, without getting blocked.'}</h2>
+          <p class="mk-lead">{fr ? 'Le guide complet que les vendeurs nous demandent le plus, mis à jour avec les règles Meta de 2026. Gratuit, en français, pensé pour le paiement à la livraison.' : 'The complete guide sellers ask us for most, updated with 2026 Meta rules. Free, built for cash on delivery.'}</p>
+          <ul class="mk-bonus-list">
+            {items.map((i) => (
+              <li>
+                <Icon name="check" size={18} /> {i}
+              </li>
+            ))}
+          </ul>
+          <div class="mk-hero-cta">
+            <a class="mk-btn mk-btn-amber" href={href}>{fr ? 'Créer ma boutique et lancer mon produit' : 'Create my store and launch my product'}</a>
+            <a class="mk-btn-ghost" href={guidePath(g.slug[lang], lang)}>{fr ? 'Lire le guide gratuit' : 'Read the free guide'}</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}

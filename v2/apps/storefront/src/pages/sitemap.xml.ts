@@ -3,6 +3,7 @@ import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
 import { ALTERNATIVES, COMPARISONS, COUNTRIES, GUIDES, PATHS, alternativePath, comparisonPath, countryPath, guidePath } from '../content/seo'
 import { TOOLS } from '../content/seo/tools'
+import { CITIES, NICHES, cityPath, nichePath } from '../content/seo'
 
 export const prerender = false
 
@@ -24,8 +25,12 @@ export const GET: APIRoute = () => {
     ...both(PATHS.countries.fr, PATHS.countries.en, 'weekly', '0.8'),
     ...both(PATHS.alternatives.fr, PATHS.alternatives.en, 'weekly', '0.8'),
     ...both(PATHS.comparisons.fr, PATHS.comparisons.en, 'weekly', '0.7'),
+    ...both(PATHS.niches.fr, PATHS.niches.en, 'weekly', '0.8'),
+    ...both(PATHS.cities.fr, PATHS.cities.en, 'weekly', '0.8'),
     ...TOOLS.flatMap((x) => both(`${PATHS.tools.fr}/${x.slug.fr}`, `${PATHS.tools.en}/${x.slug.en}`, 'monthly', '0.8')),
     ...GUIDES.flatMap((g) => both(guidePath(g.slug.fr, 'fr'), guidePath(g.slug.en, 'en'), 'monthly', '0.8')),
+    ...NICHES.flatMap((n) => both(nichePath(n.slug.fr, 'fr'), nichePath(n.slug.en, 'en'), 'monthly', '0.8')),
+    ...CITIES.flatMap((c) => both(cityPath(c.slug, 'fr'), cityPath(c.slug, 'en'), 'monthly', '0.7')),
     ...COUNTRIES.flatMap((c) => both(countryPath(c.slug, 'fr'), countryPath(c.slug, 'en'), 'monthly', '0.7')),
     ...ALTERNATIVES.flatMap((a) => both(alternativePath(a.slug, 'fr'), alternativePath(a.slug, 'en'), 'monthly', '0.7')),
     ...COMPARISONS.flatMap((c) => both(comparisonPath(c.slug, 'fr'), comparisonPath(c.slug, 'en'), 'monthly', '0.6')),
