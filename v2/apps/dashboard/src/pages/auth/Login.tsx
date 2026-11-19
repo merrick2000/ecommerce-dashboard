@@ -37,9 +37,9 @@ export default function Login() {
       subtitle="Accédez à votre espace vendeur."
       footer={
         <>
-          Première utilisation ?{' '}
+          Pas encore de compte ?{' '}
           <Link to="/register" className="font-medium text-accent hover:underline">
-            Créer le compte
+            Créer ma boutique
           </Link>
         </>
       }

@@ -1,0 +1,105 @@
+---
+/**
+ * Gabarit du site marketing Zuri (accueil, puis pages SEO : alternatives, comparatifs, guides…).
+ * Zéro police externe, zéro JavaScript : la page charge instantanément, même en 3G.
+ */
+import '../../styles/marketing.css'
+import { env } from 'cloudflare:workers'
+
+interface Props {
+  title: string
+  description: string
+  canonicalPath: string
+  /** Données structurées schema.org (une ou plusieurs). */
+  jsonLd?: Record<string, unknown>[]
+  ogImage?: string
+}
+
+const { title, description, canonicalPath, jsonLd = [], ogImage } = Astro.props
+const base = `https://${env.PLATFORM_HOST && env.PLATFORM_HOST !== 'localhost' ? env.PLATFORM_HOST : 'zurisell.store'}`
+const canonical = new URL(canonicalPath, base).toString()
+const appOrigin = import.meta.env.DEV ? 'http://localhost:5173' : (env.APP_ORIGIN ?? `https://app.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
+const signupUrl = `${appOrigin}/register`
+const loginUrl = `${appOrigin}/login`
+
+// Page marketing : publique, mise en cache en périphérie.
+const cache = 'public, s-maxage=600, stale-while-revalidate=86400'
+Astro.response.headers.set('Cache-Control', cache)
+Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#f59e0b" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Zuri" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23f59e0b'/%3E%3Cpath d='M10.5 10.5h11l-11 11h11' fill='none' stroke='%231c1917' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    {jsonLd.map((data) => <script type="application/ld+json" set:html={JSON.stringify(data)} />)}
+  </head>
+  <body>
+    <a class="skip" href="#contenu">Aller au contenu</a>
+    <header class="mk-header">
+      <div class="mk-wrap mk-header-row">
+        <a class="mk-logo" href="/" aria-label="Zuri, accueil">
+          <span class="mk-logo-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" width="28" height="28"><rect width="32" height="32" rx="9" fill="#f59e0b"></rect><path d="M10.5 10.5h11l-11 11h11" fill="none" stroke="#1c1917" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </span>
+          Zuri
+        </a>
+        <nav class="mk-nav" aria-label="Navigation principale">
+          <a href="/#comment">Comment ça marche</a>
+          <a href="/#fonctions">Fonctionnalités</a>
+          <a href="/#tarif">Tarif</a>
+          <a href="/#faq">Questions</a>
+        </nav>
+        <div class="mk-header-cta">
+          <a class="mk-link" href={loginUrl}>Se connecter</a>
+          <a class="mk-btn mk-btn-sm" href={signupUrl}>Créer ma boutique</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="contenu">
+      <slot />
+    </main>
+
+    <footer class="mk-footer">
+      <div class="mk-wrap mk-footer-grid">
+        <div>
+          <a class="mk-logo" href="/">
+            <span class="mk-logo-mark" aria-hidden="true">
+              <svg viewBox="0 0 32 32" width="24" height="24"><rect width="32" height="32" rx="9" fill="#f59e0b"></rect><path d="M10.5 10.5h11l-11 11h11" fill="none" stroke="#1c1917" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </span>
+            Zuri
+          </a>
+          <p class="mk-footer-tag">La boutique en ligne pensée pour le paiement à la livraison et le Mobile Money, en Afrique francophone.</p>
+        </div>
+        <nav aria-label="Produit">
+          <p class="mk-footer-title">Produit</p>
+          <a href="/#comment">Comment ça marche</a>
+          <a href="/#fonctions">Fonctionnalités</a>
+          <a href="/#tarif">Tarif</a>
+          <a href="/#faq">Questions fréquentes</a>
+        </nav>
+        <nav aria-label="Compte">
+          <p class="mk-footer-title">Compte</p>
+          <a href={signupUrl}>Créer ma boutique</a>
+          <a href={loginUrl}>Se connecter</a>
+        </nav>
+      </div>
+      <div class="mk-wrap mk-footer-bottom">© {new Date().getFullYear()} Zuri. Fait pour les vendeurs d'Afrique francophone.</div>
+    </footer>
+  </body>
+</html>

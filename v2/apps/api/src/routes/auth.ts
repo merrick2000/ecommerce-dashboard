@@ -15,8 +15,8 @@ import { enqueue } from '../jobs/queue'
 import { loginContext, recordLogin, sendPasswordReset } from '../services/account'
 import { acceptInvitation, previewInvitation } from '../services/team'
 
-/** Inscription ouverte ? Par défaut : seulement tant qu'aucun compte n'existe (outil perso). */
-const REGISTRATION_OPEN = env.REGISTRATION_OPEN === 'true'
+/** Inscription ouverte à tous ? (lu à chaque appel). « false » : seul le premier compte, outil perso. */
+const registrationOpen = () => env.REGISTRATION_OPEN !== 'false'
 
 // Hash factice : on vérifie quand même un mot de passe si l'email est inconnu (pas de fuite par le temps de réponse).
 const DUMMY_HASH = await Bun.password.hash('dummy-password-for-timing', { algorithm: 'argon2id' })
@@ -60,7 +60,7 @@ export const authRoutes = new Hono<AppEnv>()
   .post('/register', rateLimit({ key: 'register', limit: 5, windowSec: 3600 }), v('json', registerSchema), async (c) => {
     const input = c.req.valid('json')
     const [{ count } = { count: 0 }] = await db.select({ count: dsql<number>`count(*)::int` }).from(users)
-    if (count > 0 && !REGISTRATION_OPEN) throw new HttpError(403, 'Les inscriptions sont fermées', 'registration_closed')
+    if (count > 0 && !registrationOpen()) throw new HttpError(403, 'Les inscriptions sont fermées', 'registration_closed')
     const [exists] = await db.select({ id: users.id }).from(users).where(eq(users.email, input.email)).limit(1)
     if (exists) throw new HttpError(409, 'Un compte existe déjà avec cet email', 'email_taken')
     const [user] = await db
@@ -130,5 +130,5 @@ export const authRoutes = new Hono<AppEnv>()
   })
   .get('/me', requireAuth, async (c) => c.json(await loadMe(c.get('user'))))
   /** Méthodes de connexion proposées par l'écran de login. */
-  .get('/providers', (c) => c.json({ google: googleEnabled(), registrationOpen: env.REGISTRATION_OPEN === 'true' }))
+  .get('/providers', (c) => c.json({ google: googleEnabled(), registrationOpen: registrationOpen() }))
   .route('/google', googleRoutes)

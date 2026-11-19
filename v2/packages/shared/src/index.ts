@@ -269,7 +269,14 @@ export const invitationIdSchema = publicId(ID_PREFIXES.invitation)
 
 const money = z.coerce.number().min(0).max(1_000_000_000)
 /** Sous-domaines réservés à la plateforme (app.zurisell.store = dashboard…). */
-export const RESERVED_SLUGS = ['app', 'www', 'api', 'admin', 'dashboard', 'mail', 'email', 'static', 'cdn', 'assets', 'help', 'support', 'blog', 'docs', 'status', 'shop', 'store', 'zuri', 'login', 'auth']
+/** Noms interdits pour une boutique : sous-domaines techniques et pages du site Zuri (SEO, tarifs, légal…). */
+export const RESERVED_SLUGS = [
+  'app', 'www', 'api', 'admin', 'dashboard', 'mail', 'email', 'static', 'cdn', 'assets', 'help', 'aide', 'support', 'blog', 'docs', 'status',
+  'shop', 'store', 'zuri', 'login', 'auth', 'register', 'signup', 'inscription', 'connexion',
+  'tarifs', 'prix', 'pricing', 'fonctionnalites', 'features', 'alternatives', 'alternative', 'comparatif', 'comparatifs', 'compare', 'vs',
+  'guides', 'guide', 'ressources', 'pays', 'outils', 'modeles', 'exemples', 'metiers', 'cas', 'temoignages', 'partenaires', 'affiliation',
+  'cgu', 'cgv', 'confidentialite', 'mentions-legales', 'legal', 'contact', 'a-propos', 'about', 'presse', 'carrieres', 'sitemap', 'robots',
+]
 const slug = z
   .string()
   .min(2)

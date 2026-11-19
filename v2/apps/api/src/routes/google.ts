@@ -141,7 +141,7 @@ export const googleRoutes = new Hono<AppEnv>()
       const [{ count } = { count: 0 }] = await db.select({ count: dsql<number>`count(*)::int` }).from(users)
       // Inscriptions fermées : seule une invitation valable pour cet email permet de créer le compte.
       const invited = flow.invite ? await validInvitationFor(flow.invite, email) : null
-      if (count > 0 && env.REGISTRATION_OPEN !== 'true' && !invited) return c.redirect(back('', 'registration_closed'))
+      if (count > 0 && env.REGISTRATION_OPEN === 'false' && !invited) return c.redirect(back('', 'registration_closed'))
       ;[user] = await db
         .insert(users)
         .values({

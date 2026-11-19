@@ -48,8 +48,8 @@ export default function Register() {
 
   return (
     <AuthLayout
-      title="Créer le compte"
-      subtitle="Réservé au premier compte de la plateforme."
+      title="Créer ma boutique"
+      subtitle="Gratuit pour commencer. Votre boutique est en ligne en quelques minutes."
       footer={
         <>
           Déjà un compte ?{' '}

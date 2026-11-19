@@ -4,6 +4,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL ?? 'postgres://sellit:s
 process.env.APP_KEY ??= Buffer.alloc(32, 7).toString('base64')
 process.env.GOOGLE_CLIENT_ID ??= 'test-client.apps.googleusercontent.com'
 process.env.GOOGLE_CLIENT_SECRET ??= 'test-secret'
+// Les tests vérifient le mode « outil perso » (inscriptions fermées après le 1er compte) ; le mode ouvert a son propre test.
+process.env.REGISTRATION_OPEN ??= 'false'
 
 const { migrate } = await import('drizzle-orm/postgres-js/migrator')
 const { db, sql } = await import('../src/db/client')

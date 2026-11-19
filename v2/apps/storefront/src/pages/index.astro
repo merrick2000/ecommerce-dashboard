@@ -1,11 +1,469 @@
 ---
-/** Racine de l'hôte plateforme : pas de vitrine générique (aucun lien sortant). Sur un domaine boutique, la racine est réécrite vers le catalogue. */
-import Message from '../components/Message.astro'
-import { dict } from '../lib/i18n'
+/**
+ * Accueil de zurisell.store : la landing de Zuri.
+ * (Sur un domaine de boutique, la racine est réécrite vers le catalogue par le middleware : cette page n'y est jamais servie.)
+ */
+import MarketingLayout from '../components/marketing/MarketingLayout.astro'
+import { env } from 'cloudflare:workers'
 
 export const prerender = false
-Astro.response.status = 404
-const t = dict('fr').errors
+
+const appOrigin = import.meta.env.DEV ? 'http://localhost:5173' : (env.APP_ORIGIN ?? `https://app.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
+const signup = `${appOrigin}/register`
+
+const title = 'Zuri | Ta boutique en ligne avec paiement à la livraison et Mobile Money'
+const description =
+  'De la pub Facebook à l’argent encaissé : pages de vente ultra rapides, closers qui confirment, suivi des livraisons et vrai chiffre encaissé. Paiement à la livraison ou Mobile Money. Gratuit pendant le lancement.'
+
+const pains = [
+  { ico: '📵', title: 'La moitié est injoignable.', text: 'La pub ramène des commandes. Mais au moment d’appeler, le téléphone sonne dans le vide.' },
+  { ico: '📦', title: 'Le colis revient.', text: 'Encore un refus à la livraison. Tu paies l’aller, le retour, et ton stock dort chez le livreur.' },
+  { ico: '🤷🏾', title: 'Tes closers, tu ne les vois pas.', text: 'Qui a appelé qui ? Qui a confirmé ? Deux closers appellent le même client, et personne n’appelle l’autre.' },
+  { ico: '🔥', title: 'Ta pub brûle ton argent.', text: 'Facebook annonce 40 ventes, ton compte dit autre chose. Ton pixel ne remonte pas les vraies commandes.' },
+  { ico: '🐢', title: 'Ton site rame sur mobile.', text: 'Huit secondes pour s’ouvrir avec la connexion du client. Il est déjà reparti sur TikTok.' },
+  { ico: '💳', title: 'Tout est en dollars.', text: 'Ton outil te facture en dollars et réclame une carte Visa. Tes clients, eux, paient en espèces ou en Mobile Money.' },
+]
+
+const steps = [
+  {
+    title: 'La page qui vend',
+    text: 'Une page par produit, légère comme une plume : elle s’ouvre vite, même en 3G.',
+    points: ['Formulaire de commande en 30 secondes', 'Packs « 2 achetés », prix barré, codes promo', 'Bouton d’achat qui suit le client'],
+  },
+  {
+    title: 'Aucune commande perdue',
+    text: 'Chaque commande arrive dans ton tableau et sonne sur ton téléphone.',
+    points: ['Notification avec son d’encaissement', 'Alerte Telegram ou email', 'Panier abandonné : ton closer a le numéro'],
+  },
+  {
+    title: 'Tes closers confirment',
+    text: 'Celui qui est disponible prend la commande. Fini les doubles appels.',
+    points: ['Statuts : nouvelle, injoignable, confirmée', 'Chaque closer ne voit que ses produits', 'Tu vois qui a fait quoi, et quand'],
+  },
+  {
+    title: 'Tu suis jusqu’à l’argent',
+    text: 'Expédiée, livrée, retournée : tu sais où est chaque colis.',
+    points: ['Taux de confirmation réel', 'Taux de livraison réel', 'Chiffre réellement encaissé'],
+  },
+]
+
+const features = [
+  { ico: '💸', title: 'Paiement à la livraison ou Mobile Money', text: 'Tu choisis par produit : à la livraison, Mobile Money (FeexPay, FedaPay, PayDunya, PawaPay) ou ton lien Chariow, Maketou, Selar.' },
+  { ico: '🎯', title: 'Ta pub enfin bien mesurée', text: 'Pixel Facebook, API Conversions et pixel TikTok. Chaque vraie commande remonte, ta pub apprend sur les bons clients.' },
+  { ico: '👥', title: 'Une vraie équipe de closers', text: 'Closers, gestionnaire des commandes, gestionnaire de la boutique. Tu donnes accès produit par produit, et ils ne voient ton chiffre que si tu veux.' },
+  { ico: '🔔', title: 'Le son de l’argent', text: 'Une notification sur ton téléphone et ton ordinateur à chaque vente, avec un son d’encaissement doux. Aussi sur Telegram.' },
+  { ico: '⚡', title: 'Import express', text: 'Colle le lien d’un produit : nom, prix, variantes, photos et vidéo sont récupérés. L’IA réécrit la fiche pour ta cible.' },
+  { ico: '🧾', title: 'Formulaire sur mesure', text: 'Les champs que tu veux, dans l’ordre que tu veux, avec un aperçu exact de ce que verra ton client.' },
+  { ico: '🛵', title: 'Zones et frais de livraison', text: 'Un tarif par ville ou par quartier, livraison offerte dès un montant, délai affiché au client.' },
+  { ico: '♻️', title: 'Relance des paniers abandonnés', text: 'Le client a laissé son numéro sans finir ? Il est relancé, et ton équipe est prévenue pour l’appeler.' },
+  { ico: '🏬', title: 'Plusieurs boutiques, un compte', text: 'Une boutique par niche ou par pays, chacune avec son lien, son équipe et ses chiffres.' },
+  { ico: '🎓', title: 'Produits digitaux aussi', text: 'Formations, ebooks, fichiers : paiement en ligne et accès livré automatiquement après paiement.' },
+  { ico: '📥', title: 'Tu viens d’ailleurs ?', text: 'Importe ton catalogue en un fichier, y compris l’export produits de Shopify.' },
+  { ico: '🔗', title: 'Ton lien, gratuit', text: 'Ta boutique sur taboutique.zurisell.store, prête à mettre dans ta pub, ta bio ou ton statut WhatsApp.' },
+]
+
+const compare: { label: string; zuri: string; foreign: [string, string]; builders: [string, string] }[] = [
+  { label: 'Prix en FCFA, sans carte bancaire internationale', zuri: 'Oui', foreign: ['Rarement', 'no'], builders: ['Oui', 'yes'] },
+  { label: 'Mobile Money intégré (FeexPay, FedaPay, PayDunya, PawaPay)', zuri: 'Oui', foreign: ['Non', 'no'], builders: ['Rarement', 'no'] },
+  { label: 'Équipe de closers avec répartition automatique', zuri: 'Oui', foreign: ['Avec des applis en plus', 'meh'], builders: ['Partiel', 'meh'] },
+  { label: 'Statuts paiement à la livraison (injoignable, retourné…)', zuri: 'Oui', foreign: ['Avec des applis en plus', 'meh'], builders: ['Partiel', 'meh'] },
+  { label: 'Taux de livraison et chiffre réellement encaissé', zuri: 'Oui', foreign: ['Non', 'no'], builders: ['Rarement', 'no'] },
+  { label: 'API Conversions Facebook et pixel TikTok', zuri: 'Oui', foreign: ['Selon l’offre', 'meh'], builders: ['Rarement', 'no'] },
+  { label: 'Commission sur tes ventes', zuri: 'Aucune', foreign: ['Souvent, selon l’offre', 'meh'], builders: ['Selon l’outil', 'meh'] },
+]
+
+const weapons = [
+  { ico: '🎁', title: 'Packs « Le plus choisi »', text: '1 pour 14 900 F, 2 pour 24 900 F. Le client prend le pack, ton panier moyen grimpe.' },
+  { ico: '🏷️', title: 'Prix barré et promo', text: 'Ancien prix barré, pourcentage de réduction, ou un texte comme « Promo de lancement ».' },
+  { ico: '⏳', title: 'Compte à rebours', text: 'Une offre qui se termine bientôt pousse à commander maintenant, pas « demain ».' },
+  { ico: '📉', title: 'Stock limité', text: '« Plus que 7 en stock » affiché sur la page, réglable par produit.' },
+  { ico: '🔔', title: 'Popup des ventes réelles', text: '« Aminata de Lomé vient de commander » : uniquement de vraies commandes, jamais inventées.' },
+  { ico: '👆', title: 'Bouton d’achat qui suit', text: 'Le bouton « Commander » reste à portée de pouce pendant que le client défile.' },
+  { ico: '💬', title: 'Bouton WhatsApp', text: 'Le client hésite ? Il t’écrit sur WhatsApp en un geste, avec un message déjà prêt.' },
+  { ico: '⭐', title: 'Avis, garantie, FAQ', text: 'Témoignages clients, garantie « vous payez à la réception », réponses aux objections.' },
+  { ico: '♻️', title: 'Relance automatique', text: 'Panier abandonné : relance avec code promo, et ton closer reçoit le numéro à rappeler.' },
+  { ico: '🎟️', title: 'Codes promo', text: 'Pour tes influenceurs, tes clients fidèles ou tes relances : pourcentage ou montant fixe.' },
+]
+
+const who = [
+  { title: 'Vendeurs à la livraison', text: 'Tu fais de la pub, tu vends des produits physiques et ton client paie en recevant. Zuri est fait pour toi.' },
+  { title: 'Marques avec une équipe', text: 'Tu as des closers ou un gestionnaire ? Chacun voit ce qu’il doit voir, et toi tu vois tout.' },
+  { title: 'Créateurs de produits digitaux', text: 'Formations, ebooks, coaching : paiement Mobile Money et accès livré tout seul.' },
+  { title: 'Gestionnaires e-commerce', text: 'Tu gères plusieurs boutiques ou plusieurs clients ? Tout est dans un seul compte.' },
+]
+
+const faqs = [
+  { q: 'C’est vraiment gratuit ?', a: 'Oui, Zuri est gratuit pendant la phase de lancement : commandes illimitées et aucune commission sur tes ventes. Quand des offres payantes arriveront, tu seras prévenu à l’avance. Pas de mauvaise surprise.' },
+  { q: 'Il me faut une carte bancaire ?', a: 'Non. Tu crées ta boutique avec ton email ou ton compte Google, sans carte.' },
+  { q: 'Je vends déjà sur Shopify, YouCan ou un autre outil. Je dois tout refaire ?', a: 'Non. Importe ton catalogue avec un fichier CSV (l’export produits de Shopify est accepté), ou colle simplement le lien de chaque produit : Zuri récupère le nom, le prix, les variantes, les photos et la vidéo.' },
+  { q: 'Comment mes clients paient ?', a: 'Tu choisis pour chaque produit : paiement à la livraison, Mobile Money via FeexPay, FedaPay, PayDunya ou PawaPay, ou ton lien Chariow, Maketou ou Selar.' },
+  { q: 'Comment fonctionnent les closers ?', a: 'Tu invites ton équipe par email. Le premier closer qui agit sur une commande libre la prend, les autres le voient et ne l’appellent pas. Tu peux aussi attribuer une commande à quelqu’un. Chaque membre ne voit que les produits que tu lui confies.' },
+  { q: 'Ma page va vraiment charger vite ?', a: 'Oui. Une page de vente Zuri est très légère, pensée d’abord pour le téléphone et les connexions lentes. Chaque seconde gagnée, c’est un client qui reste.' },
+  { q: 'Mon pixel Facebook fonctionne avec les commandes à la livraison ?', a: 'Oui. Zuri envoie chaque commande au pixel et à l’API Conversions de Facebook, ainsi qu’au pixel TikTok, pour que tes publicités apprennent sur de vrais acheteurs.' },
+  { q: 'Dans quels pays ?', a: 'Zuri est pensé pour l’Afrique francophone : Bénin, Togo, Côte d’Ivoire, Sénégal, Mali, Burkina Faso, Niger, Cameroun, Gabon, Guinée, RD Congo… Ta boutique affiche ta devise, en FCFA ou autre.' },
+  { q: 'Je peux avoir mon propre nom de domaine ?', a: 'Tu as tout de suite un lien gratuit du type taboutique.zurisell.store. Le branchement de ton propre nom de domaine arrive bientôt.' },
+]
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Zuri',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    url: 'https://zurisell.store/',
+    description,
+    inLanguage: 'fr',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'XOF', description: 'Gratuit pendant le lancement' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+  },
+]
 ---
 
-<Message title={t.notFound} text={t.notFoundText} code="404" />
+<MarketingLayout title={title} description={description} canonicalPath="/" jsonLd={jsonLd}>
+  <!-- ─── Hero ─── -->
+  <section class="mk-hero">
+    <div class="mk-wrap mk-hero-grid">
+      <div>
+        <div class="mk-pills">
+          <span class="mk-pill">💵 Paiement à la livraison</span>
+          <span class="mk-pill">📱 Mobile Money</span>
+          <span class="mk-pill">🌍 Zone FCFA</span>
+          <span class="mk-pill mk-pill-green">0 % de commission</span>
+        </div>
+        <h1 class="mk-h1">De la pub à <mark>l’argent encaissé</mark>. Sans perdre une commande en route.</h1>
+        <p class="mk-hero-sub">
+          Une page de vente qui s’ouvre même en 3G, des closers qui confirment chaque commande, des livraisons suivies. Et enfin le vrai chiffre : <strong>ce que tu as encaissé</strong>, pas ce qu’on t’a promis.
+        </p>
+        <div class="mk-hero-cta">
+          <a class="mk-btn mk-btn-amber" href={signup}>Créer ma boutique gratuitement</a>
+          <a class="mk-btn-ghost" href="#comment">Voir comment ça marche</a>
+        </div>
+        <ul class="mk-reassure">
+          <li>Gratuit pendant le lancement</li>
+          <li>Sans carte bancaire</li>
+          <li>Aucune commission</li>
+        </ul>
+      </div>
+
+      <div class="mk-visual" aria-hidden="true">
+        <div class="mk-phone">
+          <div class="mk-screen">
+            <div class="mk-screen-img"><div class="mk-watch">12:45</div></div>
+            <div class="mk-screen-body">
+              <div class="mk-screen-kicker">Montre connectée · Étanche</div>
+              <div class="mk-screen-title">Suivez vos pas et vos appels, sans sortir votre téléphone</div>
+              <div class="mk-screen-price"><strong>14 900 F</strong><s>29 900 F</s></div>
+              <div class="mk-screen-field">Nom complet</div>
+              <div class="mk-screen-field">Téléphone</div>
+              <div class="mk-screen-field">Ville / quartier</div>
+              <div class="mk-screen-btn">Commander, je paie à la livraison</div>
+            </div>
+          </div>
+        </div>
+        <div class="mk-notif mk-n1">
+          <span class="mk-notif-ico" style="background:#fef3c7">🛒</span>
+          <div><b>Nouvelle commande</b><span>Aïcha, Cocody · 14 900 F</span></div>
+        </div>
+        <div class="mk-notif mk-n2">
+          <span class="mk-notif-ico" style="background:#dbeafe">📞</span>
+          <div><b>Confirmée par Awa</b><span>Livraison demain matin</span></div>
+        </div>
+        <div class="mk-notif mk-n3">
+          <span class="mk-notif-ico" style="background:#dcfce7">💰</span>
+          <div><b>Livrée et encaissée</b><span>+14 900 F dans ta caisse</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Douleurs ─── -->
+  <section class="mk-section mk-section-alt">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">Tu connais la chanson</span>
+      <h2 class="mk-h2">Vendre, ce n’est pas le plus dur. C’est tout ce qui se passe après le clic.</h2>
+      <div class="mk-pains">
+        {
+          pains.map((p) => (
+            <div class="mk-pain">
+              <span class="mk-pain-ico" aria-hidden="true">
+                {p.ico}
+              </span>
+              <p>
+                <strong>{p.title}</strong> {p.text}
+              </p>
+            </div>
+          ))
+        }
+      </div>
+      <p class="mk-pain-close">Le problème n’est pas ton produit. C’est la route entre la pub et l’argent. Zuri la répare, de bout en bout.</p>
+    </div>
+  </section>
+
+  <!-- ─── E-commerce africain : le paiement à la livraison au centre ─── -->
+  <section class="mk-section">
+    <div class="mk-wrap mk-split">
+      <div>
+        <span class="mk-eyebrow">E-commerce en Afrique</span>
+        <h2 class="mk-h2">Ici, le client paie quand il reçoit. Zuri est construit autour de ça.</h2>
+        <p class="mk-lead">
+          Les grands outils ont été pensés pour la carte bancaire. Chez nous, le client veut voir son colis avant de payer, et c’est normal. Le paiement à la livraison n’est pas une option chez Zuri : <strong>c’est le cœur du produit</strong>.
+        </p>
+        <ul class="mk-checks">
+          <li><strong>Un formulaire court</strong> : nom, téléphone, ville. Le client commande en 30 secondes, sans compte ni carte.</li>
+          <li><strong>Des statuts faits pour le terrain</strong> : nouvelle, injoignable, confirmée, expédiée, livrée, retournée.</li>
+          <li><strong>Les frais de livraison par ville</strong>, calculés tout seuls dans le formulaire.</li>
+          <li><strong>Mobile Money quand tu veux</strong> : MTN, Moov, Orange, Wave… via FeexPay, FedaPay, PayDunya ou PawaPay.</li>
+          <li><strong>En FCFA</strong>, en français, avec les numéros de chez nous.</li>
+        </ul>
+      </div>
+      <div class="mk-cod-card" aria-hidden="true">
+        <div class="mk-cod-head">Commande #ZR-7K2Q · Cotonou</div>
+        <div class="mk-cod-line"><span>Montre connectée × 2 (pack)</span><b>24 900 F</b></div>
+        <div class="mk-cod-line"><span>Livraison Cotonou</span><b>Gratuite</b></div>
+        <div class="mk-cod-line mk-cod-total"><span>À payer à la livraison</span><b>24 900 F</b></div>
+        <div class="mk-cod-steps">
+          <span class="on">Nouvelle</span><span class="on">Confirmée</span><span class="on">Expédiée</span><span class="now">Livrée</span>
+        </div>
+        <div class="mk-cod-foot">💰 Livrée et encaissée · comptée dans ton chiffre du jour</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 0 % de commission ─── -->
+  <section class="mk-zero">
+    <div class="mk-wrap mk-zero-grid">
+      <div>
+        <div class="mk-zero-big">0 %</div>
+        <p class="mk-zero-sub">de commission sur tes ventes. Ton argent reste à toi.</p>
+      </div>
+      <div class="mk-zero-calc">
+        <p class="mk-zero-calc-title">Tu vends pour 2 000 000 F par mois ?</p>
+        <div class="mk-zero-row"><span>Avec un outil qui prend 2 %</span><b class="mk-zero-bad">40 000 F perdus</b></div>
+        <div class="mk-zero-row"><span>Sur une année</span><b class="mk-zero-bad">480 000 F perdus</b></div>
+        <div class="mk-zero-row mk-zero-row-zuri"><span>Avec Zuri</span><b>0 F de commission</b></div>
+        <p class="mk-zero-note">Calcul d’exemple. Plus tu vends, plus la commission des autres te coûte cher.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── La chaîne ─── -->
+  <section class="mk-section mk-section-dark" id="comment">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">Comment ça marche</span>
+      <h2 class="mk-h2">Toute la chaîne, au même endroit. De la pub au cash.</h2>
+      <p class="mk-lead">Les autres outils te donnent une page. Zuri te donne la machine complète : la page, la commande, la confirmation, la livraison, et l’argent.</p>
+      <div class="mk-steps">
+        {
+          steps.map((s, i) => (
+            <div class="mk-step">
+              <span class="mk-step-num">{i + 1}</span>
+              <h3>{s.title}</h3>
+              <p>{s.text}</p>
+              <ul>
+                {s.points.map((pt) => (
+                  <li>{pt}</li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Les vrais chiffres ─── -->
+  <section class="mk-section">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">Les vrais chiffres</span>
+      <h2 class="mk-h2">100 commandes, ce n’est pas 100 ventes. Zuri te montre la différence.</h2>
+      <p class="mk-lead">Entre la commande et l’argent, il y a les injoignables, les refus et les retours. Zuri suit chaque étape, pour que tu saches enfin ce que rapporte vraiment ta pub.</p>
+      <div class="mk-dash" role="img" aria-label="Exemple de tableau de bord : 128 commandes, 95 confirmées, 78 livrées, 1 162 200 FCFA encaissés">
+        <div class="mk-dash-head">
+          <b>Cette semaine</b>
+          <span class="mk-tag">Exemple</span>
+        </div>
+        <div class="mk-funnel">
+          <div class="mk-funnel-row"><span>Commandes</span><span class="mk-bar"><i style="width:100%"></i></span><em>128</em></div>
+          <div class="mk-funnel-row"><span>Confirmées</span><span class="mk-bar"><i style="width:74%"></i></span><em>95</em></div>
+          <div class="mk-funnel-row"><span>Livrées</span><span class="mk-bar"><i style="width:61%"></i></span><em>78</em></div>
+        </div>
+        <div class="mk-kpis">
+          <div class="mk-kpi"><span>Taux de confirmation</span><b>74 %</b></div>
+          <div class="mk-kpi"><span>Taux de livraison</span><b>82 %</b></div>
+          <div class="mk-kpi"><span>Injoignables à rappeler</span><b>17</b></div>
+          <div class="mk-kpi mk-kpi-green"><span>Encaissé</span><b>1 162 200 F</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Armes marketing ─── -->
+  <section class="mk-section mk-section-dark">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">Les armes marketing</span>
+      <h2 class="mk-h2">Tout ce qui fait commander. Déjà intégré, sans appli à payer en plus.</h2>
+      <p class="mk-lead">Chaque levier qui transforme un visiteur de ta pub en commande est là, prêt à activer en un clic sur chaque produit.</p>
+      <div class="mk-weapons">
+        {
+          weapons.map((w) => (
+            <div class="mk-weapon">
+              <span class="mk-weapon-ico" aria-hidden="true">
+                {w.ico}
+              </span>
+              <div>
+                <h3>{w.title}</h3>
+                <p>{w.text}</p>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+      <div class="mk-hero-cta">
+        <a class="mk-btn mk-btn-amber" href={signup}>Activer tout ça sur ma boutique</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Fonctionnalités ─── -->
+  <section class="mk-section mk-section-alt" id="fonctions">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">Fonctionnalités</span>
+      <h2 class="mk-h2">Tout ce qu’il faut pour vendre à la livraison. Rien de superflu.</h2>
+      <div class="mk-features">
+        {
+          features.map((f) => (
+            <div class="mk-feature">
+              <span class="mk-feature-ico" aria-hidden="true">
+                {f.ico}
+              </span>
+              <h3>{f.title}</h3>
+              <p>{f.text}</p>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Comparatif ─── -->
+  <section class="mk-section">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">Pourquoi Zuri</span>
+      <h2 class="mk-h2">Pensé ici, pour la façon dont on vend ici.</h2>
+      <p class="mk-lead">Les grands outils sont faits pour l’Europe ou le Maghreb. Les petits créateurs de pages s’arrêtent à la page. Zuri couvre tout le chemin, en FCFA.</p>
+      <div class="mk-table-wrap">
+        <table class="mk-table">
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              <th scope="col" class="mk-col-zuri">Zuri</th>
+              <th scope="col">Grands outils étrangers</th>
+              <th scope="col">Créateurs de pages</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              compare.map((r) => (
+                <tr>
+                  <th scope="row">{r.label}</th>
+                  <td class="mk-col-zuri">
+                    <span class="mk-yes">✓</span> {r.zuri}
+                  </td>
+                  <td class={`mk-${r.foreign[1]}`}>{r.foreign[0]}</td>
+                  <td class={`mk-${r.builders[1]}`}>{r.builders[0]}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="mk-note">Comparaison générale des types d’outils du marché, à date. Les offres de chaque outil évoluent : vérifie toujours leurs conditions.</p>
+    </div>
+  </section>
+
+  <!-- ─── Pour qui ─── -->
+  <section class="mk-section mk-section-alt">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">Pour qui</span>
+      <h2 class="mk-h2">Que tu débutes ou que tu aies déjà une équipe.</h2>
+      <div class="mk-who">
+        {
+          who.map((w) => (
+            <div class="mk-who-card">
+              <h3>{w.title}</h3>
+              <p>{w.text}</p>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Tarif ─── -->
+  <section class="mk-section" id="tarif">
+    <div class="mk-wrap mk-center">
+      <span class="mk-eyebrow">Tarif</span>
+      <h2 class="mk-h2">Gratuit pendant le lancement. Vraiment.</h2>
+      <p class="mk-lead">Pas de carte, pas d’engagement, pas de commission sur tes ventes. Teste sur tes vraies pubs.</p>
+    </div>
+    <div class="mk-wrap">
+      <div class="mk-price">
+        <span class="mk-eyebrow">Offre de lancement</span>
+        <div class="mk-price-amount"><b>0 F</b><span>par mois</span></div>
+        <ul>
+          <li>Commandes illimitées, aucune commission</li>
+          <li>Pages de vente rapides et formulaire sur mesure</li>
+          <li>Équipe de closers et suivi des livraisons</li>
+          <li>Paiement à la livraison et Mobile Money</li>
+          <li>Pixel Facebook, API Conversions et TikTok</li>
+          <li>Notifications avec son d’encaissement</li>
+          <li>Import par lien et par fichier</li>
+          <li>Plusieurs boutiques</li>
+        </ul>
+        <a class="mk-btn mk-btn-amber" href={signup}>Créer ma boutique gratuitement</a>
+        <p class="mk-price-note">Quand des offres payantes arriveront, tu seras prévenu à l’avance.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FAQ ─── -->
+  <section class="mk-section mk-section-alt" id="faq">
+    <div class="mk-wrap mk-center">
+      <span class="mk-eyebrow">Questions fréquentes</span>
+      <h2 class="mk-h2">Tu te poses sûrement ces questions.</h2>
+    </div>
+    <div class="mk-wrap">
+      <div class="mk-faq">
+        {
+          faqs.map((f) => (
+            <details>
+              <summary>{f.q}</summary>
+              <p>{f.a}</p>
+            </details>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── CTA final ─── -->
+  <section class="mk-section mk-section-dark mk-final">
+    <div class="mk-wrap">
+      <h2 class="mk-h2">Ta prochaine pub mérite une boutique qui encaisse.</h2>
+      <p class="mk-lead">Crée ta boutique ce soir, mets le lien dans ta pub demain matin.</p>
+      <div class="mk-hero-cta">
+        <a class="mk-btn mk-btn-amber" href={signup}>Créer ma boutique gratuitement</a>
+      </div>
+      <ul class="mk-reassure">
+        <li>Gratuit pendant le lancement</li>
+        <li>Sans carte bancaire</li>
+        <li>En français, en FCFA</li>
+      </ul>
+    </div>
+  </section>
+</MarketingLayout>
