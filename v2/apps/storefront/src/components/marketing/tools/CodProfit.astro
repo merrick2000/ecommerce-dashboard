@@ -1,0 +1,81 @@
+---
+/** Calculateur de marge en paiement à la livraison (tout est calculé dans le navigateur). */
+import type { Lang } from '../../../content/seo'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const L = {
+  fr: { price: 'Prix de vente (par commande)', cost: 'Coût du produit', ship: 'Frais de livraison payés par toi (par colis livré)', ret: 'Coût d’un colis refusé (aller et retour)', ads: 'Budget publicitaire', orders: 'Commandes reçues', conf: 'Taux de confirmation (%)', deliv: 'Taux de livraison des commandes confirmées (%)', r_conf: 'Commandes confirmées', r_deliv: 'Commandes livrées', r_cash: 'Chiffre encaissé', r_costs: 'Coûts totaux', r_profit: 'Bénéfice net', r_unit: 'Bénéfice par commande livrée', r_cpa: 'Coût pub par commande livrée', r_max: 'Coût pub maximum par commande reçue pour rester rentable', results: 'Résultat', note: 'Calcul indicatif dans ta devise. Rien n’est envoyé.' },
+  en: { price: 'Selling price (per order)', cost: 'Product cost', ship: 'Delivery fee you pay (per delivered parcel)', ret: 'Cost of a refused parcel (both trips)', ads: 'Ad spend', orders: 'Orders received', conf: 'Confirmation rate (%)', deliv: 'Delivery rate of confirmed orders (%)', r_conf: 'Confirmed orders', r_deliv: 'Delivered orders', r_cash: 'Cash collected', r_costs: 'Total costs', r_profit: 'Net profit', r_unit: 'Profit per delivered order', r_cpa: 'Ad cost per delivered order', r_max: 'Maximum ad cost per order received to break even', results: 'Result', note: 'Estimate in your currency. Nothing is sent.' },
+}[lang]
+const fields: [string, string, number][] = [
+  ['price', L.price, 15000],
+  ['cost', L.cost, 5000],
+  ['ship', L.ship, 1500],
+  ['ret', L.ret, 2000],
+  ['ads', L.ads, 150000],
+  ['orders', L.orders, 100],
+  ['conf', L.conf, 70],
+  ['deliv', L.deliv, 80],
+]
+---
+
+<div class="mk-tool" data-tool="cod-profit" data-locale={lang === 'fr' ? 'fr-FR' : 'en-US'}>
+  <form class="mk-tool-form" onsubmit="return false">
+    {
+      fields.map(([id, label, def]) => (
+        <label class="mk-field">
+          <span>{label}</span>
+          <input type="number" inputmode="decimal" min="0" step="any" name={id} value={def} />
+        </label>
+      ))
+    }
+  </form>
+  <div class="mk-tool-result" aria-live="polite">
+    <p class="mk-tool-result-title">{L.results}</p>
+    <dl>
+      <dt>{L.r_conf}</dt><dd data-out="conf"></dd>
+      <dt>{L.r_deliv}</dt><dd data-out="deliv"></dd>
+      <dt>{L.r_cash}</dt><dd data-out="cash"></dd>
+      <dt>{L.r_costs}</dt><dd data-out="costs"></dd>
+      <dt>{L.r_cpa}</dt><dd data-out="cpa"></dd>
+      <dt>{L.r_unit}</dt><dd data-out="unit"></dd>
+      <dt class="mk-tool-big">{L.r_profit}</dt><dd class="mk-tool-big" data-out="profit"></dd>
+      <dt>{L.r_max}</dt><dd data-out="max"></dd>
+    </dl>
+    <p class="mk-tool-note">{L.note}</p>
+  </div>
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-tool="cod-profit"]')) {
+    const fmt = new Intl.NumberFormat(root.dataset.locale, { maximumFractionDigits: 0 })
+    const v = (n: string) => Math.max(0, Number((root.querySelector(`[name="${n}"]`) as HTMLInputElement).value) || 0)
+    const out = (k: string, s: string, neg = false) => {
+      const el = root.querySelector<HTMLElement>(`[data-out="${k}"]`)!
+      el.textContent = s
+      el.classList.toggle('mk-neg', neg)
+    }
+    const run = () => {
+      const orders = v('orders')
+      const confirmed = orders * (v('conf') / 100)
+      const delivered = confirmed * (v('deliv') / 100)
+      const refused = confirmed - delivered
+      const cash = delivered * v('price')
+      const costs = delivered * (v('cost') + v('ship')) + refused * v('ret') + v('ads')
+      const profit = cash - costs
+      const unitBeforeAds = delivered > 0 ? (cash - delivered * (v('cost') + v('ship')) - refused * v('ret')) / orders : 0
+      out('conf', fmt.format(confirmed))
+      out('deliv', fmt.format(delivered))
+      out('cash', fmt.format(cash))
+      out('costs', fmt.format(costs))
+      out('cpa', delivered > 0 ? fmt.format(v('ads') / delivered) : '-')
+      out('unit', delivered > 0 ? fmt.format(profit / delivered) : '-', profit < 0)
+      out('profit', fmt.format(profit), profit < 0)
+      out('max', orders > 0 ? fmt.format(Math.max(0, unitBeforeAds)) : '-')
+    }
+    root.addEventListener('input', run)
+    run()
+  }
+</script>

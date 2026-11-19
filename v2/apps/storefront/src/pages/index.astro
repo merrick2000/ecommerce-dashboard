@@ -125,7 +125,7 @@ const jsonLd = [
 ]
 ---
 
-<MarketingLayout title={title} description={description} canonicalPath="/" lang="fr" alternate={{ fr: '/', en: '/en' }} jsonLd={jsonLd}>
+<MarketingLayout title={title} description={description} canonicalPath="/" lang="fr" alternate={{ fr: '/', en: '/en' }} jsonLd={jsonLd} ogImage="/og/fr/hub/home.jpg" ogImageAlt="Zuri : crée ta boutique en ligne gratuitement, paiement à la livraison et Mobile Money">
   <!-- ─── Hero ─── -->
   <section class="mk-hero">
     <div class="mk-wrap mk-hero-grid">
@@ -469,6 +469,7 @@ const jsonLd = [
         {
           featuredGuides.map((g) => (
             <a class="mk-card" href={guidePath(g.slug.fr, 'fr')}>
+              <img class="mk-card-img" src={`/img/guides/${g.slug.fr}.webp`} alt="" width="1280" height="720" loading="lazy" decoding="async" />
               <span class="mk-card-kicker">Guide</span>
               <span class="mk-card-title">{t(g.h1, 'fr')}</span>
               <span class="mk-card-text">{t(g.description, 'fr')}</span>

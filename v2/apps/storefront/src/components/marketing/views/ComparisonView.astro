@@ -4,7 +4,8 @@ import Blocks from '../Blocks.astro'
 import FaqList from '../FaqList.astro'
 import Sources from '../Sources.astro'
 import CtaBand from '../CtaBand.astro'
-import { COMPARISONS, PATHS, comparisonPath, t } from '../../../content/seo'
+import Cover from '../Cover.astro'
+import { COMPARISONS, IMG, OG, PATHS, comparisonPath, t } from '../../../content/seo'
 import type { ComparisonPage, Lang } from '../../../content/seo'
 
 interface Props {
@@ -25,12 +26,15 @@ const jsonLd = [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEnti
   alternate={{ fr: comparisonPath(c.slug, 'fr'), en: comparisonPath(c.slug, 'en') }}
   breadcrumbs={[{ label: L.compare, href: PATHS.comparisons[lang] }, { label: `${c.a} vs ${c.b}` }]}
   jsonLd={jsonLd}
+  ogImage={OG.comparison(c.slug, lang)}
+  ogImageAlt={t(c.h1, lang)}
 >
   <section class="mk-page-hero">
     <div class="mk-wrap mk-narrow">
       <span class="mk-eyebrow">{L.compare}</span>
       <h1 class="mk-h1 mk-h1-page">{t(c.h1, lang)}</h1>
       <p class="mk-hero-sub">{t(c.intro, lang)}</p>
+      <Cover src={IMG.generic('comparatif')} alt={`${c.a} vs ${c.b}`} />
     </div>
   </section>
   <div class="mk-wrap mk-narrow">

@@ -276,7 +276,7 @@ export const RESERVED_SLUGS = [
   'tarifs', 'prix', 'pricing', 'fonctionnalites', 'features', 'alternatives', 'alternative', 'comparatif', 'comparatifs', 'compare', 'vs',
   'guides', 'guide', 'ressources', 'pays', 'outils', 'modeles', 'exemples', 'metiers', 'cas', 'temoignages', 'partenaires', 'affiliation',
   'cgu', 'cgv', 'confidentialite', 'mentions-legales', 'legal', 'contact', 'a-propos', 'about', 'presse', 'carrieres', 'sitemap', 'robots',
-  'en', 'fr', 'countries', 'privacy', 'terms',
+  'en', 'fr', 'countries', 'privacy', 'terms', 'tools', 'img', 'og', 'images',
 ]
 const slug = z
   .string()

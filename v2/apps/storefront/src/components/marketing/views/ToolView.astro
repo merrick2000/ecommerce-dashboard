@@ -1,0 +1,89 @@
+---
+import MarketingLayout from '../MarketingLayout.astro'
+import FaqList from '../FaqList.astro'
+import CtaBand from '../CtaBand.astro'
+import CodProfit from '../tools/CodProfit.astro'
+import ShopifyCost from '../tools/ShopifyCost.astro'
+import WhatsappMessage from '../tools/WhatsappMessage.astro'
+import BundlePrice from '../tools/BundlePrice.astro'
+import { GUIDES, IMG, PATHS, guidePath, t } from '../../../content/seo'
+import { TOOLS, type ToolPage } from '../../../content/seo/tools'
+import type { Lang } from '../../../content/seo'
+
+interface Props {
+  tool: ToolPage
+  lang: Lang
+}
+const { tool, lang } = Astro.props
+const L = { fr: { tools: 'Outils gratuits', how: 'Comment l’utiliser', guides: 'Guides liés', others: 'Autres outils' }, en: { tools: 'Free tools', how: 'How to use it', guides: 'Related guides', others: 'Other tools' } }[lang]
+const path = (s: string, l: Lang) => `${PATHS.tools[l]}/${s}`
+const related = tool.related.map((s) => GUIDES.find((g) => g.slug.fr === s)).filter((g) => !!g)
+const jsonLd = [
+  { '@context': 'https://schema.org', '@type': 'WebApplication', name: t(tool.h1, lang), description: t(tool.description, lang), applicationCategory: 'BusinessApplication', operatingSystem: 'Web', inLanguage: lang, offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' } },
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: tool.faqs.map((f) => ({ '@type': 'Question', name: t(f.q, lang), acceptedAnswer: { '@type': 'Answer', text: t(f.a, lang) } })) },
+]
+---
+
+<MarketingLayout
+  title={t(tool.title, lang)}
+  description={t(tool.description, lang)}
+  canonicalPath={path(tool.slug[lang], lang)}
+  lang={lang}
+  alternate={{ fr: path(tool.slug.fr, 'fr'), en: path(tool.slug.en, 'en') }}
+  breadcrumbs={[{ label: L.tools, href: PATHS.tools[lang] }, { label: t(tool.h1, lang) }]}
+  jsonLd={jsonLd}
+  ogImage={`/og/${lang}/outils/${tool.id}.jpg`}
+  ogImageAlt={t(tool.h1, lang)}
+>
+  <section class="mk-page-hero">
+    <div class="mk-wrap mk-narrow">
+      <span class="mk-eyebrow">{L.tools}</span>
+      <h1 class="mk-h1 mk-h1-page">{t(tool.h1, lang)}</h1>
+      <p class="mk-hero-sub">{t(tool.intro, lang)}</p>
+    </div>
+  </section>
+  <div class="mk-wrap">
+    {tool.id === 'cod-profit' && <CodProfit lang={lang} />}
+    {tool.id === 'shopify-cost' && <ShopifyCost lang={lang} />}
+    {tool.id === 'whatsapp-message' && <WhatsappMessage lang={lang} />}
+    {tool.id === 'bundle-price' && <BundlePrice lang={lang} />}
+  </div>
+  <div class="mk-wrap mk-narrow">
+    <div class="mk-prose">
+      <h2>{L.how}</h2>
+      <ol>
+        {tool.how.map((s) => (
+          <li>{t(s, lang)}</li>
+        ))}
+      </ol>
+    </div>
+    <FaqList faqs={tool.faqs} lang={lang} />
+    {
+      related.length > 0 && (
+        <section class="mk-block">
+          <h2 class="mk-h2-sm">{L.guides}</h2>
+          <div class="mk-cards">
+            {related.map((g) => (
+              <a class="mk-card" href={guidePath(g!.slug[lang], lang)}>
+                <img class="mk-card-img" src={IMG.guide(g!.slug.fr)} alt="" width="1280" height="720" loading="lazy" decoding="async" />
+                <span class="mk-card-kicker">Guide</span>
+                <span class="mk-card-title">{t(g!.h1, lang)}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )
+    }
+    <section class="mk-block">
+      <h2 class="mk-h2-sm">{L.others}</h2>
+      <div class="mk-chips">
+        {TOOLS.filter((x) => x.id !== tool.id).map((x) => (
+          <a class="mk-chip" href={path(x.slug[lang], lang)}>
+            {t(x.h1, lang)}
+          </a>
+        ))}
+      </div>
+    </section>
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

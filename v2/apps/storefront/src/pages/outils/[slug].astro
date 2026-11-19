@@ -1,0 +1,9 @@
+---
+import ToolView from '../../components/marketing/views/ToolView.astro'
+import { findTool } from '../../content/seo/tools'
+export const prerender = false
+const tool = findTool(Astro.params.slug ?? '', 'fr')
+if (!tool) return Astro.rewrite('/404')
+---
+
+<ToolView tool={tool} lang="fr" />

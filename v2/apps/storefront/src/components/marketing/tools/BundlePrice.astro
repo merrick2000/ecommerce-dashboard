@@ -1,0 +1,73 @@
+---
+/** Calculateur de prix de packs (2 et 3 unités) avec marge restante. */
+import type { Lang } from '../../../content/seo'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const L = {
+  fr: { cost: 'Coût d’une unité', price: 'Prix de vente à l’unité', ship: 'Frais de livraison payés par toi (par commande)', d2: 'Réduction sur le pack de 2 (%)', d3: 'Réduction sur le pack de 3 (%)', qty: 'Quantité', packPrice: 'Prix du pack', saving: 'Économie client', margin: 'Ta marge', unit: 'Prix par unité', note: 'Prix arrondis à la centaine. Marge avant publicité, par commande livrée.' },
+  en: { cost: 'Cost of one unit', price: 'Single unit price', ship: 'Delivery fee you pay (per order)', d2: 'Discount on 2-pack (%)', d3: 'Discount on 3-pack (%)', qty: 'Quantity', packPrice: 'Bundle price', saving: 'Customer saving', margin: 'Your margin', unit: 'Price per unit', note: 'Prices rounded to the nearest 100. Margin before ads, per delivered order.' },
+}[lang]
+const fields: [string, string, number][] = [
+  ['cost', L.cost, 4000],
+  ['price', L.price, 14900],
+  ['ship', L.ship, 1500],
+  ['d2', L.d2, 15],
+  ['d3', L.d3, 25],
+]
+---
+
+<div class="mk-tool" data-tool="bundle" data-locale={lang === 'fr' ? 'fr-FR' : 'en-US'}>
+  <form class="mk-tool-form" onsubmit="return false">
+    {
+      fields.map(([id, label, def]) => (
+        <label class="mk-field">
+          <span>{label}</span>
+          <input type="number" inputmode="decimal" min="0" step="any" name={id} value={def} />
+        </label>
+      ))
+    }
+  </form>
+  <div class="mk-tool-result" aria-live="polite">
+    <div class="mk-table-wrap">
+      <table class="mk-table mk-table-auto mk-tool-table">
+        <thead>
+          <tr><th>{L.qty}</th><th>{L.packPrice}</th><th>{L.unit}</th><th>{L.saving}</th><th>{L.margin}</th></tr>
+        </thead>
+        <tbody data-out="rows"></tbody>
+      </table>
+    </div>
+    <p class="mk-tool-note">{L.note}</p>
+  </div>
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-tool="bundle"]')) {
+    const fmt = new Intl.NumberFormat(root.dataset.locale, { maximumFractionDigits: 0 })
+    const v = (n: string) => Math.max(0, Number((root.querySelector(`[name="${n}"]`) as HTMLInputElement).value) || 0)
+    const body = root.querySelector<HTMLElement>('[data-out="rows"]')!
+    const run = () => {
+      const rows = [1, 2, 3].map((q) => {
+        const d = q === 1 ? 0 : q === 2 ? v('d2') : v('d3')
+        const pack = Math.round((v('price') * q * (1 - Math.min(d, 90) / 100)) / 100) * 100
+        const margin = pack - v('cost') * q - v('ship')
+        return { q, pack, unit: pack / q, saving: v('price') * q - pack, margin }
+      })
+      body.replaceChildren(
+        ...rows.map((r) => {
+          const tr = document.createElement('tr')
+          for (const [i, val] of [String(r.q), fmt.format(r.pack), fmt.format(r.unit), fmt.format(r.saving), fmt.format(r.margin)].entries()) {
+            const cell = document.createElement(i === 0 ? 'th' : 'td')
+            cell.textContent = val
+            if (i === 4 && r.margin < 0) cell.className = 'mk-neg'
+            tr.append(cell)
+          }
+          return tr
+        }),
+      )
+    }
+    root.addEventListener('input', run)
+    run()
+  }
+</script>

@@ -1,0 +1,94 @@
+---
+/** Générateur de messages WhatsApp (confirmation, injoignable, rappel), créés dans le navigateur. */
+import type { Lang } from '../../../content/seo'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const L = {
+  fr: { name: 'Prénom du client', product: 'Produit', price: 'Prix (avec la devise)', city: 'Ville ou quartier de livraison', day: 'Jour de livraison', store: 'Nom de ta boutique', phone: 'Numéro WhatsApp du client (facultatif, format international)', template: 'Modèle', t_confirm: 'Confirmation de commande', t_unreach: 'Client injoignable', t_remind: 'Rappel avant livraison', copy: 'Copier le message', copied: 'Copié', open: 'Ouvrir WhatsApp', defaults: { name: 'Aïcha', product: 'Montre connectée X1', price: '14 900 FCFA', city: 'Cocody', day: 'demain matin', store: 'Ma Boutique' } },
+  en: { name: 'Customer first name', product: 'Product', price: 'Price (with currency)', city: 'Delivery city or area', day: 'Delivery day', store: 'Your store name', phone: 'Customer WhatsApp number (optional, international format)', template: 'Template', t_confirm: 'Order confirmation', t_unreach: 'Unreachable customer', t_remind: 'Reminder before delivery', copy: 'Copy message', copied: 'Copied', open: 'Open WhatsApp', defaults: { name: 'Amina', product: 'Smart watch X1', price: '₦25,000', city: 'Lekki', day: 'tomorrow morning', store: 'My Store' } },
+}[lang]
+const T = {
+  fr: {
+    confirm: 'Bonjour {name}, ici {store}. Merci pour votre commande : {product} à {price}, paiement à la livraison. Pouvez-vous confirmer la livraison à {city}, {day} ? Répondez simplement OUI pour confirmer. Merci !',
+    unreach: 'Bonjour {name}, ici {store}. Nous avons essayé de vous appeler au sujet de votre commande ({product}, {price}). Merci de nous répondre ici pour confirmer la livraison à {city}. Votre commande est réservée pour vous.',
+    remind: 'Bonjour {name}, votre commande {product} sera livrée {day} à {city}. Montant à préparer : {price}. Le livreur vous appellera avant d’arriver. Merci pour votre confiance, {store}.',
+  },
+  en: {
+    confirm: 'Hello {name}, this is {store}. Thank you for your order: {product} at {price}, pay on delivery. Can you confirm delivery to {city}, {day}? Just reply YES to confirm. Thank you!',
+    unreach: 'Hello {name}, this is {store}. We tried to call you about your order ({product}, {price}). Please reply here to confirm delivery to {city}. Your order is reserved for you.',
+    remind: 'Hello {name}, your order {product} will be delivered {day} in {city}. Amount to prepare: {price}. The rider will call you before arriving. Thank you for your trust, {store}.',
+  },
+}[lang]
+const fields: [string, string, string][] = [
+  ['name', L.name, L.defaults.name],
+  ['product', L.product, L.defaults.product],
+  ['price', L.price, L.defaults.price],
+  ['city', L.city, L.defaults.city],
+  ['day', L.day, L.defaults.day],
+  ['store', L.store, L.defaults.store],
+]
+---
+
+<div class="mk-tool" data-tool="whatsapp" data-templates={JSON.stringify(T)} data-copied={L.copied}>
+  <form class="mk-tool-form" onsubmit="return false">
+    <label class="mk-field">
+      <span>{L.template}</span>
+      <select name="template">
+        <option value="confirm">{L.t_confirm}</option>
+        <option value="unreach">{L.t_unreach}</option>
+        <option value="remind">{L.t_remind}</option>
+      </select>
+    </label>
+    {
+      fields.map(([id, label, def]) => (
+        <label class="mk-field">
+          <span>{label}</span>
+          <input type="text" name={id} value={def} maxlength="80" />
+        </label>
+      ))
+    }
+    <label class="mk-field">
+      <span>{L.phone}</span>
+      <input type="tel" name="phone" inputmode="tel" placeholder="2250700000000" maxlength="20" />
+    </label>
+  </form>
+  <div class="mk-tool-result">
+    <p class="mk-tool-result-title">WhatsApp</p>
+    <p class="mk-wa-bubble" data-out="msg"></p>
+    <div class="mk-tool-actions">
+      <button type="button" class="mk-btn mk-btn-sm" data-act="copy">{L.copy}</button>
+      <a class="mk-btn mk-btn-sm mk-btn-amber" data-act="open" href="https://wa.me/" target="_blank" rel="noopener">{L.open}</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-tool="whatsapp"]')) {
+    const templates = JSON.parse(root.dataset.templates ?? '{}') as Record<string, string>
+    const val = (n: string) => ((root.querySelector(`[name="${n}"]`) as HTMLInputElement).value ?? '').trim()
+    const out = root.querySelector<HTMLElement>('[data-out="msg"]')!
+    const open = root.querySelector<HTMLAnchorElement>('[data-act="open"]')!
+    const run = () => {
+      const msg = (templates[val('template')] ?? '').replace(/\{(\w+)\}/g, (_, k: string) => val(k) || `{${k}}`)
+      out.textContent = msg
+      const phone = val('phone').replace(/\D/g, '')
+      open.href = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
+    }
+    root.addEventListener('input', run)
+    root.addEventListener('change', run)
+    root.querySelector('[data-act="copy"]')!.addEventListener('click', async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement
+      try {
+        await navigator.clipboard.writeText(out.textContent ?? '')
+        const label = btn.textContent
+        btn.textContent = root.dataset.copied ?? 'OK'
+        setTimeout(() => (btn.textContent = label), 1500)
+      } catch {
+        /* presse-papiers indisponible : l'utilisateur peut sélectionner le texte */
+      }
+    })
+    run()
+  }
+</script>

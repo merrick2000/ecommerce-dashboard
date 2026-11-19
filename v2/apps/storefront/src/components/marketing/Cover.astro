@@ -1,0 +1,12 @@
+---
+/** Image de couverture d'une page de contenu : dimensions fixes (pas de décalage), chargement prioritaire. */
+interface Props {
+  src: string
+  alt: string
+}
+const { src, alt } = Astro.props
+---
+
+<figure class="mk-cover">
+  <img src={src} alt={alt} width="1280" height="720" fetchpriority="high" decoding="async" />
+</figure>

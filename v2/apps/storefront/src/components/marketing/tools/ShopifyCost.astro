@@ -1,0 +1,88 @@
+---
+/** Coût mensuel d'une boutique Shopify en COD : abonnement + applis (prix publics relevés en novembre 2026). */
+import type { Lang } from '../../../content/seo'
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const L = {
+  fr: { plan: 'Forfait Shopify', apps: 'Applis nécessaires', rate: 'Taux de change (1 $ en ta devise)', month: 'Par mois', year: 'Par an', zuri: 'Sur Zuri', zuriText: 'Tout est inclus, 0 % de commission, gratuit pendant le lancement.', note: 'Prix publics relevés en novembre 2026 (première offre payante, sans engagement, hors taxes). Vérifie les tarifs actuels sur les fiches officielles.' },
+  en: { plan: 'Shopify plan', apps: 'Apps you need', rate: 'Exchange rate (1 $ in your currency)', month: 'Per month', year: 'Per year', zuri: 'On Zuri', zuriText: 'Everything included, 0% commission, free during launch.', note: 'Public prices checked in November 2026 (first paid plan, no commitment, before tax). Check current prices on the official listings.' },
+}[lang]
+const plans = [
+  { id: 'basic', label: 'Basic', price: 27 },
+  { id: 'grow', label: 'Grow', price: 72 },
+]
+const apps = [
+  { id: 'cod', label: lang === 'fr' ? 'Formulaire COD (EasySell)' : 'COD form (EasySell)', price: 9.95 },
+  { id: 'bundles', label: lang === 'fr' ? 'Packs et offres (Kaching Bundles)' : 'Bundles (Kaching Bundles)', price: 14.99 },
+  { id: 'timer', label: lang === 'fr' ? 'Compte à rebours (Essential Countdown Timer)' : 'Countdown (Essential Countdown Timer)', price: 6.99 },
+  { id: 'popup', label: lang === 'fr' ? 'Popup des ventes (Fomo)' : 'Sales popup (Fomo)', price: 25 },
+  { id: 'reviews', label: lang === 'fr' ? 'Avis clients (Judge.me)' : 'Reviews (Judge.me)', price: 15 },
+  { id: 'wa', label: lang === 'fr' ? 'Bouton WhatsApp (Wapp)' : 'WhatsApp button (Wapp)', price: 3.99 },
+  { id: 'recovery', label: lang === 'fr' ? 'Relance des paniers (appli WhatsApp ou SMS, environ)' : 'Checkout recovery (WhatsApp or SMS app, approx.)', price: 15 },
+  { id: 'pixel', label: lang === 'fr' ? 'Pixel et API Conversions (Trackify)' : 'Pixel and Conversions API (Trackify)', price: 18.99 },
+]
+---
+
+<div class="mk-tool" data-tool="shopify-cost" data-locale={lang === 'fr' ? 'fr-FR' : 'en-US'}>
+  <form class="mk-tool-form" onsubmit="return false">
+    <fieldset class="mk-field-group">
+      <legend>{L.plan}</legend>
+      {
+        plans.map((p, i) => (
+          <label class="mk-check">
+            <input type="radio" name="plan" value={p.price} checked={i === 0} /> {p.label} <em>{p.price} $</em>
+          </label>
+        ))
+      }
+    </fieldset>
+    <fieldset class="mk-field-group">
+      <legend>{L.apps}</legend>
+      {
+        apps.map((a) => (
+          <label class="mk-check">
+            <input type="checkbox" name="app" value={a.price} checked /> {a.label} <em>{a.price} $</em>
+          </label>
+        ))
+      }
+    </fieldset>
+    <label class="mk-field">
+      <span>{L.rate}</span>
+      <input type="number" inputmode="decimal" min="0" step="any" name="rate" value={lang === 'fr' ? 600 : 1} />
+    </label>
+  </form>
+  <div class="mk-tool-result" aria-live="polite">
+    <p class="mk-tool-result-title">Shopify</p>
+    <dl>
+      <dt class="mk-tool-big">{L.month}</dt><dd class="mk-tool-big mk-neg" data-out="month"></dd>
+      <dt>{L.year}</dt><dd class="mk-neg" data-out="year"></dd>
+    </dl>
+    <div class="mk-tool-zuri">
+      <p class="mk-tool-result-title">{L.zuri}</p>
+      <p>{L.zuriText}</p>
+    </div>
+    <p class="mk-tool-note">{L.note}</p>
+  </div>
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-tool="shopify-cost"]')) {
+    const loc = root.dataset.locale
+    const usd = new Intl.NumberFormat(loc, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
+    const num = new Intl.NumberFormat(loc, { maximumFractionDigits: 0 })
+    const run = () => {
+      const plan = Number((root.querySelector('[name="plan"]:checked') as HTMLInputElement)?.value ?? 0)
+      const apps = [...root.querySelectorAll<HTMLInputElement>('[name="app"]:checked')].reduce((s, i) => s + Number(i.value), 0)
+      const rate = Math.max(0, Number((root.querySelector('[name="rate"]') as HTMLInputElement).value) || 0)
+      const m = plan + apps
+      const local = rate && rate !== 1 ? ` (≈ ${num.format(m * rate)})` : ''
+      const localY = rate && rate !== 1 ? ` (≈ ${num.format(m * 12 * rate)})` : ''
+      root.querySelector('[data-out="month"]')!.textContent = usd.format(m) + local
+      root.querySelector('[data-out="year"]')!.textContent = usd.format(m * 12) + localY
+    }
+    root.addEventListener('input', run)
+    root.addEventListener('change', run)
+    run()
+  }
+</script>

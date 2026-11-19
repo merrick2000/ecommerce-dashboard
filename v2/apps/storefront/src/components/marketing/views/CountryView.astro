@@ -4,7 +4,8 @@ import FaqList from '../FaqList.astro'
 import Sources from '../Sources.astro'
 import CtaBand from '../CtaBand.astro'
 import Icon from '../Icon.astro'
-import { COUNTRIES, GUIDES, PATHS, countryPath, guidePath, t } from '../../../content/seo'
+import Cover from '../Cover.astro'
+import { COUNTRIES, GUIDES, IMG, OG, PATHS, countryPath, guidePath, t } from '../../../content/seo'
 import type { CountryPage, Lang } from '../../../content/seo'
 
 interface Props {
@@ -31,12 +32,15 @@ const jsonLd = [
   alternate={{ fr: countryPath(c.slug, 'fr'), en: countryPath(c.slug, 'en') }}
   breadcrumbs={[{ label: L.countries, href: PATHS.countries[lang] }, { label: t(c.name, lang) }]}
   jsonLd={jsonLd}
+  ogImage={OG.country(c.slug, lang)}
+  ogImageAlt={t(c.h1, lang)}
 >
   <section class="mk-page-hero">
     <div class="mk-wrap">
       <span class="mk-eyebrow">{L.countries}</span>
       <h1 class="mk-h1 mk-h1-page">{t(c.h1, lang)}</h1>
       <p class="mk-hero-sub">{t(c.intro, lang)}</p>
+      <Cover src={IMG.country(c.slug)} alt={lang === 'fr' ? `Vente en ligne ${c.inName} : commande et livraison à ${c.cities[0]}` : `Selling online in ${c.name.en}: order and delivery in ${c.cities[0]}`} />
     </div>
   </section>
 

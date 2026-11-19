@@ -3,7 +3,8 @@ import MarketingLayout from '../MarketingLayout.astro'
 import FaqList from '../FaqList.astro'
 import Sources from '../Sources.astro'
 import CtaBand from '../CtaBand.astro'
-import { ALTERNATIVES, PATHS, alternativePath, t } from '../../../content/seo'
+import Cover from '../Cover.astro'
+import { ALTERNATIVES, IMG, OG, PATHS, alternativePath, t } from '../../../content/seo'
 import type { AlternativePage, Lang } from '../../../content/seo'
 
 interface Props {
@@ -27,12 +28,15 @@ const jsonLd = [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEnti
   alternate={{ fr: alternativePath(a.slug, 'fr'), en: alternativePath(a.slug, 'en') }}
   breadcrumbs={[{ label: L.alternatives, href: PATHS.alternatives[lang] }, { label: a.competitor }]}
   jsonLd={jsonLd}
+  ogImage={OG.alternative(a.slug, lang)}
+  ogImageAlt={t(a.h1, lang)}
 >
   <section class="mk-page-hero">
     <div class="mk-wrap mk-narrow">
       <span class="mk-eyebrow">{L.alternatives}</span>
       <h1 class="mk-h1 mk-h1-page">{t(a.h1, lang)}</h1>
       <p class="mk-hero-sub">{t(a.intro, lang)}</p>
+      <Cover src={IMG.generic('alternatives')} alt={lang === 'fr' ? `Comparer ${a.competitor} et Zuri pour vendre en ligne en Afrique` : `Comparing ${a.competitor} and Zuri for selling online in Africa`} />
     </div>
   </section>
   <div class="mk-wrap mk-narrow mk-prose">

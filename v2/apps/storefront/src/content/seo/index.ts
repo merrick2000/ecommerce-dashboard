@@ -17,6 +17,7 @@ export const PATHS = {
   guides: { fr: '/guides', en: '/en/guides' },
   alternatives: { fr: '/alternatives', en: '/en/alternatives' },
   comparisons: { fr: '/comparatif', en: '/en/compare' },
+  tools: { fr: '/outils', en: '/en/tools' },
 } as const
 
 export const countryPath = (slug: string, lang: Lang) => `${PATHS.countries[lang]}/${slug}`
@@ -46,4 +47,18 @@ export const GUIDE_CATEGORY_LABEL: Record<string, L10n> = {
   paiement: { fr: 'Paiement', en: 'Payments' },
   saisonnier: { fr: 'Saisons et fêtes', en: 'Seasons and holidays' },
   produit: { fr: 'Produits', en: 'Products' },
+}
+
+/** Images générées (scripts hors dépôt) : couverture WebP 1280×720 et partage JPEG 1200×630 par langue. */
+export const IMG = {
+  country: (slug: string) => `/img/pays/${slug}.webp`,
+  guide: (frSlug: string) => `/img/guides/${frSlug}.webp`,
+  generic: (key: 'alternatives' | 'comparatif' | 'pays' | 'guides' | 'home' | 'outils') => `/img/generic/${key}.webp`,
+}
+export const OG = {
+  country: (slug: string, lang: Lang) => `/og/${lang}/pays/${slug}.jpg`,
+  guide: (frSlug: string, lang: Lang) => `/og/${lang}/guides/${frSlug}.jpg`,
+  alternative: (slug: string, lang: Lang) => `/og/${lang}/alternatives/${slug}.jpg`,
+  comparison: (slug: string, lang: Lang) => `/og/${lang}/comparatif/${slug}.jpg`,
+  hub: (key: 'pays' | 'guides' | 'alternatives' | 'comparatif' | 'outils' | 'home', lang: Lang) => `/og/${lang}/hub/${key}.jpg`,
 }

@@ -2,7 +2,7 @@
 /** Pages d'accueil des sections SEO : pays, guides, alternatives, comparatifs. */
 import MarketingLayout from '../MarketingLayout.astro'
 import CtaBand from '../CtaBand.astro'
-import { ALTERNATIVES, COMPARISONS, COUNTRIES, GUIDES, GUIDE_CATEGORY_LABEL, PATHS, REGION_LABEL, alternativePath, comparisonPath, countryPath, guidePath, t } from '../../../content/seo'
+import { ALTERNATIVES, COMPARISONS, COUNTRIES, GUIDES, GUIDE_CATEGORY_LABEL, IMG, OG, PATHS, REGION_LABEL, alternativePath, comparisonPath, countryPath, guidePath, t } from '../../../content/seo'
 import type { Lang } from '../../../content/seo'
 
 interface Props {
@@ -30,12 +30,13 @@ const META = {
   },
 }[kind][lang]
 
+const HUB_KEY = ({ countries: 'pays', guides: 'guides', alternatives: 'alternatives', comparisons: 'comparatif' } as const)[kind]
 const regions = [...new Set(COUNTRIES.map((c) => c.region))]
 const categories = [...new Set(GUIDES.map((g) => g.category))]
 const other: Lang = lang === 'fr' ? 'en' : 'fr'
 ---
 
-<MarketingLayout title={META.title} description={META.description} canonicalPath={PATHS[kind][lang]} lang={lang} alternate={{ [lang]: PATHS[kind][lang], [other]: PATHS[kind][other] }} breadcrumbs={[{ label: META.label }]}>
+<MarketingLayout title={META.title} description={META.description} canonicalPath={PATHS[kind][lang]} lang={lang} alternate={{ [lang]: PATHS[kind][lang], [other]: PATHS[kind][other] }} breadcrumbs={[{ label: META.label }]} ogImage={OG.hub(HUB_KEY, lang)} ogImageAlt={META.h1}>
   <section class="mk-page-hero">
     <div class="mk-wrap">
       <span class="mk-eyebrow">{META.label}</span>
@@ -52,6 +53,7 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr'
             <div class="mk-cards">
               {COUNTRIES.filter((c) => c.region === r).map((c) => (
                 <a class="mk-card" href={countryPath(c.slug, lang)}>
+                  <img class="mk-card-img" src={IMG.country(c.slug)} alt="" width="1280" height="720" loading="lazy" decoding="async" />
                   <span class="mk-card-kicker">{c.currency.code}</span>
                   <span class="mk-card-title">{t(c.name, lang)}</span>
                   <span class="mk-card-text">{c.mobileMoney.slice(0, 3).join(', ') || c.cities.slice(0, 3).join(', ')}</span>
@@ -69,6 +71,7 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr'
             <div class="mk-cards">
               {GUIDES.filter((g) => g.category === cat).map((g) => (
                 <a class="mk-card" href={guidePath(g.slug[lang], lang)}>
+                  <img class="mk-card-img" src={IMG.guide(g.slug.fr)} alt="" width="1280" height="720" loading="lazy" decoding="async" />
                   <span class="mk-card-kicker">{g.readingMinutes} min</span>
                   <span class="mk-card-title">{t(g.h1, lang)}</span>
                   <span class="mk-card-text">{t(g.description, lang)}</span>

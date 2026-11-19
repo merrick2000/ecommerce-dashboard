@@ -2,6 +2,7 @@
 import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
 import { ALTERNATIVES, COMPARISONS, COUNTRIES, GUIDES, PATHS, alternativePath, comparisonPath, countryPath, guidePath } from '../content/seo'
+import { TOOLS } from '../content/seo/tools'
 
 export const prerender = false
 
@@ -13,6 +14,8 @@ export const GET: APIRoute = () => {
     { fr: PATHS.guides.fr, en: PATHS.guides.en, priority: '0.8' },
     { fr: PATHS.alternatives.fr, en: PATHS.alternatives.en, priority: '0.8' },
     { fr: PATHS.comparisons.fr, en: PATHS.comparisons.en, priority: '0.7' },
+    { fr: PATHS.tools.fr, en: PATHS.tools.en, priority: '0.8' },
+    ...TOOLS.map((x) => ({ fr: `${PATHS.tools.fr}/${x.slug.fr}`, en: `${PATHS.tools.en}/${x.slug.en}`, priority: '0.8' })),
     ...COUNTRIES.map((c) => ({ fr: countryPath(c.slug, 'fr'), en: countryPath(c.slug, 'en'), priority: '0.7' })),
     ...GUIDES.map((g) => ({ fr: guidePath(g.slug.fr, 'fr'), en: guidePath(g.slug.en, 'en'), priority: '0.7' })),
     ...ALTERNATIVES.map((a) => ({ fr: alternativePath(a.slug, 'fr'), en: alternativePath(a.slug, 'en'), priority: '0.7' })),

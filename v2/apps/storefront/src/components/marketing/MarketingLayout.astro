@@ -23,10 +23,12 @@ interface Props {
   /** Données structurées schema.org (une ou plusieurs). */
   jsonLd?: Record<string, unknown>[]
   breadcrumbs?: Crumb[]
+  /** Chemin de l'image de partage 1200×630 (JPEG). */
   ogImage?: string
+  ogImageAlt?: string
 }
 
-const { title, description, canonicalPath, lang = 'fr', alternate = {}, jsonLd = [], breadcrumbs = [], ogImage } = Astro.props
+const { title, description, canonicalPath, lang = 'fr', alternate = {}, jsonLd = [], breadcrumbs = [], ogImage, ogImageAlt } = Astro.props
 const base = `https://${env.PLATFORM_HOST && env.PLATFORM_HOST !== 'localhost' ? env.PLATFORM_HOST : 'zurisell.store'}`
 const abs = (p: string) => new URL(p, base).toString()
 const canonical = abs(canonicalPath)
@@ -38,8 +40,8 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr'
 const otherPath = alternate[other] ?? PATHS.home[other]
 
 const T = {
-  fr: { how: 'Comment ça marche', features: 'Fonctionnalités', pricing: 'Tarif', faq: 'Questions', login: 'Se connecter', signup: 'Créer ma boutique', skip: 'Aller au contenu', tagline: 'La boutique en ligne pensée pour le paiement à la livraison et le Mobile Money, en Afrique.', product: 'Produit', resources: 'Ressources', countries: 'Vendre par pays', guides: 'Guides', alternatives: 'Alternatives', compare: 'Comparatifs', account: 'Compte', popular: 'Guides populaires', bottom: 'Fait pour les vendeurs d’Afrique.', home: 'Accueil', langLabel: 'English', allCountries: 'Tous les pays' },
-  en: { how: 'How it works', features: 'Features', pricing: 'Pricing', faq: 'FAQ', login: 'Log in', signup: 'Create my store', skip: 'Skip to content', tagline: 'The online store built for cash on delivery and Mobile Money, in Africa.', product: 'Product', resources: 'Resources', countries: 'Sell by country', guides: 'Guides', alternatives: 'Alternatives', compare: 'Comparisons', account: 'Account', popular: 'Popular guides', bottom: 'Built for sellers across Africa.', home: 'Home', langLabel: 'Français', allCountries: 'All countries' },
+  fr: { how: 'Comment ça marche', features: 'Fonctionnalités', pricing: 'Tarif', faq: 'Questions', login: 'Se connecter', signup: 'Créer ma boutique', skip: 'Aller au contenu', tagline: 'La boutique en ligne pensée pour le paiement à la livraison et le Mobile Money, en Afrique.', product: 'Produit', resources: 'Ressources', countries: 'Vendre par pays', guides: 'Guides', tools: 'Outils gratuits', alternatives: 'Alternatives', compare: 'Comparatifs', account: 'Compte', popular: 'Guides populaires', bottom: 'Fait pour les vendeurs d’Afrique.', home: 'Accueil', langLabel: 'English', allCountries: 'Tous les pays' },
+  en: { how: 'How it works', features: 'Features', pricing: 'Pricing', faq: 'FAQ', login: 'Log in', signup: 'Create my store', skip: 'Skip to content', tagline: 'The online store built for cash on delivery and Mobile Money, in Africa.', product: 'Product', resources: 'Resources', countries: 'Sell by country', guides: 'Guides', tools: 'Free tools', alternatives: 'Alternatives', compare: 'Comparisons', account: 'Account', popular: 'Popular guides', bottom: 'Built for sellers across Africa.', home: 'Home', langLabel: 'Français', allCountries: 'All countries' },
 }[lang]
 
 // Pied de page : liens internes vers les pages les plus utiles (maillage SEO).
@@ -80,8 +82,23 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    {ogImage && <meta property="og:image" content={ogImage} />}
+    {
+      ogImage && (
+        <>
+          <meta property="og:image" content={abs(ogImage)} />
+          <meta property="og:image:secure_url" content={abs(ogImage)} />
+          <meta property="og:image:type" content="image/jpeg" />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:image:alt" content={ogImageAlt ?? title} />
+          <meta name="twitter:image" content={abs(ogImage)} />
+          <meta name="twitter:image:alt" content={ogImageAlt ?? title} />
+        </>
+      )
+    }
     <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23f59e0b'/%3E%3Cpath d='M10.5 10.5h11l-11 11h11' fill='none' stroke='%231c1917' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
     {[...jsonLd, ...crumbsLd].map((data) => <script type="application/ld+json" set:html={JSON.stringify(data)} />)}
   </head>
@@ -99,7 +116,7 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
           <a href={`${home === '/' ? '' : home}/#comment`}>{T.how}</a>
           <a href={PATHS.guides[lang]}>{T.guides}</a>
           <a href={PATHS.countries[lang]}>{T.countries}</a>
-          <a href={`${home === '/' ? '' : home}/#tarif`}>{T.pricing}</a>
+          <a href={PATHS.tools[lang]}>{T.tools}</a>
         </nav>
         <div class="mk-header-cta">
           <a class="mk-link" href={otherPath} hreflang={other} lang={other}>{T.langLabel}</a>
@@ -154,6 +171,7 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
           <a href={PATHS.countries[lang]}>{T.countries}</a>
           <a href={PATHS.alternatives[lang]}>{T.alternatives}</a>
           <a href={PATHS.comparisons[lang]}>{T.compare}</a>
+          <a href={PATHS.tools[lang]}>{T.tools}</a>
         </nav>
         <nav aria-label={T.countries}>
           <p class="mk-footer-title">{T.countries}</p>

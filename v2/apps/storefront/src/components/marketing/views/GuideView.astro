@@ -4,7 +4,9 @@ import Blocks from '../Blocks.astro'
 import FaqList from '../FaqList.astro'
 import Sources from '../Sources.astro'
 import CtaBand from '../CtaBand.astro'
-import { GUIDES, GUIDE_CATEGORY_LABEL, PATHS, guidePath, t } from '../../../content/seo'
+import Cover from '../Cover.astro'
+import { GUIDES, GUIDE_CATEGORY_LABEL, IMG, OG, PATHS, guidePath, t } from '../../../content/seo'
+import { env } from 'cloudflare:workers'
 import type { GuidePage, Lang } from '../../../content/seo'
 
 interface Props {
@@ -14,8 +16,9 @@ interface Props {
 const { guide: g, lang } = Astro.props
 const L = { fr: { guides: 'Guides', read: 'min de lecture', related: 'À lire aussi' }, en: { guides: 'Guides', read: 'min read', related: 'Read next' } }[lang]
 const related = g.related.map((s) => GUIDES.find((x) => x.slug.fr === s)).filter((x): x is GuidePage => !!x)
+const site = `https://${env.PLATFORM_HOST && env.PLATFORM_HOST !== 'localhost' ? env.PLATFORM_HOST : 'zurisell.store'}`
 const jsonLd = [
-  { '@context': 'https://schema.org', '@type': 'Article', headline: t(g.h1, lang), description: t(g.description, lang), inLanguage: lang, author: { '@type': 'Organization', name: 'Zuri' }, publisher: { '@type': 'Organization', name: 'Zuri' } },
+  { '@context': 'https://schema.org', '@type': 'Article', headline: t(g.h1, lang), description: t(g.description, lang), inLanguage: lang, image: [`${site}${OG.guide(g.slug.fr, lang)}`, `${site}${IMG.guide(g.slug.fr)}`], author: { '@type': 'Organization', name: 'Zuri' }, publisher: { '@type': 'Organization', name: 'Zuri' } },
   ...(g.faqs.length ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: g.faqs.map((f) => ({ '@type': 'Question', name: t(f.q, lang), acceptedAnswer: { '@type': 'Answer', text: t(f.a, lang) } })) }] : []),
 ]
 ---
@@ -28,12 +31,15 @@ const jsonLd = [
   alternate={{ fr: guidePath(g.slug.fr, 'fr'), en: guidePath(g.slug.en, 'en') }}
   breadcrumbs={[{ label: L.guides, href: PATHS.guides[lang] }, { label: t(g.h1, lang) }]}
   jsonLd={jsonLd}
+  ogImage={OG.guide(g.slug.fr, lang)}
+  ogImageAlt={t(g.h1, lang)}
 >
   <section class="mk-page-hero">
     <div class="mk-wrap mk-narrow">
       <span class="mk-eyebrow">{t(GUIDE_CATEGORY_LABEL[g.category] ?? { fr: 'Guide', en: 'Guide' }, lang)} · {g.readingMinutes} {L.read}</span>
       <h1 class="mk-h1 mk-h1-page">{t(g.h1, lang)}</h1>
       <p class="mk-hero-sub">{t(g.intro, lang)}</p>
+      <Cover src={IMG.guide(g.slug.fr)} alt={t(g.h1, lang)} />
     </div>
   </section>
   <div class="mk-wrap mk-narrow">
@@ -47,6 +53,7 @@ const jsonLd = [
           <div class="mk-cards">
             {related.map((r) => (
               <a class="mk-card" href={guidePath(r.slug[lang], lang)}>
+                <img class="mk-card-img" src={IMG.guide(r.slug.fr)} alt="" width="1280" height="720" loading="lazy" decoding="async" />
                 <span class="mk-card-kicker">{t(GUIDE_CATEGORY_LABEL[r.category] ?? { fr: 'Guide', en: 'Guide' }, lang)}</span>
                 <span class="mk-card-title">{t(r.h1, lang)}</span>
               </a>

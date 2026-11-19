@@ -1,0 +1,45 @@
+---
+import MarketingLayout from '../MarketingLayout.astro'
+import CtaBand from '../CtaBand.astro'
+import Icon from '../Icon.astro'
+import { PATHS, t } from '../../../content/seo'
+import { TOOLS } from '../../../content/seo/tools'
+import type { Lang } from '../../../content/seo'
+
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const M = {
+  fr: { label: 'Outils gratuits', title: 'Outils gratuits pour vendeurs en ligne : calculateurs COD, WhatsApp | Zuri', description: 'Calculateur de marge en paiement à la livraison, coût réel de Shopify, prix de packs, messages WhatsApp de confirmation : des outils gratuits, sans inscription.', h1: 'Outils gratuits pour vendre en ligne', intro: 'Calculateurs et générateurs pensés pour la vente à la livraison. Gratuits, sans inscription, rien n’est enregistré.' },
+  en: { label: 'Free tools', title: 'Free tools for online sellers: COD calculators, WhatsApp | Zuri', description: 'Cash on delivery profit calculator, real Shopify cost, bundle pricing, WhatsApp confirmation messages: free tools, no sign up.', h1: 'Free tools to sell online', intro: 'Calculators and generators built for cash on delivery selling. Free, no sign up, nothing is saved.' },
+}[lang]
+const ICO = { 'cod-profit': 'chart', 'shopify-cost': 'puzzle', 'whatsapp-message': 'message', 'bundle-price': 'gift' } as const
+const other: Lang = lang === 'fr' ? 'en' : 'fr'
+---
+
+<MarketingLayout title={M.title} description={M.description} canonicalPath={PATHS.tools[lang]} lang={lang} alternate={{ [lang]: PATHS.tools[lang], [other]: PATHS.tools[other] }} breadcrumbs={[{ label: M.label }]} ogImage={`/og/${lang}/hub/outils.jpg`} ogImageAlt={M.h1}>
+  <section class="mk-page-hero">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">{M.label}</span>
+      <h1 class="mk-h1 mk-h1-page">{M.h1}</h1>
+      <p class="mk-hero-sub">{M.intro}</p>
+    </div>
+  </section>
+  <div class="mk-wrap mk-hub">
+    <div class="mk-cards">
+      {
+        TOOLS.map((x) => (
+          <a class="mk-card" href={`${PATHS.tools[lang]}/${x.slug[lang]}`}>
+            <span class="mk-feature-ico" aria-hidden="true">
+              <Icon name={ICO[x.id]} />
+            </span>
+            <span class="mk-card-title">{t(x.h1, lang)}</span>
+            <span class="mk-card-text">{t(x.description, lang)}</span>
+          </a>
+        ))
+      }
+    </div>
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>
