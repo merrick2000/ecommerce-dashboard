@@ -1,0 +1,109 @@
+---
+import MarketingLayout from '../MarketingLayout.astro'
+import FaqList from '../FaqList.astro'
+import Sources from '../Sources.astro'
+import CtaBand from '../CtaBand.astro'
+import Icon from '../Icon.astro'
+import { COUNTRIES, GUIDES, PATHS, countryPath, guidePath, t } from '../../../content/seo'
+import type { CountryPage, Lang } from '../../../content/seo'
+
+interface Props {
+  country: CountryPage
+  lang: Lang
+}
+const { country: c, lang } = Astro.props
+const L = {
+  fr: { countries: 'Vendre par pays', market: `Le e-commerce ${c.inName}`, tips: `Conseils pour vendre ${c.inName}`, ideas: 'Produits souvent demandés en ligne', pay: 'Encaisser tes clients', currency: 'Devise', cities: 'Grandes villes', mm: 'Mobile Money', psps: 'Prestataires intégrés à Zuri', cod: 'Paiement à la livraison', codText: 'Disponible partout : ton client paie en recevant son colis.', none: 'Paiement à la livraison et liens de paiement', others: 'Autres pays', guides: 'Guides utiles' },
+  en: { countries: 'Sell by country', market: `E-commerce in ${c.name.en}`, tips: `Tips to sell in ${c.name.en}`, ideas: 'Products often in demand online', pay: 'Getting paid', currency: 'Currency', cities: 'Main cities', mm: 'Mobile Money', psps: 'Providers built into Zuri', cod: 'Cash on delivery', codText: 'Available everywhere: your customer pays when the parcel arrives.', none: 'Cash on delivery and payment links', others: 'Other countries', guides: 'Useful guides' },
+}[lang]
+const others = COUNTRIES.filter((x) => x.slug !== c.slug && x.region === c.region).slice(0, 8)
+const guides = GUIDES.slice(0, 4)
+const jsonLd = [
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: c.faqs.map((f) => ({ '@type': 'Question', name: t(f.q, lang), acceptedAnswer: { '@type': 'Answer', text: t(f.a, lang) } })) },
+]
+---
+
+<MarketingLayout
+  title={t(c.title, lang)}
+  description={t(c.description, lang)}
+  canonicalPath={countryPath(c.slug, lang)}
+  lang={lang}
+  alternate={{ fr: countryPath(c.slug, 'fr'), en: countryPath(c.slug, 'en') }}
+  breadcrumbs={[{ label: L.countries, href: PATHS.countries[lang] }, { label: t(c.name, lang) }]}
+  jsonLd={jsonLd}
+>
+  <section class="mk-page-hero">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">{L.countries}</span>
+      <h1 class="mk-h1 mk-h1-page">{t(c.h1, lang)}</h1>
+      <p class="mk-hero-sub">{t(c.intro, lang)}</p>
+    </div>
+  </section>
+
+  <div class="mk-wrap mk-page-grid">
+    <article class="mk-prose">
+      <h2>{L.market}</h2>
+      {c.market.map((p) => <p>{t(p, lang)}</p>)}
+      <h2>{L.tips}</h2>
+      <ol>
+        {c.tips.map((tip) => (
+          <li>{t(tip, lang)}</li>
+        ))}
+      </ol>
+      <h2>{L.ideas}</h2>
+      <ul>
+        {c.productIdeas.map((p) => (
+          <li>{t(p, lang)}</li>
+        ))}
+      </ul>
+      <FaqList faqs={c.faqs} lang={lang} />
+      <Sources sources={c.sources} lang={lang} />
+    </article>
+
+    <aside class="mk-side">
+      <div class="mk-side-card">
+        <p class="mk-side-title">{L.pay}</p>
+        <dl class="mk-facts">
+          <dt>{L.currency}</dt>
+          <dd>{c.currency.code} · {t(c.currency.label, lang)}</dd>
+          <dt>{L.cities}</dt>
+          <dd>{c.cities.join(', ')}</dd>
+          <dt>{L.mm}</dt>
+          <dd>{c.mobileMoney.length ? c.mobileMoney.join(', ') : '-'}</dd>
+          <dt>{L.psps}</dt>
+          <dd>{c.zuriPsps.length ? c.zuriPsps.join(', ') : L.none}</dd>
+          <dt>{L.cod}</dt>
+          <dd>{L.codText}</dd>
+        </dl>
+      </div>
+      {
+        others.length > 0 && (
+          <div class="mk-side-card">
+            <p class="mk-side-title">{L.others}</p>
+            <ul class="mk-side-links">
+              {others.map((o) => (
+                <li>
+                  <a href={countryPath(o.slug, lang)}>
+                    <Icon name="globe" size={16} /> {t(o.name, lang)}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+      <div class="mk-side-card">
+        <p class="mk-side-title">{L.guides}</p>
+        <ul class="mk-side-links">
+          {guides.map((g) => (
+            <li>
+              <a href={guidePath(g.slug[lang], lang)}>{t(g.h1, lang)}</a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+  <CtaBand lang={lang} />
+</MarketingLayout>

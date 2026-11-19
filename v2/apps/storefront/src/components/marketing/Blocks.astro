@@ -1,0 +1,77 @@
+---
+/** Rendu des blocs de contenu SEO (texte brut, aucune injection HTML). */
+import { env } from 'cloudflare:workers'
+import { t } from '../../content/seo'
+import type { Block, Lang } from '../../content/seo'
+
+interface Props {
+  blocks: Block[]
+  lang: Lang
+}
+const { blocks, lang } = Astro.props
+const appOrigin = import.meta.env.DEV ? 'http://localhost:5173' : (env.APP_ORIGIN ?? `https://app.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
+const cta = lang === 'fr' ? 'Créer ma boutique gratuitement' : 'Create my store for free'
+---
+
+<div class="mk-prose">
+  {
+    blocks.map((b) => {
+      if (b.type === 'p') return <p>{t(b.text, lang)}</p>
+      if (b.type === 'h2') return <h2>{t(b.text, lang)}</h2>
+      if (b.type === 'h3') return <h3>{t(b.text, lang)}</h3>
+      if (b.type === 'list')
+        return b.ordered ? (
+          <ol>
+            {b.items.map((i) => (
+              <li>{t(i, lang)}</li>
+            ))}
+          </ol>
+        ) : (
+          <ul>
+            {b.items.map((i) => (
+              <li>{t(i, lang)}</li>
+            ))}
+          </ul>
+        )
+      if (b.type === 'tip')
+        return (
+          <aside class="mk-tip">
+            <p class="mk-tip-title">{t(b.title, lang)}</p>
+            <p>{t(b.text, lang)}</p>
+          </aside>
+        )
+      if (b.type === 'table')
+        return (
+          <div class="mk-table-wrap">
+            <table class="mk-table mk-table-auto">
+              <thead>
+                <tr>
+                  {b.rows[0]?.map((c) => (
+                    <th scope="col">{t(c, lang)}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {b.rows.slice(1).map((r) => (
+                  <tr>
+                    {r.map((c, i) => (i === 0 ? <th scope="row">{t(c, lang)}</th> : <td>{t(c, lang)}</td>))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      if (b.type === 'cta')
+        return (
+          <div class="mk-inline-cta">
+            <p class="mk-inline-cta-title">{t(b.title, lang)}</p>
+            <p>{t(b.text, lang)}</p>
+            <a class="mk-btn mk-btn-amber" href={`${appOrigin}/register`}>
+              {cta}
+            </a>
+          </div>
+        )
+      return null
+    })
+  }
+</div>

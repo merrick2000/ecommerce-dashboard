@@ -1,0 +1,9 @@
+---
+import ComparisonView from '../../../components/marketing/views/ComparisonView.astro'
+import { findComparison } from '../../../content/seo'
+export const prerender = false
+const item = findComparison(Astro.params.slug ?? '')
+if (!item) return Astro.rewrite('/404')
+---
+
+<ComparisonView cmp={item} lang="en" />

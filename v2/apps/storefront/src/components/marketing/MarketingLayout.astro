@@ -1,26 +1,60 @@
 ---
 /**
- * Gabarit du site marketing Zuri (accueil, puis pages SEO : alternatives, comparatifs, guides…).
+ * Gabarit du site marketing Zuri (accueil, pays, guides, alternatives, comparatifs), en français et en anglais.
  * Zéro police externe, zéro JavaScript : la page charge instantanément, même en 3G.
  */
 import '../../styles/marketing.css'
 import { env } from 'cloudflare:workers'
+import { COUNTRIES, GUIDES, PATHS, countryPath, guidePath, t } from '../../content/seo'
+import type { Lang } from '../../content/seo'
+
+interface Crumb {
+  label: string
+  href?: string
+}
 
 interface Props {
   title: string
   description: string
   canonicalPath: string
+  lang?: Lang
+  /** Chemin de la même page dans l'autre langue (balises hreflang et lien de langue). */
+  alternate?: { fr?: string; en?: string }
   /** Données structurées schema.org (une ou plusieurs). */
   jsonLd?: Record<string, unknown>[]
+  breadcrumbs?: Crumb[]
   ogImage?: string
 }
 
-const { title, description, canonicalPath, jsonLd = [], ogImage } = Astro.props
+const { title, description, canonicalPath, lang = 'fr', alternate = {}, jsonLd = [], breadcrumbs = [], ogImage } = Astro.props
 const base = `https://${env.PLATFORM_HOST && env.PLATFORM_HOST !== 'localhost' ? env.PLATFORM_HOST : 'zurisell.store'}`
-const canonical = new URL(canonicalPath, base).toString()
+const abs = (p: string) => new URL(p, base).toString()
+const canonical = abs(canonicalPath)
 const appOrigin = import.meta.env.DEV ? 'http://localhost:5173' : (env.APP_ORIGIN ?? `https://app.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
 const signupUrl = `${appOrigin}/register`
 const loginUrl = `${appOrigin}/login`
+const home = PATHS.home[lang]
+const other: Lang = lang === 'fr' ? 'en' : 'fr'
+const otherPath = alternate[other] ?? PATHS.home[other]
+
+const T = {
+  fr: { how: 'Comment ça marche', features: 'Fonctionnalités', pricing: 'Tarif', faq: 'Questions', login: 'Se connecter', signup: 'Créer ma boutique', skip: 'Aller au contenu', tagline: 'La boutique en ligne pensée pour le paiement à la livraison et le Mobile Money, en Afrique.', product: 'Produit', resources: 'Ressources', countries: 'Vendre par pays', guides: 'Guides', alternatives: 'Alternatives', compare: 'Comparatifs', account: 'Compte', popular: 'Guides populaires', bottom: 'Fait pour les vendeurs d’Afrique.', home: 'Accueil', langLabel: 'English', allCountries: 'Tous les pays' },
+  en: { how: 'How it works', features: 'Features', pricing: 'Pricing', faq: 'FAQ', login: 'Log in', signup: 'Create my store', skip: 'Skip to content', tagline: 'The online store built for cash on delivery and Mobile Money, in Africa.', product: 'Product', resources: 'Resources', countries: 'Sell by country', guides: 'Guides', alternatives: 'Alternatives', compare: 'Comparisons', account: 'Account', popular: 'Popular guides', bottom: 'Built for sellers across Africa.', home: 'Home', langLabel: 'Français', allCountries: 'All countries' },
+}[lang]
+
+// Pied de page : liens internes vers les pages les plus utiles (maillage SEO).
+const footerCountries = COUNTRIES.filter((c) => (lang === 'fr' ? c.primaryLang === 'fr' && c.region !== 'diaspora' : c.primaryLang === 'en')).slice(0, 8)
+const footerGuides = GUIDES.slice(0, 6)
+
+const crumbsLd = breadcrumbs.length
+  ? [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [{ label: T.home, href: home }, ...breadcrumbs].map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.label, ...(c.href ? { item: abs(c.href) } : {}) })),
+      },
+    ]
+  : []
 
 // Page marketing : publique, mise en cache en périphérie.
 const cache = 'public, s-maxage=600, stale-while-revalidate=86400'
@@ -29,77 +63,109 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
 ---
 
 <!doctype html>
-<html lang="fr">
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    {alternate.fr && <link rel="alternate" hreflang="fr" href={abs(alternate.fr)} />}
+    {alternate.en && <link rel="alternate" hreflang="en" href={abs(alternate.en)} />}
+    {alternate.fr && <link rel="alternate" hreflang="x-default" href={abs(alternate.fr)} />}
     <meta name="theme-color" content="#f59e0b" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Zuri" />
-    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:locale" content={lang === 'fr' ? 'fr_FR' : 'en_US'} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     {ogImage && <meta property="og:image" content={ogImage} />}
     <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23f59e0b'/%3E%3Cpath d='M10.5 10.5h11l-11 11h11' fill='none' stroke='%231c1917' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
-    {jsonLd.map((data) => <script type="application/ld+json" set:html={JSON.stringify(data)} />)}
+    {[...jsonLd, ...crumbsLd].map((data) => <script type="application/ld+json" set:html={JSON.stringify(data)} />)}
   </head>
   <body>
-    <a class="skip" href="#contenu">Aller au contenu</a>
+    <a class="skip" href="#contenu">{T.skip}</a>
     <header class="mk-header">
       <div class="mk-wrap mk-header-row">
-        <a class="mk-logo" href="/" aria-label="Zuri, accueil">
+        <a class="mk-logo" href={home} aria-label="Zuri">
           <span class="mk-logo-mark" aria-hidden="true">
             <svg viewBox="0 0 32 32" width="28" height="28"><rect width="32" height="32" rx="9" fill="#f59e0b"></rect><path d="M10.5 10.5h11l-11 11h11" fill="none" stroke="#1c1917" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
           </span>
           Zuri
         </a>
-        <nav class="mk-nav" aria-label="Navigation principale">
-          <a href="/#comment">Comment ça marche</a>
-          <a href="/#fonctions">Fonctionnalités</a>
-          <a href="/#tarif">Tarif</a>
-          <a href="/#faq">Questions</a>
+        <nav class="mk-nav" aria-label="Navigation">
+          <a href={`${home === '/' ? '' : home}/#comment`}>{T.how}</a>
+          <a href={PATHS.guides[lang]}>{T.guides}</a>
+          <a href={PATHS.countries[lang]}>{T.countries}</a>
+          <a href={`${home === '/' ? '' : home}/#tarif`}>{T.pricing}</a>
         </nav>
         <div class="mk-header-cta">
-          <a class="mk-link" href={loginUrl}>Se connecter</a>
-          <a class="mk-btn mk-btn-sm" href={signupUrl}>Créer ma boutique</a>
+          <a class="mk-link" href={otherPath} hreflang={other} lang={other}>{T.langLabel}</a>
+          <a class="mk-link" href={loginUrl}>{T.login}</a>
+          <a class="mk-btn mk-btn-sm" href={signupUrl}>{T.signup}</a>
         </div>
       </div>
     </header>
+
+    {
+      breadcrumbs.length > 0 && (
+        <nav class="mk-crumbs mk-wrap" aria-label="Fil d’Ariane">
+          <a href={home}>{T.home}</a>
+          {breadcrumbs.map((c) => (
+            <>
+              <span aria-hidden="true">/</span>
+              {c.href ? <a href={c.href}>{c.label}</a> : <span aria-current="page">{c.label}</span>}
+            </>
+          ))}
+        </nav>
+      )
+    }
 
     <main id="contenu">
       <slot />
     </main>
 
     <footer class="mk-footer">
-      <div class="mk-wrap mk-footer-grid">
+      <div class="mk-wrap mk-footer-grid mk-footer-grid-wide">
         <div>
-          <a class="mk-logo" href="/">
+          <a class="mk-logo" href={home}>
             <span class="mk-logo-mark" aria-hidden="true">
               <svg viewBox="0 0 32 32" width="24" height="24"><rect width="32" height="32" rx="9" fill="#f59e0b"></rect><path d="M10.5 10.5h11l-11 11h11" fill="none" stroke="#1c1917" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
             </span>
             Zuri
           </a>
-          <p class="mk-footer-tag">La boutique en ligne pensée pour le paiement à la livraison et le Mobile Money, en Afrique francophone.</p>
+          <p class="mk-footer-tag">{T.tagline}</p>
+          <p class="mk-footer-tag"><a href={otherPath} hreflang={other} lang={other}>{T.langLabel}</a></p>
         </div>
-        <nav aria-label="Produit">
-          <p class="mk-footer-title">Produit</p>
-          <a href="/#comment">Comment ça marche</a>
-          <a href="/#fonctions">Fonctionnalités</a>
-          <a href="/#tarif">Tarif</a>
-          <a href="/#faq">Questions fréquentes</a>
+        <nav aria-label={T.product}>
+          <p class="mk-footer-title">{T.product}</p>
+          <a href={`${home === '/' ? '' : home}/#comment`}>{T.how}</a>
+          <a href={`${home === '/' ? '' : home}/#fonctions`}>{T.features}</a>
+          <a href={`${home === '/' ? '' : home}/#tarif`}>{T.pricing}</a>
+          <a href={`${home === '/' ? '' : home}/#faq`}>{T.faq}</a>
+          <a href={signupUrl}>{T.signup}</a>
+          <a href={loginUrl}>{T.login}</a>
         </nav>
-        <nav aria-label="Compte">
-          <p class="mk-footer-title">Compte</p>
-          <a href={signupUrl}>Créer ma boutique</a>
-          <a href={loginUrl}>Se connecter</a>
+        <nav aria-label={T.resources}>
+          <p class="mk-footer-title">{T.resources}</p>
+          <a href={PATHS.guides[lang]}>{T.guides}</a>
+          <a href={PATHS.countries[lang]}>{T.countries}</a>
+          <a href={PATHS.alternatives[lang]}>{T.alternatives}</a>
+          <a href={PATHS.comparisons[lang]}>{T.compare}</a>
+        </nav>
+        <nav aria-label={T.countries}>
+          <p class="mk-footer-title">{T.countries}</p>
+          {footerCountries.map((c) => <a href={countryPath(c.slug, lang)}>{t(c.name, lang)}</a>)}
+          <a href={PATHS.countries[lang]}>{T.allCountries}</a>
+        </nav>
+        <nav aria-label={T.popular}>
+          <p class="mk-footer-title">{T.popular}</p>
+          {footerGuides.map((g) => <a href={guidePath(g.slug[lang], lang)}>{t(g.h1, lang)}</a>)}
         </nav>
       </div>
-      <div class="mk-wrap mk-footer-bottom">© {new Date().getFullYear()} Zuri. Fait pour les vendeurs d'Afrique francophone.</div>
+      <div class="mk-wrap mk-footer-bottom">© {new Date().getFullYear()} Zuri. {T.bottom}</div>
     </footer>
   </body>
 </html>

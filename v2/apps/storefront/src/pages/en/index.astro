@@ -1,0 +1,367 @@
+---
+/**
+ * English home page of zurisell.store. Same rules as the French one: no emoji, no long dashes,
+ * sourced numbers only, nothing negative about a competitor that is not documented.
+ */
+import MarketingLayout from '../../components/marketing/MarketingLayout.astro'
+import Icon from '../../components/marketing/Icon.astro'
+import { env } from 'cloudflare:workers'
+import { COUNTRIES, GUIDES, countryPath, guidePath, t } from '../../content/seo'
+
+export const prerender = false
+
+const appOrigin = import.meta.env.DEV ? 'http://localhost:5173' : (env.APP_ORIGIN ?? `https://app.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
+const signup = `${appOrigin}/register`
+
+const title = 'Create a free online store with cash on delivery and Mobile Money | Zuri'
+const description =
+  'Create your online store for free: cash on delivery, Mobile Money, closers, delivery tracking, Facebook pixel and Conversions API. Pages that load fast even on 3G. 0% commission.'
+
+const pains = [
+  { ico: 'phoneOff', title: 'Half of them never pick up.', text: 'Your ads bring orders. But when you call to confirm, the phone just rings.' },
+  { ico: 'packageX', title: 'The parcel comes back.', text: 'Another refusal at the door. You pay the trip out, the trip back, and your stock sits with the rider.' },
+  { ico: 'users', title: 'You cannot see your closers.', text: 'Who called whom? Who confirmed? Two closers call the same customer while another order waits.' },
+  { ico: 'flame', title: 'Your ads burn cash.', text: 'Facebook reports 40 sales, your bank says otherwise. Your pixel does not see the real orders.' },
+  { ico: 'puzzle', title: 'One app for everything.', text: 'COD form, bundles, countdown, reviews, WhatsApp… Each feature is another app billed in dollars.' },
+  { ico: 'card', title: 'No card, no store.', text: 'The big platforms bill in dollars and ask for a credit card. Your customers pay in cash or Mobile Money.' },
+]
+
+const steps = [
+  { title: 'A page that sells', text: 'One light page per product: it opens fast, even on 3G.', points: ['Order in 30 seconds', 'Bundles, strikethrough price, promo codes', 'Buy button that follows the scroll'] },
+  { title: 'No order gets lost', text: 'Every order lands in your dashboard and rings on your phone.', points: ['Notification with a cash sound', 'Telegram or email alerts', 'Abandoned checkout: your closer gets the number'] },
+  { title: 'Your closers confirm', text: 'Whoever is free takes the order. No more double calls.', points: ['New, unreachable, confirmed', 'Each closer sees their products', 'Who did what, and when'] },
+  { title: 'Track it to the money', text: 'Shipped, delivered, returned: you know where every parcel is.', points: ['Real confirmation rate', 'Real delivery rate', 'Cash actually collected'] },
+]
+
+const weapons = [
+  { ico: 'timer', title: 'Countdown timer', text: '“Offer ends in 14:59”. Customers order now, not “tomorrow”.' },
+  { ico: 'boxes', title: 'Limited stock', text: '“Only 7 left” shown on the page, set product by product.' },
+  { ico: 'bell', title: 'Sales popup', text: '“Amina from Lagos just ordered”: proof that others buy, from your real orders.' },
+  { ico: 'gift', title: '“Most popular” bundles', text: '1 for 15,000, 2 for 25,000. Customers take the bundle and your average order grows.' },
+  { ico: 'pointer', title: 'Sticky buy button', text: 'The “Order” button stays under the thumb while customers scroll.' },
+  { ico: 'refresh', title: 'Checkout recovery', text: 'Left a number without finishing? Follow up with a promo code, and your closer is alerted.' },
+]
+
+/** Public prices checked in November 2026 on shopify.com/pricing and the Shopify App Store (first paid plan, no commitment). */
+const shopifyStack = [
+  { need: 'Shopify subscription (Basic)', app: 'Shopify', price: '$27' },
+  { need: 'COD order form', app: 'EasySell', price: '$9.95' },
+  { need: 'Bundles and quantity offers', app: 'Kaching Bundles', price: '$14.99' },
+  { need: 'Countdown timer', app: 'Essential Countdown Timer', price: '$6.99' },
+  { need: 'Sales popup', app: 'Fomo', price: '$25' },
+  { need: 'Customer reviews', app: 'Judge.me', price: '$15' },
+  { need: 'WhatsApp button', app: 'Wapp', price: '$3.99' },
+  { need: 'Abandoned checkout follow-up', app: 'WhatsApp or SMS app', price: '≈ $15' },
+  { need: 'Pixel and Conversions API', app: 'Trackify', price: '$18.99' },
+]
+
+const faqs = [
+  { q: 'Can I create an online store for free?', a: 'Yes. Zuri is free during the launch phase: unlimited orders, every feature included and 0% commission on your sales. When paid plans arrive, you will be told in advance.' },
+  { q: 'Do I need a credit card?', a: 'No. Sign up with your email or your Google account, no card and no dollars needed.' },
+  { q: 'Does Shopify work in Africa?', a: 'You can open a Shopify store from Africa, but the subscription is paid in dollars by card, Shopify Payments is not available in any African country according to Shopify’s official list, and the COD form, bundles, countdown or reviews come from paid apps. Zuri includes all of that, with Mobile Money.' },
+  { q: 'Does Zuri hold my money?', a: 'Never. Mobile Money payments go straight to your own FeexPay, FedaPay, PayDunya or PawaPay account, and cash on delivery is collected by you or your rider. Zuri takes no commission and holds no payment.' },
+  { q: 'Will my page really load fast?', a: 'Yes. A Zuri sales page ships about 23 KB of JavaScript, measured on a live store, against 632 KB for the median mobile page on the web (HTTP Archive 2025).' },
+  { q: 'Can I build my store with AI?', a: 'Yes. Paste a product link (Shopify, WooCommerce and most stores): Zuri imports the name, price, variants, photos and video, then AI suggests a title, a hook, a description, key benefits and an FAQ.' },
+]
+
+const featuredCountries = COUNTRIES.filter((c) => c.primaryLang === 'en').slice(0, 8)
+const featuredGuides = GUIDES.slice(0, 3)
+
+const jsonLd = [
+  { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'Zuri', applicationCategory: 'BusinessApplication', operatingSystem: 'Web', url: 'https://zurisell.store/en', description, inLanguage: 'en', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', description: 'Free during launch, 0% commission' } },
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) },
+]
+---
+
+<MarketingLayout title={title} description={description} canonicalPath="/en" lang="en" alternate={{ fr: '/', en: '/en' }} jsonLd={jsonLd}>
+  <section class="mk-hero">
+    <div class="mk-wrap mk-hero-grid">
+      <div>
+        <div class="mk-pills">
+          <span class="mk-pill"><Icon name="cash" size={16} /> Cash on delivery</span>
+          <span class="mk-pill"><Icon name="phone" size={16} /> Mobile Money</span>
+          <span class="mk-pill mk-pill-green"><Icon name="check" size={16} /> 0% commission</span>
+        </div>
+        <h1 class="mk-h1">Create your online store for free. <mark>Get paid on delivery</mark> and by Mobile Money.</h1>
+        <p class="mk-hero-sub">
+          From your Facebook ad to the cash in your hand: a sales page that opens even on 3G, closers who confirm every order, tracked deliveries. And finally the real number: <strong>what you actually collected</strong>.
+        </p>
+        <div class="mk-hero-cta">
+          <a class="mk-btn mk-btn-amber" href={signup}>Create my store for free</a>
+          <a class="mk-btn-ghost" href="#comment">See how it works</a>
+        </div>
+        <ul class="mk-reassure">
+          <li>Free during launch</li>
+          <li>No credit card</li>
+          <li>Everything included, no apps to pay for</li>
+        </ul>
+      </div>
+      <div class="mk-visual" aria-hidden="true">
+        <div class="mk-phone">
+          <div class="mk-screen">
+            <div class="mk-screen-img"><div class="mk-watch">12:45</div></div>
+            <div class="mk-screen-body">
+              <div class="mk-screen-kicker">Smart watch · Waterproof</div>
+              <div class="mk-screen-title">Track your steps and calls without taking out your phone</div>
+              <div class="mk-screen-price"><strong>₦25,000</strong><s>₦45,000</s></div>
+              <div class="mk-screen-urgency">Only 7 left · offer ends at midnight</div>
+              <div class="mk-screen-field">Full name</div>
+              <div class="mk-screen-field">Phone</div>
+              <div class="mk-screen-btn">Order now, pay on delivery</div>
+            </div>
+          </div>
+        </div>
+        <div class="mk-notif mk-n1">
+          <span class="mk-notif-ico" style="background:#fef3c7;color:#b45309"><Icon name="cart" size={16} /></span>
+          <div><b>New order</b><span>Amina, Lekki · ₦25,000</span></div>
+        </div>
+        <div class="mk-notif mk-n2">
+          <span class="mk-notif-ico" style="background:#dbeafe;color:#1d4ed8"><Icon name="phoneCall" size={16} /></span>
+          <div><b>Confirmed by Tunde</b><span>Delivery tomorrow morning</span></div>
+        </div>
+        <div class="mk-notif mk-n3">
+          <span class="mk-notif-ico" style="background:#dcfce7;color:#15803d"><Icon name="wallet" size={16} /></span>
+          <div><b>Delivered and paid</b><span>+₦25,000 collected</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mk-section mk-section-alt">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">The reality of e-commerce in Africa</span>
+      <h2 class="mk-h2">Selling is not the hard part. Everything after the click is.</h2>
+      <div class="mk-pains">
+        {
+          pains.map((p) => (
+            <div class="mk-pain">
+              <span class="mk-pain-ico" aria-hidden="true">
+                <Icon name={p.ico as never} />
+              </span>
+              <p>
+                <strong>{p.title}</strong> {p.text}
+              </p>
+            </div>
+          ))
+        }
+      </div>
+      <p class="mk-pain-close">Your product is not the problem. The road from ad to cash is. Zuri fixes it end to end.</p>
+    </div>
+  </section>
+
+  <section class="mk-zero">
+    <div class="mk-wrap mk-zero-grid">
+      <div>
+        <div class="mk-zero-big">0%</div>
+        <p class="mk-zero-sub">commission on your sales. And your money never goes through us.</p>
+        <ul class="mk-zero-points">
+          <li><Icon name="wallet" size={18} /> Mobile Money paid straight into your own FeexPay, FedaPay, PayDunya or PawaPay account.</li>
+          <li><Icon name="cash" size={18} /> Cash on delivery is collected by you.</li>
+          <li><Icon name="lock" size={18} /> No funds on hold, no withdrawals to request, no commission.</li>
+        </ul>
+      </div>
+      <div class="mk-zero-calc">
+        <p class="mk-zero-calc-title">Selling 5,000,000 a month?</p>
+        <div class="mk-zero-row"><span>With a tool taking 5%</span><b class="mk-zero-bad">250,000 lost</b></div>
+        <div class="mk-zero-row"><span>With a tool taking 15%</span><b class="mk-zero-bad">750,000 lost</b></div>
+        <div class="mk-zero-row mk-zero-row-zuri"><span>With Zuri</span><b>0 commission</b></div>
+        <p class="mk-zero-note">Example calculation, per month, in your local currency. Some selling platforms take between 5% and 15% of each sale.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mk-section mk-section-dark" id="comment">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">How it works</span>
+      <h2 class="mk-h2">The whole chain in one place. From ad to cash.</h2>
+      <div class="mk-steps">
+        {
+          steps.map((s, i) => (
+            <div class="mk-step">
+              <span class="mk-step-num">{i + 1}</span>
+              <h3>{s.title}</h3>
+              <p>{s.text}</p>
+              <ul>
+                {s.points.map((pt) => (
+                  <li>{pt}</li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="mk-section">
+    <div class="mk-wrap mk-split">
+      <div>
+        <span class="mk-eyebrow">Speed</span>
+        <h2 class="mk-h2">A sales page that loads fast, even on 3G.</h2>
+        <p class="mk-lead">Your customer taps your ad on a phone, sometimes far from big cities, sometimes on their last megabytes. If the page is slow, they leave. Zuri is built for these conditions.</p>
+        <ul class="mk-checks">
+          <li><strong>About 23 KB of JavaScript</strong> on a live Zuri sales page, against 632 KB for the median mobile page.</li>
+          <li><strong>Less data used</strong> by your customer: they order without burning their bundle.</li>
+          <li><strong>Served from Cloudflare’s global network</strong>, close to your customers.</li>
+        </ul>
+      </div>
+      <div class="mk-speed">
+        <div class="mk-speed-stat"><b>53%</b><span>of mobile visits are abandoned if a page takes longer than 3 seconds to load.</span><small>Google study, 2016</small></div>
+        <div class="mk-speed-stat"><b>+8.4%</b><span>retail conversion for a 0.1 second faster mobile site.</span><small>Deloitte for Google, “Milliseconds make millions”</small></div>
+        <div class="mk-speed-bars" aria-label="JavaScript downloaded: median mobile page 632 KB, Zuri page 23 KB">
+          <div><span>Median mobile page</span><i style="width:100%"></i><em>632 KB</em></div>
+          <div class="zuri"><span>Zuri sales page</span><i style="width:3.7%"></i><em>23 KB</em></div>
+          <small>JavaScript downloaded. Sources: HTTP Archive, Web Almanac 2025; Zuri measured on a live sales page.</small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mk-section mk-section-dark">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">Urgency, social proof, bundles</span>
+      <h2 class="mk-h2">The marketing levers that make people order. Built in.</h2>
+      <div class="mk-weapons">
+        {
+          weapons.map((w) => (
+            <div class="mk-weapon">
+              <span class="mk-weapon-ico" aria-hidden="true">
+                <Icon name={w.ico as never} />
+              </span>
+              <div>
+                <h3>{w.title}</h3>
+                <p>{w.text}</p>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="mk-section">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">Shopify alternative</span>
+      <h2 class="mk-h2">The Shopify alternative built for Africa: everything included.</h2>
+      <p class="mk-lead">On Shopify, every feature you need to sell with cash on delivery is another app, paid in dollars by card. On Zuri, it is already there.</p>
+      <div class="mk-table-wrap">
+        <table class="mk-table">
+          <thead>
+            <tr>
+              <th scope="col">What you need</th>
+              <th scope="col">On Shopify</th>
+              <th scope="col">Per month</th>
+              <th scope="col" class="mk-col-zuri">On Zuri</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              shopifyStack.map((r) => (
+                <tr>
+                  <th scope="row">{r.need}</th>
+                  <td>{r.app}</td>
+                  <td class="mk-no">{r.price}</td>
+                  <td class="mk-col-zuri">
+                    <span class="mk-yes mk-inline-ico">
+                      <Icon name="check" size={16} />
+                    </span>{' '}
+                    Included
+                  </td>
+                </tr>
+              ))
+            }
+            <tr class="mk-total-row">
+              <th scope="row">Total</th>
+              <td>9 subscriptions</td>
+              <td class="mk-no">≈ $137 / month</td>
+              <td class="mk-col-zuri">0 during launch</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="mk-note">Public prices checked in November 2026 on shopify.com and the Shopify App Store (first paid plan of each app, no commitment, before tax). Several apps have a free plan capped at about 60 orders a month: the cost starts as soon as you sell.</p>
+    </div>
+  </section>
+
+  <section class="mk-section mk-section-alt">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">Resources</span>
+      <h2 class="mk-h2">Learn, then sell more.</h2>
+      <div class="mk-cards" style="margin-top:28px">
+        {
+          featuredGuides.map((g) => (
+            <a class="mk-card" href={guidePath(g.slug.en, 'en')}>
+              <span class="mk-card-kicker">Guide</span>
+              <span class="mk-card-title">{t(g.h1, 'en')}</span>
+              <span class="mk-card-text">{t(g.description, 'en')}</span>
+            </a>
+          ))
+        }
+      </div>
+      <div class="mk-chips" style="margin-top:20px">
+        {
+          featuredCountries.map((c) => (
+            <a class="mk-chip" href={countryPath(c.slug, 'en')}>
+              Sell online in {t(c.name, 'en')}
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="mk-section" id="tarif">
+    <div class="mk-wrap mk-center">
+      <span class="mk-eyebrow">Pricing</span>
+      <h2 class="mk-h2">Free online store during launch.</h2>
+      <p class="mk-lead">No card, no commitment, no commission, no extra apps. Test it on your real ads.</p>
+    </div>
+    <div class="mk-wrap">
+      <div class="mk-price">
+        <span class="mk-eyebrow">Launch offer</span>
+        <div class="mk-price-amount"><b>0</b><span>per month</span></div>
+        <ul>
+          <li>Unlimited orders, 0% commission</li>
+          <li>Fast sales pages and custom order form</li>
+          <li>Countdown, limited stock, sales popup, bundles</li>
+          <li>Closer team and delivery tracking</li>
+          <li>Cash on delivery and Mobile Money</li>
+          <li>Facebook pixel, Conversions API and TikTok</li>
+          <li>AI import from a link, Shopify import</li>
+          <li>Multiple stores</li>
+        </ul>
+        <a class="mk-btn mk-btn-amber" href={signup}>Create my store for free</a>
+        <p class="mk-price-note">When paid plans arrive, you will be told in advance.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mk-section mk-section-alt" id="faq">
+    <div class="mk-wrap mk-center">
+      <span class="mk-eyebrow">FAQ</span>
+      <h2 class="mk-h2">Your questions about selling online in Africa.</h2>
+    </div>
+    <div class="mk-wrap">
+      <div class="mk-faq">
+        {
+          faqs.map((f) => (
+            <details>
+              <summary>{f.q}</summary>
+              <p>{f.a}</p>
+            </details>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="mk-section mk-section-dark mk-final">
+    <div class="mk-wrap">
+      <h2 class="mk-h2">Your next ad deserves a store that collects the cash.</h2>
+      <p class="mk-lead">Create your store tonight, put the link in your ad tomorrow morning.</p>
+      <div class="mk-hero-cta">
+        <a class="mk-btn mk-btn-amber" href={signup}>Create my store for free</a>
+      </div>
+    </div>
+  </section>
+</MarketingLayout>

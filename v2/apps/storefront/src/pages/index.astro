@@ -9,6 +9,7 @@
 import MarketingLayout from '../components/marketing/MarketingLayout.astro'
 import Icon from '../components/marketing/Icon.astro'
 import { env } from 'cloudflare:workers'
+import { COUNTRIES, GUIDES, countryPath, guidePath, t } from '../content/seo'
 
 export const prerender = false
 
@@ -100,6 +101,9 @@ const faqs = [
   { q: 'Je peux avoir mon propre nom de domaine ?', a: 'Tu as tout de suite un lien gratuit du type taboutique.zurisell.store. Le branchement de ton propre nom de domaine arrive bientôt.' },
 ]
 
+const featuredCountries = COUNTRIES.filter((c) => c.primaryLang === 'fr' && c.region !== 'diaspora').slice(0, 10)
+const featuredGuides = GUIDES.slice(0, 3)
+
 const jsonLd = [
   {
     '@context': 'https://schema.org',
@@ -121,7 +125,7 @@ const jsonLd = [
 ]
 ---
 
-<MarketingLayout title={title} description={description} canonicalPath="/" jsonLd={jsonLd}>
+<MarketingLayout title={title} description={description} canonicalPath="/" lang="fr" alternate={{ fr: '/', en: '/en' }} jsonLd={jsonLd}>
   <!-- ─── Hero ─── -->
   <section class="mk-hero">
     <div class="mk-wrap mk-hero-grid">
@@ -449,6 +453,35 @@ const jsonLd = [
               <h3>{w.title}</h3>
               <p>{w.text}</p>
             </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Ressources (guides et pays) ─── -->
+  <section class="mk-section">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">Ressources</span>
+      <h2 class="mk-h2">Apprends, puis vends plus.</h2>
+      <p class="mk-lead">Black Friday, pubs Facebook et TikTok, réduire les retours, trouver un produit gagnant : nos guides concrets, et une page pour chaque pays.</p>
+      <div class="mk-cards" style="margin-top:28px">
+        {
+          featuredGuides.map((g) => (
+            <a class="mk-card" href={guidePath(g.slug.fr, 'fr')}>
+              <span class="mk-card-kicker">Guide</span>
+              <span class="mk-card-title">{t(g.h1, 'fr')}</span>
+              <span class="mk-card-text">{t(g.description, 'fr')}</span>
+            </a>
+          ))
+        }
+      </div>
+      <div class="mk-chips" style="margin-top:20px">
+        {
+          featuredCountries.map((c) => (
+            <a class="mk-chip" href={countryPath(c.slug, 'fr')}>
+              Vendre en ligne {c.inName}
+            </a>
           ))
         }
       </div>

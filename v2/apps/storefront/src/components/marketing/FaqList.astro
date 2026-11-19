@@ -1,0 +1,27 @@
+---
+import { t } from '../../content/seo'
+import type { Faq, Lang } from '../../content/seo'
+
+interface Props {
+  faqs: Faq[]
+  lang: Lang
+  title?: string
+}
+const { faqs, lang, title } = Astro.props
+---
+
+{
+  faqs.length > 0 && (
+    <section class="mk-block">
+      <h2 class="mk-h2-sm">{title ?? (lang === 'fr' ? 'Questions fréquentes' : 'Frequently asked questions')}</h2>
+      <div class="mk-faq mk-faq-left">
+        {faqs.map((f) => (
+          <details>
+            <summary>{t(f.q, lang)}</summary>
+            <p>{t(f.a, lang)}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  )
+}

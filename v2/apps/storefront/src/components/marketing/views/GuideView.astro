@@ -1,0 +1,60 @@
+---
+import MarketingLayout from '../MarketingLayout.astro'
+import Blocks from '../Blocks.astro'
+import FaqList from '../FaqList.astro'
+import Sources from '../Sources.astro'
+import CtaBand from '../CtaBand.astro'
+import { GUIDES, GUIDE_CATEGORY_LABEL, PATHS, guidePath, t } from '../../../content/seo'
+import type { GuidePage, Lang } from '../../../content/seo'
+
+interface Props {
+  guide: GuidePage
+  lang: Lang
+}
+const { guide: g, lang } = Astro.props
+const L = { fr: { guides: 'Guides', read: 'min de lecture', related: 'À lire aussi' }, en: { guides: 'Guides', read: 'min read', related: 'Read next' } }[lang]
+const related = g.related.map((s) => GUIDES.find((x) => x.slug.fr === s)).filter((x): x is GuidePage => !!x)
+const jsonLd = [
+  { '@context': 'https://schema.org', '@type': 'Article', headline: t(g.h1, lang), description: t(g.description, lang), inLanguage: lang, author: { '@type': 'Organization', name: 'Zuri' }, publisher: { '@type': 'Organization', name: 'Zuri' } },
+  ...(g.faqs.length ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: g.faqs.map((f) => ({ '@type': 'Question', name: t(f.q, lang), acceptedAnswer: { '@type': 'Answer', text: t(f.a, lang) } })) }] : []),
+]
+---
+
+<MarketingLayout
+  title={t(g.title, lang)}
+  description={t(g.description, lang)}
+  canonicalPath={guidePath(g.slug[lang], lang)}
+  lang={lang}
+  alternate={{ fr: guidePath(g.slug.fr, 'fr'), en: guidePath(g.slug.en, 'en') }}
+  breadcrumbs={[{ label: L.guides, href: PATHS.guides[lang] }, { label: t(g.h1, lang) }]}
+  jsonLd={jsonLd}
+>
+  <section class="mk-page-hero">
+    <div class="mk-wrap mk-narrow">
+      <span class="mk-eyebrow">{t(GUIDE_CATEGORY_LABEL[g.category] ?? { fr: 'Guide', en: 'Guide' }, lang)} · {g.readingMinutes} {L.read}</span>
+      <h1 class="mk-h1 mk-h1-page">{t(g.h1, lang)}</h1>
+      <p class="mk-hero-sub">{t(g.intro, lang)}</p>
+    </div>
+  </section>
+  <div class="mk-wrap mk-narrow">
+    <Blocks blocks={g.blocks} lang={lang} />
+    <FaqList faqs={g.faqs} lang={lang} />
+    <Sources sources={g.sources} lang={lang} />
+    {
+      related.length > 0 && (
+        <section class="mk-block">
+          <h2 class="mk-h2-sm">{L.related}</h2>
+          <div class="mk-cards">
+            {related.map((r) => (
+              <a class="mk-card" href={guidePath(r.slug[lang], lang)}>
+                <span class="mk-card-kicker">{t(GUIDE_CATEGORY_LABEL[r.category] ?? { fr: 'Guide', en: 'Guide' }, lang)}</span>
+                <span class="mk-card-title">{t(r.h1, lang)}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )
+    }
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

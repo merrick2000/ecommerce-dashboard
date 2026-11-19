@@ -1,0 +1,94 @@
+---
+import MarketingLayout from '../MarketingLayout.astro'
+import FaqList from '../FaqList.astro'
+import Sources from '../Sources.astro'
+import CtaBand from '../CtaBand.astro'
+import { ALTERNATIVES, PATHS, alternativePath, t } from '../../../content/seo'
+import type { AlternativePage, Lang } from '../../../content/seo'
+
+interface Props {
+  alt: AlternativePage
+  lang: Lang
+}
+const { alt: a, lang } = Astro.props
+const L = {
+  fr: { alternatives: 'Alternatives', strengths: `Ce que ${a.competitor} fait bien`, limits: `Les limites de ${a.competitor} pour vendre en Afrique`, compare: `${a.competitor} ou Zuri : le comparatif`, criterion: 'Critère', still: `Quand ${a.competitor} reste un bon choix`, migrate: `Passer de ${a.competitor} à Zuri`, others: 'Autres alternatives' },
+  en: { alternatives: 'Alternatives', strengths: `What ${a.competitor} does well`, limits: `${a.competitor} limits for selling in Africa`, compare: `${a.competitor} vs Zuri`, criterion: 'Criterion', still: `When ${a.competitor} is still a good choice`, migrate: `Moving from ${a.competitor} to Zuri`, others: 'Other alternatives' },
+}[lang]
+const others = ALTERNATIVES.filter((x) => x.slug !== a.slug).slice(0, 8)
+const jsonLd = [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: a.faqs.map((f) => ({ '@type': 'Question', name: t(f.q, lang), acceptedAnswer: { '@type': 'Answer', text: t(f.a, lang) } })) }]
+---
+
+<MarketingLayout
+  title={t(a.title, lang)}
+  description={t(a.description, lang)}
+  canonicalPath={alternativePath(a.slug, lang)}
+  lang={lang}
+  alternate={{ fr: alternativePath(a.slug, 'fr'), en: alternativePath(a.slug, 'en') }}
+  breadcrumbs={[{ label: L.alternatives, href: PATHS.alternatives[lang] }, { label: a.competitor }]}
+  jsonLd={jsonLd}
+>
+  <section class="mk-page-hero">
+    <div class="mk-wrap mk-narrow">
+      <span class="mk-eyebrow">{L.alternatives}</span>
+      <h1 class="mk-h1 mk-h1-page">{t(a.h1, lang)}</h1>
+      <p class="mk-hero-sub">{t(a.intro, lang)}</p>
+    </div>
+  </section>
+  <div class="mk-wrap mk-narrow mk-prose">
+    <h2>{L.compare}</h2>
+    <div class="mk-table-wrap">
+      <table class="mk-table mk-table-auto">
+        <thead>
+          <tr>
+            <th scope="col">{L.criterion}</th>
+            <th scope="col">{a.competitor}</th>
+            <th scope="col" class="mk-col-zuri">Zuri</th>
+          </tr>
+        </thead>
+        <tbody>
+          {a.compare.map(([k, x, z]) => (
+            <tr>
+              <th scope="row">{t(k, lang)}</th>
+              <td>{t(x, lang)}</td>
+              <td class="mk-col-zuri">{t(z, lang)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <h2>{L.strengths}</h2>
+    <ul>
+      {a.strengths.map((s) => (
+        <li>{t(s, lang)}</li>
+      ))}
+    </ul>
+    <h2>{L.limits}</h2>
+    <ul>
+      {a.limits.map((s) => (
+        <li>{t(s, lang)}</li>
+      ))}
+    </ul>
+    <h2>{L.still}</h2>
+    <p>{t(a.stillGoodFor, lang)}</p>
+    <h2>{L.migrate}</h2>
+    <ol>
+      {a.migration.map((s) => (
+        <li>{t(s, lang)}</li>
+      ))}
+    </ol>
+    <FaqList faqs={a.faqs} lang={lang} />
+    <Sources sources={a.sources} lang={lang} />
+    <section class="mk-block">
+      <h2 class="mk-h2-sm">{L.others}</h2>
+      <div class="mk-chips">
+        {others.map((o) => (
+          <a class="mk-chip" href={alternativePath(o.slug, lang)}>
+            {o.competitor}
+          </a>
+        ))}
+      </div>
+    </section>
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

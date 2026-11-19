@@ -1,0 +1,9 @@
+---
+import GuideView from '../../../components/marketing/views/GuideView.astro'
+import { findGuide } from '../../../content/seo'
+export const prerender = false
+const item = findGuide(Astro.params.slug ?? '', 'en')
+if (!item) return Astro.rewrite('/404')
+---
+
+<GuideView guide={item} lang="en" />

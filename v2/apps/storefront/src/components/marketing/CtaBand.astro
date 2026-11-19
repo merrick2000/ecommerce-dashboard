@@ -1,0 +1,26 @@
+---
+import { env } from 'cloudflare:workers'
+import type { Lang } from '../../content/seo'
+
+interface Props {
+  lang: Lang
+  title?: string
+  text?: string
+}
+const { lang, title, text } = Astro.props
+const appOrigin = import.meta.env.DEV ? 'http://localhost:5173' : (env.APP_ORIGIN ?? `https://app.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
+const L = {
+  fr: { title: 'Crée ta boutique en ligne gratuitement', text: 'Paiement à la livraison, Mobile Money, closers et vrais chiffres. 0 % de commission, sans carte bancaire.', btn: 'Créer ma boutique gratuitement' },
+  en: { title: 'Create your online store for free', text: 'Cash on delivery, Mobile Money, closers and real numbers. 0% commission, no credit card.', btn: 'Create my store for free' },
+}[lang]
+---
+
+<section class="mk-section mk-section-dark mk-final">
+  <div class="mk-wrap">
+    <h2 class="mk-h2">{title ?? L.title}</h2>
+    <p class="mk-lead">{text ?? L.text}</p>
+    <div class="mk-hero-cta">
+      <a class="mk-btn mk-btn-amber" href={`${appOrigin}/register`}>{L.btn}</a>
+    </div>
+  </div>
+</section>

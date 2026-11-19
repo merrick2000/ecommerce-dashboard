@@ -1,0 +1,79 @@
+---
+import MarketingLayout from '../MarketingLayout.astro'
+import Blocks from '../Blocks.astro'
+import FaqList from '../FaqList.astro'
+import Sources from '../Sources.astro'
+import CtaBand from '../CtaBand.astro'
+import { COMPARISONS, PATHS, comparisonPath, t } from '../../../content/seo'
+import type { ComparisonPage, Lang } from '../../../content/seo'
+
+interface Props {
+  cmp: ComparisonPage
+  lang: Lang
+}
+const { cmp: c, lang } = Astro.props
+const L = { fr: { compare: 'Comparatifs', table: 'Le comparatif en un coup d’œil', criterion: 'Critère', verdict: 'Notre verdict', others: 'Autres comparatifs' }, en: { compare: 'Comparisons', table: 'At a glance', criterion: 'Criterion', verdict: 'Our verdict', others: 'Other comparisons' } }[lang]
+const others = COMPARISONS.filter((x) => x.slug !== c.slug)
+const jsonLd = [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: c.faqs.map((f) => ({ '@type': 'Question', name: t(f.q, lang), acceptedAnswer: { '@type': 'Answer', text: t(f.a, lang) } })) }]
+---
+
+<MarketingLayout
+  title={t(c.title, lang)}
+  description={t(c.description, lang)}
+  canonicalPath={comparisonPath(c.slug, lang)}
+  lang={lang}
+  alternate={{ fr: comparisonPath(c.slug, 'fr'), en: comparisonPath(c.slug, 'en') }}
+  breadcrumbs={[{ label: L.compare, href: PATHS.comparisons[lang] }, { label: `${c.a} vs ${c.b}` }]}
+  jsonLd={jsonLd}
+>
+  <section class="mk-page-hero">
+    <div class="mk-wrap mk-narrow">
+      <span class="mk-eyebrow">{L.compare}</span>
+      <h1 class="mk-h1 mk-h1-page">{t(c.h1, lang)}</h1>
+      <p class="mk-hero-sub">{t(c.intro, lang)}</p>
+    </div>
+  </section>
+  <div class="mk-wrap mk-narrow">
+    <div class="mk-prose">
+      <h2>{L.table}</h2>
+      <div class="mk-table-wrap">
+        <table class="mk-table mk-table-auto">
+          <thead>
+            <tr>
+              <th scope="col">{L.criterion}</th>
+              <th scope="col">{c.a}</th>
+              <th scope="col">{c.b}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {c.compare.map(([k, x, y]) => (
+              <tr>
+                <th scope="row">{t(k, lang)}</th>
+                <td>{t(x, lang)}</td>
+                <td>{t(y, lang)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <Blocks blocks={c.blocks} lang={lang} />
+    <div class="mk-prose">
+      <h2>{L.verdict}</h2>
+      <p>{t(c.verdict, lang)}</p>
+    </div>
+    <FaqList faqs={c.faqs} lang={lang} />
+    <Sources sources={c.sources} lang={lang} />
+    <section class="mk-block">
+      <h2 class="mk-h2-sm">{L.others}</h2>
+      <div class="mk-chips">
+        {others.map((o) => (
+          <a class="mk-chip" href={comparisonPath(o.slug, lang)}>
+            {o.a} vs {o.b}
+          </a>
+        ))}
+      </div>
+    </section>
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

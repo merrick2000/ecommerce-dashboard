@@ -1,0 +1,111 @@
+---
+/** Pages d'accueil des sections SEO : pays, guides, alternatives, comparatifs. */
+import MarketingLayout from '../MarketingLayout.astro'
+import CtaBand from '../CtaBand.astro'
+import { ALTERNATIVES, COMPARISONS, COUNTRIES, GUIDES, GUIDE_CATEGORY_LABEL, PATHS, REGION_LABEL, alternativePath, comparisonPath, countryPath, guidePath, t } from '../../../content/seo'
+import type { Lang } from '../../../content/seo'
+
+interface Props {
+  kind: 'countries' | 'guides' | 'alternatives' | 'comparisons'
+  lang: Lang
+}
+const { kind, lang } = Astro.props
+
+const META = {
+  countries: {
+    fr: { label: 'Vendre par pays', title: 'Vendre en ligne en Afrique, pays par pays | Zuri', description: 'Boutique en ligne avec paiement à la livraison et Mobile Money : conseils, moyens de paiement et produits demandés pour chaque pays d’Afrique.', h1: 'Vendre en ligne en Afrique, pays par pays', intro: 'Devise, Mobile Money, villes, habitudes d’achat et conseils concrets : choisis ton pays.' },
+    en: { label: 'Sell by country', title: 'Selling online in Africa, country by country | Zuri', description: 'Online store with cash on delivery and Mobile Money: tips, payment methods and products in demand for each African country.', h1: 'Selling online in Africa, country by country', intro: 'Currency, Mobile Money, cities, buying habits and practical tips: pick your country.' },
+  },
+  guides: {
+    fr: { label: 'Guides', title: 'Guides pour vendre en ligne en Afrique | Zuri', description: 'Black Friday, publicité Facebook et TikTok, paiement à la livraison, closers, produits gagnants : des guides concrets pour vendre plus.', h1: 'Guides pour vendre plus en ligne', intro: 'Des méthodes concrètes, testées sur le terrain, à appliquer dès aujourd’hui.' },
+    en: { label: 'Guides', title: 'Guides to sell online in Africa | Zuri', description: 'Black Friday, Facebook and TikTok ads, cash on delivery, closers, winning products: practical guides to sell more.', h1: 'Guides to sell more online', intro: 'Practical methods from the field, ready to apply today.' },
+  },
+  alternatives: {
+    fr: { label: 'Alternatives', title: 'Alternatives à Shopify, YouCan, WooCommerce en Afrique | Zuri', description: 'Comparez Zuri aux outils e-commerce du marché : prix, paiement à la livraison, Mobile Money, commissions et fonctionnalités.', h1: 'Les alternatives aux outils e-commerce, pour vendre en Afrique', intro: 'Ce que chaque outil fait bien, ses limites pour le paiement à la livraison et le Mobile Money, et comment passer à Zuri.' },
+    en: { label: 'Alternatives', title: 'Alternatives to Shopify, YouCan, WooCommerce in Africa | Zuri', description: 'Compare Zuri with the main e-commerce tools: pricing, cash on delivery, Mobile Money, commissions and features.', h1: 'E-commerce tool alternatives for selling in Africa', intro: 'What each tool does well, its limits for cash on delivery and Mobile Money, and how to move to Zuri.' },
+  },
+  comparisons: {
+    fr: { label: 'Comparatifs', title: 'Comparatifs d’outils e-commerce : Shopify, WooCommerce, Wix… | Zuri', description: 'Shopify ou WooCommerce, Shopify ou Wix, Chariow ou Selar : des comparatifs clairs pour choisir ton outil de vente en ligne.', h1: 'Comparatifs d’outils pour vendre en ligne', intro: 'Des comparatifs neutres pour choisir, avec le point de vue d’un vendeur africain.' },
+    en: { label: 'Comparisons', title: 'E-commerce tool comparisons: Shopify, WooCommerce, Wix | Zuri', description: 'Shopify or WooCommerce, Shopify or Wix, Chariow or Selar: clear comparisons to choose your online selling tool.', h1: 'Online selling tool comparisons', intro: 'Neutral comparisons to help you choose, from an African seller’s point of view.' },
+  },
+}[kind][lang]
+
+const regions = [...new Set(COUNTRIES.map((c) => c.region))]
+const categories = [...new Set(GUIDES.map((g) => g.category))]
+const other: Lang = lang === 'fr' ? 'en' : 'fr'
+---
+
+<MarketingLayout title={META.title} description={META.description} canonicalPath={PATHS[kind][lang]} lang={lang} alternate={{ [lang]: PATHS[kind][lang], [other]: PATHS[kind][other] }} breadcrumbs={[{ label: META.label }]}>
+  <section class="mk-page-hero">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">{META.label}</span>
+      <h1 class="mk-h1 mk-h1-page">{META.h1}</h1>
+      <p class="mk-hero-sub">{META.intro}</p>
+    </div>
+  </section>
+  <div class="mk-wrap mk-hub">
+    {
+      kind === 'countries' &&
+        regions.map((r) => (
+          <section class="mk-block">
+            <h2 class="mk-h2-sm">{t(REGION_LABEL[r] ?? { fr: r, en: r }, lang)}</h2>
+            <div class="mk-cards">
+              {COUNTRIES.filter((c) => c.region === r).map((c) => (
+                <a class="mk-card" href={countryPath(c.slug, lang)}>
+                  <span class="mk-card-kicker">{c.currency.code}</span>
+                  <span class="mk-card-title">{t(c.name, lang)}</span>
+                  <span class="mk-card-text">{c.mobileMoney.slice(0, 3).join(', ') || c.cities.slice(0, 3).join(', ')}</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        ))
+    }
+    {
+      kind === 'guides' &&
+        categories.map((cat) => (
+          <section class="mk-block">
+            <h2 class="mk-h2-sm">{t(GUIDE_CATEGORY_LABEL[cat] ?? { fr: cat, en: cat }, lang)}</h2>
+            <div class="mk-cards">
+              {GUIDES.filter((g) => g.category === cat).map((g) => (
+                <a class="mk-card" href={guidePath(g.slug[lang], lang)}>
+                  <span class="mk-card-kicker">{g.readingMinutes} min</span>
+                  <span class="mk-card-title">{t(g.h1, lang)}</span>
+                  <span class="mk-card-text">{t(g.description, lang)}</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        ))
+    }
+    {
+      kind === 'alternatives' && (
+        <div class="mk-cards">
+          {ALTERNATIVES.map((a) => (
+            <a class="mk-card" href={alternativePath(a.slug, lang)}>
+              <span class="mk-card-kicker">{lang === 'fr' ? 'Alternative à' : 'Alternative to'}</span>
+              <span class="mk-card-title">{a.competitor}</span>
+              <span class="mk-card-text">{t(a.description, lang)}</span>
+            </a>
+          ))}
+        </div>
+      )
+    }
+    {
+      kind === 'comparisons' && (
+        <div class="mk-cards">
+          {COMPARISONS.map((c) => (
+            <a class="mk-card" href={comparisonPath(c.slug, lang)}>
+              <span class="mk-card-kicker">{lang === 'fr' ? 'Comparatif' : 'Comparison'}</span>
+              <span class="mk-card-title">
+                {c.a} vs {c.b}
+              </span>
+              <span class="mk-card-text">{t(c.description, lang)}</span>
+            </a>
+          ))}
+        </div>
+      )
+    }
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

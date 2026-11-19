@@ -1,0 +1,9 @@
+---
+import CountryView from '../../../components/marketing/views/CountryView.astro'
+import { findCountry } from '../../../content/seo'
+export const prerender = false
+const item = findCountry(Astro.params.slug ?? '')
+if (!item) return Astro.rewrite('/404')
+---
+
+<CountryView country={item} lang="en" />

@@ -1,0 +1,9 @@
+---
+import AlternativeView from '../../../components/marketing/views/AlternativeView.astro'
+import { findAlternative } from '../../../content/seo'
+export const prerender = false
+const item = findAlternative(Astro.params.slug ?? '')
+if (!item) return Astro.rewrite('/404')
+---
+
+<AlternativeView alt={item} lang="en" />
