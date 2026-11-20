@@ -2,6 +2,7 @@ import { PERMISSIONS, type Me, type Permission, type StoreRole } from '@zuri/sha
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router'
 import { api, ApiError, request } from '@/lib/api'
+import { detachPushFromAccount } from '@/lib/push'
 
 export const meKey = ['me'] as const
 
@@ -43,7 +44,11 @@ export function useRegister() {
 export function useLogout() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () => api.post<{ ok: true }>('/auth/logout'),
+    mutationFn: async () => {
+      // Avant la fin de session : ce navigateur cesse de recevoir les notifications de ce compte.
+      await detachPushFromAccount()
+      return api.post<{ ok: true }>('/auth/logout')
+    },
     onSettled: () => {
       qc.clear()
       qc.setQueryData(meKey, null)

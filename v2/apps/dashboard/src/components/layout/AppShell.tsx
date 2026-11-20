@@ -28,6 +28,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Outlet, useLocation, useNavigate, useNavigation } from 'react-router'
 import { useCurrentStore, useLogout, usePermissions } from '@/hooks/auth'
 import { useOrders } from '@/hooks/resources'
+import { useOrderAlerts } from '@/hooks/orderAlerts'
+import { EnableNotificationsBanner } from '@/components/EnableNotificationsBanner'
+import { syncPushSubscription } from '@/lib/push'
 import { ROLE_LABEL } from '@/lib/labels'
 import { LAST_STORE_KEY, readLocal, THEME_KEY, writeLocal } from '@/lib/storage'
 
@@ -181,6 +184,12 @@ export function AppShell() {
   // Commandes à traiter (nouvelles) : pastille sur l'onglet Commandes.
   const pending = useOrders({ fulfillmentStatus: 'new', pageSize: 1 }, canOrders)
   const newCount = pending.data?.total
+  // Annonce les ventes dans l'app ouverte, pour tous les comptes (push activé ou non).
+  useOrderAlerts(storeId, canOrders)
+  // Ce navigateur notifie le compte connecté, pas celui qui l'avait abonné avant.
+  useEffect(() => {
+    if (me?.id) void syncPushSubscription()
+  }, [me?.id])
 
   useEffect(() => {
     if (store) writeLocal(LAST_STORE_KEY, String(store.id))
@@ -303,6 +312,7 @@ export function AppShell() {
             <span className="font-semibold text-accent">Voir les formules</span>
           </NavLink>
         )}
+        <EnableNotificationsBanner settingsHref={`/stores/${storeId}/notifications`} />
         <Outlet />
       </main>
 

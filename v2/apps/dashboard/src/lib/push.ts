@@ -66,3 +66,32 @@ export async function disablePush(): Promise<void> {
   await api.post('/notifications/push/unsubscribe', { endpoint: sub.endpoint }).catch(() => undefined)
   await sub.unsubscribe()
 }
+
+/**
+ * Rattache l'abonnement de ce navigateur au compte connecté. Un même navigateur peut servir
+ * à plusieurs comptes : sans ça, les notifications partaient au compte qui l'avait activé en premier
+ * et l'écran affichait « activées » pour le nouveau compte. Appelé à chaque ouverture de session.
+ */
+export async function syncPushSubscription(): Promise<void> {
+  if (!pushSupported() || Notification.permission !== 'granted') return
+  try {
+    const reg = await navigator.serviceWorker.getRegistration('/')
+    const sub = await reg?.pushManager.getSubscription()
+    if (!sub) return
+    const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } }
+    await api.post('/notifications/push/subscribe', { endpoint: json.endpoint, keys: json.keys })
+  } catch (err) {
+    console.warn('[push] sync', err)
+  }
+}
+
+/** À la déconnexion : ce navigateur ne reçoit plus les notifications du compte (l'abonnement reste, pour le prochain compte). */
+export async function detachPushFromAccount(): Promise<void> {
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration('/')
+    const sub = await reg?.pushManager.getSubscription()
+    if (sub) await api.post('/notifications/push/unsubscribe', { endpoint: sub.endpoint })
+  } catch {
+    /* hors ligne : tant pis, le serveur nettoiera à la prochaine connexion d'un autre compte */
+  }
+}

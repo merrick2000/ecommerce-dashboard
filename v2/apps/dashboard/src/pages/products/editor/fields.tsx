@@ -282,8 +282,15 @@ export function ImageUpload({
 
 /** Image avec état de chargement et message clair si elle ne peut pas s'afficher. */
 export function PreviewImage({ src, dimmed }: { src: string; dimmed?: boolean }) {
-  const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading')
-  useEffect(() => setState('loading'), [src])
+  // État lié à l'URL : une nouvelle URL repart en « chargement » dès le rendu, sans effet décalé.
+  // (Avant, un effet remettait « chargement » APRÈS l'événement load d'une image déjà en cache,
+  // juste préchargée par l'envoi : l'indicateur tournait alors indéfiniment.)
+  const [status, setStatus] = useState<{ src: string; state: 'ok' | 'error' } | null>(null)
+  const state = status?.src === src ? status.state : 'loading'
+  const check = (img: HTMLImageElement | null) => {
+    // Image déjà en cache : complete est vrai avant même que React n'écoute load.
+    if (img?.complete && state === 'loading') setStatus({ src, state: img.naturalWidth > 0 ? 'ok' : 'error' })
+  }
   return (
     <>
       {state === 'loading' && (
@@ -298,10 +305,12 @@ export function PreviewImage({ src, dimmed }: { src: string; dimmed?: boolean })
         </div>
       )}
       <img
+        key={src}
+        ref={check}
         src={src}
         alt=""
-        onLoad={() => setState('ok')}
-        onError={() => setState('error')}
+        onLoad={() => setStatus({ src, state: 'ok' })}
+        onError={() => setStatus({ src, state: 'error' })}
         className={cx('size-full object-contain transition-opacity', state === 'ok' ? 'opacity-100' : 'opacity-0', dimmed && 'opacity-60')}
       />
     </>

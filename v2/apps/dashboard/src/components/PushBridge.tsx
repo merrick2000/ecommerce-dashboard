@@ -21,6 +21,23 @@ const toPath = (url: string) => {
   }
 }
 
+/** Alertes déjà affichées (par tag) : le push et la surveillance des commandes ne doublonnent pas. */
+const shown = new Set<string>()
+let push: ((payload: PushPayload) => void) | null = null
+
+/**
+ * Affiche une alerte dans l'app (bannière + son), même sans notifications push activées.
+ * Renvoie false si une alerte avec ce tag a déjà été montrée.
+ */
+export function showInAppAlert(payload: PushPayload): boolean {
+  if (payload.tag) {
+    if (shown.has(payload.tag)) return false
+    shown.add(payload.tag)
+  }
+  push?.(payload)
+  return true
+}
+
 /**
  * Pont entre le service worker et l'app ouverte : quand une notification arrive
  * pendant que Zuri est à l'écran, on joue le son choisi, on affiche une bannière
@@ -33,20 +50,31 @@ export function PushBridge() {
   useEffect(() => {
     void registerServiceWorker()
     unlockAudioOnFirstGesture()
-    if (!('serviceWorker' in navigator)) return
+    if (!('serviceWorker' in navigator)) return undefined
     const onMessage = (e: MessageEvent) => {
       const msg = e.data as { type?: string; payload?: PushPayload } | null
       if (!msg?.payload) return
       void qc.invalidateQueries({ queryKey: ['store'] })
+      // Déjà affichée en notification système (onglet caché) : pas de seconde annonce dans l'app.
+      if (msg.type === 'zuri:refresh' && msg.payload.tag) shown.add(msg.payload.tag)
       if (msg.type !== 'zuri:push') return
-      playSound(msg.payload.sound === 'soft' ? 'drop' : undefined)
-      const id = Date.now() + Math.random()
-      setBanners((list) => [...list.slice(-2), { id, payload: msg.payload! }])
-      setTimeout(() => setBanners((list) => list.filter((b) => b.id !== id)), 9000)
+      showInAppAlert(msg.payload)
     }
     navigator.serviceWorker.addEventListener('message', onMessage)
     return () => navigator.serviceWorker.removeEventListener('message', onMessage)
   }, [qc])
+
+  useEffect(() => {
+    push = (payload) => {
+      playSound(payload.sound === 'soft' ? 'drop' : undefined)
+      const id = Date.now() + Math.random()
+      setBanners((list) => [...list.slice(-2), { id, payload }])
+      setTimeout(() => setBanners((list) => list.filter((b) => b.id !== id)), 12000)
+    }
+    return () => {
+      push = null
+    }
+  }, [])
 
   if (!banners.length) return null
   return (
