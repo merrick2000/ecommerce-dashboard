@@ -1,6 +1,7 @@
 import type { Permission } from '@zuri/shared'
 import {
   Bell,
+  Bot,
   Check,
   Crown,
   PauseCircle,
@@ -60,6 +61,7 @@ const NAV: NavItem[] = [
   { to: 'activity', label: 'Activité', icon: Activity, perm: 'activity.view' },
   { to: 'team', label: 'Équipe', icon: UserPlus, perm: 'team.manage' },
   { to: 'notifications', label: 'Notifications', icon: Bell },
+  { to: 'api', label: 'API et IA', icon: Bot },
   { to: 'settings', label: 'Paramètres', icon: Settings },
 ]
 

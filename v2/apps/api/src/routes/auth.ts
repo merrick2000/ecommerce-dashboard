@@ -133,7 +133,12 @@ export const authRoutes = new Hono<AppEnv>()
     await destroySession(c)
     return c.json({ ok: true })
   })
-  .get('/me', requireAuth, async (c) => c.json(await loadMe(c.get('user'))))
+  .get('/me', requireAuth, async (c) => {
+    const me = await loadMe(c.get('user'))
+    // Clé API limitée à une boutique : elle ne voit que celle-là.
+    const only = c.get('apiKey')?.storeId
+    return c.json(only ? { ...me, stores: me.stores.filter((s) => s.id === only) } : me)
+  })
   /** Méthodes de connexion proposées par l'écran de login. */
   .get('/providers', (c) => c.json({ google: googleEnabled(), registrationOpen: registrationOpen() }))
   .route('/google', googleRoutes)

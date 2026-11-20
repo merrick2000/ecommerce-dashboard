@@ -163,6 +163,32 @@ export const pushSubscriptions = pgTable(
   (t) => [index('push_subscriptions_user_idx').on(t.userId)],
 )
 
+/**
+ * Clés API personnelles (IA, MCP, automatisations). Une clé agit au nom de son propriétaire,
+ * jamais avec plus de droits que lui ; elle peut être limitée à une boutique et à la lecture seule.
+ * Seule l'empreinte SHA-256 est gardée : la clé complète n'est montrée qu'une fois.
+ */
+export const apiKeys = pgTable(
+  'api_keys',
+  {
+    id: id(),
+    userId: fk('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** null = toutes les boutiques du compte. */
+    storeId: ref('store_id').references(() => stores.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 80 }).notNull(),
+    /** Début visible de la clé (zk_live_abcd…), pour la reconnaître dans la liste. */
+    prefix: varchar('prefix', { length: 20 }).notNull(),
+    keyHash: varchar('key_hash', { length: 64 }).notNull().unique(),
+    scope: varchar('scope', { length: 10 }).$type<'read' | 'write'>().notNull().default('write'),
+    lastUsedAt: ts('last_used_at'),
+    revokedAt: ts('revoked_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('api_keys_user_idx').on(t.userId)],
+)
+
 /** Codes à usage unique pour relier un compte à Telegram (/start <code>), 15 min. */
 export const telegramLinks = pgTable('telegram_links', {
   codeHash: varchar('code_hash', { length: 64 }).primaryKey(),

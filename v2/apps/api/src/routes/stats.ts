@@ -2,7 +2,7 @@ import { and, eq, gte, inArray, lt, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { db } from '../db/client'
-import { orderItems, orders, pageEvents } from '../db/schema'
+import { orderItems, orders, pageEvents, users } from '../db/schema'
 import type { AppEnv } from '../lib/context'
 import { can, requirePermission } from '../lib/auth'
 import { orderScope } from '../lib/scope'
@@ -142,3 +142,118 @@ export const statsRoutes = new Hono<AppEnv>().get('/overview', requirePermission
     sources: sources.map((x) => hideMoney(x, ['revenue'])),
   })
 })
+  /**
+   * Rapport de ventes détaillé (outil MCP get_sales_report, exports) : série par jour / semaine / mois
+   * et ventilation au choix. Mêmes règles que le tableau de bord : périmètre produits, montants masqués
+   * sans l'option « voir le chiffre d'affaires ». Les jours sont ceux du fuseau de la boutique.
+   */
+  .get(
+    '/report',
+    requirePermission('stats.view'),
+    v(
+      'query',
+      rangeSchema.extend({
+        groupBy: z.enum(['day', 'week', 'month']).default('day'),
+        breakdown: z.enum(['none', 'product', 'city', 'source', 'campaign', 'status', 'assignee', 'payment_method']).default('none'),
+        limit: z.coerce.number().int().min(1).max(100).default(25),
+      }),
+    ),
+    async (c) => {
+      const store = c.get('store')
+      const access = c.get('access')
+      const revenueVisible = can(access, 'stats.revenue')
+      const { from, to, groupBy, breakdown, limit } = c.req.valid('query')
+      const tz = store.timezone
+      const startDay = from.toISOString().slice(0, 10)
+      const endDay = to.toISOString().slice(0, 10)
+      const start = localMidnight(startDay, tz)
+      const end = localMidnight(addDays(endDay, 1), tz)
+      const where = and(eq(orders.storeId, store.id), gte(orders.createdAt, start), lt(orders.createdAt, end), orderScope(access))
+
+      const metrics = {
+        orders: dsql<number>`count(distinct ${orders.id})::int`,
+        confirmed: dsql<number>`count(distinct ${orders.id}) filter (where ${orders.fulfillmentStatus} in ('confirmed','shipped','delivered','returned'))::int`,
+        delivered: dsql<number>`count(distinct ${orders.id}) filter (where ${orders.fulfillmentStatus} = 'delivered')::int`,
+        returned: dsql<number>`count(distinct ${orders.id}) filter (where ${orders.fulfillmentStatus} = 'returned')::int`,
+        cancelled: dsql<number>`count(distinct ${orders.id}) filter (where ${orders.fulfillmentStatus} = 'cancelled')::int`,
+        pending: dsql<number>`count(distinct ${orders.id}) filter (where ${orders.fulfillmentStatus} in ('new','unreachable'))::int`,
+        /** Encaissé : payé en ligne ou COD livré. */
+        revenueCollected: dsql<number>`coalesce(sum(${orders.total}) filter (where ${collected}), 0)::float`,
+        /** Commandé (hors annulées et retours) : chiffre « en jeu ». */
+        revenueBooked: dsql<number>`coalesce(sum(${orders.total}) filter (where ${orders.fulfillmentStatus} not in ('cancelled','returned')), 0)::float`,
+      }
+      const period = dsql<string>`to_char(date_trunc(${groupBy}, ${orders.createdAt} at time zone ${tz}), 'YYYY-MM-DD')`
+      const series = await db.select({ period, ...metrics }).from(orders).where(where).groupBy(dsql`1`).orderBy(dsql`1`)
+
+      let rows: Record<string, unknown>[] = []
+      if (breakdown === 'product') {
+        // Par produit : on compte les lignes de commande (unités, montant des lignes).
+        rows = await db
+          .select({
+            key: orderItems.productId,
+            label: dsql<string>`max(${orderItems.name})`,
+            ...metrics,
+            units: dsql<number>`sum(${orderItems.quantity})::int`,
+            revenueCollected: dsql<number>`coalesce(sum(${orderItems.total}) filter (where ${collected}), 0)::float`,
+            revenueBooked: dsql<number>`coalesce(sum(${orderItems.total}) filter (where ${orders.fulfillmentStatus} not in ('cancelled','returned')), 0)::float`,
+          })
+          .from(orderItems)
+          .innerJoin(orders, eq(orders.id, orderItems.orderId))
+          .where(and(where, access.productIds ? (access.productIds.length ? inArray(orderItems.productId, access.productIds) : dsql`false`) : undefined))
+          .groupBy(orderItems.productId)
+          .orderBy(dsql`count(distinct ${orders.id}) desc`)
+          .limit(limit)
+      } else if (breakdown === 'assignee') {
+        rows = await db
+          .select({ key: orders.assignedTo, label: dsql<string>`coalesce(max(${users.name}), 'Non attribuée')`, ...metrics })
+          .from(orders)
+          .leftJoin(users, eq(users.id, orders.assignedTo))
+          .where(where)
+          .groupBy(orders.assignedTo)
+          .orderBy(dsql`count(distinct ${orders.id}) desc`)
+          .limit(limit)
+      } else if (breakdown !== 'none') {
+        const col = {
+          city: dsql<string>`coalesce(nullif(trim(${orders.city}), ''), 'inconnue')`,
+          source: dsql<string>`coalesce(nullif(${orders.utmSource}, ''), 'direct')`,
+          campaign: dsql<string>`coalesce(nullif(${orders.utmCampaign}, ''), 'aucune')`,
+          status: dsql<string>`${orders.fulfillmentStatus}`,
+          payment_method: dsql<string>`${orders.paymentMethod}`,
+        }[breakdown]
+        rows = await db
+          .select({ key: col, label: col, ...metrics })
+          .from(orders)
+          .where(where)
+          .groupBy(dsql`1`)
+          .orderBy(dsql`count(distinct ${orders.id}) desc`)
+          .limit(limit)
+      }
+
+      const rate = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 1000) / 10 : null)
+      const shape = <T extends Record<string, unknown>>(r: T) => {
+        const m = r as unknown as { confirmed: number; delivered: number; returned: number; cancelled: number }
+        return {
+          ...r,
+          ...(revenueVisible ? {} : { revenueCollected: null, revenueBooked: null }),
+          confirmationRate: rate(m.confirmed, m.confirmed + m.cancelled),
+          deliveryRate: rate(m.delivered, m.delivered + m.returned),
+        }
+      }
+      const totals = series.reduce(
+        (a, r) => {
+          for (const k of ['orders', 'confirmed', 'delivered', 'returned', 'cancelled', 'pending', 'revenueCollected', 'revenueBooked'] as const) a[k] += Number(r[k])
+          return a
+        },
+        { orders: 0, confirmed: 0, delivered: 0, returned: 0, cancelled: 0, pending: 0, revenueCollected: 0, revenueBooked: 0 },
+      )
+      return c.json({
+        range: { from: startDay, to: endDay, timezone: tz },
+        currency: store.currency,
+        revenueVisible,
+        groupBy,
+        totals: shape(totals),
+        series: series.map(shape),
+        breakdown: breakdown === 'none' ? null : { by: breakdown, rows: rows.map(shape) },
+      })
+    },
+  )

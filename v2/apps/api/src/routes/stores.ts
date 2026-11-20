@@ -4,7 +4,7 @@ import { Hono } from 'hono'
 import { db } from '../db/client'
 import { checkoutSettings, storeMembers, stores } from '../db/schema'
 import { requireAuth, requirePermission, requireStore } from '../lib/auth'
-import { logActivity } from '../services/activity'
+import { logActivity, tagApiOrderEvents } from '../services/activity'
 import { activityRoutes } from './activity'
 import { teamRoutes } from './team'
 import { storeNotificationRoutes } from './notifications'
@@ -141,6 +141,8 @@ const storeScoped = new Hono<AppEnv>()
   .route('/products/import/url', productImportUrlRoutes)
   .route('/products/import', productImportRoutes)
   .route('/products', productRoutes)
+  .use('/orders/*', tagApiOrderEvents)
+  .use('/orders', tagApiOrderEvents)
   .route('/orders', orderRoutes)
   .route('/customers', customerRoutes)
   .route('/zones', zoneRoutes)
@@ -157,6 +159,7 @@ export const storeRoutes = new Hono<AppEnv>()
   .post('/', v('json', storeCreateSchema), async (c) => {
     const input = c.req.valid('json')
     const user = c.get('user')
+    if (c.get('apiKey')?.storeId) throw new HttpError(403, 'Cette clé API est limitée à une boutique', 'api_key_forbidden')
     if (!user.isPlatformAdmin) assertWithinLimit(await planForUser(user), 'stores', await countOwnedStores(user.id))
     await assertUnique({ slug: input.slug, subdomain: input.slug })
     const store = await db.transaction(async (tx) => {

@@ -39,20 +39,20 @@ export const activityRoutes = new Hono<AppEnv>().get('/', requirePermission('act
   if (!entityType || entityType === 'order') {
     parts.push(dsql`
       select 'o' || oe.id as id, oe.created_at as at, oe.user_id, 'order' as entity_type, o.id as entity_id,
-             o.order_number as entity_label, oe.type as action, coalesce(oe.message, oe.type) as message
+             o.order_number as entity_label, oe.type as action, coalesce(oe.message, oe.type) as message, oe.data->>'via' as via
       from order_events oe join orders o on o.id = oe.order_id
       where o.store_id = ${store.id} and ${orderScope} and ${userSql(dsql`oe.user_id`)}`)
   }
   if (entityType !== 'order') {
     parts.push(dsql`
       select 'a' || a.id as id, a.created_at as at, a.user_id, a.entity_type, a.entity_id,
-             a.entity_label, a.action, a.message
+             a.entity_label, a.action, a.message, a.data->>'via' as via
       from activity_log a
       where a.store_id = ${store.id} and ${logScope} and ${hiddenSql} and ${userSql(dsql`a.user_id`)}
         ${entityType ? dsql`and a.entity_type = ${entityType}` : dsql``}`)
   }
   const union = dsql.join(parts, dsql` union all `)
-  const rows = await db.execute<{ id: string; at: Date; user_id: number | null; entity_type: string; entity_id: string | null; entity_label: string | null; action: string; message: string; actor_name: string | null; total: number }>(dsql`
+  const rows = await db.execute<{ id: string; at: Date; user_id: number | null; entity_type: string; entity_id: string | null; entity_label: string | null; action: string; message: string; via: string | null; actor_name: string | null; total: number }>(dsql`
     select f.*, u.name as actor_name, count(*) over()::int as total
     from (${union}) f left join users u on u.id = f.user_id
     order by f.at desc
@@ -66,6 +66,7 @@ export const activityRoutes = new Hono<AppEnv>().get('/', requirePermission('act
     entityLabel: r.entity_label,
     action: r.action,
     message: r.message,
+    via: r.via === 'api' ? 'api' : null,
   }))
   return c.json({ data, total: rows[0]?.total ?? 0, page, pageSize: PAGE_SIZE })
 })

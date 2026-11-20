@@ -185,6 +185,8 @@ export interface ActivityItem {
   entityLabel: string | null
   action: string
   message: string
+  /** « api » : action faite par une IA ou une automatisation avec une clé API. */
+  via?: 'api' | null
 }
 
 export const PRODUCT_TYPES = ['digital', 'physical'] as const

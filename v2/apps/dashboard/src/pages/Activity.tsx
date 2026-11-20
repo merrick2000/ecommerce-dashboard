@@ -61,6 +61,7 @@ function Row({ item, base }: { item: ActivityItem; base: string }) {
       <div className="min-w-0 flex-1">
         <p className="text-sm">
           <span className="font-medium">{actor}</span> <span className="text-muted">{item.message}</span>
+          {item.via === 'api' && <span className="ml-1.5 rounded-full bg-violet-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-violet-700 dark:bg-violet-950 dark:text-violet-300">via API</span>}
         </p>
         <p className="mt-0.5 text-[12px] text-subtle">
           {timeFmt.format(new Date(item.at))}

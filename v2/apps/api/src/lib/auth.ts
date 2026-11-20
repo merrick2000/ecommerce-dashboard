@@ -3,7 +3,7 @@ import type { Context } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { createMiddleware } from 'hono/factory'
 import { db } from '../db/client'
-import { sessions, storeMemberProducts, storeMembers, stores, users } from '../db/schema'
+import { apiKeys, sessions, storeMemberProducts, storeMembers, stores, users } from '../db/schema'
 import type { AppEnv, StoreAccess } from './context'
 import { randomToken, sha256 } from './crypto'
 import { isProd } from './env'
@@ -49,6 +49,8 @@ export async function destroySession(c: Context) {
 
 /** Exige une session valide ; prolonge la session si elle approche de l'expiration. */
 export const requireAuth = createMiddleware<AppEnv>(async (c, next) => {
+  const bearer = c.req.header('authorization')?.match(/^Bearer\s+(zk_\S+)$/i)?.[1]
+  if (bearer) return authWithApiKey(c, bearer, next)
   const token = getCookie(c, SESSION_COOKIE)
   if (!token) throw new HttpError(401, 'Non connecté', 'unauthenticated')
   const sid = sha256(token)
@@ -71,6 +73,43 @@ export const requireAuth = createMiddleware<AppEnv>(async (c, next) => {
   await next()
 })
 
+export const API_KEY_PREFIX = 'zk_live_'
+
+/**
+ * Ce qu'une clé API peut atteindre : les boutiques (produits, commandes, stats…) et son propre profil.
+ * Jamais : moyens de paiement (clés secrètes), intégrations, abonnement, admin, mot de passe, autres clés.
+ */
+function apiKeyAllows(method: string, path: string): boolean {
+  if (/\/(payment-accounts|integrations)(\/|$)/.test(path)) return false
+  if (path === '/api/auth/me' && method === 'GET') return true
+  if (path === '/api/mcp') return true
+  return path === '/api/stores' || path.startsWith('/api/stores/')
+}
+
+async function authWithApiKey(c: Context<AppEnv>, key: string, next: () => Promise<void>) {
+  const [row] = await db
+    .select({ key: apiKeys, user: users })
+    .from(apiKeys)
+    .innerJoin(users, eq(users.id, apiKeys.userId))
+    .where(eq(apiKeys.keyHash, sha256(key)))
+    .limit(1)
+  if (!row || row.key.revokedAt) throw new HttpError(401, 'Clé API invalide ou révoquée', 'invalid_api_key')
+  if (row.user.disabledAt) throw new HttpError(403, 'Ce compte est suspendu. Contacte le support Zuri.', 'account_disabled')
+  const method = c.req.method
+  if (!apiKeyAllows(method, c.req.path)) throw new HttpError(403, 'Cette action n’est pas disponible avec une clé API', 'api_key_forbidden')
+  // Clé en lecture seule : aucune écriture (le point MCP lui-même reste joignable, ses outils d'écriture échoueront ici).
+  if (row.key.scope === 'read' && method !== 'GET' && method !== 'HEAD' && c.req.path !== '/api/mcp') {
+    throw new HttpError(403, 'Clé API en lecture seule', 'api_key_read_only')
+  }
+  // Dernière utilisation : au plus une écriture par minute et par clé.
+  if (!row.key.lastUsedAt || Date.now() - row.key.lastUsedAt.getTime() > 60_000) {
+    await db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, row.key.id))
+  }
+  c.set('user', row.user)
+  c.set('apiKey', { id: row.key.id, name: row.key.name, storeId: row.key.storeId, scope: row.key.scope })
+  await next()
+}
+
 /**
  * Résout la boutique depuis `:storeId` et charge les droits du membre (rôle, options, périmètre produits).
  * Toute route `/stores/:storeId/*` passe par ici : l'isolation entre boutiques
@@ -81,6 +120,9 @@ export const requireStore = () =>
     const storeId = c.req.param('storeId') ?? ''
     if (!storeIdSchema.safeParse(storeId).success) throw notFound('Boutique')
     const user = c.get('user')
+    // Clé limitée à une boutique : les autres n'existent pas pour elle.
+    const key = c.get('apiKey')
+    if (key?.storeId && key.storeId !== storeId) throw notFound('Boutique')
     const [row] = await db
       .select({ store: stores, member: storeMembers })
       .from(stores)
@@ -89,7 +131,8 @@ export const requireStore = () =>
       .limit(1)
     if (!row) throw notFound('Boutique')
     if (row.store.closedAt && !user.isPlatformAdmin) throw notFound('Boutique')
-    const access = await loadAccess(storeId, user.id, row.member, user.isPlatformAdmin)
+    // Une clé API n'hérite pas du passe-droit admin plateforme : seulement les boutiques dont on est membre.
+    const access = await loadAccess(storeId, user.id, row.member, user.isPlatformAdmin && !key)
     if (!access) throw notFound('Boutique')
     c.set('store', row.store)
     c.set('role', access.role)
