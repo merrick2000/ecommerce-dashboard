@@ -18,7 +18,19 @@ export const IMAGE_PRESETS = {
 } as const
 export type ImagePreset = keyof typeof IMAGE_PRESETS
 
-const UA = 'Mozilla/5.0 (compatible; ZuriImport/1.0; +https://zurisell.store)'
+// En-têtes d'un navigateur courant : beaucoup de boutiques refusent les clients qui s'annoncent comme robots.
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+const BROWSER_HEADERS = {
+  'sec-ch-ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+  'sec-ch-ua-mobile': '?0',
+  'sec-ch-ua-platform': '"Windows"',
+  'sec-fetch-dest': 'document',
+  'sec-fetch-mode': 'navigate',
+  'sec-fetch-site': 'none',
+  'sec-fetch-user': '?1',
+  'upgrade-insecure-requests': '1',
+  'cache-control': 'no-cache',
+}
 
 function privateIPv4(ip: string): boolean {
   const [a, b] = ip.split('.').map(Number) as [number, number]
@@ -79,7 +91,7 @@ export interface FetchedResource {
 }
 
 /** GET sûr : hôte public, 5 redirections max (revérifiées), taille et durée limitées. */
-export async function safeFetch(raw: string, opts: { maxBytes?: number; timeoutMs?: number; accept?: string } = {}): Promise<FetchedResource> {
+export async function safeFetch(raw: string, opts: { maxBytes?: number; timeoutMs?: number; accept?: string; browser?: boolean } = {}): Promise<FetchedResource> {
   const maxBytes = opts.maxBytes ?? 5 * 1024 * 1024
   const deadline = AbortSignal.timeout(opts.timeoutMs ?? 15_000)
   let current = raw
@@ -90,7 +102,7 @@ export async function safeFetch(raw: string, opts: { maxBytes?: number; timeoutM
       res = await fetch(url, {
         redirect: 'manual',
         signal: deadline,
-        headers: { 'user-agent': UA, accept: opts.accept ?? 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8', 'accept-language': 'fr,en;q=0.8' },
+        headers: { 'user-agent': UA, accept: opts.accept ?? 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8', 'accept-language': 'fr-FR,fr;q=0.9,en;q=0.8', ...(opts.browser ? BROWSER_HEADERS : {}) },
       })
     } catch (e) {
       throw badRequest(e instanceof Error && e.name === 'TimeoutError' ? 'Le site met trop de temps à répondre' : 'Impossible de joindre ce site')

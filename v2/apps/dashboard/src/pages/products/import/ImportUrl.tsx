@@ -10,11 +10,11 @@ import { DragHandle, draggingClass, useSortable } from '@/components/Sortable'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, Checkbox, cx, Input, PageHeader, Switch, Textarea } from '@/components/ui'
 import { useCurrentStore, useStoreId } from '@/hooks/auth'
-import { api, errorMessage } from '@/lib/api'
+import { api, ApiError, errorMessage } from '@/lib/api'
 import { money } from '@/lib/format'
 import { NumberField } from '../editor/fields'
 
-type Source = 'shopify' | 'jsonld' | 'microdata' | 'opengraph' | 'page'
+type Source = 'shopify' | 'jsonld' | 'microdata' | 'opengraph' | 'page' | 'ai'
 
 interface Variant {
   name: string
@@ -47,6 +47,7 @@ interface Preview {
   warnings: string[]
   draft: Draft
   aiAvailable: boolean
+  fetchedVia?: 'direct' | 'firecrawl' | 'text'
 }
 
 interface Suggestions {
@@ -65,6 +66,7 @@ const SOURCE_LABEL: Record<Source, string> = {
   microdata: 'Microdonnées',
   opengraph: 'Balises de partage',
   page: 'Images de la page',
+  ai: 'Analyse IA',
 }
 
 /** Étape 2 : brouillon éditable. */
@@ -187,9 +189,10 @@ function Review({ preview, onRestart }: { preview: Preview; onRestart: () => voi
           </a>
           {preview.detected.map((s) => (
             <Badge key={s} tone="green">
-              {SOURCE_LABEL[s]}
+              {SOURCE_LABEL[s] ?? s}
             </Badge>
           ))}
+          {preview.fetchedVia === 'firecrawl' && <Badge tone="neutral">Site protégé, lu avec un navigateur</Badge>}
           <Button size="sm" variant="ghost" className="ml-auto" onClick={onRestart}>
             Autre lien
           </Button>
@@ -410,6 +413,10 @@ export default function ImportUrl() {
   const [loading, setLoading] = useState(false)
   const [preview, setPreview] = useState<Preview | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Secours : coller le texte de la page quand un site bloque toute lecture automatique.
+  const [pasteOpen, setPasteOpen] = useState(false)
+  const [pasted, setPasted] = useState('')
+  const [pasteError, setPasteError] = useState<string | null>(null)
   const valid = useMemo(() => /^https?:\/\/\S+\.\S+/.test(url.trim()), [url])
 
   const analyse = async (e: FormEvent) => {
@@ -421,7 +428,22 @@ export default function ImportUrl() {
       setPreview(await api.post<Preview>(`/stores/${storeId}/products/import/url/preview`, { url: url.trim() }))
     } catch (err) {
       setError(errorMessage(err))
-      toast.error(err)
+      if (err instanceof ApiError && err.code === 'page_unreadable') setPasteOpen(true)
+      else toast.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const analyseText = async (e: FormEvent) => {
+    e.preventDefault()
+    if (pasted.trim().length < 40) return setPasteError('Colle le contenu de la page produit : nom, prix, description…')
+    setPasteError(null)
+    setLoading(true)
+    try {
+      setPreview(await api.post<Preview>(`/stores/${storeId}/products/import/url/preview-text`, { text: pasted.trim(), url: valid ? url.trim() : null }))
+    } catch (err) {
+      setPasteError(errorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -431,7 +453,7 @@ export default function ImportUrl() {
     <div className="mx-auto max-w-5xl">
       <PageHeader
         title="Importer depuis un lien"
-        description="Collez le lien d’une page produit (Shopify, WooCommerce, autre boutique) : nom, prix, variantes, images, vidéo et contenu sont détectés automatiquement."
+        description="Collez le lien d’une page produit (Shopify, WooCommerce, AliExpress, Jumia, Amazon, autre boutique) : nom, prix, variantes, images, vidéo et contenu sont détectés automatiquement."
         back={
           <Link to={`/stores/${storeId}/products`} className="mb-1 inline-block text-sm text-muted hover:text-fg">
             ← Produits
@@ -439,21 +461,39 @@ export default function ImportUrl() {
         }
       />
       {!preview ? (
-        <Card>
-          <form onSubmit={analyse} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:p-5" noValidate>
-            <Input aria-label="Lien de la page produit" type="url" inputMode="url" placeholder="https://boutique.com/products/mon-produit" value={url} onChange={(e) => setUrl(e.target.value)} error={error ?? undefined} wrapClass="flex-1" autoFocus />
-            <Button type="submit" variant="primary" size="lg" loading={loading}>
-              <Link2 className="size-4" /> Analyser
-            </Button>
-          </form>
-          {loading && (
-            <p className="flex items-center gap-2 border-t border-line px-4 py-3 text-sm text-muted sm:px-5">
-              <Loader2 className="size-4 animate-spin" /> Analyse de la page… (jusqu’à 15 secondes)
-            </p>
+        <div className="space-y-4">
+          <Card>
+            <form onSubmit={analyse} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:p-5" noValidate>
+              <Input aria-label="Lien de la page produit" type="url" inputMode="url" placeholder="https://boutique.com/products/mon-produit" value={url} onChange={(e) => setUrl(e.target.value)} error={error ?? undefined} wrapClass="flex-1" autoFocus />
+              <Button type="submit" variant="primary" size="lg" loading={loading && !pasteOpen}>
+                <Link2 className="size-4" /> Analyser
+              </Button>
+            </form>
+            {loading && (
+              <p className="flex items-center gap-2 border-t border-line px-4 py-3 text-sm text-muted sm:px-5">
+                <Loader2 className="size-4 animate-spin" /> Analyse de la page… quelques secondes, jusqu’à une minute pour les sites protégés.
+              </p>
+            )}
+            {!pasteOpen && !loading && (
+              <button type="button" onClick={() => setPasteOpen(true)} className="w-full border-t border-line px-4 py-3 text-left text-[13px] text-muted hover:text-fg sm:px-5">
+                Le site bloque l’analyse ? <span className="font-medium text-accent">Colle le contenu de la page</span>
+              </button>
+            )}
+          </Card>
+          {pasteOpen && (
+            <Card title="Coller le contenu de la page" description="Ouvre la page produit, sélectionne tout (Ctrl+A ou appui long puis « Tout sélectionner »), copie et colle ici. L’IA retrouve le nom, le prix, la description et les variantes.">
+              <form onSubmit={analyseText} className="space-y-3" noValidate>
+                <Textarea aria-label="Contenu de la page produit" rows={8} value={pasted} onChange={(e) => setPasted(e.target.value)} error={pasteError ?? undefined} maxLength={60_000} placeholder="Colle ici le texte de la page produit…" />
+                <p className="text-[12px] text-muted">Pour les photos : colle aussi leurs liens (clic droit sur l’image, « Copier l’adresse de l’image »), ou ajoute-les ensuite dans la fiche.</p>
+                <Button type="submit" variant="primary" loading={loading}>
+                  Analyser le texte
+                </Button>
+              </form>
+            </Card>
           )}
-        </Card>
+        </div>
       ) : (
-        <Review key={preview.sourceUrl} preview={preview} onRestart={() => setPreview(null)} />
+        <Review key={preview.sourceUrl + preview.draft.name} preview={preview} onRestart={() => setPreview(null)} />
       )}
     </div>
   )

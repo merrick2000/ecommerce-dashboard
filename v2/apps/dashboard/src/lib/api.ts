@@ -77,7 +77,7 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   let res: Response
   // Limite de 35 s : au-delà, message clair au lieu d'un bouton qui tourne sans fin.
   // Imports de produits (images distantes, IA) : jusqu'à 2 min ; le reste : 35 s.
-  const { signal, timedOut } = withTimeout(opts.signal, path.includes('/products/import/') ? 125_000 : 35_000)
+  const { signal, timedOut } = withTimeout(opts.signal, path.includes('/products/import/') ? 175_000 : 35_000)
   try {
     res = await fetch(withQuery(`/api${path}`, opts.query), {
       method: opts.method ?? 'GET',

@@ -8,8 +8,11 @@
 import { sanitizeHtml } from '../lib/sanitize'
 import { badRequest } from '../lib/errors'
 import { safeFetch } from './remote'
+import { aiAvailable } from './ai-suggest'
+import { extractWithAi, type AiExtraction } from './ai-extract'
+import { fetchDirect, fetchWithFirecrawl, firecrawlAvailable, looksBlocked, type FetchedPage } from './page-fetch'
 
-export type ImportSource = 'shopify' | 'jsonld' | 'microdata' | 'opengraph' | 'page'
+export type ImportSource = 'shopify' | 'jsonld' | 'microdata' | 'opengraph' | 'page' | 'ai'
 
 export interface ImportVariant {
   name: string
@@ -44,6 +47,8 @@ export interface UrlPreview {
   detected: ImportSource[]
   warnings: string[]
   draft: ImportDraft
+  /** Comment la page a été lue : directement, via Firecrawl (navigateur + proxys), ou texte collé. */
+  fetchedVia?: 'direct' | 'firecrawl' | 'text'
 }
 
 // ─── Utilitaires ─────────────────────────────────────────────────────────────
@@ -480,28 +485,167 @@ export async function extractProduct(html: string, pageUrl: string, opts: { allo
   return { sourceUrl: pageUrl, detected, warnings, draft }
 }
 
-/** Télécharge la page (5 Mo, 15 s max) puis l'analyse. */
+const draftFromShopify = (p: Partial<ImportDraft>): ImportDraft => ({
+  type: 'physical',
+  name: p.name ?? '',
+  description: sanitizeHtml(p.description ?? ''),
+  price: p.price ?? null,
+  compareAtPrice: p.compareAtPrice ?? null,
+  currency: null,
+  variantLabel: p.variantLabel ?? null,
+  variants: p.variants ?? [],
+  images: p.images ?? [],
+  video: p.video ?? null,
+  features: featuresFromHtml(p.description ?? ''),
+  faqs: [],
+  testimonials: [],
+  brand: p.brand ?? null,
+})
+
+const completeness = (d: ImportDraft) => (d.name ? 1 : 0) + (d.price != null ? 1 : 0) + (d.images.length ? 1 : 0)
+
+/** Texte lisible d'une page HTML (pour l'IA quand Firecrawl n'a pas fourni de markdown). */
+function htmlToText(html: string): string {
+  return stripTags(html.replace(/<(script|style|noscript|svg|template)\b[\s\S]*?<\/\1>/gi, ' ').replace(/<(br|\/p|\/div|\/li|\/h\d)>/gi, '\n'))
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n+/g, '\n')
+    .trim()
+}
+
+/** Images candidates d'une page (OpenGraph, grandes images, images du markdown) pour l'IA. */
+async function imageCandidates(page: Pick<FetchedPage, 'html' | 'url' | 'markdown'>): Promise<string[]> {
+  const scan = await scanHtml(page.html, page.url)
+  const og = [...(scan.meta.get('og:image') ?? []), ...(scan.meta.get('og:image:secure_url') ?? [])].map((x) => absolute(x, page.url)).filter((x): x is string => !!x)
+  const md = [...(page.markdown ?? '').matchAll(/!\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/g)].map((m) => m[1]!).filter((u) => !IMAGE_NOISE.test(u))
+  return dedupe([...og, ...pageImages(scan), ...md]).slice(0, 60)
+}
+
+/** Complète un brouillon avec l'extraction IA, sans écraser ce que les données structurées ont trouvé. */
+function mergeAi(base: ImportDraft | null, ai: AiExtraction, structured = false): ImportDraft {
+  // Sans données structurées (seulement le titre ou les balises de partage), l'IA lit mieux la page : elle passe devant.
+  if (base && !structured) {
+    base = { ...base, name: ai.name ? '' : base.name, price: ai.price != null ? null : base.price, currency: ai.price != null ? null : base.currency, description: ai.description ? '' : base.description }
+  }
+  const d: ImportDraft = base ?? { type: 'physical', name: '', description: '', price: null, compareAtPrice: null, currency: null, variantLabel: null, variants: [], images: [], video: null, features: [], faqs: [], testimonials: [], brand: null }
+  const description = d.description && stripTags(d.description).length > 80 ? d.description : sanitizeHtml(ai.description)
+  return {
+    ...d,
+    name: d.name || clean(ai.name, 160),
+    price: d.price ?? ai.price,
+    compareAtPrice: d.compareAtPrice ?? (ai.compareAtPrice != null && ai.price != null && ai.compareAtPrice > ai.price ? ai.compareAtPrice : null),
+    currency: d.currency ?? ai.currency,
+    brand: d.brand ?? ai.brand,
+    description,
+    features: d.features.length ? d.features : ai.features.map((f) => clean(f, 200)).filter(Boolean),
+    variantLabel: d.variantLabel ?? (ai.variants.length ? (ai.variantLabel ?? 'Option') : null),
+    variants: d.variants.length ? d.variants : ai.variants.map((v) => ({ name: clean(v.name, 80), price: v.price, available: true, sku: null })).filter((v) => v.name),
+    images: dedupe([...ai.imageUrls, ...d.images]).slice(0, 20),
+    faqs: d.faqs.length ? d.faqs : ai.faqs,
+  }
+}
+
+function finishWarnings(draft: ImportDraft, warnings: string[], storeCurrency: string) {
+  const out = warnings.filter((w) => !/introuvable|Aucune image|peu structurée/.test(w))
+  if (!draft.name) out.push('Nom du produit introuvable : à saisir.')
+  if (draft.price == null) out.push('Prix introuvable : à saisir.')
+  if (!draft.images.length) out.push('Aucune image détectée.')
+  if (draft.currency && draft.currency !== storeCurrency) out.push(`Prix en ${draft.currency} sur le site source : votre boutique est en ${storeCurrency}. Ajustez le prix avant d’importer.`)
+  return out
+}
+
+/**
+ * Lit une page produit, de la méthode la plus rapide à la plus robuste, et s'arrête dès que
+ * nom + prix + images sont trouvés :
+ * 1. lecture directe (+ API Shopify) ; 2. Firecrawl (navigateur réel, proxys) si la page est bloquée,
+ * rendue en JavaScript ou incomplète ; 3. IA sur le texte de la page pour combler ce qui manque.
+ */
 export async function previewFromUrl(rawUrl: string, storeCurrency: string): Promise<UrlPreview> {
-  const page = await safeFetch(rawUrl, { maxBytes: 5 * 1024 * 1024, timeoutMs: 15_000 })
-  const finalUrl = page.url
-  let result: Omit<UrlPreview, 'domain'>
-  if (/json/i.test(page.contentType)) {
-    // Lien direct vers l'API Shopify (…/products/x.js ou .json).
-    const data = JSON.parse(page.body.toString('utf8')) as ShopifyProduct | { product: ShopifyProduct }
-    const product = 'product' in data && data.product ? data.product : (data as ShopifyProduct)
-    const partial = fromShopify(product, finalUrl.endsWith('.js'), new URL(finalUrl).origin)
-    result = {
-      sourceUrl: finalUrl,
-      detected: ['shopify'],
-      warnings: [],
-      draft: { type: 'physical', name: partial.name ?? '', description: sanitizeHtml(partial.description ?? ''), price: partial.price ?? null, compareAtPrice: partial.compareAtPrice ?? null, currency: null, variantLabel: partial.variantLabel ?? null, variants: partial.variants ?? [], images: partial.images ?? [], video: partial.video ?? null, features: featuresFromHtml(partial.description ?? ''), faqs: [], testimonials: [], brand: partial.brand ?? null },
+  const url = new URL(rawUrl)
+  const log: string[] = []
+  let best: { r: Omit<UrlPreview, 'domain'>; page: FetchedPage | null } | null = null
+  let lastPage: FetchedPage | null = null
+  const consider = (r: Omit<UrlPreview, 'domain'>, page: FetchedPage | null) => {
+    if (!best || completeness(r.draft) > completeness(best.r.draft)) best = { r, page }
+  }
+  const done = () => best && completeness(best.r.draft) === 3
+
+  // 1. Lecture directe.
+  try {
+    const page = await fetchDirect(rawUrl)
+    lastPage = page
+    if (/json/i.test(page.contentType) && page.status < 400) {
+      // Lien direct vers l'API Shopify (…/products/x.js ou .json).
+      const data = JSON.parse(page.html) as ShopifyProduct | { product: ShopifyProduct }
+      const product = 'product' in data && data.product ? data.product : (data as ShopifyProduct)
+      consider({ sourceUrl: page.url, detected: ['shopify'], warnings: [], draft: draftFromShopify(fromShopify(product, page.url.endsWith('.js'), new URL(page.url).origin)), fetchedVia: 'direct' }, page)
+    } else if (!looksBlocked(page)) {
+      consider({ ...(await extractProduct(page.html, page.url)), fetchedVia: 'direct' }, page)
+    } else {
+      log.push(`direct bloqué (${page.status})`)
     }
-  } else {
-    if (page.status >= 400) throw badRequest(`Le site a répondu avec une erreur (${page.status})`)
-    result = await extractProduct(page.body.toString('utf8'), finalUrl)
+  } catch (e) {
+    log.push(`direct: ${(e as Error).message}`)
   }
-  if (result.draft.currency && result.draft.currency !== storeCurrency) {
-    result.warnings.push(`Prix en ${result.draft.currency} sur le site source : votre boutique est en ${storeCurrency}. Ajustez le prix avant d’importer.`)
+
+  // 1 bis. Page bloquée mais adresse Shopify (/products/…) : l'API produit répond souvent quand même.
+  if (!done() && shopifyHandle(url)) {
+    const shopify = await tryShopify(url, null)
+    if (shopify?.name) consider({ sourceUrl: rawUrl, detected: ['shopify'], warnings: [], draft: draftFromShopify(shopify), fetchedVia: 'direct' }, lastPage)
   }
-  return { ...result, domain: new URL(finalUrl).hostname.replace(/^www\./, '') }
+
+  // 2. Firecrawl : vrai navigateur, JavaScript exécuté, proxys anti-blocage.
+  if (!done() && firecrawlAvailable()) {
+    try {
+      const page = await fetchWithFirecrawl(rawUrl)
+      lastPage = page
+      if (page.html) consider({ ...(await extractProduct(page.html, page.url)), fetchedVia: 'firecrawl' }, page)
+    } catch (e) {
+      log.push(`firecrawl: ${(e as Error).message}`)
+      console.warn('[import-url] firecrawl', rawUrl, (e as Error).message)
+    }
+  }
+
+  // 3. IA sur le texte de la page : comble nom, prix, images, description manquants.
+  const current = best as { r: Omit<UrlPreview, 'domain'>; page: FetchedPage | null } | null
+  const page = current?.page ?? lastPage
+  if (!done() && aiAvailable() && page && (page.markdown || page.html) && !(page.status >= 400 && !page.markdown)) {
+    try {
+      const text = page.markdown ?? htmlToText(page.html)
+      if (text.length > 40) {
+        const ai = await extractWithAi({ text, url: page.url, imageCandidates: await imageCandidates(page) })
+        if (ai.found) {
+          const structured = (current?.r.detected ?? []).some((x) => x === 'shopify' || x === 'jsonld' || x === 'microdata')
+          const draft = mergeAi(current?.r.draft ?? null, ai, structured)
+          const r = { sourceUrl: page.url, detected: [...(current?.r.detected ?? []), 'ai' as const], warnings: current?.r.warnings ?? [], draft, fetchedVia: page.via }
+          if (!current || completeness(draft) >= completeness(current.r.draft)) best = { r, page }
+        }
+      }
+    } catch (e) {
+      log.push(`ia: ${(e as Error).message}`)
+    }
+  }
+
+  const final = best as { r: Omit<UrlPreview, 'domain'>; page: FetchedPage | null } | null
+  if (!final || (!final.r.draft.name && final.r.draft.price == null)) {
+    console.warn('[import-url] échec', rawUrl, log.join(' | '))
+    throw badRequest(
+      firecrawlAvailable()
+        ? 'Ce site bloque la lecture automatique de ses pages. Copie le texte de la page produit (Ctrl+A puis Ctrl+C) et colle-le dans « Coller le contenu de la page ».'
+        : 'Impossible de lire cette page (site protégé ou rendu en JavaScript). Colle le texte de la page produit dans « Coller le contenu de la page ».',
+      'page_unreadable',
+    )
+  }
+  const draft = final.r.draft
+  if (draft.compareAtPrice != null && draft.price != null && draft.compareAtPrice <= draft.price) draft.compareAtPrice = null
+  return { ...final.r, draft, warnings: finishWarnings(draft, final.r.warnings, storeCurrency), domain: url.hostname.replace(/^www\./, '') }
+}
+
+/** Secours ultime : le vendeur colle le texte de la page (et éventuellement des liens d'images) ; l'IA remplit la fiche. */
+export async function previewFromText(text: string, storeCurrency: string, sourceUrl?: string | null): Promise<UrlPreview> {
+  const candidates = dedupe([...text.matchAll(/https?:\/\/[^\s"'<>)]+\.(?:jpe?g|png|webp|avif)(?:\?[^\s"'<>)]*)?/gi)].map((m) => m[0]))
+  const ai = await extractWithAi({ text, url: sourceUrl, imageCandidates: candidates })
+  if (!ai.found && !ai.name) throw badRequest('Aucun produit reconnu dans ce texte. Copie bien le contenu de la page produit (nom, prix, description).', 'no_product')
+  const draft = mergeAi(null, ai)
+  const domain = sourceUrl ? new URL(sourceUrl).hostname.replace(/^www\./, '') : 'texte collé'
+  return { sourceUrl: sourceUrl ?? '', domain, detected: ['ai'], warnings: finishWarnings(draft, [], storeCurrency), draft, fetchedVia: 'text' }
 }

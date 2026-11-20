@@ -431,10 +431,11 @@ export const TOOLS: Tool[] = [
     name: 'import_product_from_url',
     title: 'Import product from a link',
     description:
-      'Create a product from any product page link (Shopify, AliExpress, Jumia, competitor store…): name, price, description, images, variants, FAQs. Optionally rewrites the sales copy with AI (improveCopy) and activates it. Use preview: true to only look at what would be imported.',
+      'Create a product from any product page link (Shopify, AliExpress, Jumia, Amazon, competitor store…): name, price, description, images, variants, FAQs. Protected sites are read with a real browser; if a site still blocks, pass pageText. Optionally rewrites the sales copy with AI (improveCopy) and activates it. Use preview: true to only look at what would be imported.',
     input: z.object({
       storeId: storeArg,
       url: z.string().url().max(2000),
+      pageText: z.string().max(60_000).optional().describe('Text content of the product page, if you already have it (e.g. fetched yourself) or if the site blocks automated reading. Skips fetching.'),
       preview: z.boolean().optional().describe('true = return the extracted draft without creating anything'),
       improveCopy: z.boolean().optional().describe('Rewrite name, headline, description, features and FAQs with AI before saving'),
       goal: z.string().max(300).optional().describe('Angle for the AI copy, e.g. "pour femmes actives à Abidjan, ton chaleureux"'),
@@ -445,7 +446,7 @@ export const TOOLS: Tool[] = [
     run: async (a, ctx) => {
       const id = await resolveStore(ctx, a.storeId)
       const base = `/stores/${id}/products/import/url`
-      const pv = await ctx.call<any>('POST', `${base}/preview`, { body: { url: a.url } })
+      const pv = a.pageText ? await ctx.call<any>('POST', `${base}/preview-text`, { body: { text: a.pageText, url: a.url } }) : await ctx.call<any>('POST', `${base}/preview`, { body: { url: a.url } })
       let draft = pv.draft
       if (a.price != null) draft = { ...draft, price: a.price }
       if (a.improveCopy) {

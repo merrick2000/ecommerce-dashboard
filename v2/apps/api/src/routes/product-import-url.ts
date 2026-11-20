@@ -18,7 +18,8 @@ import { logActivity } from '../services/activity'
 import { aiAvailable, suggestImprovements } from '../services/ai-suggest'
 import { createProduct } from '../services/product-write'
 import { importRemoteImage } from '../services/remote'
-import { previewFromUrl, stripTags } from '../services/url-import'
+import { previewFromText, previewFromUrl, stripTags } from '../services/url-import'
+import { firecrawlAvailable } from '../services/page-fetch'
 
 /** Aucun tiret long ou moyen dans les textes importés ou proposés par l'IA. */
 const noDash = (s: string) => s.replace(/\s*[—–]\s*/g, ', ')
@@ -45,12 +46,24 @@ const draftSchema = z.object({
 export const productImportUrlRoutes = new Hono<AppEnv>()
   .use(requirePermission('products.edit'))
   /** Fonctions disponibles (le bouton « Proposer des améliorations » n'apparaît que si l'IA est configurée). */
-  .get('/config', (c) => c.json({ aiAvailable: aiAvailable() }))
+  .get('/config', (c) => c.json({ aiAvailable: aiAvailable(), browserAvailable: firecrawlAvailable() }))
   .post('/preview', rateLimit({ key: 'import-url', limit: 20, windowSec: 600 }), v('json', z.object({ url: z.string().trim().url().max(2000) })), async (c) => {
     await assertFeature(await planForStore(c.get('store').id), 'aiImport')
     const preview = await previewFromUrl(c.req.valid('json').url, c.get('store').currency)
     return c.json({ ...preview, aiAvailable: aiAvailable() })
   })
+  /** Secours quand un site bloque toute lecture : le vendeur colle le texte de la page, l'IA remplit la fiche. */
+  .post(
+    '/preview-text',
+    rateLimit({ key: 'import-url', limit: 20, windowSec: 600 }),
+    v('json', z.object({ text: z.string().trim().min(40, 'Colle le contenu de la page produit').max(60_000), url: z.string().trim().url().max(2000).nullable().optional() })),
+    async (c) => {
+      await assertFeature(await planForStore(c.get('store').id), 'aiImport')
+      if (!aiAvailable()) throw badRequest('Analyse IA non configurée', 'ai_unavailable')
+      const { text, url } = c.req.valid('json')
+      return c.json({ ...(await previewFromText(text, c.get('store').currency, url ?? null)), aiAvailable: true })
+    },
+  )
   .post(
     '/improve',
     rateLimit({ key: 'import-ai', limit: 15, windowSec: 600 }),

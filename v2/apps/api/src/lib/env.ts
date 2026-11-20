@@ -28,6 +28,8 @@ const schema = z.object({
   /** Suggestions IA de l'import de produits (kie.ai, API compatible Messages). Absente : fonction masquée. */
   KIE_API_KEY: z.string().optional(),
   KIE_MODEL: z.string().optional(),
+  /** Firecrawl (rendu JavaScript + proxys anti-blocage) : secours de l'import de produit par lien. */
+  FIRECRAWL_API_KEY: z.string().optional(),
   /** Inscriptions ouvertes à tous (par défaut). « false » : seul le premier compte peut s'inscrire (outil perso). */
   REGISTRATION_OPEN: z.enum(['true', 'false']).default('true'),
 })

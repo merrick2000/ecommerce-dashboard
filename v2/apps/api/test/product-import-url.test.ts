@@ -183,7 +183,7 @@ describe('import par URL : routes', () => {
   test('suggestions IA : 404 sans clé', async () => {
     const r = await owner.post(`/api/stores/${storeId}/products/import/url/improve`, { draft: DRAFT })
     expect(r.status).toBe(404)
-    expect((await owner.get(`/api/stores/${storeId}/products/import/url/config`)).body).toEqual({ aiAvailable: false })
+    expect((await owner.get(`/api/stores/${storeId}/products/import/url/config`)).body).toEqual({ aiAvailable: false, browserAvailable: false })
   })
 
   test('suggestions IA (kie.ai simulé) : sortie validée, nettoyée, sans tiret long', async () => {
