@@ -2,6 +2,7 @@ import type { Permission } from '@zuri/shared'
 import {
   Bell,
   Bot,
+  Receipt,
   Check,
   Crown,
   PauseCircle,
@@ -49,6 +50,8 @@ interface NavItem {
   end?: boolean
   /** Entrée visible seulement avec cette permission. */
   perm?: Permission
+  /** Entrée réservée à un type de boutique (ex. Livraison : boutiques physiques). */
+  kind?: 'physical' | 'digital'
 }
 
 const NAV: NavItem[] = [
@@ -56,7 +59,8 @@ const NAV: NavItem[] = [
   { to: 'orders', label: 'Commandes', icon: ShoppingBag, perm: 'orders.view' },
   { to: 'products', label: 'Produits', icon: Package, perm: 'products.view' },
   { to: 'customers', label: 'Clients', icon: Users, perm: 'customers.view' },
-  { to: 'zones', label: 'Livraison', icon: Truck, perm: 'delivery.edit' },
+  { to: 'zones', label: 'Livraison', icon: Truck, perm: 'delivery.edit', kind: 'physical' },
+  { to: 'expenses', label: 'Dépenses', icon: Receipt, perm: 'stats.revenue' },
   { to: 'promo-codes', label: 'Codes promo', icon: Tag, perm: 'marketing.edit' },
   { to: 'activity', label: 'Activité', icon: Activity, perm: 'activity.view' },
   { to: 'team', label: 'Équipe', icon: UserPlus, perm: 'team.manage' },
@@ -179,7 +183,7 @@ export function AppShell() {
     })
   }
   const permissions = usePermissions()
-  const nav = NAV.filter((i) => (i.to === 'settings' ? SETTINGS_PERMS.some((p) => permissions.includes(p)) : !i.perm || permissions.includes(i.perm)))
+  const nav = NAV.filter((i) => (!i.kind || !store || store.kind === i.kind) && (i.to === 'settings' ? SETTINGS_PERMS.some((p) => permissions.includes(p)) : !i.perm || permissions.includes(i.perm)))
   const primaryMobile = nav.slice(0, 4)
   const moreMobile = nav.slice(4)
   const canOrders = permissions.includes('orders.view')

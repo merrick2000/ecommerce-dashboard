@@ -24,7 +24,7 @@ const DUMMY_HASH = await Bun.password.hash('dummy-password-for-timing', { algori
 
 export async function loadMe(user: User): Promise<Me> {
   const rows = await db
-    .select({ id: stores.id, name: stores.name, slug: stores.slug, currency: stores.currency, status: stores.status, member: storeMembers })
+    .select({ id: stores.id, name: stores.name, slug: stores.slug, currency: stores.currency, status: stores.status, kind: stores.kind, member: storeMembers })
     .from(storeMembers)
     .innerJoin(stores, eq(stores.id, storeMembers.storeId))
     .where(and(eq(storeMembers.userId, user.id), isNull(stores.closedAt)))

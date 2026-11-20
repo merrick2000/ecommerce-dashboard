@@ -8,6 +8,7 @@ import { db, type Tx } from '../db/client'
 import { productVariants, products, storeMemberProducts } from '../db/schema'
 import type { StoreAccess } from '../lib/context'
 import { sanitizeHtml } from '../lib/sanitize'
+import { HttpError } from '../lib/errors'
 
 export function toRow(input: ProductInput, storeId: string, baseCurrency: string) {
   const { variants: _variants, ...rest } = input
@@ -33,6 +34,7 @@ export async function syncVariants(tx: Tx, productId: string, variants: ProductI
       name: variant.name,
       sku: variant.sku ?? null,
       price: variant.price ?? null,
+      costPrice: variant.costPrice ?? null,
       stock: variant.stock ?? null,
       isActive: variant.isActive,
       position,
@@ -48,8 +50,20 @@ export async function addToScope(access: StoreAccess, storeId: string, productId
   await db.insert(storeMemberProducts).values({ storeId, userId: access.userId, productId }).onConflictDoNothing()
 }
 
+/** Une boutique vend soit du physique, soit du digital : jamais les deux. */
+export function assertStoreKind(store: { kind?: string | null }, type: string) {
+  if (store.kind && store.kind !== type) {
+    throw new HttpError(
+      422,
+      store.kind === 'physical' ? 'Cette boutique vend des produits physiques : crée une boutique digitale pour vendre des ebooks ou formations.' : 'Cette boutique vend des produits digitaux : crée une boutique physique pour vendre des produits livrés.',
+      'store_kind_mismatch',
+    )
+  }
+}
+
 /** Crée un produit (déjà validé par productInputSchema) et l'ajoute au périmètre du membre. */
-export async function createProduct(access: StoreAccess, store: { id: string; currency: string }, input: ProductInput): Promise<string> {
+export async function createProduct(access: StoreAccess, store: { id: string; currency: string; kind?: string | null }, input: ProductInput): Promise<string> {
+  assertStoreKind(store, input.type)
   const id = await db.transaction(async (tx) => {
     const [row] = await tx.insert(products).values(toRow(input, store.id, store.currency)).returning({ id: products.id })
     if (!row) throw new Error('Création produit échouée')

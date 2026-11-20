@@ -130,7 +130,7 @@ export function periodRange(period: (typeof PERIODS)[number], tz: string, now = 
 }
 
 async function storeInfo(ctx: ToolContext, storeId: string) {
-  return ctx.call<{ id: string; name: string; slug: string; subdomain: string | null; timezone: string; currency: string }>('GET', `/stores/${storeId}`)
+  return ctx.call<{ id: string; name: string; slug: string; subdomain: string | null; timezone: string; currency: string; kind: 'physical' | 'digital' }>('GET', `/stores/${storeId}`)
 }
 
 async function rangeFor(ctx: ToolContext, storeId: string, a: { period?: (typeof PERIODS)[number]; from?: string; to?: string }) {
@@ -171,15 +171,16 @@ function orderRow(o: any) {
 const faq = z.object({ question: z.string().max(300), answer: z.string().max(3000) })
 const testimonial = z.object({ name: z.string().max(80), city: z.string().max(80).optional(), rating: z.number().int().min(1).max(5).optional(), text: z.string().max(1000) })
 const offer = z.object({ id: z.string().max(40).describe('Stable id, e.g. "pack2"'), quantity: z.number().int().min(1).max(100), price: z.number().min(0).describe('Total price for this quantity'), label: z.string().max(80).optional(), badge: z.string().max(30).optional() })
-const variant = z.object({ id: z.number().int().optional().describe('Existing variant id to keep it (omit for a new one)'), name: z.string().max(80), sku: z.string().max(60).nullable().optional(), price: z.number().min(0).nullable().optional(), stock: z.number().int().min(0).nullable().optional(), isActive: z.boolean().optional() })
+const variant = z.object({ id: z.number().int().optional().describe('Existing variant id to keep it (omit for a new one)'), name: z.string().max(80), sku: z.string().max(60).nullable().optional(), price: z.number().min(0).nullable().optional(), costPrice: z.number().min(0).nullable().optional(), stock: z.number().int().min(0).nullable().optional(), isActive: z.boolean().optional() })
 
 const productFields = z.object({
-  type: z.enum(['physical', 'digital']).optional().describe('physical = delivered (cash on delivery possible), digital = ebook, course, file. Default physical.'),
+  type: z.enum(['physical', 'digital']).optional().describe('Must match the store kind (a store sells physical OR digital products). Defaults to the store kind.'),
   name: z.string().min(2).max(160).optional(),
   isActive: z.boolean().optional().describe('true = on sale (sales page accepts orders)'),
   description: z.string().max(200_000).optional().describe('Sales page body, HTML (p, h2, h3, ul, li, strong, em, img, a).'),
   price: z.number().min(0).optional().describe('Price in the store currency (e.g. XOF, no decimals for FCFA)'),
   compareAtPrice: z.number().min(0).nullable().optional().describe('Old price shown struck through (must be higher than price)'),
+  costPrice: z.number().min(0).nullable().optional().describe('Purchase / cost price per unit (never shown to customers). Needed for real profit.'),
   coverImage: z.string().max(2000).nullable().optional().describe('Main image URL. External URLs are downloaded and hosted on Zuri automatically.'),
   thumbnail: z.string().max(2000).nullable().optional(),
   offers: z.array(offer).max(6).optional().describe('Quantity bundles (physical only), e.g. 2 for 25000'),
@@ -225,6 +226,7 @@ function productToInput(p: any) {
     description: p.description ?? '',
     price: p.price,
     compareAtPrice: p.compareAtPrice,
+    costPrice: p.costPrice ?? null,
     currencyPrices: p.currencyPrices ?? [],
     promo: p.promo ?? { type: 'none', value: 0, display: 'strikethrough' },
     offers: p.offers ?? [],
@@ -239,7 +241,7 @@ function productToInput(p: any) {
     stock: p.stock,
     weightGrams: p.weightGrams,
     variantLabel: p.variantLabel,
-    variants: (p.variants ?? []).map((v: any) => ({ id: v.id, name: v.name, sku: v.sku, price: v.price, stock: v.stock, isActive: v.isActive })),
+    variants: (p.variants ?? []).map((v: any) => ({ id: v.id, name: v.name, sku: v.sku, price: v.price, costPrice: v.costPrice ?? null, stock: v.stock, isActive: v.isActive })),
   }
 }
 
@@ -384,7 +386,8 @@ export const TOOLS: Tool[] = [
     input: productFields.extend({ storeId: storeArg, name: z.string().min(2).max(160), price: z.number().min(0) }),
     run: async ({ storeId, ...fields }, ctx) => {
       const id = await resolveStore(ctx, storeId)
-      const body: Record<string, any> = deepMerge({ type: 'physical', isActive: false, description: '', content: {} }, fields)
+      const kind = (await storeInfo(ctx, id)).kind ?? 'physical'
+      const body: Record<string, any> = deepMerge({ type: kind, isActive: false, description: '', content: {} }, fields)
       await rehostProductImages(ctx, id, body)
       const [store, p] = await Promise.all([storeInfo(ctx, id), ctx.call<any>('POST', `/stores/${id}/products`, { body })])
       return productSummary(p, store)
@@ -556,7 +559,7 @@ export const TOOLS: Tool[] = [
   {
     name: 'update_order',
     title: 'Edit order details',
-    description: 'Correct customer name, phone, city, address, courier or tracking number on an order.',
+    description: 'Correct customer name, phone, city, address, courier, tracking number, or the real delivery / return cost of an order.',
     input: z.object({
       storeId: storeArg,
       orderId: z.string().max(40),
@@ -566,6 +569,8 @@ export const TOOLS: Tool[] = [
       address: z.string().max(500).nullable().optional(),
       courier: z.string().max(80).nullable().optional(),
       trackingNumber: z.string().max(80).nullable().optional(),
+      deliveryCost: z.number().min(0).nullable().optional().describe('Real courier cost for this order'),
+      returnCost: z.number().min(0).nullable().optional().describe('Real return cost if refused'),
     }),
     run: async ({ storeId, orderId, ...patch }, ctx) => ctx.call('PATCH', `/stores/${await resolveStore(ctx, storeId)}/orders/${orderId}`, { body: patch }),
   },
@@ -622,7 +627,7 @@ export const TOOLS: Tool[] = [
     name: 'get_sales_summary',
     title: 'Sales summary',
     description:
-      'Sales recap for a period (default last 30 days) compared with the previous period of the same length: orders, revenue collected, cash on delivery to confirm / to ship / with couriers, confirmation, delivery and conversion rates, visitors, top products, traffic sources, daily series.',
+      'Sales recap for a period (default last 30 days) compared with the previous period of the same length: orders, revenue collected, REAL PROFIT (revenue minus product cost, courier and return costs, expenses), cash on delivery to confirm / to ship / with couriers, confirmation, delivery and conversion rates, visitors, top products, traffic sources, daily series.',
     input: z.object({ storeId: storeArg, period: periodArg, from: ymd.optional(), to: ymd.optional() }),
     readOnly: true,
     run: async (a, ctx) => {
@@ -644,6 +649,7 @@ export const TOOLS: Tool[] = [
         sources: r.sources,
         daily: r.daily,
         myResults: r.mine,
+        profit: r.profit,
       }
     },
   },
@@ -651,7 +657,7 @@ export const TOOLS: Tool[] = [
     name: 'get_sales_report',
     title: 'Sales report',
     description:
-      'Detailed sales report for any period: series by day, week or month, with an optional breakdown by product, city, traffic source, ad campaign, status, closer (assignee) or payment method. Each row has orders, confirmed, delivered, returned, cancelled, pending, revenue collected, revenue booked, confirmation and delivery rates.',
+      'Detailed sales report for any period: series by day, week or month, with an optional breakdown by product, city, traffic source, ad campaign, status, closer (assignee) or payment method. Each row has orders, confirmed, delivered, returned, cancelled, pending, revenue collected, revenue booked, confirmation and delivery rates. Also returns real profit (totals and per period; per product with breakdown=product): revenue collected, product cost, delivery and return costs, expenses, gross and net profit, net margin, and how many units lack a cost price.',
     input: z.object({
       storeId: storeArg,
       period: periodArg,
@@ -810,6 +816,8 @@ export const TOOLS: Tool[] = [
       cities: z.array(z.string().max(80)).max(200).optional(),
       fee: z.number().min(0),
       freeAbove: z.number().min(0).nullable().optional(),
+      courierCost: z.number().min(0).nullable().optional().describe('What the courier really charges you per delivery (for real profit)'),
+      returnCost: z.number().min(0).nullable().optional().describe('What a refused / returned parcel costs you'),
       codAllowed: z.boolean().optional(),
       etaLabel: z.string().max(60).nullable().optional().describe('e.g. "Livré en 24 h"'),
       isActive: z.boolean().optional(),
@@ -828,6 +836,8 @@ export const TOOLS: Tool[] = [
       cities: z.array(z.string().max(80)).max(200).optional(),
       fee: z.number().min(0).optional(),
       freeAbove: z.number().min(0).nullable().optional(),
+      courierCost: z.number().min(0).nullable().optional(),
+      returnCost: z.number().min(0).nullable().optional(),
       codAllowed: z.boolean().optional(),
       etaLabel: z.string().max(60).nullable().optional(),
       isActive: z.boolean().optional(),
@@ -836,7 +846,7 @@ export const TOOLS: Tool[] = [
       const id = await resolveStore(ctx, storeId)
       const cur = (await ctx.call<any[]>('GET', `/stores/${id}/zones`)).find((z) => z.id === zoneId)
       if (!cur) throw new ToolError('Delivery zone not found')
-      const base = { name: cur.name, country: cur.country, cities: cur.cities, fee: cur.fee, freeAbove: cur.freeAbove, codAllowed: cur.codAllowed, etaLabel: cur.etaLabel, isActive: cur.isActive, position: cur.position }
+      const base = { name: cur.name, country: cur.country, cities: cur.cities, fee: cur.fee, freeAbove: cur.freeAbove, courierCost: cur.courierCost ?? null, returnCost: cur.returnCost ?? null, codAllowed: cur.codAllowed, etaLabel: cur.etaLabel, isActive: cur.isActive, position: cur.position }
       return ctx.call('PUT', `/stores/${id}/zones/${zoneId}`, { body: { ...base, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) } })
     },
   },
@@ -847,6 +857,42 @@ export const TOOLS: Tool[] = [
     input: z.object({ storeId: storeArg, zoneId: z.number().int().positive(), confirm: z.literal(true) }),
     destructive: true,
     run: async (a, ctx) => ctx.call('DELETE', `/stores/${await resolveStore(ctx, a.storeId)}/zones/${a.zoneId}`),
+  },
+
+  // Dépenses (bénéfice réel)
+  {
+    name: 'list_expenses',
+    title: 'List expenses',
+    description: 'Store expenses (ads, packaging, stock purchases, salaries, tools, fees…) for a period, with totals per category. They are deducted from revenue in the real profit.',
+    input: z.object({ storeId: storeArg, period: periodArg, from: ymd.optional(), to: ymd.optional(), category: z.enum(['ads', 'delivery', 'packaging', 'stock', 'salary', 'tools', 'fees', 'other']).optional() }),
+    readOnly: true,
+    run: async (a, ctx) => {
+      const id = await resolveStore(ctx, a.storeId)
+      const range = await rangeFor(ctx, id, a)
+      return ctx.call('GET', `/stores/${id}/expenses`, { query: { ...range, category: a.category } })
+    },
+  },
+  {
+    name: 'add_expense',
+    title: 'Add expense',
+    description: 'Record an expense, e.g. daily Facebook ads spend (category ads, optionally linked to a product for per product profit), packaging, salaries, Mobile Money fees.',
+    input: z.object({
+      storeId: storeArg,
+      spentOn: ymd.describe('Day of the expense (YYYY-MM-DD)'),
+      category: z.enum(['ads', 'delivery', 'packaging', 'stock', 'salary', 'tools', 'fees', 'other']),
+      amount: z.number().positive().describe('Amount in the store currency'),
+      label: z.string().max(160).nullable().optional(),
+      productId: z.string().max(40).nullable().optional(),
+    }),
+    run: async ({ storeId, ...b }, ctx) => ctx.call('POST', `/stores/${await resolveStore(ctx, storeId)}/expenses`, { body: { label: null, productId: null, ...b } }),
+  },
+  {
+    name: 'delete_expense',
+    title: 'Delete expense',
+    description: 'Delete an expense. Requires confirm: true.',
+    input: z.object({ storeId: storeArg, expenseId: z.number().int().positive(), confirm: z.literal(true) }),
+    destructive: true,
+    run: async (a, ctx) => ctx.call('DELETE', `/stores/${await resolveStore(ctx, a.storeId)}/expenses/${a.expenseId}`),
   },
 
   // Équipe & activité
@@ -911,6 +957,8 @@ How to work with it:
 - Amounts are in the store currency (often XOF / FCFA, no decimals).
 - Order lifecycle for COD: new (to call) -> confirmed or unreachable -> shipped -> delivered (cash collected) or returned; cancelled before shipping.
 - "Revenue collected" = paid online or COD delivered. "Revenue booked" = ordered, excluding cancelled and returned.
+- Real profit = revenue collected - product cost (costPrice) - courier costs (delivered and returned orders) - return costs - expenses. Always distinguish revenue from profit. If unitsWithoutCost > 0, tell the user to set costPrice on those products, since profit is overestimated.
+- A store sells physical OR digital products, never both (see get_store kind).
 - Product sheets: get_product then update_product with only the fields to change; lists are replaced, objects merged. Image URLs are hosted on Zuri automatically.
 - Write customer facing copy in the store language (usually French), concrete and honest: no invented reviews, numbers or medical claims.
 - Destructive tools need confirm: true: always ask the user first.

@@ -65,6 +65,19 @@ export function GeneralSection(p: SectionProps) {
         <div className="grid gap-4 sm:grid-cols-2">
           <NumberField label="Prix de vente" value={form.price} onChange={(v) => set({ price: v ?? 0 })} suffix={cur} error={errors.price} />
           <NumberField label="Prix barré" optional value={form.compareAtPrice} onChange={(v) => set({ compareAtPrice: v })} suffix={cur} error={errors.compareAtPrice} hint="Affiché barré pour montrer la réduction." />
+          <NumberField
+            label="Prix d’achat (coût)"
+            optional
+            value={form.costPrice ?? null}
+            onChange={(v) => set({ costPrice: v })}
+            suffix={cur}
+            error={errors.costPrice}
+            hint={
+              form.costPrice != null && form.price > 0
+                ? `Marge par unité : ${(form.price - form.costPrice).toLocaleString('fr-FR')} ${cur} (${Math.round(((form.price - form.costPrice) / form.price) * 100)} %), avant livraison et pub. Jamais visible des clients.`
+                : 'Ce que te coûte une unité. Sert à calculer ton bénéfice réel. Jamais visible des clients.'
+            }
+          />
         </div>
         <div className="mt-5 space-y-4 border-t border-line pt-5">
           <Field label="Promotion">
@@ -469,11 +482,12 @@ function PhysicalDelivery(p: SectionProps) {
       <Card title="Variantes" description="Tailles, couleurs… Laissez le prix vide pour utiliser le prix du produit.">
         <div className="space-y-4">
           <Input label="Nom de l’option" placeholder="Ex. Couleur, Taille" value={form.variantLabel ?? ''} onChange={(e) => set({ variantLabel: nul(e.target.value) })} wrapClass="sm:max-w-xs" />
-          <div className="hidden grid-cols-[28px_1.4fr_1fr_1fr_0.8fr_60px_40px] gap-2 px-1 text-[12px] font-medium text-muted md:grid">
+          <div className="hidden grid-cols-[28px_1.4fr_1fr_1fr_1fr_0.8fr_60px_40px] gap-2 px-1 text-[12px] font-medium text-muted md:grid">
             <span />
             <span>Nom</span>
             <span>SKU</span>
             <span>Prix</span>
+            <span>Coût</span>
             <span>Stock</span>
             <span>Actif</span>
             <span />
@@ -482,11 +496,12 @@ function PhysicalDelivery(p: SectionProps) {
             {form.variants.map((v, i) => {
               const update = (patch: Partial<Form['variants'][number]>) => set({ variants: form.variants.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
               return (
-                <li key={v.id ?? `new-${i}`} {...variantSort.itemProps(i)} className={cx('grid grid-cols-[28px_1fr_1fr] gap-2 rounded-xl border border-line p-3 md:grid-cols-[28px_1.4fr_1fr_1fr_0.8fr_60px_40px] md:items-start md:rounded-none md:border-0 md:p-0', variantSort.dragIndex === i && draggingClass)}>
+                <li key={v.id ?? `new-${i}`} {...variantSort.itemProps(i)} className={cx('grid grid-cols-[28px_1fr_1fr] gap-2 rounded-xl border border-line p-3 md:grid-cols-[28px_1.4fr_1fr_1fr_1fr_0.8fr_60px_40px] md:items-start md:rounded-none md:border-0 md:p-0', variantSort.dragIndex === i && draggingClass)}>
                   <DragHandle {...variantSort.handleProps(i, `la variante ${v.name || i + 1}`)} className="row-span-3 mt-2 self-start md:row-span-1" />
                   <Input aria-label="Nom de la variante" placeholder="Nom" value={v.name} onChange={(e) => update({ name: e.target.value })} error={errors[`variants.${i}.name`]} wrapClass="col-span-2 md:col-span-1" />
                   <Input aria-label="SKU" placeholder="SKU" value={v.sku ?? ''} onChange={(e) => update({ sku: nul(e.target.value) })} />
                   <NumberField ariaLabel="Prix" placeholder={String(form.price)} value={v.price ?? null} onChange={(price) => update({ price })} suffix={currencyLabel(currency)} />
+                  <NumberField ariaLabel="Prix d’achat" placeholder={form.costPrice != null ? String(form.costPrice) : 'Coût'} value={v.costPrice ?? null} onChange={(costPrice) => update({ costPrice })} suffix={currencyLabel(currency)} />
                   <NumberField ariaLabel="Stock" placeholder={form.trackInventory ? '0' : '-'} value={v.stock ?? null} onChange={(stock) => update({ stock })} error={errors[`variants.${i}.stock`]} />
                   <div className="flex h-10 items-center gap-2">
                     <Switch size="sm" checked={v.isActive} onChange={(isActive) => update({ isActive })} ariaLabel={`Variante ${v.name || i + 1} active`} />

@@ -5,7 +5,7 @@ import { Link, useBeforeUnload, useBlocker, useNavigate, useParams } from 'react
 import { ConfirmDialog } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, cx, ErrorState, Segmented, Skeleton } from '@/components/ui'
-import { useCan, useCurrency, useStoreId } from '@/hooks/auth'
+import { useCan, useCurrency, useCurrentStore, useStoreId } from '@/hooks/auth'
 import { useProduct, useSaveProduct } from '@/hooks/resources'
 import { serverErrors, validate, type Errors } from '@/lib/form'
 import type { Product } from '@/lib/types'
@@ -30,6 +30,7 @@ function emptyForm(type: ProductType): Form {
     description: '',
     price: 0,
     compareAtPrice: null,
+    costPrice: null,
     currencyPrices: [],
     promo: { type: 'none', value: 0, display: 'strikethrough' },
     offers: [],
@@ -59,6 +60,7 @@ function fromProduct(p: Product): Form {
     description: p.description ?? '',
     price: p.price,
     compareAtPrice: p.compareAtPrice,
+    costPrice: p.costPrice ?? null,
     currencyPrices: p.currencyPrices ?? [],
     promo: p.promo ?? { type: 'none', value: 0, display: 'strikethrough' },
     offers: p.offers ?? [],
@@ -73,7 +75,7 @@ function fromProduct(p: Product): Form {
     stock: p.stock,
     weightGrams: p.weightGrams,
     variantLabel: p.variantLabel,
-    variants: p.variants.map((v) => ({ id: v.id, name: v.name, sku: v.sku, price: v.price, stock: v.stock, isActive: v.isActive })),
+    variants: p.variants.map((v) => ({ id: v.id, name: v.name, sku: v.sku, price: v.price, costPrice: v.costPrice ?? null, stock: v.stock, isActive: v.isActive })),
   }
 }
 
@@ -96,6 +98,7 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
   const toast = useToast()
   const save = useSaveProduct()
   const canEdit = useCan('products.edit')
+  const storeKind = useCurrentStore().store?.kind ?? null
   const [form, setForm] = useState<Form>(initial)
   const [saved, setSaved] = useState(() => JSON.stringify(initial))
   const [errors, setErrors] = useState<Errors>({})
@@ -200,6 +203,12 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
+        {/* Le type suit la boutique ; le sélecteur n'apparaît que pour un ancien produit d'un autre type. */}
+        {storeKind && form.type === storeKind ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-[13px] text-muted">
+            {form.type === 'physical' ? <Box className="size-4" /> : <FileDown className="size-4" />} Produit {form.type === 'physical' ? 'physique' : 'digital'}
+          </span>
+        ) : (
         <Segmented
           label="Type de produit"
           value={form.type}
@@ -223,6 +232,7 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
             },
           ]}
         />
+        )}
       </div>
 
       <div className="scrollbar-none sticky top-14 z-20 -mx-4 mb-4 overflow-x-auto border-b border-line bg-bg/95 px-4 backdrop-blur sm:mx-0 sm:px-0 lg:top-0" role="tablist" aria-label="Sections">
@@ -281,8 +291,10 @@ export default function ProductEditor() {
   const { productId } = useParams()
   const id = productId ?? null
   const { data, error, isPending, refetch } = useProduct(id)
+  const { store } = useCurrentStore()
 
-  if (id === null) return <Editor key="new" initial={emptyForm('physical')} productId={null} />
+  // Nouveau produit : du type de la boutique (une boutique vend du physique OU du digital).
+  if (id === null) return <Editor key="new" initial={emptyForm(store?.kind ?? 'physical')} productId={null} />
   if (error && !data) return <ErrorState error={error} onRetry={() => void refetch()} />
   if (isPending)
     return (

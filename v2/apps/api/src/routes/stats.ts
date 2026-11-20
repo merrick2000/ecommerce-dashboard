@@ -7,6 +7,7 @@ import type { AppEnv } from '../lib/context'
 import { can, requirePermission } from '../lib/auth'
 import { orderScope } from '../lib/scope'
 import { v } from '../lib/validate'
+import { productProfit, profitSeries, profitTotals, type ProfitContext } from '../services/profit'
 
 const rangeSchema = z.object({
   from: z.coerce.date().default(() => new Date(Date.now() - 29 * 86400_000)),
@@ -124,10 +125,16 @@ export const statsRoutes = new Hono<AppEnv>().get('/overview', requirePermission
 
   // Sans l'option « voir le chiffre d'affaires », aucun montant ne sort de l'API.
   const hideMoney = <T extends Record<string, unknown>>(row: T, keys: (keyof T)[]): T => (revenueVisible ? row : { ...row, ...Object.fromEntries(keys.map((k) => [k, null])) })
+  // Bénéfice réel (période et période précédente) : seulement pour ceux qui voient le chiffre d'affaires.
+  const prevStartDay = new Date(Date.parse(`${startDay}T00:00:00Z`) - span).toISOString().slice(0, 10)
+  const prevEndDay = addDays(startDay, -1)
+  const pctx = (s: Date, e: Date, sd: string, ed: string): ProfitContext => ({ storeId: store.id, timezone: tz, start: s, end: e, startDay: sd, endDay: ed, access })
+  const profit = revenueVisible ? await Promise.all([profitTotals(pctx(start, end, startDay, endDay)), profitTotals(pctx(prevStart, start, prevStartDay, prevEndDay))]).then(([current, previous]) => ({ current, previous })) : null
   return c.json({
     range: { from: start, to: new Date(end.getTime() - 1) },
     currency: store.currency,
     revenueVisible,
+    profit,
     mine,
     current: hideMoney(current, ['revenue', 'codInTransit']),
     previous: hideMoney(previous, ['revenue', 'codInTransit']),
@@ -246,6 +253,13 @@ export const statsRoutes = new Hono<AppEnv>().get('/overview', requirePermission
         },
         { orders: 0, confirmed: 0, delivered: 0, returned: 0, cancelled: 0, pending: 0, revenueCollected: 0, revenueBooked: 0 },
       )
+      let profit = null
+      if (revenueVisible) {
+        const pctx: ProfitContext = { storeId: store.id, timezone: tz, start, end, startDay, endDay, access }
+        const [pTotals, pSeries, pProducts] = await Promise.all([profitTotals(pctx), profitSeries(pctx, groupBy), breakdown === 'product' ? productProfit(pctx) : Promise.resolve(null)])
+        if (pProducts) rows = rows.map((r) => ({ ...r, profit: pProducts.get(String(r.key)) ?? null }))
+        profit = { totals: pTotals, series: pSeries }
+      }
       return c.json({
         range: { from: startDay, to: endDay, timezone: tz },
         currency: store.currency,
@@ -254,6 +268,7 @@ export const statsRoutes = new Hono<AppEnv>().get('/overview', requirePermission
         totals: shape(totals),
         series: series.map(shape),
         breakdown: breakdown === 'none' ? null : { by: breakdown, rows: rows.map(shape) },
+        profit,
       })
     },
   )

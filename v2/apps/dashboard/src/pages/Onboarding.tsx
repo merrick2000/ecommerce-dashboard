@@ -1,10 +1,10 @@
 import { CURRENCIES, storeCreateSchema } from '@zuri/shared'
-import { ArrowLeft, Store } from 'lucide-react'
+import { ArrowLeft, Download, Package, Store } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Logo } from '@/components/layout/Guards'
 import { useToast } from '@/components/Toast'
-import { Button, Input, Select } from '@/components/ui'
+import { Button, cx, Input, Select } from '@/components/ui'
 import { useMe } from '@/hooks/auth'
 import { useCreateStore } from '@/hooks/resources'
 import { serverErrors, validate, type Errors } from '@/lib/form'
@@ -16,7 +16,7 @@ export default function Onboarding() {
   const navigate = useNavigate()
   const toast = useToast()
   const create = useCreateStore()
-  const [form, setForm] = useState({ name: '', slug: '', currency: 'XOF', country: 'BJ' })
+  const [form, setForm] = useState({ name: '', slug: '', currency: 'XOF', country: 'BJ', kind: 'physical' as 'physical' | 'digital' })
   const [slugTouched, setSlugTouched] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
   const first = !me?.stores.length
@@ -61,6 +61,30 @@ export default function Onboarding() {
           <h1 className="text-xl font-semibold tracking-tight">{first ? 'Créez votre boutique' : 'Nouvelle boutique'}</h1>
           <p className="mt-1 text-sm text-muted">Quelques informations pour commencer. Tout reste modifiable dans les paramètres.</p>
           <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
+            <fieldset>
+              <legend className="mb-1.5 text-sm font-medium">Que vendez-vous ?</legend>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    { kind: 'physical', icon: Package, title: 'Produits physiques', text: 'Livrés, paiement à la livraison possible' },
+                    { kind: 'digital', icon: Download, title: 'Produits digitaux', text: 'Ebooks, formations, fichiers' },
+                  ] as const
+                ).map((o) => (
+                  <button
+                    key={o.kind}
+                    type="button"
+                    aria-pressed={form.kind === o.kind}
+                    onClick={() => setForm({ ...form, kind: o.kind })}
+                    className={cx('rounded-xl border p-3 text-left transition', form.kind === o.kind ? 'border-accent bg-accent-soft' : 'border-line hover:border-line-strong')}
+                  >
+                    <o.icon className={cx('size-5', form.kind === o.kind ? 'text-accent' : 'text-muted')} />
+                    <span className="mt-1.5 block text-sm font-semibold">{o.title}</span>
+                    <span className="block text-[12px] text-muted">{o.text}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[12px] text-muted">Une boutique vend l’un ou l’autre. Pour vendre les deux, crée une deuxième boutique.</p>
+            </fieldset>
             <Input label="Nom de la boutique" value={form.name} onChange={(e) => setName(e.target.value)} error={errors.name} placeholder="Ex. Awa Beauté" autoFocus />
             <Input
               label="Lien de la boutique"

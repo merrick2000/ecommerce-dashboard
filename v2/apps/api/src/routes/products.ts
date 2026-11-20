@@ -9,7 +9,7 @@ import { can, requirePermission } from '../lib/auth'
 import type { StoreAccess } from '../lib/context'
 import { inProductScope, productScope } from '../lib/scope'
 import { logActivity } from '../services/activity'
-import { addToScope, createProduct, syncVariants, toRow } from '../services/product-write'
+import { addToScope, assertStoreKind, createProduct, syncVariants, toRow } from '../services/product-write'
 import type { AppEnv } from '../lib/context'
 import { notFound } from '../lib/errors'
 import { sanitizeHtml } from '../lib/sanitize'
@@ -94,6 +94,8 @@ export const productRoutes = new Hono<AppEnv>()
     assertScope(c.get('access'), id)
     const input = c.req.valid('json')
     const existing = await loadProduct(store.id, id)
+    // Les anciens produits d'un autre type restent modifiables, mais un produit ne change pas de type vers le mauvais.
+    if (input.type !== existing.type) assertStoreKind(store, input.type)
     await db.transaction(async (tx) => {
       // La devise de base ne change pas silencieusement quand la boutique change de devise.
       await tx.update(products).set(toRow(input, store.id, existing.baseCurrency)).where(eq(products.id, id))

@@ -466,6 +466,7 @@ export const variantInputSchema = z.object({
   name: z.string().min(1).max(80),
   sku: z.string().max(60).nullable().optional(),
   price: money.nullable().optional(),
+  costPrice: money.nullable().optional(),
   stock: z.coerce.number().int().min(0).nullable().optional(),
   isActive: z.boolean().default(true),
 })
@@ -477,6 +478,8 @@ export const productInputSchema = z.object({
   description: z.string().max(200_000).default(''),
   price: money,
   compareAtPrice: money.nullable().default(null),
+  /** Prix d'achat unitaire (coût de revient), pour le bénéfice réel. */
+  costPrice: money.nullable().default(null),
   currencyPrices: z.array(z.object({ currency: currencySchema, price: money })).max(11).default([]),
   promo: promoSchema.default({ type: 'none', value: 0, display: 'strikethrough' }),
   offers: z.array(quantityOfferSchema).max(6).default([]),
@@ -508,17 +511,42 @@ export type ProductInput = z.infer<typeof productInputSchema>
 /** Forme du formulaire côté dashboard (avant valeurs par défaut). */
 export type ProductFormInput = z.input<typeof productInputSchema>
 
+// ─── Dépenses (bénéfice réel) ────────────────────────────────────────────────
+
+export const EXPENSE_CATEGORIES = ['ads', 'delivery', 'packaging', 'stock', 'salary', 'tools', 'fees', 'other'] as const
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
+export const EXPENSE_LABELS: Record<ExpenseCategory, string> = {
+  ads: 'Publicité',
+  delivery: 'Livraison (hors commandes)',
+  packaging: 'Emballage',
+  stock: 'Achat de stock',
+  salary: 'Salaires, closers',
+  tools: 'Outils, abonnements',
+  fees: 'Frais (Mobile Money, banque)',
+  other: 'Autre',
+}
+export const expenseInputSchema = z.object({
+  spentOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date AAAA-MM-JJ'),
+  category: z.enum(EXPENSE_CATEGORIES),
+  amount: money.refine((v) => v > 0, 'Montant supérieur à 0'),
+  label: z.string().trim().max(160).nullable().default(null),
+  productId: productIdSchema.nullable().default(null),
+})
+export type ExpenseInput = z.infer<typeof expenseInputSchema>
+
 // ─── Boutique ────────────────────────────────────────────────────────────────
 
 export const storeCreateSchema = z.object({
   name: z.string().trim().min(2).max(80),
   slug,
+  /** Physique (livraison, paiement à la livraison) OU digital (ebooks, formations…) : fixé à la création. */
+  kind: productTypeSchema.default('physical'),
   currency: currencySchema.default('XOF'),
   locale: localeSchema.default('fr'),
   country: z.string().length(2).toUpperCase().default('BJ'),
 })
 
-export const storeUpdateSchema = storeCreateSchema.partial().extend({
+export const storeUpdateSchema = storeCreateSchema.omit({ kind: true }).partial().extend({
   subdomain: slug.nullable().optional(),
   customDomain: z
     .string()
@@ -614,6 +642,10 @@ export const deliveryZoneInputSchema = z.object({
   cities: z.array(z.string().trim().min(1).max(80)).max(200).default([]),
   fee: money,
   freeAbove: money.nullable().default(null),
+  /** Coût réel facturé par le livreur (null = inconnu). */
+  courierCost: money.nullable().default(null),
+  /** Coût d'un retour / colis refusé. */
+  returnCost: money.nullable().default(null),
   codAllowed: z.boolean().default(true),
   etaLabel: z.string().max(60).nullable().default(null),
   isActive: z.boolean().default(true),
@@ -766,7 +798,7 @@ export interface Me {
   /** Options du compte (paiements en ligne, abonnement…) : déjà résolues avec les réglages globaux. */
   features: { onlinePayments: boolean; billing: boolean; urlImport: boolean }
   plan: EffectivePlan
-  stores: { id: string; name: string; slug: string; role: StoreRole; currency: Currency; permissions: Permission[]; productIds: string[] | null; status: StoreStatus }[]
+  stores: { id: string; name: string; slug: string; role: StoreRole; currency: Currency; permissions: Permission[]; productIds: string[] | null; status: StoreStatus; kind: ProductType }[]
 }
 
 export interface Paginated<T> {

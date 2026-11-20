@@ -22,6 +22,7 @@ export interface Store {
   id: string
   name: string
   slug: string
+  kind: ProductType
   status: 'active' | 'paused' | 'closed'
   pauseMessage: string | null
   pausedAt: Iso | null
@@ -78,6 +79,7 @@ export interface ProductVariant {
   name: string
   sku: string | null
   price: number | null
+  costPrice: number | null
   stock: number | null
   isActive: boolean
   position: number
@@ -92,6 +94,7 @@ export interface Product {
   description: string
   price: number
   compareAtPrice: number | null
+  costPrice: number | null
   baseCurrency: string
   currencyPrices: { currency: Currency; price: number }[]
   promo: Promo
@@ -134,6 +137,9 @@ export interface OrderBase {
   discount: number
   shippingFee: number
   total: number
+  /** Coûts réels (bénéfice) : livreur et retour. */
+  deliveryCost?: number | null
+  returnCost?: number | null
   currency: string
   paymentMethod: PaymentMethod
   paymentStatus: PaymentStatus
@@ -187,6 +193,8 @@ export interface OrderItem {
   variantName: string | null
   quantity: number
   unitPrice: number
+  /** Prix d'achat unitaire figé à la commande (null : inconnu ou masqué). */
+  unitCost?: number | null
   total: number
 }
 
@@ -238,6 +246,8 @@ export interface DeliveryZone {
   cities: string[]
   fee: number
   freeAbove: number | null
+  courierCost: number | null
+  returnCost: number | null
   codAllowed: boolean
   etaLabel: string | null
   isActive: boolean
@@ -305,6 +315,21 @@ export interface KpiBlock {
   codTotal: number
 }
 
+export interface ProfitTotals {
+  revenueCollected: number
+  ordersCollected: number
+  productCost: number
+  deliveryCost: number
+  returnCost: number
+  grossProfit: number
+  expenses: number
+  netProfit: number
+  netMargin: number | null
+  profitPerOrder: number | null
+  unitsWithoutCost: number
+  ordersWithoutDeliveryCost: number
+}
+
 export interface StatsOverview {
   range: { from: Iso; to: Iso }
   currency: string
@@ -317,6 +342,8 @@ export interface StatsOverview {
   sources: { source: string; orders: number; revenue: number | null }[]
   /** Faux : les montants de revenu valent null et ne doivent pas être affichés. */
   revenueVisible: boolean
+  /** Bénéfice réel (null sans l'option « voir le chiffre d'affaires »). */
+  profit: { current: ProfitTotals; previous: ProfitTotals } | null
   /** Résultats personnels (commandes attribuées au membre connecté). */
   mine: { assigned: number; confirmed: number; delivered: number; confirmationRate: number | null } | null
 }

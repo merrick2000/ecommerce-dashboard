@@ -166,6 +166,9 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
         city: input.city ?? null,
         address: input.address ?? null,
         deliveryZoneId: zone?.id ?? null,
+        // Coûts réels (bénéfice) : ce que le livreur facture, et un éventuel retour.
+        deliveryCost: isPhysical ? (zone?.courierCost ?? null) : null,
+        returnCost: isPhysical ? (zone?.returnCost ?? null) : null,
         customerNote: input.note ?? null,
         kind: product.type,
         subtotal: q.subtotal,
@@ -202,6 +205,7 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
       variantName: variant?.name ?? null,
       quantity: q.quantity,
       unitPrice: q.unitPrice,
+      unitCost: variant?.costPrice ?? product.costPrice ?? null,
       total: q.subtotal,
     })
 

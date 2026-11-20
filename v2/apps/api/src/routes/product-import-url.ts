@@ -127,7 +127,7 @@ export const productImportUrlRoutes = new Hono<AppEnv>()
       const cover = images[0] ?? null
 
       const parsed = productInputSchema.safeParse({
-        type: 'physical',
+        type: store.kind === 'digital' ? 'digital' : 'physical',
         name: noDash(draft.name),
         isActive: activate,
         description: noDash(draft.description),

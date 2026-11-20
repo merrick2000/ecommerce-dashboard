@@ -12,6 +12,7 @@ const visitor = new Client()
 let storeId = ''
 let physicalId = ''
 let digitalId = ''
+let digStoreId = ''
 let variantId = 0
 let zoneId = 0
 
@@ -58,6 +59,8 @@ describe('auth & boutique', () => {
     const r = await owner.post('/api/stores', { name: 'Ma Boutique', slug: 'ma-boutique', currency: 'XOF' })
     expect(r.status).toBe(201)
     storeId = r.body.id
+    // Une boutique vend du physique OU du digital : boutique digitale à part pour les ebooks.
+    digStoreId = (await owner.post('/api/stores', { name: 'Ma Boutique Digitale', slug: 'ma-boutique-digitale', currency: 'XOF', kind: 'digital' })).body.id
     expect(r.body.subdomain).toBe('ma-boutique') // les tirets sont acceptés (bug de l'ancien admin)
     const me = await owner.get('/api/auth/me')
     expect(me.body.stores[0]).toMatchObject({ slug: 'ma-boutique', role: 'owner' })
@@ -85,7 +88,7 @@ describe('catalogue', () => {
   })
 
   test('produit digital', async () => {
-    const r = await owner.post(`/api/stores/${storeId}/products`, {
+    const r = await owner.post(`/api/stores/${digStoreId}/products`, {
       type: 'digital',
       name: 'Ebook Business',
       isActive: true,
@@ -193,60 +196,60 @@ describe('commande COD de bout en bout', () => {
 
 describe('mode de paiement (un seul choix par produit)', () => {
   test('COD refusé pour un produit digital', async () => {
-    const r = await owner.post(`/api/stores/${storeId}/products`, { type: 'digital', name: 'Ebook COD', price: 1000, payment: { method: 'cod' } })
+    const r = await owner.post(`/api/stores/${digStoreId}/products`, { type: 'digital', name: 'Ebook COD', price: 1000, payment: { method: 'cod' } })
     expect(r.status).toBe(422)
     expect(r.body.issues[0].path).toBe('payment.method')
   })
 
   test('intégration Chariow sans identifiant produit refusée', async () => {
-    const r = await owner.post(`/api/stores/${storeId}/products`, { type: 'digital', name: 'Cours', price: 1000, payment: { method: 'integration', integration: { platform: 'chariow' } } })
+    const r = await owner.post(`/api/stores/${digStoreId}/products`, { type: 'digital', name: 'Cours', price: 1000, payment: { method: 'integration', integration: { platform: 'chariow' } } })
     expect(r.status).toBe(422)
     expect(r.body.issues[0].path).toBe('payment.integration.productId')
   })
 
   test('défaut : COD pour le physique, paiement intégré pour le digital', async () => {
     const phys = await owner.get(`/api/stores/${storeId}/products/${physicalId}`)
-    const dig = await owner.get(`/api/stores/${storeId}/products/${digitalId}`)
+    const dig = await owner.get(`/api/stores/${digStoreId}/products/${digitalId}`)
     expect(phys.body.payment.method).toBe('cod')
     expect(dig.body.payment.method).toBe('native')
   })
 
   test('paiement intégré sans moyen de paiement activé → commande refusée', async () => {
-    const r = await visitor.post('/api/v1/orders', { storeSlug: 'ma-boutique', productId: digitalId, customerName: 'Koffi', customerPhone: '+22961000000', customerEmail: 'koffi@test.dev' })
+    const r = await visitor.post('/api/v1/orders', { storeSlug: 'ma-boutique-digitale', productId: digitalId, customerName: 'Koffi', customerPhone: '+22961000000', customerEmail: 'koffi@test.dev' })
     expect(r.status).toBe(400)
     expect(r.body.code).toBe('payments_disabled')
-    const page = await visitor.get(`/api/v1/checkout/ma-boutique/${digitalId}`)
+    const page = await visitor.get(`/api/v1/checkout/ma-boutique-digitale/${digitalId}`)
     expect(page.body.onlinePaymentEnabled).toBe(false)
   })
 
   test('intégration Selar : lien public exposé, commande externe', async () => {
-    const r = await owner.post(`/api/stores/${storeId}/products`, { type: 'digital', name: 'Formation Selar', isActive: true, price: 9000, payment: { method: 'integration', integration: { platform: 'selar', url: 'https://selar.co/abc' } } })
+    const r = await owner.post(`/api/stores/${digStoreId}/products`, { type: 'digital', name: 'Formation Selar', isActive: true, price: 9000, payment: { method: 'integration', integration: { platform: 'selar', url: 'https://selar.co/abc' } } })
     expect(r.status).toBe(201)
-    const page = await visitor.get(`/api/v1/checkout/ma-boutique/${r.body.id}`)
+    const page = await visitor.get(`/api/v1/checkout/ma-boutique-digitale/${r.body.id}`)
     expect(page.body.product.payment).toEqual({ method: 'integration', externalUrl: 'https://selar.co/abc', platform: 'selar' })
-    const o = await visitor.post('/api/v1/orders', { storeSlug: 'ma-boutique', productId: r.body.id, customerName: 'Ami', customerPhone: '+22961000001', customerEmail: 'ami@test.dev' })
+    const o = await visitor.post('/api/v1/orders', { storeSlug: 'ma-boutique-digitale', productId: r.body.id, customerName: 'Ami', customerPhone: '+22961000001', customerEmail: 'ami@test.dev' })
     expect(o.body.order.paymentMethod).toBe('external')
   })
 })
 
 describe('commande digitale', () => {
   test('email obligatoire', async () => {
-    await owner.put(`/api/stores/${storeId}/payment-accounts/feexpay`, { enabled: true, mode: 'sandbox', sandbox: { apiKey: 'k', shopId: 's' } })
-    const r = await visitor.post('/api/v1/orders', { storeSlug: 'ma-boutique', productId: digitalId, customerName: 'Koffi', customerPhone: '+22961000000' })
+    await owner.put(`/api/stores/${digStoreId}/payment-accounts/feexpay`, { enabled: true, mode: 'sandbox', sandbox: { apiKey: 'k', shopId: 's' } })
+    const r = await visitor.post('/api/v1/orders', { storeSlug: 'ma-boutique-digitale', productId: digitalId, customerName: 'Koffi', customerPhone: '+22961000000' })
     expect(r.status).toBe(400)
     expect(r.body.code).toBe('email_required')
   })
 
   test('téléchargement refusé avant paiement, accordé après', async () => {
-    const r = await visitor.post('/api/v1/orders', { storeSlug: 'ma-boutique', productId: digitalId, customerName: 'Koffi', customerPhone: '+22961000000', customerEmail: 'koffi@test.dev' })
+    const r = await visitor.post('/api/v1/orders', { storeSlug: 'ma-boutique-digitale', productId: digitalId, customerName: 'Koffi', customerPhone: '+22961000000', customerEmail: 'koffi@test.dev' })
     expect(r.status).toBe(201)
     const token = r.body.order.token
     expect((await visitor.post(`/api/v1/orders/${token}/download`)).status).toBe(400)
     const [o] = await db.select().from(orders).where(eq(orders.accessToken, token))
     // Double confirmation simultanée : un seul passage à « payé ».
     await Promise.all([
-      owner.post(`/api/stores/${storeId}/orders/${o!.id}/payment`, { paymentStatus: 'paid' }),
-      owner.post(`/api/stores/${storeId}/orders/${o!.id}/payment`, { paymentStatus: 'paid' }),
+      owner.post(`/api/stores/${digStoreId}/orders/${o!.id}/payment`, { paymentStatus: 'paid' }),
+      owner.post(`/api/stores/${digStoreId}/orders/${o!.id}/payment`, { paymentStatus: 'paid' }),
     ])
     const paidJobs = enqueued.filter((j) => j.name === 'order.paid' && (j.data as any).orderId === o!.id)
     expect(paidJobs).toHaveLength(1)
@@ -256,7 +259,7 @@ describe('commande digitale', () => {
 
   test('produit inactif : commande impossible', async () => {
     await db.update(products).set({ isActive: false }).where(eq(products.id, digitalId))
-    const r = await visitor.post('/api/v1/orders', { storeSlug: 'ma-boutique', productId: digitalId, customerName: 'Kossi', customerPhone: '+22961000000', customerEmail: 'k@test.dev' })
+    const r = await visitor.post('/api/v1/orders', { storeSlug: 'ma-boutique-digitale', productId: digitalId, customerName: 'Kossi', customerPhone: '+22961000000', customerEmail: 'k@test.dev' })
     expect(r.status).toBe(404)
   })
 })
@@ -266,7 +269,8 @@ describe('stats & divers', () => {
     const r = await owner.get(`/api/stores/${storeId}/stats/overview`)
     expect(r.status).toBe(200)
     expect(r.body.daily).toHaveLength(30)
-    expect(r.body.current.orders).toBe(3)
+    // Boutique physique seulement (les commandes digitales sont dans la boutique digitale).
+    expect(r.body.current.orders).toBe(1)
   })
 
   test('identifiants de paiement chiffrés et masqués', async () => {
@@ -301,12 +305,12 @@ describe('webhook Selar (n8n)', () => {
     app.request('/api/v1/webhooks/external', { method: 'POST', headers: { 'content-type': 'application/json', 'x-webhook-secret': s }, body: JSON.stringify(body) })
 
   test('secret généré une fois, jamais renvoyé ensuite', async () => {
-    const p = await owner.post(`/api/stores/${storeId}/products`, { type: 'digital', name: 'Cours Selar', isActive: true, price: 9000, externalProductId: 'SELAR-1', payment: { method: 'integration', integration: { platform: 'selar', url: 'https://selar.co/x' } } })
+    const p = await owner.post(`/api/stores/${digStoreId}/products`, { type: 'digital', name: 'Cours Selar', isActive: true, price: 9000, externalProductId: 'SELAR-1', payment: { method: 'integration', integration: { platform: 'selar', url: 'https://selar.co/x' } } })
     expect(p.status).toBe(201)
-    const r = await owner.post(`/api/stores/${storeId}/integrations/secret`)
+    const r = await owner.post(`/api/stores/${digStoreId}/integrations/secret`)
     secret = r.body.secret
     expect(secret).toStartWith('whsec_')
-    const store = await owner.get(`/api/stores/${storeId}`)
+    const store = await owner.get(`/api/stores/${digStoreId}`)
     expect(store.body.hasIntegrationSecret).toBe(true)
     expect(JSON.stringify(store.body)).not.toContain('integrationSecretEnc')
   })

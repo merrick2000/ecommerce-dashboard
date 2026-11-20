@@ -7,6 +7,9 @@ import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, cx, ErrorState, Input, PageHeader, Select, Skeleton, Stat, Textarea } from '@/components/ui'
 import { useCan, useCurrentStore } from '@/hooks/auth'
 import { useOrder, useOrderNote, useOrderPayment, useUpdateOrder } from '@/hooks/resources'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { api } from '@/lib/api'
+import { NumberField } from '../products/editor/fields'
 import { useAssignees, useAssignOrder, useClaimOrder, useReleaseOrder } from '@/hooks/team'
 import { strOrNull } from '@/lib/form'
 import { dateTime, money, prettyPhone } from '@/lib/format'
@@ -132,6 +135,51 @@ function EditDialog({ order, open, onClose }: { order: Order; open: boolean; onC
         <Input label="N° de suivi" value={v.trackingNumber} onChange={(e) => setV({ ...v, trackingNumber: e.target.value })} />
       </form>
     </Dialog>
+  )
+}
+
+/**
+ * Coûts réels de la commande (bénéfice) : prix d'achat des articles, livreur, retour.
+ * Les coûts de livraison viennent de la zone ; on peut les corriger au cas par cas.
+ */
+function CostsCard({ order, storeId }: { order: Order; storeId: string }) {
+  const toast = useToast()
+  const qc = useQueryClient()
+  const [delivery, setDelivery] = useState<number | null>(order.deliveryCost ?? null)
+  const [ret, setRet] = useState<number | null>(order.returnCost ?? null)
+  const save = useMutation({
+    mutationFn: () => api.patch(`/stores/${storeId}/orders/${order.id}`, { deliveryCost: delivery, returnCost: ret }),
+    onSuccess: () => {
+      toast.success('Coûts enregistrés')
+      void qc.invalidateQueries({ queryKey: ['store', storeId] })
+    },
+    onError: (e) => toast.error(e),
+  })
+  const productCost = order.items.reduce((a, i) => (i.unitCost != null ? a + i.unitCost * i.quantity : a), 0)
+  const missing = order.items.some((i) => i.unitCost == null && i.productType === 'physical')
+  const isReturned = order.fulfillmentStatus === 'returned'
+  const counted = order.fulfillmentStatus === 'delivered' || isReturned
+  const profit = order.paymentStatus === 'paid' ? order.total - productCost - (delivery ?? 0) : isReturned ? -((delivery ?? 0) + (ret ?? 0)) : null
+  const cur = order.currency
+  const dirty = delivery !== (order.deliveryCost ?? null) || ret !== (order.returnCost ?? null)
+  return (
+    <Card title="Coûts réels" description="Pour ton bénéfice. Jamais visible du client.">
+      <dl className="mb-3 grid grid-cols-2 gap-3 text-sm">
+        <Stat label="Prix d’achat des articles" value={missing ? <span className="text-amber-700 dark:text-amber-400">non renseigné</span> : money(productCost, cur)} />
+        {profit != null && <Stat label={isReturned ? 'Perte (colis refusé)' : 'Bénéfice de la commande'} value={<span className={cx('font-semibold', profit < 0 && 'text-red-600 dark:text-red-400')}>{money(profit, cur)}</span>} />}
+      </dl>
+      {order.kind !== 'digital' && (
+        <div className="grid grid-cols-2 gap-3">
+          <NumberField label="Coût livreur" optional value={delivery} onChange={setDelivery} suffix={cur === 'XOF' || cur === 'XAF' ? 'FCFA' : cur} hint={counted ? undefined : 'Compté à la livraison ou au retour.'} />
+          <NumberField label="Coût du retour" optional value={ret} onChange={setRet} suffix={cur === 'XOF' || cur === 'XAF' ? 'FCFA' : cur} />
+        </div>
+      )}
+      {dirty && (
+        <Button size="sm" variant="primary" className="mt-3" loading={save.isPending} onClick={() => save.mutate()}>
+          Enregistrer les coûts
+        </Button>
+      )}
+    </Card>
   )
 }
 
@@ -262,6 +310,7 @@ export default function OrderDetail() {
   const canEditPayment = useCan('orders.payment')
   const canUpdate = useCan('orders.update')
   const canSeeCustomers = useCan('customers.view')
+  const canSeeCosts = useCan('stats.revenue')
   const { data: order, error, isPending, refetch } = useOrder(orderId ?? '')
   const [editing, setEditing] = useState(false)
   const back = (
@@ -434,6 +483,8 @@ export default function OrderDetail() {
           </Card>
 
           <PaymentCard order={order} canEdit={canEditPayment} />
+
+          {canSeeCosts && <CostsCard key={`${order.id}-${order.deliveryCost}-${order.returnCost}`} order={order} storeId={storeId} />}
 
           {(order.utmSource || order.utmCampaign) && (
             <Card title="Origine">

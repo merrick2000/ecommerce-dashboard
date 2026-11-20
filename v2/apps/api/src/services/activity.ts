@@ -10,7 +10,7 @@ import { createMiddleware } from 'hono/factory'
 import type { AppEnv } from '../lib/context'
 
 export interface ActivityEntry {
-  entityType: 'product' | 'promo' | 'zone' | 'store' | 'team' | 'payment_account'
+  entityType: 'product' | 'promo' | 'zone' | 'store' | 'team' | 'payment_account' | 'expense'
   entityId?: string | number | null
   entityLabel?: string | null
   action: string

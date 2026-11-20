@@ -58,6 +58,7 @@ export const router = createBrowserRouter([
               { path: 'activity', lazy: page(() => import('@/pages/Activity')) },
               { path: 'notifications', lazy: page(() => import('@/pages/Notifications')) },
               { path: 'api', lazy: page(() => import('@/pages/ApiKeys')) },
+              { path: 'expenses', lazy: page(() => import('@/pages/Expenses')) },
               { path: '*', element: <NotFound /> },
             ],
           },

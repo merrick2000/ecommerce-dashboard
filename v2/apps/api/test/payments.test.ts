@@ -44,7 +44,7 @@ beforeAll(async () => {
   setClientFactory((provider) => fake(provider))
   await owner.post('/api/auth/login', { email: 'owner@test.dev', password: 'motdepasse-solide' })
   if (!owner.cookie) await owner.post('/api/auth/register', { name: 'Owner', email: 'owner@test.dev', password: 'motdepasse-solide' })
-  const s = await owner.post('/api/stores', { name: 'Pay Shop', slug: 'pay-shop' })
+  const s = await owner.post('/api/stores', { name: 'Pay Shop', slug: 'pay-shop', kind: 'digital' })
   storeId = s.body.id
   for (const p of ['feexpay', 'fedapay'] as const) {
     await owner.put(`/api/stores/${storeId}/payment-accounts/${p}`, { enabled: true, mode: 'sandbox', sandbox: { apiKey: 'k', shopId: 's' } })
@@ -135,8 +135,10 @@ describe('paiement intégré', () => {
   })
 
   test('commande COD : paiement en ligne refusé', async () => {
-    const p = await owner.post(`/api/stores/${storeId}/products`, { type: 'physical', name: 'Sac', isActive: true, price: 8000 })
-    const o = await visitor.post('/api/v1/orders', { storeSlug: 'pay-shop', productId: p.body.id, customerName: 'Awa', customerPhone: '+22997000000', city: 'Cotonou' })
+    // Produit physique : dans une boutique physique (une boutique ne mélange pas les deux).
+    const phys = (await owner.post('/api/stores', { name: 'Pay Shop Physique', slug: 'pay-shop-physique' })).body.id
+    const p = await owner.post(`/api/stores/${phys}/products`, { type: 'physical', name: 'Sac', isActive: true, price: 8000 })
+    const o = await visitor.post('/api/v1/orders', { storeSlug: 'pay-shop-physique', productId: p.body.id, customerName: 'Awa', customerPhone: '+22997000000', city: 'Cotonou' })
     const r = await visitor.post(`/api/v1/orders/${o.body.order.token}/pay`, { country: 'BJ', network: 'mtn', phone: '97000000' })
     expect(r.body.code).toBe('cod_order')
   })

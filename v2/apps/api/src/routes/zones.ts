@@ -4,7 +4,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { db } from '../db/client'
 import { deliveryZones } from '../db/schema'
-import { requirePermission } from '../lib/auth'
+import { can, requirePermission } from '../lib/auth'
 import { logActivity } from '../services/activity'
 import type { AppEnv } from '../lib/context'
 import { notFound } from '../lib/errors'
@@ -13,7 +13,11 @@ import { v } from '../lib/validate'
 const idParam = z.object({ id: z.coerce.number().int().positive() })
 
 export const zoneRoutes = new Hono<AppEnv>()
-  .get('/', async (c) => c.json(await db.select().from(deliveryZones).where(eq(deliveryZones.storeId, c.get('store').id)).orderBy(asc(deliveryZones.position), asc(deliveryZones.name))))
+  .get('/', async (c) => {
+    const rows = await db.select().from(deliveryZones).where(eq(deliveryZones.storeId, c.get('store').id)).orderBy(asc(deliveryZones.position), asc(deliveryZones.name))
+    // Coûts réels du livreur : réservés à ceux qui voient le chiffre d'affaires.
+    return c.json(can(c.get('access'), 'stats.revenue') ? rows : rows.map((z) => ({ ...z, courierCost: null, returnCost: null })))
+  })
   .post('/', requirePermission('delivery.edit'), v('json', deliveryZoneInputSchema), async (c) => {
     const [row] = await db.insert(deliveryZones).values({ ...c.req.valid('json'), storeId: c.get('store').id }).returning()
     await logActivity(c, { entityType: 'zone', entityId: row?.id, entityLabel: row?.name, action: 'created', message: 'Zone de livraison créée' })
@@ -34,7 +38,13 @@ export const zoneRoutes = new Hono<AppEnv>()
   .put('/:id', requirePermission('delivery.edit'), v('param', idParam), v('json', deliveryZoneInputSchema), async (c) => {
     const [row] = await db
       .update(deliveryZones)
-      .set(c.req.valid('json'))
+      .set(
+        (() => {
+          // Sans accès aux coûts, la modification ne les touche pas (le formulaire les reçoit vides).
+          const { courierCost, returnCost, ...rest } = c.req.valid('json')
+          return can(c.get('access'), 'stats.revenue') ? { ...rest, courierCost, returnCost } : rest
+        })(),
+      )
       .where(and(eq(deliveryZones.id, c.req.valid('param').id), eq(deliveryZones.storeId, c.get('store').id)))
       .returning()
     if (!row) throw notFound('Zone')

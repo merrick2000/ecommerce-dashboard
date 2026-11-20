@@ -205,13 +205,16 @@ export const orderRoutes = new Hono<AppEnv>()
     ])
     const assigneeName = order.assignedTo ? await userName(order.assignedTo) : null
     const { accessToken: _t, trackingContext: _tc, ...safe } = order
+    // Coûts (prix d'achat, livreur, retour) : seulement pour ceux qui voient le chiffre d'affaires.
+    const seesCosts = can(c.get('access'), 'stats.revenue')
     return c.json({
       ...safe,
-      items,
+      ...(seesCosts ? {} : { deliveryCost: null, returnCost: null }),
+      items: seesCosts ? items : items.map((i) => ({ ...i, unitCost: null })),
       events: events.map(({ event, userName }) => ({ ...event, userName })),
       transactions,
       customer,
-      zone,
+      zone: zone && !seesCosts ? { ...zone, courierCost: null, returnCost: null } : zone,
       assigneeName,
       allowedTransitions: FULFILLMENT_TRANSITIONS[order.fulfillmentStatus],
     })
@@ -277,10 +280,12 @@ export const orderRoutes = new Hono<AppEnv>()
     '/:id',
     requirePermission('orders.update'),
     v('param', idParam),
-    v('json', z.object({ customerName: z.string().max(120).optional(), customerPhone: z.string().max(30).optional(), city: z.string().max(120).nullable().optional(), address: z.string().max(500).nullable().optional(), courier: z.string().max(80).nullable().optional(), trackingNumber: z.string().max(80).nullable().optional() })),
+    v('json', z.object({ customerName: z.string().max(120).optional(), customerPhone: z.string().max(30).optional(), city: z.string().max(120).nullable().optional(), address: z.string().max(500).nullable().optional(), courier: z.string().max(80).nullable().optional(), trackingNumber: z.string().max(80).nullable().optional(), deliveryCost: z.coerce.number().min(0).max(1_000_000_000).nullable().optional(), returnCost: z.coerce.number().min(0).max(1_000_000_000).nullable().optional() })),
     async (c) => {
       const { id } = c.req.valid('param')
       const body = c.req.valid('json')
+      // Les coûts réels pèsent sur le bénéfice : réservés à ceux qui voient le chiffre d'affaires.
+      if ((body.deliveryCost !== undefined || body.returnCost !== undefined) && !can(c.get('access'), 'stats.revenue')) throw forbidden('Tu ne peux pas modifier les coûts de livraison')
       await assertCanAct(c.get('access'), await loadScopedOrder(c.get('access'), c.get('store').id, id))
       const [row] = await db
         .update(orders)
@@ -419,6 +424,8 @@ export const orderRoutes = new Hono<AppEnv>()
           city: input.city ?? null,
           address: input.address ?? null,
           deliveryZoneId: zone?.id ?? null,
+          deliveryCost: zone?.courierCost ?? null,
+          returnCost: zone?.returnCost ?? null,
           customerNote: input.note ?? null,
           kind: kinds.size > 1 ? 'mixed' : (lines[0]?.p.type ?? 'physical'),
           subtotal,
@@ -433,7 +440,7 @@ export const orderRoutes = new Hono<AppEnv>()
         .returning()
       if (!o) throw new Error('Création commande échouée')
       await tx.insert(orderItems).values(
-        lines.map((l) => ({ orderId: o.id, productId: l.p.id, variantId: l.variant?.id ?? null, productType: l.p.type, name: l.p.name, variantName: l.variant?.name ?? null, quantity: l.quantity, unitPrice: l.unit, total: l.total })),
+        lines.map((l) => ({ orderId: o.id, productId: l.p.id, variantId: l.variant?.id ?? null, productType: l.p.type, name: l.p.name, variantName: l.variant?.name ?? null, quantity: l.quantity, unitPrice: l.unit, unitCost: l.variant?.costPrice ?? l.p.costPrice ?? null, total: l.total })),
       )
       await tx.insert(orderEvents).values({ orderId: o.id, type: 'created', message: 'Commande saisie manuellement', userId: c.get('user').id })
       return o

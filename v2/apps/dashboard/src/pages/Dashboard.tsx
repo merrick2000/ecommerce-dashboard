@@ -1,4 +1,4 @@
-import { ArrowDownRight, ArrowUpRight, Banknote, Check, Copy, ExternalLink, Inbox, PackageCheck, PhoneCall, Plus, ShoppingBag, Truck, UserCheck } from 'lucide-react'
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Banknote, Check, Copy, ExternalLink, Inbox, PackageCheck, PhoneCall, PiggyBank, Plus, ShoppingBag, Truck, UserCheck } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
@@ -8,7 +8,7 @@ import { usePaymentAccounts, useProducts, useStats, useZones } from '@/hooks/res
 import { salesPageUrl } from './products/ProductsList'
 import { useToast } from '@/components/Toast'
 import { day, isoDay, money, num, percent } from '@/lib/format'
-import type { StatsOverview } from '@/lib/types'
+import type { ProfitTotals, StatsOverview } from '@/lib/types'
 
 const PRESETS = [
   { value: '7', label: '7 j' },
@@ -59,6 +59,75 @@ function Kpi({ label, value, icon, delta, hint, to }: { label: string; value: Re
     </Link>
   ) : (
     <div className={cls}>{inner}</div>
+  )
+}
+
+/**
+ * Du chiffre encaissé au bénéfice net : ce qui reste vraiment, une fois payés les produits,
+ * les livreurs (y compris les colis refusés, fréquents en paiement à la livraison) et les dépenses.
+ */
+function ProfitCard({ profit, previous, currency, base }: { profit: ProfitTotals; previous: ProfitTotals; currency: string; base: string }) {
+  const line = (label: string, value: number, opts: { minus?: boolean; strong?: boolean; to?: string; hint?: string } = {}) => (
+    <li className={cx('flex items-baseline justify-between gap-3 py-1.5', opts.strong && 'border-t border-line pt-2.5 font-semibold')}>
+      <span className={cx('text-[13px]', !opts.strong && 'text-muted')}>
+        {opts.minus && '− '}
+        {opts.to ? (
+          <Link to={opts.to} className="underline decoration-dotted underline-offset-2 hover:text-fg">
+            {label}
+          </Link>
+        ) : (
+          label
+        )}
+        {opts.hint && <span className="ml-1 text-[12px] text-subtle">{opts.hint}</span>}
+      </span>
+      <span className={cx('tabular text-sm', opts.minus && 'text-muted', opts.strong && value < 0 && 'text-red-600 dark:text-red-400')}>{money(value, currency)}</span>
+    </li>
+  )
+  return (
+    <Card
+      title="Bénéfice réel"
+      description="Ce qui te reste vraiment : chiffre encaissé moins tous les coûts."
+      actions={
+        <ButtonLink to={`${base}/expenses`} size="sm">
+          <Plus className="size-4" /> Dépense
+        </ButtonLink>
+      }
+    >
+      <div className="grid gap-5 md:grid-cols-[1fr_minmax(0,16rem)]">
+        <ul>
+          {line('Chiffre encaissé', profit.revenueCollected, { hint: `${num(profit.ordersCollected)} commandes payées ou livrées` })}
+          {line('Prix d’achat des produits', profit.productCost, { minus: true, to: `${base}/products` })}
+          {line('Livreurs', profit.deliveryCost, { minus: true, to: `${base}/zones`, hint: 'livrées et retournées' })}
+          {profit.returnCost > 0 && line('Frais de retour', profit.returnCost, { minus: true })}
+          {line('Marge brute', profit.grossProfit, { strong: true })}
+          {line('Dépenses (pub, emballage…)', profit.expenses, { minus: true, to: `${base}/expenses` })}
+          {line('Bénéfice net', profit.netProfit, { strong: true })}
+        </ul>
+        <div className="space-y-3">
+          <div className="rounded-xl bg-surface-2 p-4">
+            <p className="text-[13px] text-muted">Bénéfice net</p>
+            <p className={cx('tabular mt-1 text-2xl font-semibold', profit.netProfit < 0 && 'text-red-600 dark:text-red-400')}>{money(profit.netProfit, currency)}</p>
+            <div className="mt-1 flex items-center gap-2">
+              <Delta current={profit.netProfit} previous={previous.netProfit} />
+              {profit.netMargin != null && <span className="text-[12px] text-subtle">marge {profit.netMargin} %</span>}
+            </div>
+            {profit.profitPerOrder != null && <p className="mt-2 text-[12px] text-muted">{money(profit.profitPerOrder, currency)} par commande encaissée</p>}
+          </div>
+          {profit.unitsWithoutCost > 0 && (
+            <Link to={`${base}/products`} className="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-[12.5px] text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+              <span>{num(profit.unitsWithoutCost)} unité(s) vendue(s) sans prix d’achat : le bénéfice est surestimé. Renseigne le coût dans tes produits.</span>
+            </Link>
+          )}
+          {profit.ordersWithoutDeliveryCost > 0 && (
+            <Link to={`${base}/zones`} className="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-[12.5px] text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+              <span>{num(profit.ordersWithoutDeliveryCost)} commande(s) livrée(s) ou retournée(s) sans coût livreur. Indique ce que te coûte le livreur dans tes zones.</span>
+            </Link>
+          )}
+        </div>
+      </div>
+    </Card>
   )
 }
 
@@ -196,21 +265,30 @@ export default function Dashboard() {
   const { current: c, previous: p, rates } = data
   const empty = c.orders === 0 && p.orders === 0
   const rv = data.revenueVisible && c.revenue != null
+  const physical = store?.kind !== 'digital'
 
   return (
     <div className={cx('transition-opacity', isFetching && 'opacity-70')}>
       {header}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {rv && <Kpi label="Revenu encaissé" value={money(c.revenue, currency)} icon={<Banknote className="size-4" />} delta={<Delta current={c.revenue ?? 0} previous={p.revenue ?? 0} />} />}
+        {rv && <Kpi label="Chiffre encaissé" value={money(c.revenue, currency)} icon={<Banknote className="size-4" />} delta={<Delta current={c.revenue ?? 0} previous={p.revenue ?? 0} />} />}
+        {data.profit && <Kpi label="Bénéfice net" value={money(data.profit.current.netProfit, currency)} icon={<PiggyBank className="size-4" />} delta={<Delta current={data.profit.current.netProfit} previous={data.profit.previous.netProfit} />} hint={data.profit.current.netMargin != null ? `marge ${data.profit.current.netMargin} %` : undefined} />}
         <Kpi label="Commandes" value={num(c.orders)} icon={<ShoppingBag className="size-4" />} delta={<Delta current={c.orders} previous={p.orders} />} to={`${base}/orders`} />
-        <Kpi label="COD à confirmer" value={num(c.codPending)} icon={<PhoneCall className="size-4" />} hint="à appeler" to={`${base}/orders?status=new`} />
-        <Kpi label="À expédier" value={num(c.codToShip)} icon={<PackageCheck className="size-4" />} hint="confirmées" to={`${base}/orders?status=confirmed`} />
-        {rv && c.codInTransit != null && <Kpi label="Chez les livreurs" value={money(c.codInTransit, currency)} icon={<Truck className="size-4" />} hint="à encaisser" to={`${base}/orders?status=shipped`} />}
-        <Kpi label="Taux de confirmation" value={percent(rates.confirmation)} hint="COD confirmées" />
-        <Kpi label="Taux de livraison" value={percent(rates.delivery)} hint={`${num(c.delivered)} livrées · ${num(c.returned)} retours`} />
+        {/* Indicateurs du paiement à la livraison : boutiques physiques seulement. */}
+        {physical && <Kpi label="COD à confirmer" value={num(c.codPending)} icon={<PhoneCall className="size-4" />} hint="à appeler" to={`${base}/orders?status=new`} />}
+        {physical && <Kpi label="À expédier" value={num(c.codToShip)} icon={<PackageCheck className="size-4" />} hint="confirmées" to={`${base}/orders?status=confirmed`} />}
+        {physical && rv && c.codInTransit != null && <Kpi label="Chez les livreurs" value={money(c.codInTransit, currency)} icon={<Truck className="size-4" />} hint="à encaisser" to={`${base}/orders?status=shipped`} />}
+        {physical && <Kpi label="Taux de confirmation" value={percent(rates.confirmation)} hint="COD confirmées" />}
+        {physical && <Kpi label="Taux de livraison" value={percent(rates.delivery)} hint={`${num(c.delivered)} livrées · ${num(c.returned)} retours`} />}
         <Kpi label="Conversion" value={percent(rates.conversion)} hint={`${num(data.visitors.visitors)} visiteurs`} />
       </div>
+
+      {data.profit && !empty && (
+        <div className="mt-4">
+          <ProfitCard profit={data.profit.current} previous={data.profit.previous} currency={currency} base={base} />
+        </div>
+      )}
 
       {data.mine && (
         <div className="mt-4">

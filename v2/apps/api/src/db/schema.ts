@@ -4,6 +4,7 @@ import {
   bigint,
   bigserial,
   boolean,
+  date,
   foreignKey,
   index,
   integer,
@@ -34,6 +35,7 @@ import type {
   StoreStatus,
   SignupSource,
   PlanId,
+  ExpenseCategory,
 } from '@zuri/shared'
 
 /** Montants : numeric(12,2) lu en `number` (les montants FCFA tiennent large dans un double). */
@@ -222,6 +224,8 @@ export const stores = pgTable('stores', {
   supportEmail: varchar('support_email', { length: 255 }),
   /** Secret (chiffré) des webhooks d'intégration entrants (ventes Selar via n8n…). */
   integrationSecretEnc: text('integration_secret_enc'),
+  /** Boutique de produits physiques (livrés, paiement à la livraison possible) OU de produits digitaux : jamais les deux. */
+  kind: varchar('kind', { length: 10 }).$type<ProductType>().notNull().default('physical'),
   /** active | paused (boutique fermée temporairement, aucune commande) | closed (fermée définitivement). */
   status: varchar('status', { length: 10 }).$type<StoreStatus>().notNull().default('active'),
   pausedAt: ts('paused_at'),
@@ -362,6 +366,8 @@ export const products = pgTable(
     description: text('description').notNull().default(''),
     price: money('price').notNull(),
     compareAtPrice: money('compare_at_price'),
+    /** Prix d'achat unitaire (coût de revient) : sert au calcul du bénéfice réel. */
+    costPrice: money('cost_price'),
     baseCurrency: varchar('base_currency', { length: 5 }).notNull().default('XOF'),
     currencyPrices: jsonb('currency_prices').$type<{ currency: string; price: number }[]>().notNull().default([]),
     promo: jsonb('promo').$type<Promo>().notNull().default({ type: 'none', value: 0, display: 'strikethrough' }),
@@ -401,6 +407,8 @@ export const productVariants = pgTable(
     name: varchar('name', { length: 80 }).notNull(),
     sku: varchar('sku', { length: 60 }),
     price: money('price'),
+    /** Prix d'achat propre à la variante (null = celui du produit). */
+    costPrice: money('cost_price'),
     stock: integer('stock'),
     isActive: boolean('is_active').notNull().default(true),
     position: smallint('position').notNull().default(0),
@@ -422,6 +430,10 @@ export const deliveryZones = pgTable(
     cities: jsonb('cities').$type<string[]>().notNull().default([]),
     fee: money('fee').notNull().default(0),
     freeAbove: money('free_above'),
+    /** Ce que le livreur te facture réellement pour une livraison dans cette zone (peut différer des frais client). */
+    courierCost: money('courier_cost'),
+    /** Coût d'un retour (colis refusé) : souvent payé en COD même sans encaissement. */
+    returnCost: money('return_cost'),
     codAllowed: boolean('cod_allowed').notNull().default(true),
     etaLabel: varchar('eta_label', { length: 60 }),
     isActive: boolean('is_active').notNull().default(true),
@@ -506,6 +518,10 @@ export const orders = pgTable(
     discount: money('discount').notNull().default(0),
     shippingFee: money('shipping_fee').notNull().default(0),
     total: money('total').notNull(),
+    /** Coût réel du livreur pour cette commande (copié de la zone à la création, modifiable). */
+    deliveryCost: money('delivery_cost'),
+    /** Coût du retour si la commande est refusée (copié de la zone, modifiable). */
+    returnCost: money('return_cost'),
     currency: varchar('currency', { length: 5 }).notNull(),
     paymentMethod: varchar('payment_method', { length: 20 }).$type<PaymentMethod>().notNull(),
     paymentStatus: varchar('payment_status', { length: 12 }).$type<PaymentStatus>().notNull().default('pending'),
@@ -569,9 +585,32 @@ export const orderItems = pgTable(
     variantName: varchar('variant_name', { length: 80 }),
     quantity: integer('quantity').notNull(),
     unitPrice: money('unit_price').notNull(),
+    /** Prix d'achat unitaire au moment de la commande (le bénéfice d'hier ne change pas si le coût change). */
+    unitCost: money('unit_cost'),
     total: money('total').notNull(),
   },
   (t) => [index('order_items_order_idx').on(t.orderId), index('order_items_product_idx').on(t.productId)],
+)
+
+/** Dépenses de la boutique (publicité, emballage, salaires, outils…) déduites du bénéfice réel. */
+export const storeExpenses = pgTable(
+  'store_expenses',
+  {
+    id: id(),
+    storeId: ref('store_id')
+      .notNull()
+      .references(() => stores.id, { onDelete: 'cascade' }),
+    /** Jour de la dépense (date locale de la boutique). */
+    spentOn: date('spent_on', { mode: 'string' }).notNull(),
+    category: varchar('category', { length: 20 }).$type<ExpenseCategory>().notNull(),
+    amount: money('amount').notNull(),
+    label: varchar('label', { length: 160 }),
+    /** Dépense liée à un produit (ex. pub d'une campagne produit) : bénéfice par produit. */
+    productId: ref('product_id').references(() => products.id, { onDelete: 'set null' }),
+    createdBy: fk('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('store_expenses_store_day_idx').on(t.storeId, t.spentOn)],
 )
 
 /** Historique d'une commande (statuts, appels, notes), affiché en timeline. */

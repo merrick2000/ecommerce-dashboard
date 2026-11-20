@@ -21,6 +21,8 @@ interface ZoneForm {
   cities: string[]
   fee: number | null
   freeAbove: number | null
+  courierCost: number | null
+  returnCost: number | null
   codAllowed: boolean
   etaLabel: string
   isActive: boolean
@@ -29,8 +31,8 @@ interface ZoneForm {
 
 const toForm = (z: DeliveryZone | null, country: string, position: number): ZoneForm =>
   z
-    ? { name: z.name, country: z.country, cities: z.cities, fee: z.fee, freeAbove: z.freeAbove, codAllowed: z.codAllowed, etaLabel: z.etaLabel ?? '', isActive: z.isActive, position: z.position }
-    : { name: '', country, cities: [], fee: null, freeAbove: null, codAllowed: true, etaLabel: '', isActive: true, position }
+    ? { name: z.name, country: z.country, cities: z.cities, fee: z.fee, freeAbove: z.freeAbove, courierCost: z.courierCost ?? null, returnCost: z.returnCost ?? null, codAllowed: z.codAllowed, etaLabel: z.etaLabel ?? '', isActive: z.isActive, position: z.position }
+    : { name: '', country, cities: [], fee: null, freeAbove: null, courierCost: null, returnCost: null, codAllowed: true, etaLabel: '', isActive: true, position }
 
 function ZoneDialog({ zone, open, onClose, nextPosition }: { zone: DeliveryZone | null; open: boolean; onClose: () => void; nextPosition: number }) {
   const { save } = useZones()
@@ -93,6 +95,8 @@ function ZoneDialog({ zone, open, onClose, nextPosition }: { zone: DeliveryZone 
         </div>
         <NumberField label="Frais de livraison" value={form.fee} onChange={(fee) => setForm({ ...form, fee })} suffix={currencyLabel(currency)} error={errors.fee} />
         <NumberField label="Gratuite à partir de" optional value={form.freeAbove} onChange={(freeAbove) => setForm({ ...form, freeAbove })} suffix={currencyLabel(currency)} error={errors.freeAbove} />
+        <NumberField label="Ce que te coûte le livreur" optional value={form.courierCost} onChange={(courierCost) => setForm({ ...form, courierCost })} suffix={currencyLabel(currency)} error={errors.courierCost} hint="Par livraison. Pour ton bénéfice réel, jamais affiché au client." />
+        <NumberField label="Coût d’un retour" optional value={form.returnCost} onChange={(returnCost) => setForm({ ...form, returnCost })} suffix={currencyLabel(currency)} error={errors.returnCost} hint="Colis refusé : ce que tu paies quand même (en plus de la livraison)." />
         <div className="space-y-4 sm:col-span-2">
           <Switch checked={form.codAllowed} onChange={(codAllowed) => setForm({ ...form, codAllowed })} label="Paiement à la livraison accepté" />
           <Switch checked={form.isActive} onChange={(isActive) => setForm({ ...form, isActive })} label="Zone active" description="Visible sur les pages de vente." />
@@ -182,6 +186,7 @@ export default function Zones() {
               <div className="mt-3 flex flex-wrap gap-1.5">
                 <Badge tone="amber">{z.fee > 0 ? money(z.fee, currency) : 'Gratuite'}</Badge>
                 {z.freeAbove != null && <Badge tone="green">Offerte dès {money(z.freeAbove, currency)}</Badge>}
+                {z.courierCost != null && <Badge>Livreur {money(z.courierCost, currency)}</Badge>}
                 <Badge tone={z.codAllowed ? 'blue' : 'neutral'}>{z.codAllowed ? 'COD accepté' : 'Sans COD'}</Badge>
               </div>
               {z.cities.length > 0 && <p className="mt-2 line-clamp-2 text-[13px] text-muted">{z.cities.join(', ')}</p>}
