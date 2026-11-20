@@ -1,9 +1,12 @@
 ---
 import AlternativeView from '../../../components/marketing/views/AlternativeView.astro'
-import { findAlternative } from '../../../content/seo'
+import { findAlternative, alternativePath, resolveSlug } from '../../../content/seo'
 export const prerender = false
-const item = findAlternative(Astro.params.slug ?? '')
+// Adresse alignée sur le titre ; l'ancienne adresse (clé) redirige en 301.
+const { key, legacy } = resolveSlug('alternatives', Astro.params.slug ?? '', 'en')
+const item = findAlternative(key)
 if (!item) return Astro.rewrite('/404')
+if (legacy) return Astro.redirect(alternativePath(item.slug, 'en') + Astro.url.search, 301)
 ---
 
 <AlternativeView alt={item} lang="en" />

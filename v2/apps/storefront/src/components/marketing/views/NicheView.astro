@@ -7,7 +7,7 @@ import Blocks from '../Blocks.astro'
 import NicheArt from '../NicheArt.astro'
 import Widget from '../widgets/Widget.astro'
 import { env } from 'cloudflare:workers'
-import { GUIDES, IMG, OG, PATHS, guidePath, nichePath, t } from '../../../content/seo'
+import { GUIDES, IMG, OG, PATHS, cityPath, guidePath, nichePath, t } from '../../../content/seo'
 import { NICHES } from '../../../content/seo/niches'
 import { CITIES } from '../../../content/seo/cities'
 import type { Lang, NichePage } from '../../../content/seo'
@@ -93,7 +93,7 @@ const jsonLd = [
       <h2 class="mk-h2-sm">{L.others}</h2>
       <div class="mk-chips">{NICHES.filter((x) => x.slug.fr !== n.slug.fr).map((x) => <a class="mk-chip" href={nichePath(x.slug[lang], lang)}>{t(x.name, lang)}</a>)}</div>
       <h2 class="mk-h2-sm" style="margin-top:24px">{L.cities}</h2>
-      <div class="mk-chips">{CITIES.slice(0, 12).map((c) => <a class="mk-chip" href={`${PATHS.cities[lang]}/${c.slug}`}>{c.name}</a>)}</div>
+      <div class="mk-chips">{CITIES.slice(0, 12).map((c) => <a class="mk-chip" href={cityPath(c.slug, lang)}>{c.name}</a>)}</div>
     </section>
   </div>
   <CtaBand lang={lang} />

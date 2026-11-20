@@ -6,7 +6,7 @@ import CodProfit from '../tools/CodProfit.astro'
 import ShopifyCost from '../tools/ShopifyCost.astro'
 import WhatsappMessage from '../tools/WhatsappMessage.astro'
 import BundlePrice from '../tools/BundlePrice.astro'
-import { GUIDES, IMG, PATHS, guidePath, t } from '../../../content/seo'
+import { GUIDES, IMG, PATHS, guidePath, t, toolPath } from '../../../content/seo'
 import { TOOLS, type ToolPage } from '../../../content/seo/tools'
 import type { Lang } from '../../../content/seo'
 
@@ -16,7 +16,7 @@ interface Props {
 }
 const { tool, lang } = Astro.props
 const L = { fr: { tools: 'Outils gratuits', how: 'Comment l’utiliser', guides: 'Guides liés', others: 'Autres outils' }, en: { tools: 'Free tools', how: 'How to use it', guides: 'Related guides', others: 'Other tools' } }[lang]
-const path = (s: string, l: Lang) => `${PATHS.tools[l]}/${s}`
+const path = (s: string, l: Lang) => toolPath(s, l)
 const related = tool.related.map((s) => GUIDES.find((g) => g.slug.fr === s)).filter((g) => !!g)
 const jsonLd = [
   { '@context': 'https://schema.org', '@type': 'WebApplication', name: t(tool.h1, lang), description: t(tool.description, lang), applicationCategory: 'BusinessApplication', operatingSystem: 'Web', inLanguage: lang, offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' } },

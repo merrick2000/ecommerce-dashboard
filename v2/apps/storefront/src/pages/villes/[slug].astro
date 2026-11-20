@@ -1,9 +1,13 @@
 ---
 import CityView from '../../components/marketing/views/CityView.astro'
+import { cityPath, resolveSlug } from '../../content/seo'
 import { findCity } from '../../content/seo/cities'
 export const prerender = false
-const item = findCity(Astro.params.slug ?? '')
+// Adresse alignée sur le titre ; l'ancienne adresse (clé) redirige en 301.
+const { key, legacy } = resolveSlug('cities', Astro.params.slug ?? '', 'fr')
+const item = findCity(key)
 if (!item) return Astro.rewrite('/404')
+if (legacy) return Astro.redirect(cityPath(item.slug, 'fr') + Astro.url.search, 301)
 ---
 
 <CityView city={item} lang="fr" />

@@ -1,9 +1,12 @@
 ---
 import NicheView from '../../components/marketing/views/NicheView.astro'
-import { findNiche } from '../../content/seo'
+import { findNiche, nichePath, resolveSlug } from '../../content/seo'
 export const prerender = false
-const item = findNiche(Astro.params.slug ?? '', 'fr')
+// Adresse alignée sur le titre ; l'ancienne adresse (clé) redirige en 301.
+const { key, legacy } = resolveSlug('niches', Astro.params.slug ?? '', 'fr')
+const item = findNiche(key, 'fr')
 if (!item) return Astro.rewrite('/404')
+if (legacy) return Astro.redirect(nichePath(item.slug.fr, 'fr') + Astro.url.search, 301)
 ---
 
 <NicheView niche={item} lang="fr" />

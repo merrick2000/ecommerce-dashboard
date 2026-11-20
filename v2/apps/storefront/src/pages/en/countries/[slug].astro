@@ -1,9 +1,12 @@
 ---
 import CountryView from '../../../components/marketing/views/CountryView.astro'
-import { findCountry } from '../../../content/seo'
+import { findCountry, countryPath, resolveSlug } from '../../../content/seo'
 export const prerender = false
-const item = findCountry(Astro.params.slug ?? '')
+// Adresse alignée sur le titre ; l'ancienne adresse (clé) redirige en 301.
+const { key, legacy } = resolveSlug('countries', Astro.params.slug ?? '', 'en')
+const item = findCountry(key)
 if (!item) return Astro.rewrite('/404')
+if (legacy) return Astro.redirect(countryPath(item.slug, 'en') + Astro.url.search, 301)
 ---
 
 <CountryView country={item} lang="en" />

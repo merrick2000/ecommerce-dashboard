@@ -1,9 +1,12 @@
 ---
 import GuideView from '../../components/marketing/views/GuideView.astro'
-import { findGuide } from '../../content/seo'
+import { findGuide, guidePath, resolveSlug } from '../../content/seo'
 export const prerender = false
-const item = findGuide(Astro.params.slug ?? '', 'fr')
+// Adresse alignée sur le titre ; l'ancienne adresse (clé) redirige en 301.
+const { key, legacy } = resolveSlug('guides', Astro.params.slug ?? '', 'fr')
+const item = findGuide(key, 'fr')
 if (!item) return Astro.rewrite('/404')
+if (legacy) return Astro.redirect(guidePath(item.slug.fr, 'fr') + Astro.url.search, 301)
 ---
 
 <GuideView guide={item} lang="fr" />

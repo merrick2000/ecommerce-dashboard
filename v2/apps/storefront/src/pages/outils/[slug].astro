@@ -1,9 +1,13 @@
 ---
 import ToolView from '../../components/marketing/views/ToolView.astro'
+import { toolPath, resolveSlug } from '../../content/seo'
 import { findTool } from '../../content/seo/tools'
 export const prerender = false
-const tool = findTool(Astro.params.slug ?? '', 'fr')
-if (!tool) return Astro.rewrite('/404')
+// Adresse alignée sur le titre ; l'ancienne adresse (clé) redirige en 301.
+const { key, legacy } = resolveSlug('tools', Astro.params.slug ?? '', 'fr')
+const item = findTool(key, 'fr')
+if (!item) return Astro.rewrite('/404')
+if (legacy) return Astro.redirect(toolPath(item.slug.fr, 'fr') + Astro.url.search, 301)
 ---
 
-<ToolView tool={tool} lang="fr" />
+<ToolView tool={item} lang="fr" />

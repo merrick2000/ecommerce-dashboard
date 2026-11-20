@@ -2,7 +2,7 @@
 import MarketingLayout from '../MarketingLayout.astro'
 import CtaBand from '../CtaBand.astro'
 import Icon from '../Icon.astro'
-import { PATHS, t } from '../../../content/seo'
+import { PATHS, t, toolPath } from '../../../content/seo'
 import { TOOLS } from '../../../content/seo/tools'
 import type { Lang } from '../../../content/seo'
 
@@ -30,7 +30,7 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr'
     <div class="mk-cards">
       {
         TOOLS.map((x) => (
-          <a class="mk-card" href={`${PATHS.tools[lang]}/${x.slug[lang]}`}>
+          <a class="mk-card" href={toolPath(x.slug[lang], lang)}>
             <span class="mk-feature-ico" aria-hidden="true">
               <Icon name={ICO[x.id]} />
             </span>

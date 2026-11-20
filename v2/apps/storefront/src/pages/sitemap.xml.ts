@@ -3,12 +3,12 @@ import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
 import { ALTERNATIVES, COMPARISONS, COUNTRIES, GUIDES, PATHS, alternativePath, comparisonPath, countryPath, guidePath } from '../content/seo'
 import { TOOLS } from '../content/seo/tools'
-import { BEST_PAGES, CITIES, NICHES, bestPath, cityPath, nichePath } from '../content/seo'
+import { BEST_PAGES, CITIES, NICHES, bestPath, cityPath, nichePath, toolPath } from '../content/seo'
 
 export const prerender = false
 
 /** Date de dernière mise à jour des contenus (à changer quand les contenus évoluent). */
-const LASTMOD = '2026-11-19T00:00:00.000Z'
+const LASTMOD = '2026-11-20T00:00:00.000Z'
 
 type Entry = { path: string; changefreq: 'daily' | 'weekly' | 'monthly'; priority: string }
 
@@ -29,7 +29,7 @@ export const GET: APIRoute = () => {
     ...both(PATHS.best.fr, PATHS.best.en, 'weekly', '0.9'),
     ...BEST_PAGES.flatMap((b) => both(bestPath(b.slug.fr, 'fr'), bestPath(b.slug.en, 'en'), 'monthly', b.country ? '0.8' : '0.9')),
     ...both(PATHS.cities.fr, PATHS.cities.en, 'weekly', '0.8'),
-    ...TOOLS.flatMap((x) => both(`${PATHS.tools.fr}/${x.slug.fr}`, `${PATHS.tools.en}/${x.slug.en}`, 'monthly', '0.8')),
+    ...TOOLS.flatMap((x) => both(toolPath(x.slug.fr, 'fr'), toolPath(x.slug.en, 'en'), 'monthly', '0.8')),
     ...GUIDES.flatMap((g) => both(guidePath(g.slug.fr, 'fr'), guidePath(g.slug.en, 'en'), 'monthly', '0.8')),
     ...NICHES.flatMap((n) => both(nichePath(n.slug.fr, 'fr'), nichePath(n.slug.en, 'en'), 'monthly', '0.8')),
     ...CITIES.flatMap((c) => both(cityPath(c.slug, 'fr'), cityPath(c.slug, 'en'), 'monthly', '0.7')),

@@ -1,9 +1,12 @@
 ---
 import ComparisonView from '../../../components/marketing/views/ComparisonView.astro'
-import { findComparison } from '../../../content/seo'
+import { findComparison, comparisonPath, resolveSlug } from '../../../content/seo'
 export const prerender = false
-const item = findComparison(Astro.params.slug ?? '')
+// Adresse alignée sur le titre ; l'ancienne adresse (clé) redirige en 301.
+const { key, legacy } = resolveSlug('comparisons', Astro.params.slug ?? '', 'en')
+const item = findComparison(key)
 if (!item) return Astro.rewrite('/404')
+if (legacy) return Astro.redirect(comparisonPath(item.slug, 'en') + Astro.url.search, 301)
 ---
 
 <ComparisonView cmp={item} lang="en" />

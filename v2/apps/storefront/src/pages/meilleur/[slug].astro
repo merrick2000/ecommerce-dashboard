@@ -1,9 +1,12 @@
 ---
 import BestView from '../../components/marketing/views/BestView.astro'
-import { findBest } from '../../content/seo'
+import { findBest, bestPath, resolveSlug } from '../../content/seo'
 export const prerender = false
-const page = findBest(Astro.params.slug ?? '', 'fr')
-if (!page) return Astro.rewrite('/404')
+// Adresse alignée sur le titre ; l'ancienne adresse (clé) redirige en 301.
+const { key, legacy } = resolveSlug('best', Astro.params.slug ?? '', 'fr')
+const item = findBest(key, 'fr')
+if (!item) return Astro.rewrite('/404')
+if (legacy) return Astro.redirect(bestPath(item.slug.fr, 'fr') + Astro.url.search, 301)
 ---
 
-<BestView page={page} lang="fr" />
+<BestView page={item} lang="fr" />
