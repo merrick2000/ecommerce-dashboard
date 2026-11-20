@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "bun --cwd ../dashboard run build && wrangler deploy",
+    "deploy": "bun run --cwd ../dashboard build && wrangler deploy",
     "typecheck": "tsc -p ."
   },
   "devDependencies": {
