@@ -11,6 +11,7 @@ import { env } from '../lib/env'
 import { HttpError } from '../lib/errors'
 import { rateLimit } from '../lib/rate-limit'
 import { SERVER_INSTRUCTIONS, ToolError, TOOLS, type Tool, type ToolContext } from '../services/mcp/tools'
+import { resolveFeatures } from '../services/platform'
 
 const SUPPORTED_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05']
 const SERVER_INFO = { name: 'zuri', title: 'Zuri', version: '1.0.0' }
@@ -109,7 +110,8 @@ export const mcpRoutes = new Hono<AppEnv>()
         return c.json(rpcError(null, -32700, 'Parse error'), 400)
       }
       const ctx = makeContext(c.req.header('authorization')!, c.req.header('cf-connecting-ip') ?? undefined, key.storeId)
-      const visible = toolDefs.filter((d) => key.scope === 'write' || d.tool.readOnly)
+      const features = await resolveFeatures(c.get('user'))
+      const visible = toolDefs.filter((d) => (key.scope === 'write' || d.tool.readOnly) && (!d.tool.feature || features[d.tool.feature]))
 
       const handle = async (msg: JsonRpcRequest): Promise<object | null> => {
         if (!msg || msg.jsonrpc !== '2.0' || typeof msg.method !== 'string') return rpcError(msg?.id, -32600, 'Invalid request')

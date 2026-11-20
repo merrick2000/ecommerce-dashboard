@@ -15,6 +15,9 @@ import { HttpError } from '../lib/errors'
 import { v } from '../lib/validate'
 import { extendSubscription } from '../services/billing'
 import { getSetting, setSetting } from '../services/platform'
+import { decrypt, encrypt } from '../lib/crypto'
+import { env } from '../lib/env'
+import { resetFirecrawlKeyCache } from '../services/page-fetch'
 
 const requirePlatformAdmin = createMiddleware<AppEnv>(async (c, next) => {
   if (!c.get('user').isPlatformAdmin) throw new HttpError(404, 'Route introuvable', 'not_found')
@@ -194,11 +197,22 @@ export const adminRoutes = new Hono<AppEnv>()
       paymentsOnline: await getSetting('payments.online', false),
       billingEnabled: await getSetting('billing.enabled', false),
       billingAccount: await getSetting<{ storeId?: string } | null>('billing.account', null),
+      urlImport: await getSetting('import.url', false),
+      firecrawl: await (async () => {
+        const stored = await getSetting<string | null>('firecrawl.key', null)
+        const key = stored ? decrypt(stored) : (env.FIRECRAWL_API_KEY ?? null)
+        return { configured: Boolean(key), source: stored ? 'admin' : key ? 'env' : null, hint: key ? `${key.slice(0, 5)}…${key.slice(-4)}` : null }
+      })(),
       myStores: myStores.map((s) => ({ ...s, accounts: accounts.filter((a) => a.storeId === s.id && ['fedapay', 'feexpay', 'pawapay'].includes(a.provider)) })),
     })
   })
-  .put('/settings', v('json', z.object({ paymentsOnline: z.boolean().optional(), billingEnabled: z.boolean().optional(), billingStoreId: z.string().max(40).nullable().optional() })), async (c) => {
+  .put('/settings', v('json', z.object({ paymentsOnline: z.boolean().optional(), billingEnabled: z.boolean().optional(), billingStoreId: z.string().max(40).nullable().optional(), urlImport: z.boolean().optional(), firecrawlKey: z.string().trim().regex(/^fc-[A-Za-z0-9]{16,80}$/, 'Clé Firecrawl invalide (fc-…)').nullable().optional() })), async (c) => {
     const body = c.req.valid('json')
+    if (body.urlImport !== undefined) await setSetting('import.url', body.urlImport)
+    if (body.firecrawlKey !== undefined) {
+      await setSetting('firecrawl.key', body.firecrawlKey ? encrypt(body.firecrawlKey) : null)
+      resetFirecrawlKeyCache()
+    }
     if (body.paymentsOnline !== undefined) await setSetting('payments.online', body.paymentsOnline)
     if (body.billingEnabled !== undefined) await setSetting('billing.enabled', body.billingEnabled)
     if (body.billingStoreId !== undefined) await setSetting('billing.account', body.billingStoreId ? { storeId: body.billingStoreId } : null)

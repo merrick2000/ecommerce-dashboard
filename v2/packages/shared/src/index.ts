@@ -764,7 +764,7 @@ export interface Me {
   name: string
   isPlatformAdmin: boolean
   /** Options du compte (paiements en ligne, abonnement…) : déjà résolues avec les réglages globaux. */
-  features: { onlinePayments: boolean; billing: boolean }
+  features: { onlinePayments: boolean; billing: boolean; urlImport: boolean }
   plan: EffectivePlan
   stores: { id: string; name: string; slug: string; role: StoreRole; currency: Currency; permissions: Permission[]; productIds: string[] | null; status: StoreStatus }[]
 }

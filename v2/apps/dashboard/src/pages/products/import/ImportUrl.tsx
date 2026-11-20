@@ -5,11 +5,11 @@
  */
 import { AlertTriangle, Check, Link2, Loader2, Sparkles, Star, Trash2, Wand2 } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, Navigate, useNavigate } from 'react-router'
 import { DragHandle, draggingClass, useSortable } from '@/components/Sortable'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, Checkbox, cx, Input, PageHeader, Switch, Textarea } from '@/components/ui'
-import { useCurrentStore, useStoreId } from '@/hooks/auth'
+import { useCurrentStore, useMe, useStoreId } from '@/hooks/auth'
 import { api, ApiError, errorMessage } from '@/lib/api'
 import { money } from '@/lib/format'
 import { NumberField } from '../editor/fields'
@@ -408,6 +408,7 @@ function Review({ preview, onRestart }: { preview: Preview; onRestart: () => voi
 
 export default function ImportUrl() {
   const storeId = useStoreId()
+  const { data: me } = useMe()
   const toast = useToast()
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
@@ -449,6 +450,7 @@ export default function ImportUrl() {
     }
   }
 
+  if (me && !me.features.urlImport) return <Navigate to={`/stores/${storeId}/products/import`} replace />
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader

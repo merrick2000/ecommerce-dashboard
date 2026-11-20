@@ -145,6 +145,8 @@ const DRAFT = {
 describe('import par URL : routes', () => {
   test('mise en place', async () => {
     await login(owner, 'import-url@test.dev')
+    // L'import par lien est réservé : on l'ouvre pour ce compte (fiche du compte, super admin).
+    await db.update(users).set({ features: { urlImport: true } }).where(eq(users.email, 'import-url@test.dev'))
     storeId = (await owner.post('/api/stores', { name: 'Import URL', slug: 'import-url', currency: 'XOF' })).body.id
     await login(closer, 'import-url-closer@test.dev')
     const inv = await owner.post(`/api/stores/${storeId}/team/invitations`, { email: 'import-url-closer@test.dev', role: 'closer', productIds: null })
@@ -183,7 +185,7 @@ describe('import par URL : routes', () => {
   test('suggestions IA : 404 sans clé', async () => {
     const r = await owner.post(`/api/stores/${storeId}/products/import/url/improve`, { draft: DRAFT })
     expect(r.status).toBe(404)
-    expect((await owner.get(`/api/stores/${storeId}/products/import/url/config`)).body).toEqual({ aiAvailable: false, browserAvailable: false })
+    expect((await owner.get(`/api/stores/${storeId}/products/import/url/config`)).body).toEqual({ aiAvailable: false, browserAvailable: false, enabled: true })
   })
 
   test('suggestions IA (kie.ai simulé) : sortie validée, nettoyée, sans tiret long', async () => {
@@ -221,5 +223,18 @@ describe('import par URL : routes', () => {
     const r = await owner.post(`/api/stores/${storeId}/products/import/url/improve`, { draft: DRAFT })
     expect(r.status).toBe(502)
     expect(r.body.error).toContain('Crédits insuffisants')
+  })
+})
+
+describe('import par URL : réservé tant que le super admin ne l’ouvre pas', () => {
+  test('compte sans option : 403, et config.enabled false', async () => {
+    const seller = new Client()
+    await db.insert(users).values({ email: 'import-off@test.dev', name: 'off', passwordHash: await Bun.password.hash('motdepasse-solide', { algorithm: 'argon2id' }) }).onConflictDoNothing()
+    await seller.post('/api/auth/login', { email: 'import-off@test.dev', password: 'motdepasse-solide' })
+    const s = (await seller.post('/api/stores', { name: 'Off', slug: 'import-off', currency: 'XOF' })).body.id
+    const r = await seller.post(`/api/stores/${s}/products/import/url/preview`, { url: 'https://example.com/p' })
+    expect(r.status).toBe(403)
+    expect(r.body.code).toBe('url_import_disabled')
+    expect((await seller.get(`/api/stores/${s}/products/import/url/config`)).body.enabled).toBe(false)
   })
 })

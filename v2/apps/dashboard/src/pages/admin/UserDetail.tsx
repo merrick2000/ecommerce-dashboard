@@ -104,6 +104,7 @@ export default function AdminUserDetail() {
         <div className="space-y-3">
           <Switch label="Paiements en ligne (Mobile Money sur ses boutiques)" checked={!!features.onlinePayments} onChange={(v) => setFeature('onlinePayments', v)} />
           <Switch label="Payer son abonnement en ligne" checked={!!features.billing} onChange={(v) => setFeature('billing', v)} />
+          <Switch label="Importer des produits par lien (AliExpress, Amazon, boutiques)" checked={!!features.urlImport} onChange={(v) => setFeature('urlImport', v)} />
           <Switch
             label="Compte suspendu (connexion refusée)"
             checked={!!u.disabledAt}

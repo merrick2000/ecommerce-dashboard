@@ -10,9 +10,9 @@ import { badRequest } from '../lib/errors'
 import { safeFetch } from './remote'
 import { aiAvailable } from './ai-suggest'
 import { extractWithAi, type AiExtraction } from './ai-extract'
-import { fetchDirect, fetchWithFirecrawl, firecrawlAvailable, looksBlocked, type FetchedPage } from './page-fetch'
+import { fetchDirect, fetchWithFirecrawl, firecrawlAvailable, looksBlocked, softBlocked, type FetchedPage, type FirecrawlProduct } from './page-fetch'
 
-export type ImportSource = 'shopify' | 'jsonld' | 'microdata' | 'opengraph' | 'page' | 'ai'
+export type ImportSource = 'shopify' | 'jsonld' | 'microdata' | 'opengraph' | 'page' | 'ai' | 'browser'
 
 export interface ImportVariant {
   name: string
@@ -502,6 +502,67 @@ const draftFromShopify = (p: Partial<ImportDraft>): ImportDraft => ({
   brand: p.brand ?? null,
 })
 
+/** Nom sans le nom de la place de marché collé à la fin (« … - AliExpress 1511 », « … : Amazon.fr : Beauté »). */
+export const cleanMarketplaceName = (name: string) =>
+  name
+    .replace(/\s*[-|:]\s*AliExpress(\s+\d+)?\s*$/i, '')
+    .replace(/\s*:\s*Amazon\.[a-z.]+(\s*:.*)?$/i, '')
+    .replace(/^Amazon\.[a-z.]+\s*:\s*/i, '')
+    .replace(/\s*\|\s*Temu\s*.*$/i, '')
+    .trim()
+
+/** Fiche « product » de Firecrawl → brouillon (prix le plus bas des variantes, photos de toutes les variantes). */
+export function draftFromFirecrawl(p: FirecrawlProduct): ImportDraft {
+  const variants = (p.variants ?? []).filter((v) => v.price?.amount != null || v.title || v.values)
+  const prices = variants.map((v) => v.price?.amount).filter((x): x is number => typeof x === 'number' && x > 0)
+  const price = prices.length ? Math.min(...prices) : null
+  const cheapest = variants.find((v) => v.price?.amount === price)
+  const original = cheapest?.sale?.originalPrice
+  const compareAt = typeof original === 'number' ? original : (original?.amount ?? null)
+  const named = variants
+    .map((v) => ({ name: clean(v.title || Object.values(v.values ?? {}).join(' / '), 80), price: v.price?.amount ?? null, available: v.availability?.inStock !== false, sku: v.sku ? clean(v.sku, 60) : null }))
+    .filter((v) => v.name)
+  const description = p.description ? sanitizeHtml(p.description.split(/\n{2,}|\n/).map((x) => x.trim()).filter(Boolean).map((x) => `<p>${x.replace(/</g, '&lt;')}</p>`).join('')) : ''
+  return {
+    type: 'physical',
+    name: clean(cleanMarketplaceName(p.title ?? ''), 160),
+    description,
+    price,
+    compareAtPrice: compareAt != null && price != null && compareAt > price ? compareAt : null,
+    currency: cheapest?.price?.currency?.toUpperCase() ?? variants.find((v) => v.price?.currency)?.price?.currency?.toUpperCase() ?? null,
+    variantLabel: named.length > 1 ? 'Option' : null,
+    variants: named.length > 1 ? named.slice(0, 50) : [],
+    images: dedupe(variants.flatMap((v) => (v.images ?? []).map((i) => i.url).filter((u): u is string => !!u && /^https?:\/\//.test(u)))).slice(0, 20),
+    video: null,
+    features: [],
+    faqs: [],
+    testimonials: [],
+    brand: p.brand ? clean(p.brand, 80) : null,
+  }
+}
+
+/** La fiche Firecrawl fait foi pour nom, prix, variantes ; l'analyse du HTML apporte description riche, FAQ, avis, vidéo. */
+function combineBrowser(fp: ImportDraft, html: ImportDraft | null): ImportDraft {
+  if (!html) return { ...fp, features: featuresFromHtml(fp.description) }
+  const richer = stripTags(html.description).length > stripTags(fp.description).length ? html.description : fp.description
+  return {
+    ...fp,
+    name: fp.name || html.name,
+    price: fp.price ?? html.price,
+    currency: fp.price != null ? fp.currency : html.currency,
+    compareAtPrice: fp.compareAtPrice ?? html.compareAtPrice,
+    variants: fp.variants.length ? fp.variants : html.variants,
+    variantLabel: fp.variants.length ? fp.variantLabel : html.variantLabel,
+    description: richer,
+    images: dedupe([...fp.images, ...html.images]).slice(0, 20),
+    video: html.video,
+    features: html.features.length ? html.features : featuresFromHtml(richer),
+    faqs: html.faqs,
+    testimonials: html.testimonials,
+    brand: fp.brand ?? html.brand,
+  }
+}
+
 const completeness = (d: ImportDraft) => (d.name ? 1 : 0) + (d.price != null ? 1 : 0) + (d.images.length ? 1 : 0)
 
 /** Texte lisible d'une page HTML (pour l'IA quand Firecrawl n'a pas fourni de markdown). */
@@ -549,7 +610,13 @@ function finishWarnings(draft: ImportDraft, warnings: string[], storeCurrency: s
   if (!draft.name) out.push('Nom du produit introuvable : à saisir.')
   if (draft.price == null) out.push('Prix introuvable : à saisir.')
   if (!draft.images.length) out.push('Aucune image détectée.')
-  if (draft.currency && draft.currency !== storeCurrency) out.push(`Prix en ${draft.currency} sur le site source : votre boutique est en ${storeCurrency}. Ajustez le prix avant d’importer.`)
+  if (draft.currency && draft.currency !== storeCurrency) {
+    // Le franc CFA (XOF, XAF) est arrimé à l'euro : 1 EUR = 655,957 FCFA, conversion exacte possible.
+    const fcfa = draft.currency === 'EUR' && (storeCurrency === 'XOF' || storeCurrency === 'XAF') && draft.price != null ? Math.round((draft.price * 655.957) / 5) * 5 : null
+    out.push(
+      `Prix en ${draft.currency} sur le site source : votre boutique est en ${storeCurrency}.${fcfa != null ? ` ${(draft.price ?? 0).toLocaleString('fr-FR')} € = ${fcfa.toLocaleString('fr-FR')} FCFA (prix d’achat, ajoutez votre marge et la livraison).` : ''} Ajustez le prix avant d’importer.`,
+    )
+  }
   return out
 }
 
@@ -594,11 +661,19 @@ export async function previewFromUrl(rawUrl: string, storeCurrency: string): Pro
   }
 
   // 2. Firecrawl : vrai navigateur, JavaScript exécuté, proxys anti-blocage.
-  if (!done() && firecrawlAvailable()) {
+  const browser = await firecrawlAvailable()
+  if (!done() && browser) {
     try {
       const page = await fetchWithFirecrawl(rawUrl)
-      lastPage = page
-      if (page.html) consider({ ...(await extractProduct(page.html, page.url)), fetchedVia: 'firecrawl' }, page)
+      const blocked = softBlocked(rawUrl, page)
+      if (!blocked) lastPage = page
+      const fromHtml = page.html && !blocked ? await extractProduct(page.html, page.url, { allowShopifyFetch: false }) : null
+      if (page.product?.title && !(blocked && !page.product.variants?.length)) {
+        const draft = combineBrowser(draftFromFirecrawl(page.product), fromHtml?.draft ?? null)
+        consider({ sourceUrl: page.url, detected: ['browser', ...(fromHtml?.detected ?? []).filter((x) => x !== 'page')], warnings: [], draft, fetchedVia: 'firecrawl' }, page)
+      } else if (fromHtml) {
+        consider({ ...fromHtml, fetchedVia: 'firecrawl' }, page)
+      }
     } catch (e) {
       log.push(`firecrawl: ${(e as Error).message}`)
       console.warn('[import-url] firecrawl', rawUrl, (e as Error).message)
@@ -626,10 +701,11 @@ export async function previewFromUrl(rawUrl: string, storeCurrency: string): Pro
   }
 
   const final = best as { r: Omit<UrlPreview, 'domain'>; page: FetchedPage | null } | null
-  if (!final || (!final.r.draft.name && final.r.draft.price == null)) {
+  // Moins de 2 éléments sur 3 (nom, prix, photos) : fiche inexploitable, on propose plutôt de coller le texte.
+  if (!final || completeness(final.r.draft) < 2) {
     console.warn('[import-url] échec', rawUrl, log.join(' | '))
     throw badRequest(
-      firecrawlAvailable()
+      browser
         ? 'Ce site bloque la lecture automatique de ses pages. Copie le texte de la page produit (Ctrl+A puis Ctrl+C) et colle-le dans « Coller le contenu de la page ».'
         : 'Impossible de lire cette page (site protégé ou rendu en JavaScript). Colle le texte de la page produit dans « Coller le contenu de la page ».',
       'page_unreadable',

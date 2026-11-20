@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { env } from '../src/lib/env'
-import { looksBlocked } from '../src/services/page-fetch'
+import { looksBlocked, resetFirecrawlKeyCache } from '../src/services/page-fetch'
 import { previewFromText, previewFromUrl } from '../src/services/url-import'
 
 /** Import par lien : page bloquée → Firecrawl → IA ; texte collé → IA. Réseau simulé. */
 const realFetch = globalThis.fetch
 const PAGE = 'https://example.com/produit/creme-karite'
 afterEach(() => {
+  resetFirecrawlKeyCache()
   globalThis.fetch = realFetch
   env.FIRECRAWL_API_KEY = undefined
   env.KIE_API_KEY = undefined
@@ -69,7 +70,7 @@ describe('import : étages de secours', () => {
 
   test('tout est bloqué → message clair qui propose de coller le texte', async () => {
     mockNet({})
-    await expect(previewFromUrl(PAGE, 'XOF')).rejects.toThrow(/Colle le texte/)
+    await expect(previewFromUrl(PAGE, 'XOF')).rejects.toThrow(/Coller le contenu de la page/)
   })
 
   test('texte collé → fiche par IA', async () => {
@@ -79,5 +80,47 @@ describe('import : étages de secours', () => {
     expect(p.fetchedVia).toBe('text')
     expect(p.draft.name).toBe('Montre homme')
     expect(p.warnings).toContain('Aucune image détectée.')
+  })
+})
+
+describe('import : fiche produit Firecrawl', () => {
+  test('format product (type AliExpress) : nom nettoyé, prix le plus bas, photos, EUR converti en FCFA', async () => {
+    env.FIRECRAWL_API_KEY = 'fc-test'
+    mockNet({
+      firecrawl: {
+        success: true,
+        data: {
+          rawHtml: `<html><head><title>Montre</title></head><body>${'z'.repeat(5000)}</body></html>`,
+          markdown: '# Montre',
+          metadata: { statusCode: 200, url: PAGE },
+          product: {
+            title: 'Montre homme acier - AliExpress 1511',
+            brand: 'GAIETY',
+            description: 'Montre en acier inoxydable.\nMouvement quartz.',
+            variants: [
+              { title: 'Noir', price: { amount: 4.5, currency: 'EUR' }, images: [{ url: 'https://ae.example.com/noir.jpg' }] },
+              { title: 'Or', price: { amount: 3.79, currency: 'EUR' }, sale: { originalPrice: { amount: 9.99 } }, images: [{ url: 'https://ae.example.com/or.jpg' }] },
+            ],
+          },
+        },
+      },
+    })
+    const p = await previewFromUrl(PAGE, 'XOF')
+    expect(p.detected[0]).toBe('browser')
+    expect(p.draft.name).toBe('Montre homme acier')
+    expect(p.draft.price).toBe(3.79)
+    expect(p.draft.compareAtPrice).toBe(9.99)
+    expect(p.draft.currency).toBe('EUR')
+    expect(p.draft.variants.map((v) => v.name)).toEqual(['Noir', 'Or'])
+    expect(p.draft.images).toEqual(['https://ae.example.com/noir.jpg', 'https://ae.example.com/or.jpg'])
+    expect(p.draft.description).toContain('<p>Mouvement quartz.</p>')
+    expect(p.warnings.join(' ')).toMatch(/3,79\s€ = 2\s485 FCFA/)
+  })
+
+  test('noms de places de marché nettoyés', async () => {
+    const { cleanMarketplaceName } = await import('../src/services/url-import')
+    expect(cleanMarketplaceName('Sac cuir : Amazon.fr : Mode')).toBe('Sac cuir')
+    expect(cleanMarketplaceName('Amazon.fr : Perruque lisse')).toBe('Perruque lisse')
+    expect(cleanMarketplaceName('Montre - AliExpress')).toBe('Montre')
   })
 })

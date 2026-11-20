@@ -9,7 +9,7 @@ import { db } from '../db/client'
 import { platformSettings, storeMembers, stores, subscriptions, users, type User } from '../db/schema'
 import { HttpError } from '../lib/errors'
 
-export type SettingKey = 'payments.online' | 'billing.enabled' | 'billing.account'
+export type SettingKey = 'payments.online' | 'billing.enabled' | 'billing.account' | 'import.url' | 'firecrawl.key'
 
 export async function getSetting<T>(key: SettingKey, fallback: T): Promise<T> {
   const [row] = await db.select({ value: platformSettings.value }).from(platformSettings).where(eq(platformSettings.key, key)).limit(1)
@@ -22,9 +22,14 @@ export async function setSetting(key: SettingKey, value: unknown) {
 
 /** Options effectives d'un compte : le super admin a tout, sinon réglage global OU option propre au compte. */
 export async function resolveFeatures(user: Pick<User, 'isPlatformAdmin' | 'features'>) {
-  if (user.isPlatformAdmin) return { onlinePayments: true, billing: true }
-  const [online, billing] = await Promise.all([getSetting('payments.online', false), getSetting('billing.enabled', false)])
-  return { onlinePayments: Boolean(online || user.features?.onlinePayments), billing: Boolean(billing || user.features?.billing) }
+  if (user.isPlatformAdmin) return { onlinePayments: true, billing: true, urlImport: true }
+  const [online, billing, urlImport] = await Promise.all([getSetting('payments.online', false), getSetting('billing.enabled', false), getSetting('import.url', false)])
+  return {
+    onlinePayments: Boolean(online || user.features?.onlinePayments),
+    billing: Boolean(billing || user.features?.billing),
+    /** Import de produit par lien (Firecrawl + IA, coûteux) : réservé tant que le super admin ne l'ouvre pas. */
+    urlImport: Boolean(urlImport || user.features?.urlImport),
+  }
 }
 
 export async function planForUser(user: Pick<User, 'id' | 'createdAt'>): Promise<EffectivePlan> {

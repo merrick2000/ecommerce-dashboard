@@ -6,6 +6,9 @@ process.env.GOOGLE_CLIENT_ID ??= 'test-client.apps.googleusercontent.com'
 process.env.GOOGLE_CLIENT_SECRET ??= 'test-secret'
 // Les tests vérifient le mode « outil perso » (inscriptions fermées après le 1er compte) ; le mode ouvert a son propre test.
 process.env.REGISTRATION_OPEN ??= 'false'
+// Jamais de vraies clés de services payants dans les tests (Bun charge le .env local).
+delete process.env.FIRECRAWL_API_KEY
+delete process.env.KIE_API_KEY
 
 const { migrate } = await import('drizzle-orm/postgres-js/migrator')
 const { db, sql } = await import('../src/db/client')

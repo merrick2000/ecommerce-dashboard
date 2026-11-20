@@ -20,6 +20,8 @@ import { createProduct } from '../services/product-write'
 import { importRemoteImage } from '../services/remote'
 import { previewFromText, previewFromUrl, stripTags } from '../services/url-import'
 import { firecrawlAvailable } from '../services/page-fetch'
+import { resolveFeatures } from '../services/platform'
+import { HttpError } from '../lib/errors'
 
 /** Aucun tiret long ou moyen dans les textes importés ou proposés par l'IA. */
 const noDash = (s: string) => s.replace(/\s*[—–]\s*/g, ', ')
@@ -45,8 +47,14 @@ const draftSchema = z.object({
 
 export const productImportUrlRoutes = new Hono<AppEnv>()
   .use(requirePermission('products.edit'))
+  // Import par lien (navigateur distant + IA, coûteux) : ouvert par le super admin, globalement ou compte par compte.
+  .use(async (c, next) => {
+    if (c.req.path.endsWith('/config')) return next()
+    if (!(await resolveFeatures(c.get('user'))).urlImport) throw new HttpError(403, 'L’import par lien n’est pas encore ouvert sur ton compte.', 'url_import_disabled')
+    await next()
+  })
   /** Fonctions disponibles (le bouton « Proposer des améliorations » n'apparaît que si l'IA est configurée). */
-  .get('/config', (c) => c.json({ aiAvailable: aiAvailable(), browserAvailable: firecrawlAvailable() }))
+  .get('/config', async (c) => c.json({ aiAvailable: aiAvailable(), browserAvailable: await firecrawlAvailable(), enabled: (await resolveFeatures(c.get('user'))).urlImport }))
   .post('/preview', rateLimit({ key: 'import-url', limit: 20, windowSec: 600 }), v('json', z.object({ url: z.string().trim().url().max(2000) })), async (c) => {
     await assertFeature(await planForStore(c.get('store').id), 'aiImport')
     const preview = await previewFromUrl(c.req.valid('json').url, c.get('store').currency)

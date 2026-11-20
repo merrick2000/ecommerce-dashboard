@@ -1,11 +1,12 @@
 import { ArrowLeft, FileSpreadsheet, Link2 } from 'lucide-react'
 import { Link } from 'react-router'
 import { PageHeader } from '@/components/ui'
-import { useStoreId } from '@/hooks/auth'
+import { useMe, useStoreId } from '@/hooks/auth'
 
 /** Choix du mode d'import : fichier CSV (plusieurs produits) ou adresse d'une page produit. */
 export default function ImportHub() {
   const storeId = useStoreId()
+  const { data: me } = useMe()
   const base = `/stores/${storeId}/products`
   const back = (
     <Link to={base} className="mb-2 inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
@@ -13,13 +14,14 @@ export default function ImportHub() {
     </Link>
   )
   const cards = [
-    {
+    // Import par lien : visible seulement quand le super admin l'a ouvert (globalement ou pour ce compte).
+    ...(me?.features.urlImport ? [{
       to: `${base}/import/url`,
       icon: Link2,
       title: 'Depuis une URL',
-      text: 'Collez le lien d’une page produit (Shopify, WooCommerce, Jumia…) : nom, prix, variantes, images et texte sont repris automatiquement.',
+      text: 'Collez le lien d’une page produit (Shopify, AliExpress, Amazon, Jumia…) : nom, prix, variantes, images et texte sont repris automatiquement.',
       tag: 'Le plus rapide',
-    },
+    }] : []),
     {
       to: `${base}/import/csv`,
       icon: FileSpreadsheet,

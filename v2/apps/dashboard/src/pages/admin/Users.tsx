@@ -78,6 +78,7 @@ export default function AdminUsers() {
                       {u.isPlatformAdmin && <Badge tone="violet">Admin</Badge>}
                       {u.disabled && <Badge tone="red">Suspendu</Badge>}
                       {u.features.onlinePayments && <Badge tone="blue">Paiements</Badge>}
+                      {u.features.urlImport && <Badge tone="blue">Import lien</Badge>}
                     </div>
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap">{fdate(u.createdAt, true)}</td>

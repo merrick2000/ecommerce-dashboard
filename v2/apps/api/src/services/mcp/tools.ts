@@ -22,6 +22,8 @@ export interface Tool {
   /** Lecture seule : visible aussi avec une clé « lecture ». */
   readOnly?: boolean
   destructive?: boolean
+  /** Option de compte requise (sinon l'outil est masqué). */
+  feature?: 'urlImport'
   run: (args: any, ctx: ToolContext) => Promise<unknown>
 }
 
@@ -430,6 +432,7 @@ export const TOOLS: Tool[] = [
   {
     name: 'import_product_from_url',
     title: 'Import product from a link',
+    feature: 'urlImport',
     description:
       'Create a product from any product page link (Shopify, AliExpress, Jumia, Amazon, competitor store…): name, price, description, images, variants, FAQs. Protected sites are read with a real browser; if a site still blocks, pass pageText. Optionally rewrites the sales copy with AI (improveCopy) and activates it. Use preview: true to only look at what would be imported.',
     input: z.object({
@@ -469,6 +472,7 @@ export const TOOLS: Tool[] = [
   {
     name: 'suggest_product_copy',
     title: 'Suggest product copy with AI',
+    feature: 'urlImport',
     description: 'Zuri AI proposes a better name, headline, tagline, description, features and FAQs for an existing product. Set apply: true to save them directly.',
     input: z.object({ storeId: storeArg, productId: z.string().max(40), goal: z.string().max(300).optional(), apply: z.boolean().optional() }),
     run: async (a, ctx) => {
