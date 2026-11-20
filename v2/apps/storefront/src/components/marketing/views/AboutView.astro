@@ -1,0 +1,157 @@
+---
+/**
+ * Page « À propos » (FR /a-propos, EN /en/about) : faits vérifiables sur Zuri, rédigés pour être cités
+ * par les moteurs de recherche et les assistants IA. Aucun chiffre inventé.
+ */
+import MarketingLayout from '../MarketingLayout.astro'
+import CtaBand from '../CtaBand.astro'
+import { COUNTRIES, PATHS, countryPath, t } from '../../../content/seo'
+import type { Lang } from '../../../content/seo'
+
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const other: Lang = lang === 'fr' ? 'en' : 'fr'
+const path = { fr: '/a-propos', en: '/en/about' }
+const pricing = { fr: '/tarifs', en: '/en/pricing' }
+const countries = COUNTRIES.filter((c) => c.region !== 'diaspora')
+
+const M = {
+  fr: {
+    title: 'À propos de Zuri : la boutique en ligne pour vendre en Afrique',
+    description: 'Zuri est une plateforme de boutique en ligne conçue pour le paiement à la livraison, le Mobile Money et les équipes de closers en Afrique francophone et anglophone.',
+    label: 'À propos',
+    h1: 'À propos de Zuri',
+    summary: 'Zuri est une plateforme qui permet de créer une boutique en ligne pensée pour la façon dont on achète en Afrique : paiement à la livraison, Mobile Money, confirmation des commandes par téléphone ou WhatsApp, et pages qui s’ouvrent vite même sur une connexion lente.',
+    factsTitle: 'Zuri en bref',
+    facts: [
+      ['Ce que c’est', 'Une plateforme web de création de boutique en ligne et de gestion des commandes (logiciel en ligne, aucun téléchargement).'],
+      ['Pour qui', 'Les vendeurs en ligne, e-commerçants en paiement à la livraison, dropshippers locaux, commerçants qui vendent déjà sur Facebook, Instagram, TikTok ou WhatsApp.'],
+      ['Où', `${countries.length} pays d’Afrique et la diaspora, en français et en anglais.`],
+      ['Paiement des clients', 'Paiement à la livraison (espèces), et paiement en ligne par Mobile Money ou carte via des prestataires africains : FedaPay, FeexPay, pawaPay, PayDunya.'],
+      ['Commission', '0 % de commission sur les ventes.'],
+      ['Prix', 'Gratuit pendant le lancement, puis formules en FCFA payables par Mobile Money.'],
+      ['Site', 'zurisell.store, tableau de bord sur app.zurisell.store.'],
+    ],
+    whatTitle: 'Ce que fait Zuri',
+    what: [
+      'Pages de vente produit très légères, avec formulaire de commande court, packs, prix barré, compte à rebours, stock limité et bouton WhatsApp.',
+      'Réception des commandes en temps réel, avec notification sur le téléphone, alerte Telegram ou email.',
+      'Équipe de closers : chaque commande est attribuée, avec les statuts nouvelle, injoignable, confirmée, annulée.',
+      'Suivi des livraisons jusqu’à l’encaissement : taux de confirmation, taux de livraison, chiffre réellement encaissé.',
+      'Pixel Facebook, API Conversions et pixel TikTok pour que les publicités apprennent des vraies commandes.',
+      'Import de produits par lien avec l’IA et import depuis Shopify.',
+    ],
+    whyTitle: 'Pourquoi Zuri existe',
+    why: [
+      'La plupart des outils de boutique en ligne sont conçus pour des clients qui paient par carte bancaire. En Afrique, une grande partie des achats en ligne se règle à la livraison ou par Mobile Money, et chaque commande doit souvent être confirmée par un appel avant l’expédition.',
+      'Zuri réunit dans un seul outil ce qu’un vendeur doit sinon assembler avec plusieurs applis payées en dollars : formulaire de commande, packs, confirmation par les closers, suivi des colis et pixel publicitaire.',
+    ],
+    resTitle: 'Ressources gratuites',
+    res: [
+      { href: PATHS.guides.fr, label: 'Guides pour vendre en ligne' },
+      { href: PATHS.tools.fr, label: 'Outils gratuits : calculateur de marge, messages WhatsApp' },
+      { href: PATHS.countries.fr, label: 'Vendre en ligne par pays' },
+      { href: pricing.fr, label: 'Tarifs' },
+    ],
+    countriesTitle: 'Pays couverts',
+  },
+  en: {
+    title: 'About Zuri: the online store built to sell in Africa',
+    description: 'Zuri is an online store platform built for cash on delivery, Mobile Money and closer teams across French and English speaking Africa.',
+    label: 'About',
+    h1: 'About Zuri',
+    summary: 'Zuri is a platform to create an online store built around how people buy in Africa: cash on delivery, Mobile Money, order confirmation by phone or WhatsApp, and pages that load fast even on a slow connection.',
+    factsTitle: 'Zuri at a glance',
+    facts: [
+      ['What it is', 'A web platform to create an online store and manage orders (online software, nothing to download).'],
+      ['Who it is for', 'Online sellers, cash on delivery merchants, local dropshippers, and shop owners already selling on Facebook, Instagram, TikTok or WhatsApp.'],
+      ['Where', `${countries.length} African countries and the diaspora, in English and French.`],
+      ['Customer payments', 'Cash on delivery, plus online Mobile Money and card payments through African providers: FedaPay, FeexPay, pawaPay, PayDunya.'],
+      ['Commission', '0% commission on sales.'],
+      ['Price', 'Free during launch, then plans priced in XOF and paid by Mobile Money.'],
+      ['Website', 'zurisell.store, dashboard at app.zurisell.store.'],
+    ],
+    whatTitle: 'What Zuri does',
+    what: [
+      'Very light product sales pages, with a short order form, bundles, compare at price, countdown, low stock notice and WhatsApp button.',
+      'Real time order notifications on your phone, by Telegram or email.',
+      'Closer teams: every order is assigned, with statuses new, unreachable, confirmed, cancelled.',
+      'Delivery tracking up to cash collected: confirmation rate, delivery rate, revenue actually collected.',
+      'Facebook pixel, Conversions API and TikTok pixel so ads learn from real orders.',
+      'AI product import from a link, and import from Shopify.',
+    ],
+    whyTitle: 'Why Zuri exists',
+    why: [
+      'Most online store tools are built for customers paying by card. In Africa, a large share of online purchases is paid on delivery or by Mobile Money, and each order often has to be confirmed by a call before shipping.',
+      'Zuri brings together in one tool what sellers would otherwise assemble from several apps billed in dollars: order form, bundles, closer confirmation, parcel tracking and ad pixel.',
+    ],
+    resTitle: 'Free resources',
+    res: [
+      { href: PATHS.guides.en, label: 'Guides to sell online' },
+      { href: PATHS.tools.en, label: 'Free tools: profit calculator, WhatsApp messages' },
+      { href: PATHS.countries.en, label: 'Selling online by country' },
+      { href: pricing.en, label: 'Pricing' },
+    ],
+    countriesTitle: 'Countries covered',
+  },
+}[lang]
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'AboutPage',
+    name: M.h1,
+    description: M.description,
+    inLanguage: lang,
+    mainEntity: { '@id': 'https://zurisell.store/#organization' },
+  },
+]
+---
+
+<MarketingLayout title={M.title} description={M.description} canonicalPath={path[lang]} lang={lang} alternate={{ [lang]: path[lang], [other]: path[other] }} breadcrumbs={[{ label: M.label }]} jsonLd={jsonLd} ogImage={`/og/${lang}/hub/home.jpg`} ogImageAlt={M.h1}>
+  <section class="mk-page-hero">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">{M.label}</span>
+      <h1 class="mk-h1 mk-h1-page">{M.h1}</h1>
+      <p class="mk-hero-sub">{M.summary}</p>
+    </div>
+  </section>
+  <div class="mk-wrap mk-prose">
+    <section class="mk-block">
+      <h2 class="mk-h2-sm">{M.factsTitle}</h2>
+      <div class="mk-table-wrap">
+        <table class="mk-table mk-facts-table">
+          <tbody>
+            {
+              M.facts.map(([k, v]) => (
+                <tr>
+                  <th scope="row">{k}</th>
+                  <td>{v}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="mk-block">
+      <h2 class="mk-h2-sm">{M.whatTitle}</h2>
+      <ul>{M.what.map((x) => <li>{x}</li>)}</ul>
+    </section>
+    <section class="mk-block">
+      <h2 class="mk-h2-sm">{M.whyTitle}</h2>
+      {M.why.map((x) => <p>{x}</p>)}
+    </section>
+    <section class="mk-block">
+      <h2 class="mk-h2-sm">{M.countriesTitle}</h2>
+      <p class="mk-chips">{countries.map((c) => <a class="mk-chip" href={countryPath(c.slug, lang)}>{t(c.name, lang)}</a>)}</p>
+    </section>
+    <section class="mk-block">
+      <h2 class="mk-h2-sm">{M.resTitle}</h2>
+      <ul>{M.res.map((r) => <li><a href={r.href}>{r.label}</a></li>)}</ul>
+    </section>
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

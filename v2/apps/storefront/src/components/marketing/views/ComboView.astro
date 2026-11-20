@@ -1,0 +1,349 @@
+---
+/**
+ * Page « vendre [métier] à [ville] » / « sell [niche] in [city] ».
+ * Assemble des données propres à la combinaison (combos.ts), à la ville (cities.ts), au pays (countries.ts)
+ * et au métier (niches.ts) pour éviter le contenu dupliqué. Aucun tiret long ou moyen dans les textes.
+ */
+import MarketingLayout from '../MarketingLayout.astro'
+import FaqList from '../FaqList.astro'
+import CtaBand from '../CtaBand.astro'
+import NicheArt from '../NicheArt.astro'
+import CityArt from '../CityArt.astro'
+import MidCta from '../offer/MidCta.astro'
+import { env } from 'cloudflare:workers'
+import { COMBOS, COMBO_MONEY, COMBO_NICHES, COUNTRIES, COUNTRY_DELIVERY, OG, PATHS, cityPath, comboPath, countryPath, nichePath, t, toolPath } from '../../../content/seo'
+import { NICHES } from '../../../content/seo/niches'
+import { CITIES, cityNote, cityTip } from '../../../content/seo/cities'
+import { TOOLS } from '../../../content/seo/tools'
+import type { ComboPage, Faq, Lang } from '../../../content/seo'
+
+interface Props {
+  combo: ComboPage
+  lang: Lang
+}
+const { combo: x, lang } = Astro.props
+const fr = lang === 'fr'
+const n = NICHES.find((v) => v.slug.fr === x.niche)!
+const c = CITIES.find((v) => v.slug === x.city)!
+const country = COUNTRIES.find((v) => v.slug === c.country)!
+const meta = COMBO_NICHES[x.niche]!
+const money = COMBO_MONEY[x.city]!
+const note = cityNote(c.slug)
+const tip = cityTip(c.slug)
+const countryDelivery = COUNTRY_DELIVERY[country.slug]
+const appOrigin = import.meta.env.DEV ? 'http://localhost:5173' : (env.APP_ORIGIN ?? `https://app.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
+const signup = `${appOrigin}/register`
+
+// Montants de l'exemple, dans la monnaie de la ville.
+const group = (v: number) => String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, fr ? ' ' : ',')
+const fmt = (v: number) => {
+  if (money.cur === 'USD') return fr ? `${group(v)} $` : `$${group(v)}`
+  if (money.cur === 'XOF' || money.cur === 'XAF') return fr ? `${group(v)} F CFA` : `${group(v)} CFA francs`
+  return fr ? `${group(v)} ${money.cur}` : `${group(v)} ${money.cur}`
+}
+const curName = money.cur === 'USD' ? (fr ? 'dollars' : 'US dollars') : money.cur === 'XOF' || money.cur === 'XAF' ? (fr ? 'F CFA' : 'CFA francs') : money.cur
+const ad = Math.max(money.step, Math.round((x.price * 0.2) / money.step) * money.step)
+const margin = x.price - x.cost - money.delivery - ad
+const loss = money.delivery + ad
+
+const phrase = t(meta.phrase, lang)
+const short = t(meta.short, lang)
+const nicheName = t(n.name, lang)
+const mm = country.mobileMoney
+const mm2 = mm.slice(0, 2).join(fr ? ' et ' : ' and ')
+const areas = c.areas
+// « a, b et c » / « a, b and c » ; « de Dakar » mais « d’Abidjan ».
+const join = (list: string[], word = fr ? 'et' : 'and') => (list.length < 2 ? list.join('') : `${list.slice(0, -1).join(', ')} ${word} ${list[list.length - 1]}`)
+const deCity = /^[AEIOUYÉ]/.test(c.name) ? `d’${c.name}` : `de ${c.name}`
+const curLabel = (l: Lang) => {
+  const label = t(country.currency.label, l)
+  return label.includes(country.currency.code) ? label : `${label} (${country.currency.code})`
+}
+
+// Méta-titre (≤ 60 caractères environ) et description (≤ 155) : on prend la première variante qui tient.
+const pick = (list: string[], max: number) => list.find((s) => s.length <= max) ?? list[list.length - 1]!
+const title = fr
+  ? pick([`Vendre ${phrase} en ligne à ${c.name} | Zuri`, `Vendre ${phrase} à ${c.name} | Zuri`, `Vendre ${short} à ${c.name} | Zuri`, `Vendre ${short} à ${c.name}`], 60)
+  : pick([`Sell ${phrase} online in ${c.name} | Zuri`, `Sell ${phrase} in ${c.name} | Zuri`, `Sell ${short} in ${c.name} | Zuri`, `Sell ${short} in ${c.name}`], 60)
+const description = fr
+  ? pick(
+      [
+        `Vendre ${phrase} à ${c.name} en paiement à la livraison : zones (${areas[0]}, ${areas[1]}), ${mm2 || 'paiement à la livraison'}, exemple de marge en ${curName}.`,
+        `Vendre ${short} à ${c.name} en paiement à la livraison : livraison par quartier, ${mm[0] ?? 'espèces'}, exemple de marge en ${curName}.`,
+        `Vendre ${short} à ${c.name} : livraison par quartier, paiement et exemple de marge.`,
+      ],
+      155,
+    )
+  : pick(
+      [
+        `Sell ${phrase} in ${c.name} with cash on delivery: delivery zones (${areas[0]}, ${areas[1]}), ${mm2 || 'cash on delivery'}, a sample margin in ${curName}.`,
+        `Sell ${short} in ${c.name} with cash on delivery: zones by area, ${mm[0] ?? 'cash'}, a sample margin in ${curName}.`,
+        `Sell ${short} in ${c.name}: delivery by area, payments and a sample margin.`,
+      ],
+      155,
+    )
+const h1 = fr ? `Vendre ${phrase} à ${c.name} en paiement à la livraison` : `How to sell ${phrase} in ${c.name} with cash on delivery`
+const intro = fr
+  ? `Tu veux vendre ${phrase} à ${c.name} ? Voici l’essentiel pour te lancer : les produits à proposer, la livraison de ${areas[0]} à ${areas[areas.length - 1]}, l’encaissement en ${curLabel('fr')}${mm2 ? ` avec ${mm2}` : ''}, et un exemple de marge en paiement à la livraison.`
+  : `Want to sell ${phrase} in ${c.name}? Here is what you need to get started: what to offer, delivery from ${areas[0]} to ${areas[areas.length - 1]}, getting paid in ${curLabel('en')}${mm2 ? ` with ${mm2}` : ''}, and a sample cash on delivery margin.`
+
+const L = fr
+  ? {
+      niches: 'Vendre par métier',
+      eyebrow: `${nicheName} · ${c.name}`,
+      cta: 'Créer ma boutique gratuitement',
+      cta2: `Le guide complet du métier`,
+      local: `${nicheName} à ${c.name} : ce qu’il faut savoir`,
+      products: `Quels produits proposer à ${c.name}`,
+      productsText: `Quelques idées qui marchent bien en ligne, à adapter à ta clientèle ${deCity} :`,
+      delivery: `Livrer ${short} à ${c.name}`,
+      zones: 'Crée une zone par quartier ou commune, avec son prix et son délai :',
+      pay: `Encaisser tes clients à ${c.name}`,
+      payShort: `Paiement à ${c.name}`,
+      margin: 'Exemple de marge en paiement à la livraison',
+      marginIntro: `Ceci est un exemple, avec des montants plausibles en ${curName} : tes prix d’achat, de livraison et de pub seront différents. Refais le calcul avec tes vrais chiffres.`,
+      ads: 'Dans tes pubs, à éviter',
+      adsText: 'Ces erreurs font refuser tes publicités ou bloquer ton compte publicitaire.',
+      mid: `Prêt à vendre ${short} à ${c.name} ? Crée ta boutique, tes zones de livraison et ton formulaire de commande en quelques minutes.`,
+      cur: 'Devise',
+      mm: 'Mobile Money',
+      psps: 'Prestataires sur Zuri',
+      cod: 'Paiement à la livraison',
+      codText: 'Ton client paie en recevant son colis.',
+      otherCities: `${nicheName} dans d’autres villes`,
+      otherNiches: `Autres métiers à ${c.name}`,
+      more: 'Aller plus loin',
+      nicheLink: `Guide : vendre ${phrase} en ligne`,
+      cityLink: `Vendre en ligne à ${c.name}`,
+      countryLink: `Vendre en ligne ${country.inName}`,
+      row: ['Poste', 'Montant'],
+      price: `Prix de vente (${t(meta.item, 'fr')}, livraison comprise)`,
+      cost: 'Coût d’achat du produit',
+      ship: `Course du livreur à ${c.name}`,
+      adRow: 'Pub par commande livrée (hypothèse : 20 % du prix)',
+      total: 'Marge par colis livré',
+    }
+  : {
+      niches: 'Sell by category',
+      eyebrow: `${nicheName} · ${c.name}`,
+      cta: 'Create my store for free',
+      cta2: 'The full category guide',
+      local: `${nicheName} in ${c.name}: what you should know`,
+      products: `What to sell in ${c.name}`,
+      productsText: `A few ideas that sell well online, to adapt to your customers in ${c.name}:`,
+      delivery: `Delivering ${short} in ${c.name}`,
+      zones: 'Create one zone per area or commune, with its own price and delay:',
+      pay: `Getting paid in ${c.name}`,
+      payShort: `Payments in ${c.name}`,
+      margin: 'Sample cash on delivery margin',
+      marginIntro: `This is an example with plausible amounts in ${curName}: your product, delivery and ad costs will differ. Run the numbers again with your own figures.`,
+      ads: 'In your ads, avoid this',
+      adsText: 'These mistakes get ads rejected or your ad account restricted.',
+      mid: `Ready to sell ${short} in ${c.name}? Create your store, delivery zones and order form in a few minutes.`,
+      cur: 'Currency',
+      mm: 'Mobile Money',
+      psps: 'Providers on Zuri',
+      cod: 'Cash on delivery',
+      codText: 'Your customer pays when the parcel arrives.',
+      otherCities: `${nicheName} in other cities`,
+      otherNiches: `Other categories in ${c.name}`,
+      more: 'Go further',
+      nicheLink: `Guide: selling ${phrase} online`,
+      cityLink: `Selling online in ${c.name}`,
+      countryLink: `Selling online in ${t(country.name, 'en')}`,
+      row: ['Item', 'Amount'],
+      price: `Selling price (${t(meta.item, 'en')}, delivery included)`,
+      cost: 'Product cost',
+      ship: `Rider fee in ${c.name}`,
+      adRow: 'Ads per delivered order (assumption: 20% of price)',
+      total: 'Margin per delivered parcel',
+    }
+
+const lossText = fr
+  ? `Si un colis est refusé, tu perds en général la course du livreur (${fmt(money.delivery)}) et la pub déjà dépensée (${fmt(ad)}), soit ${fmt(loss)} : ${loss > margin ? 'plus que la marge d’un colis livré' : 'une bonne partie de la marge d’un colis livré'}. C’est pour ça que la confirmation de chaque commande compte autant.`
+  : `If a parcel is refused, you usually lose the rider fee (${fmt(money.delivery)}) and the ad money already spent (${fmt(ad)}), so ${fmt(loss)}: ${loss > margin ? 'more than the margin on one delivered parcel' : 'a good part of the margin on one delivered parcel'}. That is why confirming every order matters so much.`
+
+// Maillage interne : même métier ailleurs (même pays d'abord), autres métiers dans la ville.
+const sameNiche = COMBOS.filter((v) => v.niche === x.niche && v.city !== x.city)
+const countryOf = (slug: string) => CITIES.find((v) => v.slug === slug)?.country
+const otherCities = [...sameNiche.filter((v) => countryOf(v.city) === c.country), ...sameNiche.filter((v) => countryOf(v.city) !== c.country)].slice(0, 3)
+const otherNiches = COMBOS.filter((v) => v.city === x.city && v.niche !== x.niche).slice(0, 3)
+const tools = ['calculateur-marge-paiement-livraison', 'generateur-message-whatsapp-commande', 'calculateur-prix-pack'].map((s) => TOOLS.find((v) => v.slug.fr === s)).filter((v) => !!v)
+const cityNameOf = (slug: string) => CITIES.find((v) => v.slug === slug)?.name ?? slug
+const nicheNameOf = (key: string) => {
+  const v = NICHES.find((y) => y.slug.fr === key)
+  return v ? t(v.name, lang) : key
+}
+
+const faqs: Faq[] = [
+  meta.faq(c.name),
+  {
+    q: { fr: `Quelle marge viser en vendant ${short} à ${c.name} ?`, en: `What margin can I aim for selling ${short} in ${c.name}?` },
+    a: {
+      fr: `Dans notre exemple, pour ${t(meta.item, 'fr')} : prix de vente ${fmt(x.price)}, coût d’achat ${fmt(x.cost)}, course du livreur ${fmt(money.delivery)} et environ ${fmt(ad)} de pub par commande livrée. Il te reste ${fmt(margin)} par colis livré. Ce n’est qu’un exemple : refais le calcul avec tes vrais chiffres et compte les colis refusés.`,
+      en: `In our example, for ${t(meta.item, 'en')}: selling price ${fmt(x.price)}, product cost ${fmt(x.cost)}, rider fee ${fmt(money.delivery)} and about ${fmt(ad)} of ads per delivered order. You keep ${fmt(margin)} per delivered parcel. It is only an example: run the numbers with your own figures and count refused parcels.`,
+    },
+  },
+  {
+    q: { fr: `Comment organiser la livraison à ${c.name} ?`, en: `How should I organise delivery in ${c.name}?` },
+    a: {
+      fr: `Crée une zone par quartier (${areas.slice(0, 3).join(', ')}…) avec son prix et son délai.${tip ? ` ${tip.fr}` : ''}`,
+      en: `Create one zone per area (${areas.slice(0, 3).join(', ')}…) with its own price and delay.${tip ? ` ${tip.en}` : ''}`,
+    },
+  },
+  {
+    q: { fr: `Comment encaisser mes clients à ${c.name} ?`, en: `How do I get paid by customers in ${c.name}?` },
+    a: {
+      fr: `Le paiement à la livraison rassure pour une première commande.${mm.length ? ` Pour ceux qui préfèrent payer par téléphone, propose ${join(mm, 'ou')}${country.zuriPsps.length ? `, encaissés sur Zuri via ton propre compte ${join(country.zuriPsps, 'ou')}` : ''}.` : ''}`,
+      en: `Cash on delivery reassures customers on a first order.${mm.length ? ` For those who prefer paying by phone, offer ${join(mm, 'or')}${country.zuriPsps.length ? `, collected on Zuri through your own ${join(country.zuriPsps, 'or')} account` : ''}.` : ''}`,
+    },
+  },
+]
+
+const jsonLd = [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: t(f.q, lang), acceptedAnswer: { '@type': 'Answer', text: t(f.a, lang) } })) }]
+---
+
+<MarketingLayout
+  title={title}
+  description={description}
+  canonicalPath={comboPath(x.niche, x.city, lang)}
+  lang={lang}
+  alternate={{ fr: comboPath(x.niche, x.city, 'fr'), en: comboPath(x.niche, x.city, 'en') }}
+  breadcrumbs={[{ label: L.niches, href: PATHS.niches[lang] }, { label: nicheName, href: nichePath(n.slug[lang], lang) }, { label: c.name }]}
+  jsonLd={jsonLd}
+  ogImage={OG.niche(n.slug.fr, lang)}
+  ogImageAlt={h1}
+>
+  <section class="mk-page-hero">
+    <div class="mk-wrap mk-niche-hero">
+      <div>
+        <span class="mk-eyebrow">{L.eyebrow}</span>
+        <h1 class="mk-h1 mk-h1-page">{h1}</h1>
+        <p class="mk-hero-sub">{intro}</p>
+        <div class="mk-hero-cta">
+          <a class="mk-btn mk-btn-amber" href={signup}>{L.cta}</a>
+          <a class="mk-btn-ghost" href={nichePath(n.slug[lang], lang)}>{L.cta2}</a>
+        </div>
+      </div>
+      <NicheArt icon={n.icon} accent={n.accent} name={nicheName} lang={lang} />
+    </div>
+  </section>
+
+  <div class="mk-wrap mk-page-grid">
+    <article class="mk-prose">
+      <h2>{L.local}</h2>
+      <p>{t(x.local, lang)}</p>
+      {note && <p>{t(note, lang)}</p>}
+
+      <h2>{L.products}</h2>
+      <p>{L.productsText}</p>
+      <ul>{n.products.slice(0, 6).map((p) => <li>{t(p, lang)}</li>)}</ul>
+
+      <h2>{L.delivery}</h2>
+      <p>{L.zones}</p>
+      <div class="mk-chips mk-chips-zones">{areas.map((a) => <span class="mk-chip">{a}</span>)}</div>
+      <CityArt name={c.name} areas={areas} lang={lang} />
+      {tip && <p>{t(tip, lang)}</p>}
+      {countryDelivery && <p>{t(countryDelivery, lang)}</p>}
+
+      <h2>{L.pay}</h2>
+      <p>
+        {
+          fr
+            ? `Tes prix s’affichent en ${curLabel('fr')}.${mm.length ? ` Côté Mobile Money, ${join(mm)} sont courants ${country.inName} : propose-les en plus du paiement à la livraison, par exemple pour un acompte sur les quartiers éloignés.` : ''}`
+            : `Your prices are shown in ${curLabel('en')}.${mm.length ? ` For Mobile Money, ${join(mm)} are common in ${t(country.name, 'en')}: offer them alongside cash on delivery, for example for a deposit on distant areas.` : ''}`
+        }
+        {
+          country.zuriPsps.length > 0 &&
+            (fr
+              ? ` Sur Zuri, tu encaisses via ton propre compte ${join(country.zuriPsps, 'ou')}.`
+              : ` On Zuri, you collect payments through your own ${join(country.zuriPsps, 'or')} account.`)
+        }
+      </p>
+
+      <h2>{L.margin}</h2>
+      <p>{L.marginIntro}</p>
+      <div class="mk-table-wrap">
+        <table class="mk-table mk-table-auto">
+          <thead>
+            <tr><th scope="col">{L.row[0]}</th><th scope="col">{L.row[1]}</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">{L.price}</th><td>{fmt(x.price)}</td></tr>
+            <tr><th scope="row">{L.cost}</th><td>{`- ${fmt(x.cost)}`}</td></tr>
+            <tr><th scope="row">{L.ship}</th><td>{`- ${fmt(money.delivery)}`}</td></tr>
+            <tr><th scope="row">{L.adRow}</th><td>{`- ${fmt(ad)}`}</td></tr>
+            <tr class="mk-total-row"><th scope="row">{L.total}</th><td>{fmt(margin)}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>{lossText}</p>
+      {tools[0] && <p><a href={toolPath(tools[0].slug[lang], lang)}>{t(tools[0].title, lang)}</a></p>}
+    </article>
+
+    <aside class="mk-side">
+      <div class="mk-side-card">
+        <p class="mk-side-title">{L.payShort}</p>
+        <dl class="mk-facts">
+          <dt>{L.cur}</dt>
+          <dd>{country.currency.code} · {t(country.currency.label, lang)}</dd>
+          {mm.length > 0 && <dt>{L.mm}</dt>}
+          {mm.length > 0 && <dd>{mm.join(', ')}</dd>}
+          {country.zuriPsps.length > 0 && <dt>{L.psps}</dt>}
+          {country.zuriPsps.length > 0 && <dd>{country.zuriPsps.join(', ')}</dd>}
+          <dt>{L.cod}</dt>
+          <dd>{L.codText}</dd>
+        </dl>
+      </div>
+      {
+        otherCities.length > 0 && (
+          <div class="mk-side-card">
+            <p class="mk-side-title">{L.otherCities}</p>
+            <ul class="mk-side-links">
+              {otherCities.map((v) => (
+                <li>
+                  <a href={comboPath(v.niche, v.city, lang)}>{fr ? `Vendre ${short} à ${cityNameOf(v.city)}` : `Sell ${short} in ${cityNameOf(v.city)}`}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+      {
+        otherNiches.length > 0 && (
+          <div class="mk-side-card">
+            <p class="mk-side-title">{L.otherNiches}</p>
+            <ul class="mk-side-links">
+              {otherNiches.map((v) => (
+                <li>
+                  <a href={comboPath(v.niche, v.city, lang)}>{fr ? `${nicheNameOf(v.niche)} à ${c.name}` : `${nicheNameOf(v.niche)} in ${c.name}`}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+      <div class="mk-side-card">
+        <p class="mk-side-title">{L.more}</p>
+        <ul class="mk-side-links">
+          <li><a href={nichePath(n.slug[lang], lang)}>{L.nicheLink}</a></li>
+          <li><a href={cityPath(c.slug, lang)}>{L.cityLink}</a></li>
+          <li><a href={countryPath(country.slug, lang)}>{L.countryLink}</a></li>
+          {tools.map((v) => <li><a href={toolPath(v.slug[lang], lang)}>{t(v.title, lang)}</a></li>)}
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+  <MidCta lang={lang} href={signup} text={L.mid} />
+
+  <div class="mk-wrap mk-narrow">
+    <div class="mk-prose">
+      <h2>{L.ads}</h2>
+      <p>{L.adsText}</p>
+      <ul class="mk-donts">{n.adRules.slice(0, 4).map((r) => <li>{t(r, lang)}</li>)}</ul>
+    </div>
+    <FaqList faqs={faqs} lang={lang} />
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

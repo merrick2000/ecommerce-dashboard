@@ -8,6 +8,10 @@ import { env } from 'cloudflare:workers'
 import { COUNTRIES, GUIDES, IMG, OG, PATHS, cityPath, countryPath, guidePath, t } from '../../../content/seo'
 import { CITIES } from '../../../content/seo/cities'
 import type { CityPage, Lang } from '../../../content/seo'
+// combos : début (pages « vendre [métier] à [ville] »)
+import { COMBOS, comboPath } from '../../../content/seo'
+import { NICHES as COMBO_NICHE_LIST } from '../../../content/seo/niches'
+// combos : fin
 
 interface Props {
   city: CityPage
@@ -71,6 +75,25 @@ const jsonLd = [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEnti
         {country.mobileMoney.length > 0 && <p><b>{L.mm} :</b> {country.mobileMoney.join(', ')}</p>}
         <p><b>{L.cod} :</b> {L.codText}</p>
       </div>
+      {/* combos : début (section « Que vendre à <ville> ») */}
+      {
+        COMBOS.some((x) => x.city === c.slug) && (
+          <div class="mk-side-card">
+            <p class="mk-side-title">{lang === 'fr' ? `Que vendre à ${c.name}` : `What to sell in ${c.name}`}</p>
+            <ul class="mk-side-links">
+              {COMBOS.filter((x) => x.city === c.slug).map((x) => {
+                const name = COMBO_NICHE_LIST.find((v) => v.slug.fr === x.niche)?.name
+                return (
+                  <li>
+                    <a href={comboPath(x.niche, x.city, lang)}>{name ? (lang === 'fr' ? `${name.fr} à ${c.name}` : `${name.en} in ${c.name}`) : x.niche}</a>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )
+      }
+      {/* combos : fin */}
       <div class="mk-side-card">
         <p class="mk-side-title">{L.others}</p>
         <div class="mk-chips">{others.map((o) => <a class="mk-chip" href={cityPath(o.slug, lang)}>{o.name}</a>)}</div>

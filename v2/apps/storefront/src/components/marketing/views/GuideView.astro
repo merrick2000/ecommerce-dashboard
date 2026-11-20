@@ -5,7 +5,9 @@ import FaqList from '../FaqList.astro'
 import Sources from '../Sources.astro'
 import CtaBand from '../CtaBand.astro'
 import Cover from '../Cover.astro'
-import { GUIDES, GUIDE_CATEGORY_LABEL, IMG, OG, PATHS, guidePath, t } from '../../../content/seo'
+import { BEST_PAGES, GUIDES, GUIDE_CATEGORY_LABEL, IMG, NICHES, OG, PATHS, bestPath, guidePath, nichePath, t, toolPath } from '../../../content/seo'
+import { TOOLS } from '../../../content/seo/tools'
+import { CONTENT_UPDATED } from '../../../content/seo/meta'
 import { env } from 'cloudflare:workers'
 import type { GuidePage, Lang } from '../../../content/seo'
 
@@ -14,11 +16,24 @@ interface Props {
   lang: Lang
 }
 const { guide: g, lang } = Astro.props
-const L = { fr: { guides: 'Guides', read: 'min de lecture', related: 'À lire aussi' }, en: { guides: 'Guides', read: 'min read', related: 'Read next' } }[lang]
+const L = { fr: { guides: 'Guides', read: 'min de lecture', related: 'À lire aussi', more: 'Pour aller plus loin', updated: 'Mis à jour le' }, en: { guides: 'Guides', read: 'min read', related: 'Read next', more: 'Go further', updated: 'Updated' } }[lang]
+const updated = new Date(`${CONTENT_UPDATED}T00:00:00Z`).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+// Maillage : métiers et outils qui citent ce guide, puis classements généraux.
+const gIdx = Math.max(0, GUIDES.findIndex((x) => x.slug.fr === g.slug.fr))
+const nicheLinks = NICHES.filter((n) => n.related.includes(g.slug.fr))
+const niches = (nicheLinks.length ? nicheLinks : [NICHES[gIdx % NICHES.length]!, NICHES[(gIdx + 5) % NICHES.length]!]).slice(0, 4)
+const tools = TOOLS.filter((x) => x.related.includes(g.slug.fr)).slice(0, 2)
+const bests = BEST_PAGES.filter((b) => !b.country)
+const best = [bests[gIdx % bests.length]!, bests[(gIdx + 1) % bests.length]!].filter((b, i, a) => a.indexOf(b) === i)
+const more = [
+  ...tools.map((x) => ({ href: toolPath(x.slug[lang], lang), label: t(x.h1, lang) })),
+  ...niches.map((n) => ({ href: nichePath(n.slug[lang], lang), label: t(n.h1, lang) })),
+  ...best.map((b) => ({ href: bestPath(b.slug[lang], lang), label: t(b.h1, lang) })),
+]
 const related = g.related.map((s) => GUIDES.find((x) => x.slug.fr === s)).filter((x): x is GuidePage => !!x)
 const site = `https://${env.PLATFORM_HOST && env.PLATFORM_HOST !== 'localhost' ? env.PLATFORM_HOST : 'zurisell.store'}`
 const jsonLd = [
-  { '@context': 'https://schema.org', '@type': 'Article', headline: t(g.h1, lang), description: t(g.description, lang), inLanguage: lang, image: [`${site}${OG.guide(g.slug.fr, lang)}`, `${site}${IMG.guide(g.slug.fr)}`], author: { '@type': 'Organization', name: 'Zuri' }, publisher: { '@type': 'Organization', name: 'Zuri' } },
+  { '@context': 'https://schema.org', '@type': 'Article', headline: t(g.h1, lang), description: t(g.description, lang), inLanguage: lang, image: [`${site}${OG.guide(g.slug.fr, lang)}`, `${site}${IMG.guide(g.slug.fr)}`], dateModified: CONTENT_UPDATED, author: { '@type': 'Organization', name: 'Zuri', url: 'https://zurisell.store/' }, publisher: { '@type': 'Organization', '@id': 'https://zurisell.store/#organization', name: 'Zuri' } },
   ...(g.faqs.length ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: g.faqs.map((f) => ({ '@type': 'Question', name: t(f.q, lang), acceptedAnswer: { '@type': 'Answer', text: t(f.a, lang) } })) }] : []),
 ]
 ---
@@ -36,7 +51,7 @@ const jsonLd = [
 >
   <section class="mk-page-hero">
     <div class="mk-wrap mk-narrow">
-      <span class="mk-eyebrow">{t(GUIDE_CATEGORY_LABEL[g.category] ?? { fr: 'Guide', en: 'Guide' }, lang)} · {g.readingMinutes} {L.read}</span>
+      <span class="mk-eyebrow">{t(GUIDE_CATEGORY_LABEL[g.category] ?? { fr: 'Guide', en: 'Guide' }, lang)} · {g.readingMinutes} {L.read} · {L.updated} <time datetime={CONTENT_UPDATED}>{updated}</time></span>
       <h1 class="mk-h1 mk-h1-page">{t(g.h1, lang)}</h1>
       <p class="mk-hero-sub">{t(g.intro, lang)}</p>
       <Cover src={IMG.guide(g.slug.fr)} alt={t(g.h1, lang)} />
@@ -46,6 +61,16 @@ const jsonLd = [
     <Blocks blocks={g.blocks} lang={lang} />
     <FaqList faqs={g.faqs} lang={lang} />
     <Sources sources={g.sources} lang={lang} />
+    <section class="mk-block">
+      <h2 class="mk-h2-sm">{L.more}</h2>
+      <ul class="mk-side-links mk-more-links">
+        {more.map((m) => (
+          <li>
+            <a href={m.href}>{m.label}</a>
+          </li>
+        ))}
+      </ul>
+    </section>
     {
       related.length > 0 && (
         <section class="mk-block">

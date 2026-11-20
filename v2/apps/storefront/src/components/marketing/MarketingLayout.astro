@@ -41,8 +41,8 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr'
 const otherPath = alternate[other] ?? PATHS.home[other]
 
 const T = {
-  fr: { how: 'Comment ça marche', features: 'Fonctionnalités', pricing: 'Tarif', faq: 'Questions', login: 'Se connecter', signup: 'Créer ma boutique', skip: 'Aller au contenu', tagline: 'La boutique en ligne pensée pour le paiement à la livraison et le Mobile Money, en Afrique.', product: 'Produit', resources: 'Ressources', countries: 'Vendre par pays', guides: 'Guides', tools: 'Outils gratuits', cities: 'Vendre par ville', niches: 'Vendre par métier', best: 'Meilleurs outils', alternatives: 'Alternatives', compare: 'Comparatifs', account: 'Compte', popular: 'Guides populaires', bottom: 'Fait pour les vendeurs d’Afrique.', home: 'Accueil', langLabel: 'English', allCountries: 'Tous les pays' },
-  en: { how: 'How it works', features: 'Features', pricing: 'Pricing', faq: 'FAQ', login: 'Log in', signup: 'Create my store', skip: 'Skip to content', tagline: 'The online store built for cash on delivery and Mobile Money, in Africa.', product: 'Product', resources: 'Resources', countries: 'Sell by country', guides: 'Guides', tools: 'Free tools', cities: 'Sell by city', niches: 'Sell by category', best: 'Best tools', alternatives: 'Alternatives', compare: 'Comparisons', account: 'Account', popular: 'Popular guides', bottom: 'Built for sellers across Africa.', home: 'Home', langLabel: 'Français', allCountries: 'All countries' },
+  fr: { how: 'Comment ça marche', features: 'Fonctionnalités', pricing: 'Tarifs', about: 'À propos', faq: 'Questions', login: 'Se connecter', signup: 'Créer ma boutique', skip: 'Aller au contenu', tagline: 'La boutique en ligne pensée pour le paiement à la livraison et le Mobile Money, en Afrique.', product: 'Produit', resources: 'Ressources', countries: 'Vendre par pays', guides: 'Guides', tools: 'Outils gratuits', cities: 'Vendre par ville', niches: 'Vendre par métier', best: 'Meilleurs outils', alternatives: 'Alternatives', compare: 'Comparatifs', account: 'Compte', popular: 'Guides populaires', bottom: 'Fait pour les vendeurs d’Afrique.', home: 'Accueil', langLabel: 'English', allCountries: 'Tous les pays' },
+  en: { how: 'How it works', features: 'Features', pricing: 'Pricing', about: 'About', faq: 'FAQ', login: 'Log in', signup: 'Create my store', skip: 'Skip to content', tagline: 'The online store built for cash on delivery and Mobile Money, in Africa.', product: 'Product', resources: 'Resources', countries: 'Sell by country', guides: 'Guides', tools: 'Free tools', cities: 'Sell by city', niches: 'Sell by category', best: 'Best tools', alternatives: 'Alternatives', compare: 'Comparisons', account: 'Account', popular: 'Popular guides', bottom: 'Built for sellers across Africa.', home: 'Home', langLabel: 'Français', allCountries: 'All countries' },
 }[lang]
 
 // Pied de page : liens internes vers les pages les plus utiles (maillage SEO).
@@ -58,6 +58,25 @@ const crumbsLd = breadcrumbs.length
       },
     ]
   : []
+
+// Accueil : identité de la marque (Organization + WebSite), référencée par les autres données structurées.
+const orgLd =
+  canonicalPath === home
+    ? [
+        {
+          '@context': 'https://schema.org',
+          '@type': 'Organization',
+          '@id': 'https://zurisell.store/#organization',
+          name: 'Zuri',
+          url: 'https://zurisell.store/',
+          logo: 'https://zurisell.store/og/fr/hub/home.jpg',
+          description: T.tagline,
+          areaServed: 'Africa',
+          knowsLanguage: ['fr', 'en'],
+        },
+        { '@context': 'https://schema.org', '@type': 'WebSite', '@id': 'https://zurisell.store/#website', name: 'Zuri', url: 'https://zurisell.store/', inLanguage: ['fr', 'en'], publisher: { '@id': 'https://zurisell.store/#organization' } },
+      ]
+    : []
 
 // Page marketing : publique, mise en cache en périphérie.
 const cache = 'public, s-maxage=600, stale-while-revalidate=86400'
@@ -101,7 +120,7 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23f59e0b'/%3E%3Cpath d='M10.5 10.5h11l-11 11h11' fill='none' stroke='%231c1917' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
-    {[...jsonLd, ...crumbsLd].map((data) => <script type="application/ld+json" set:html={JSON.stringify(data)} />)}
+    {[...orgLd, ...jsonLd, ...crumbsLd].map((data) => <script type="application/ld+json" set:html={JSON.stringify(data)} />)}
     <script defer src="https://cloud.umami.is/script.js" data-website-id="2ed31424-94e4-42f7-96bb-bb2ef20f6418" data-domains="zurisell.store"></script>
     <script is:inline>
       /* Provenance du visiteur (premier contact), lue à l'inscription sur app.zurisell.store. Aucune donnée personnelle. */
@@ -175,7 +194,8 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
           <p class="mk-footer-title">{T.product}</p>
           <a href={`${home === '/' ? '' : home}/#comment`}>{T.how}</a>
           <a href={`${home === '/' ? '' : home}/#fonctions`}>{T.features}</a>
-          <a href={`${home === '/' ? '' : home}/#tarif`}>{T.pricing}</a>
+          <a href={lang === 'fr' ? '/tarifs' : '/en/pricing'}>{T.pricing}</a>
+          <a href={lang === 'fr' ? '/a-propos' : '/en/about'}>{T.about}</a>
           <a href={`${home === '/' ? '' : home}/#faq`}>{T.faq}</a>
           <a href={signupUrl}>{T.signup}</a>
           <a href={loginUrl}>{T.login}</a>

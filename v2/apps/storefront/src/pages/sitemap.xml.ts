@@ -4,6 +4,7 @@ import { env } from 'cloudflare:workers'
 import { ALTERNATIVES, COMPARISONS, COUNTRIES, GUIDES, PATHS, alternativePath, comparisonPath, countryPath, guidePath } from '../content/seo'
 import { TOOLS } from '../content/seo/tools'
 import { BEST_PAGES, CITIES, NICHES, bestPath, cityPath, nichePath, toolPath } from '../content/seo'
+import { COMBOS, comboPath } from '../content/seo'
 
 export const prerender = false
 
@@ -20,6 +21,8 @@ export const GET: APIRoute = () => {
   ]
   const entries: Entry[] = [
     ...both(PATHS.home.fr, PATHS.home.en, 'daily', '1'),
+    ...both('/tarifs', '/en/pricing', 'weekly', '0.9'),
+    ...both('/a-propos', '/en/about', 'monthly', '0.6'),
     ...both(PATHS.guides.fr, PATHS.guides.en, 'weekly', '0.9'),
     ...both(PATHS.tools.fr, PATHS.tools.en, 'weekly', '0.9'),
     ...both(PATHS.countries.fr, PATHS.countries.en, 'weekly', '0.8'),
@@ -33,6 +36,7 @@ export const GET: APIRoute = () => {
     ...GUIDES.flatMap((g) => both(guidePath(g.slug.fr, 'fr'), guidePath(g.slug.en, 'en'), 'monthly', '0.8')),
     ...NICHES.flatMap((n) => both(nichePath(n.slug.fr, 'fr'), nichePath(n.slug.en, 'en'), 'monthly', '0.8')),
     ...CITIES.flatMap((c) => both(cityPath(c.slug, 'fr'), cityPath(c.slug, 'en'), 'monthly', '0.7')),
+    ...COMBOS.flatMap((x) => both(comboPath(x.niche, x.city, 'fr'), comboPath(x.niche, x.city, 'en'), 'monthly', '0.6')),
     ...COUNTRIES.flatMap((c) => both(countryPath(c.slug, 'fr'), countryPath(c.slug, 'en'), 'monthly', '0.7')),
     ...ALTERNATIVES.flatMap((a) => both(alternativePath(a.slug, 'fr'), alternativePath(a.slug, 'en'), 'monthly', '0.7')),
     ...COMPARISONS.flatMap((c) => both(comparisonPath(c.slug, 'fr'), comparisonPath(c.slug, 'en'), 'monthly', '0.6')),

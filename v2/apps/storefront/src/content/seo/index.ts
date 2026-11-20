@@ -37,7 +37,7 @@ const slugify = (s: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 
-type Kind = 'countries' | 'cities' | 'guides' | 'alternatives' | 'comparisons' | 'niches' | 'best' | 'tools'
+type Kind = 'countries' | 'cities' | 'guides' | 'alternatives' | 'comparisons' | 'niches' | 'best' | 'tools' | 'combos'
 
 /** Guides et outils : adresses choisies à la main pour coller aux titres. Clé = slug des données. */
 const GUIDE_URLS: Record<Lang, Record<string, string>> = {
@@ -82,7 +82,7 @@ let urlCache: Record<Kind, Record<Lang, Map<string, string>>> | null = null
 function urlMaps() {
   if (urlCache) return urlCache
   const m = (): Record<Lang, Map<string, string>> => ({ fr: new Map(), en: new Map() })
-  const u: Record<Kind, Record<Lang, Map<string, string>>> = { countries: m(), cities: m(), guides: m(), alternatives: m(), comparisons: m(), niches: m(), best: m(), tools: m() }
+  const u: Record<Kind, Record<Lang, Map<string, string>>> = { countries: m(), cities: m(), guides: m(), alternatives: m(), comparisons: m(), niches: m(), best: m(), tools: m(), combos: m() }
   for (const c of COUNTRIES) {
     u.countries.fr.set(c.slug, `vendre-en-ligne-${c.slug}`)
     u.countries.en.set(c.slug, `sell-online-${slugify(c.name.en)}`)
@@ -104,6 +104,14 @@ function urlMaps() {
     u.alternatives.en.set(a.slug, `${a.slug}-alternative${/Africa/.test(a.title.en) ? '-africa' : ''}`)
   }
   for (const c of COMPARISONS) u.comparisons.fr.set(c.slug, c.slug.replace('-vs-', '-ou-'))
+  // Combinaisons métier × ville : /vendre/<base-métier>-<ville>, /en/sell/<niche-base>-<city>.
+  for (const x of _COMBOS) {
+    const meta = COMBO_NICHES[x.niche]
+    if (!meta) continue
+    const key = comboKey(x.niche, x.city)
+    u.combos.fr.set(key, `${meta.base.fr}-${x.city}`)
+    u.combos.en.set(key, `${meta.base.en}-${x.city}`)
+  }
   urlCache = u
   return u
 }
@@ -126,6 +134,8 @@ export const nichePath = (slug: string, lang: Lang) => `${PATHS.niches[lang]}/${
 export const bestPath = (slug: string, lang: Lang) => `${PATHS.best[lang]}/${urlSlug('best', slug, lang)}`
 export const comparisonPath = (slug: string, lang: Lang) => `${PATHS.comparisons[lang]}/${urlSlug('comparisons', slug, lang)}`
 export const toolPath = (slug: string, lang: Lang) => `${PATHS.tools[lang]}/${urlSlug('tools', slug, lang)}`
+/** Page « vendre [métier] à [ville] » : clé fr du métier + slug de la ville (sous /vendre et /en/sell). */
+export const comboPath = (nicheKeyFr: string, citySlug: string, lang: Lang) => `${PATHS.niches[lang]}/${urlSlug('combos', comboKey(nicheKeyFr, citySlug), lang)}`
 
 export const findCountry = (slug: string) => COUNTRIES.find((c) => c.slug === slug)
 export const findGuide = (slug: string, lang: Lang) => GUIDES.find((g) => g.slug[lang] === slug)
@@ -176,3 +186,7 @@ export const findNiche = (slug: string, lang: Lang) => _NICHES.find((n) => n.slu
 export { BEST_PAGES } from './best'
 import { BEST_PAGES as _BEST } from './best'
 export const findBest = (slug: string, lang: Lang) => _BEST.find((b) => b.slug[lang] === slug)
+
+export { COMBOS, COMBO_NICHES, COMBO_MONEY, COUNTRY_DELIVERY, comboKey, findCombo } from './combos'
+export type { ComboPage, ComboNicheMeta, ComboMoney } from './combos'
+import { COMBOS as _COMBOS, COMBO_NICHES, comboKey } from './combos'

@@ -1,0 +1,192 @@
+---
+/** Page Tarifs publique (FR /tarifs, EN /en/pricing). Prix et limites lus dans @zuri/shared : une seule source de vérité. */
+import MarketingLayout from '../MarketingLayout.astro'
+import FaqList from '../FaqList.astro'
+import CtaBand from '../CtaBand.astro'
+import LaunchOffer from '../offer/LaunchOffer.astro'
+import { env } from 'cloudflare:workers'
+import { PLANS, LAUNCH } from '@zuri/shared'
+import { PATHS, toolPath } from '../../../content/seo'
+import type { Faq, Lang } from '../../../content/seo'
+
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const other: Lang = lang === 'fr' ? 'en' : 'fr'
+const path = { fr: '/tarifs', en: '/en/pricing' }
+const appOrigin = import.meta.env.DEV ? 'http://localhost:5173' : (env.APP_ORIGIN ?? `https://app.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
+const signup = `${appOrigin}/register`
+const fmt = (n: number) => n.toLocaleString('fr-FR').replace(/ | /g, ' ')
+const dateFmt = (iso: string) => new Date(iso).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+
+const M = {
+  fr: {
+    title: 'Tarifs Zuri : boutique en ligne dès 0 F, 0 % de commission',
+    description: 'Prix de Zuri en FCFA : gratuit pendant le lancement, puis dès 4 900 F par mois. Paiement à la livraison, Mobile Money, closers inclus. Sans carte bancaire, 0 % de commission.',
+    label: 'Tarifs',
+    h1: 'Des prix en FCFA, sans commission ni appli à payer en plus',
+    intro: 'Tout est inclus dans chaque formule : pages de vente rapides, paiement à la livraison, suivi des livraisons, pixel Facebook et TikTok. Tu ne paies jamais de pourcentage sur tes ventes.',
+    month: 'par mois',
+    year: (n: string) => `ou ${n} F par an (2 mois offerts)`,
+    free: 'Gratuit',
+    popular: 'Le plus choisi',
+    cta: 'Créer ma boutique',
+    stores: (n: number | null) => (n === null ? 'Boutiques illimitées' : n === 1 ? '1 boutique' : `${n} boutiques`),
+    products: (n: number | null) => (n === null ? 'Produits illimités' : `${n} produits`),
+    orders: (n: number | null) => (n === null ? 'Commandes illimitées' : `${fmt(n)} commandes par mois`),
+    members: (n: number | null) => (n === null ? 'Équipe illimitée' : n === 1 ? '1 utilisateur' : `${n} membres d’équipe (closers)`),
+    online: 'Paiement en ligne Mobile Money et carte',
+    ai: 'Import de produits par lien avec l’IA',
+    team: 'Équipe de closers et répartition des commandes',
+    always: ['0 % de commission sur les ventes', 'Paiement à la livraison', 'Pixel Facebook, API Conversions, TikTok'],
+    freeNote: (d: string) => `Disponible jusqu’au ${d}.`,
+    timelineTitle: 'Le calendrier du lancement',
+    timeline: [
+      { when: `Jusqu’au ${dateFmt(LAUNCH.unlimitedUntil)}`, what: 'Tout est gratuit et illimité pour tout le monde, toutes fonctions comprises.' },
+      { when: `Inscrit avant le ${dateFmt(LAUNCH.unlimitedUntil)}`, what: `La formule Pro t’est offerte jusqu’au ${dateFmt(LAUNCH.earlyBirdUntil)} : ton premier mois est gratuit.` },
+      { when: `Jusqu’au ${dateFmt(LAUNCH.freePlanUntil)}`, what: 'L’offre gratuite limitée reste disponible pour découvrir Zuri.' },
+      { when: 'Ensuite', what: 'Tu choisis la formule adaptée à ton volume. Ta boutique et tes commandes restent en place.' },
+    ],
+    compareTitle: 'Combien coûte une boutique ailleurs ?',
+    compareText: 'Sur les plateformes facturées en dollars, l’abonnement ne suffit pas : il faut souvent ajouter des applis pour le formulaire de commande, les packs, les avis ou le pixel. Fais le calcul avec ton propre cas :',
+    compareLink: 'Calculer le coût réel de Shopify avec les applis',
+    payTitle: 'Comment payer ?',
+    payText: 'L’abonnement se règle en FCFA par Mobile Money (Orange Money, MTN, Moov, Wave selon ton pays), sans carte bancaire. Pas d’engagement : tu paies au mois ou à l’année.',
+    faqs: [
+      { q: { fr: 'Zuri prend-il une commission sur mes ventes ?', en: '' }, a: { fr: 'Non. Quelle que soit la formule, Zuri ne prend aucun pourcentage sur tes ventes. Si tu actives le paiement en ligne, seuls les frais de ton prestataire de paiement (FedaPay, FeexPay, pawaPay, PayDunya…) s’appliquent, selon leurs propres tarifs.', en: '' } },
+      { q: { fr: 'Faut-il une carte bancaire pour s’inscrire ?', en: '' }, a: { fr: 'Non. L’inscription est gratuite et sans carte. L’abonnement se paie ensuite par Mobile Money.', en: '' } },
+      { q: { fr: 'Que se passe-t-il si je ne paie pas après la période gratuite ?', en: '' }, a: { fr: 'Ta boutique reste en ligne et continue de recevoir des commandes, mais tu ne peux plus ajouter de produits tant que tu n’as pas choisi une formule.', en: '' } },
+      { q: { fr: 'Puis-je changer de formule ?', en: '' }, a: { fr: 'Oui, à tout moment depuis ton tableau de bord, rubrique Abonnement.', en: '' } },
+      { q: { fr: 'Les prix sont-ils les mêmes dans tous les pays ?', en: '' }, a: { fr: 'Les prix sont fixés en FCFA. Dans les pays hors zone FCFA, le montant est converti au moment du paiement par ton opérateur Mobile Money.', en: '' } },
+    ] as Faq[],
+  },
+  en: {
+    title: 'Zuri pricing: online store from free, 0% commission',
+    description: 'Zuri prices: free during launch, then from 4,900 XOF (about 8 USD) a month. Cash on delivery, Mobile Money and closers included. No card needed, 0% commission.',
+    label: 'Pricing',
+    h1: 'Simple prices, no commission, no paid apps to add',
+    intro: 'Every plan includes fast sales pages, cash on delivery, delivery tracking, Facebook and TikTok pixels. You never pay a percentage on your sales.',
+    month: 'per month',
+    year: (n: string) => `or ${n} XOF a year (2 months free)`,
+    free: 'Free',
+    popular: 'Most popular',
+    cta: 'Create my store',
+    stores: (n: number | null) => (n === null ? 'Unlimited stores' : n === 1 ? '1 store' : `${n} stores`),
+    products: (n: number | null) => (n === null ? 'Unlimited products' : `${n} products`),
+    orders: (n: number | null) => (n === null ? 'Unlimited orders' : `${fmt(n).replace(/ /g, ',')} orders a month`),
+    members: (n: number | null) => (n === null ? 'Unlimited team' : n === 1 ? '1 user' : `${n} team members (closers)`),
+    online: 'Online payments: Mobile Money and card',
+    ai: 'AI product import from a link',
+    team: 'Closer team and order assignment',
+    always: ['0% commission on sales', 'Cash on delivery', 'Facebook pixel, Conversions API, TikTok'],
+    freeNote: (d: string) => `Available until ${d}.`,
+    timelineTitle: 'Launch timeline',
+    timeline: [
+      { when: `Until ${dateFmt(LAUNCH.unlimitedUntil)}`, what: 'Everything is free and unlimited for everyone, all features included.' },
+      { when: `Signed up before ${dateFmt(LAUNCH.unlimitedUntil)}`, what: `You get the Pro plan free until ${dateFmt(LAUNCH.earlyBirdUntil)}: your first month is on us.` },
+      { when: `Until ${dateFmt(LAUNCH.freePlanUntil)}`, what: 'The limited free plan stays available to try Zuri.' },
+      { when: 'After that', what: 'You pick the plan that fits your volume. Your store and orders stay in place.' },
+    ],
+    compareTitle: 'What does a store cost elsewhere?',
+    compareText: 'On platforms billed in dollars, the subscription is rarely enough: you often add apps for the order form, bundles, reviews or the pixel. Run the numbers for your own case:',
+    compareLink: 'Calculate the real cost of Shopify with apps',
+    payTitle: 'How do I pay?',
+    payText: 'You pay by Mobile Money (Orange Money, MTN, Moov, Wave depending on your country), no bank card needed. No commitment: pay monthly or yearly.',
+    faqs: [
+      { q: { fr: '', en: 'Does Zuri take a commission on my sales?' }, a: { fr: '', en: 'No. Whatever the plan, Zuri takes no percentage of your sales. If you turn on online payments, only your payment provider’s fees apply (FedaPay, FeexPay, pawaPay, PayDunya…), at their own rates.' } },
+      { q: { fr: '', en: 'Do I need a bank card to sign up?' }, a: { fr: '', en: 'No. Sign up is free and needs no card. The subscription is then paid by Mobile Money.' } },
+      { q: { fr: '', en: 'What happens if I do not pay after the free period?' }, a: { fr: '', en: 'Your store stays online and keeps receiving orders, but you cannot add new products until you pick a plan.' } },
+      { q: { fr: '', en: 'Can I change plans?' }, a: { fr: '', en: 'Yes, at any time from your dashboard, under Billing.' } },
+      { q: { fr: '', en: 'Are prices the same in every country?' }, a: { fr: '', en: 'Prices are set in XOF (CFA franc). Outside the CFA zone, your Mobile Money operator converts the amount at payment time.' } },
+    ] as Faq[],
+  },
+}[lang]
+
+const plans = (['free', 'starter', 'pro', 'business'] as const).map((id) => PLANS[id])
+const name = (id: string, n: string) => (id === 'free' ? M.free : n)
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Zuri',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    url: 'https://zurisell.store/',
+    offers: plans.map((p) => ({ '@type': 'Offer', name: name(p.id, p.name), price: p.priceXof, priceCurrency: 'XOF', url: `https://zurisell.store${path[lang]}` })),
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: M.faqs.map((f) => ({ '@type': 'Question', name: f.q[lang], acceptedAnswer: { '@type': 'Answer', text: f.a[lang] } })),
+  },
+]
+---
+
+<MarketingLayout title={M.title} description={M.description} canonicalPath={path[lang]} lang={lang} alternate={{ [lang]: path[lang], [other]: path[other] }} breadcrumbs={[{ label: M.label }]} jsonLd={jsonLd} ogImage={`/og/${lang}/hub/home.jpg`} ogImageAlt={M.h1}>
+  <section class="mk-page-hero">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">{M.label}</span>
+      <h1 class="mk-h1 mk-h1-page">{M.h1}</h1>
+      <p class="mk-hero-sub">{M.intro}</p>
+    </div>
+  </section>
+
+  <div class="mk-wrap">
+    <div class="mk-plans">
+      {
+        plans.map((p) => (
+          <div class={`mk-plan${p.highlight ? ' mk-plan-hl' : ''}`}>
+            {p.highlight && <span class="mk-plan-badge">{M.popular}</span>}
+            <h2 class="mk-plan-name">{name(p.id, p.name)}</h2>
+            <div class="mk-plan-price">
+              <b>{fmt(p.priceXof)} F</b>
+              <span>{M.month}</span>
+            </div>
+            <p class="mk-plan-note">{p.priceXof > 0 ? M.year(fmt(p.priceXof * 10)) : M.freeNote(dateFmt(LAUNCH.freePlanUntil))}</p>
+            <ul>
+              <li>{M.stores(p.limits.stores)}</li>
+              <li>{M.products(p.limits.products)}</li>
+              <li>{M.orders(p.limits.ordersPerMonth)}</li>
+              <li>{M.members(p.limits.members)}</li>
+              {M.always.map((x) => <li>{x}</li>)}
+              {p.features.team && <li>{M.team}</li>}
+              {p.features.onlinePayments && <li>{M.online}</li>}
+              {p.features.aiImport && <li>{M.ai}</li>}
+            </ul>
+            <a class={p.highlight ? 'mk-btn mk-btn-amber' : 'mk-btn-ghost'} href={`${signup}?plan=${p.id}`}>{M.cta}</a>
+          </div>
+        ))
+      }
+    </div>
+
+    <section class="mk-block">
+      <h2 class="mk-h2-sm">{M.timelineTitle}</h2>
+      <ol class="mk-timeline">
+        {
+          M.timeline.map((s) => (
+            <li>
+              <b>{s.when}</b>
+              <span>{s.what}</span>
+            </li>
+          ))
+        }
+      </ol>
+      <div style="margin-top:24px">
+        <LaunchOffer lang={lang} href={signup} />
+      </div>
+    </section>
+
+    <section class="mk-block mk-prose">
+      <h2 class="mk-h2-sm">{M.compareTitle}</h2>
+      <p>{M.compareText}</p>
+      <p><a href={toolPath(lang === 'fr' ? 'calculateur-cout-shopify-afrique' : 'shopify-cost-calculator-africa', lang)}>{M.compareLink}</a></p>
+      <h2 class="mk-h2-sm">{M.payTitle}</h2>
+      <p>{M.payText}</p>
+    </section>
+
+    <FaqList faqs={M.faqs} lang={lang} />
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

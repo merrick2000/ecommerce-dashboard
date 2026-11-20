@@ -5,7 +5,8 @@ import Sources from '../Sources.astro'
 import CtaBand from '../CtaBand.astro'
 import Icon from '../Icon.astro'
 import Cover from '../Cover.astro'
-import { COUNTRIES, GUIDES, IMG, OG, PATHS, countryPath, guidePath, t } from '../../../content/seo'
+import { BEST_PAGES, CITIES, COUNTRIES, GUIDES, IMG, NICHES, OG, PATHS, bestPath, cityPath, countryPath, guidePath, nichePath, t, toolPath } from '../../../content/seo'
+import { TOOLS } from '../../../content/seo/tools'
 import type { CountryPage, Lang } from '../../../content/seo'
 
 interface Props {
@@ -14,11 +15,17 @@ interface Props {
 }
 const { country: c, lang } = Astro.props
 const L = {
-  fr: { countries: 'Vendre par pays', market: `Le e-commerce ${c.inName}`, tips: `Conseils pour vendre ${c.inName}`, ideas: 'Produits souvent demandés en ligne', pay: 'Encaisser tes clients', currency: 'Devise', cities: 'Grandes villes', mm: 'Mobile Money', psps: 'Prestataires intégrés à Zuri', cod: 'Paiement à la livraison', codText: 'Disponible partout : ton client paie en recevant son colis.', none: 'Paiement à la livraison et liens de paiement', others: 'Autres pays', guides: 'Guides utiles' },
-  en: { countries: 'Sell by country', market: `E-commerce in ${c.name.en}`, tips: `Tips to sell in ${c.name.en}`, ideas: 'Products often in demand online', pay: 'Getting paid', currency: 'Currency', cities: 'Main cities', mm: 'Mobile Money', psps: 'Providers built into Zuri', cod: 'Cash on delivery', codText: 'Available everywhere: your customer pays when the parcel arrives.', none: 'Cash on delivery and payment links', others: 'Other countries', guides: 'Useful guides' },
+  fr: { countries: 'Vendre par pays', market: `Le e-commerce ${c.inName}`, tips: `Conseils pour vendre ${c.inName}`, ideas: 'Produits souvent demandés en ligne', pay: 'Encaisser tes clients', currency: 'Devise', cities: 'Grandes villes', mm: 'Mobile Money', psps: 'Prestataires intégrés à Zuri', cod: 'Paiement à la livraison', codText: 'Disponible partout : ton client paie en recevant son colis.', none: 'Paiement à la livraison et liens de paiement', others: 'Autres pays', guides: 'Guides utiles', cityLinks: 'Vendre par ville', best: 'Comparer les plateformes', niches: 'Que vendre en ligne ?', tools: 'Outils gratuits' },
+  en: { countries: 'Sell by country', market: `E-commerce in ${c.name.en}`, tips: `Tips to sell in ${c.name.en}`, ideas: 'Products often in demand online', pay: 'Getting paid', currency: 'Currency', cities: 'Main cities', mm: 'Mobile Money', psps: 'Providers built into Zuri', cod: 'Cash on delivery', codText: 'Available everywhere: your customer pays when the parcel arrives.', none: 'Cash on delivery and payment links', others: 'Other countries', guides: 'Useful guides', cityLinks: 'Sell by city', best: 'Compare platforms', niches: 'What to sell online?', tools: 'Free tools' },
 }[lang]
 const others = COUNTRIES.filter((x) => x.slug !== c.slug && x.region === c.region).slice(0, 8)
-const guides = GUIDES.slice(0, 4)
+// Liens internes variés d'un pays à l'autre (répartition du maillage) plutôt que toujours les 4 mêmes guides.
+const idx = Math.max(0, COUNTRIES.findIndex((x) => x.slug === c.slug))
+const guides = Array.from({ length: 4 }, (_, i) => GUIDES[(idx * 3 + i) % GUIDES.length]!)
+const cities = CITIES.filter((x) => x.country === c.slug)
+const best = [...BEST_PAGES.filter((b) => b.country === c.slug), ...BEST_PAGES.filter((b) => !b.country)].slice(0, 3)
+const niches = Array.from({ length: 4 }, (_, i) => NICHES[(idx + i) % NICHES.length]!)
+const tools = TOOLS.slice(0, 2)
 const jsonLd = [
   { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: c.faqs.map((f) => ({ '@type': 'Question', name: t(f.q, lang), acceptedAnswer: { '@type': 'Answer', text: t(f.a, lang) } })) },
 ]
@@ -96,6 +103,45 @@ const jsonLd = [
           </div>
         )
       }
+      {
+        cities.length > 0 && (
+          <div class="mk-side-card">
+            <p class="mk-side-title">{L.cityLinks}</p>
+            <ul class="mk-side-links">
+              {cities.map((x) => (
+                <li>
+                  <a href={cityPath(x.slug, lang)}>{lang === 'fr' ? `Vendre en ligne à ${x.name}` : `Sell online in ${x.name}`}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+      <div class="mk-side-card">
+        <p class="mk-side-title">{L.best}</p>
+        <ul class="mk-side-links">
+          {best.map((b) => (
+            <li>
+              <a href={bestPath(b.slug[lang], lang)}>{t(b.h1, lang)}</a>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div class="mk-side-card">
+        <p class="mk-side-title">{L.niches}</p>
+        <ul class="mk-side-links">
+          {niches.map((n) => (
+            <li>
+              <a href={nichePath(n.slug[lang], lang)}>{t(n.h1, lang)}</a>
+            </li>
+          ))}
+          {tools.map((x) => (
+            <li>
+              <a href={toolPath(x.slug[lang], lang)}>{t(x.h1, lang)}</a>
+            </li>
+          ))}
+        </ul>
+      </div>
       <div class="mk-side-card">
         <p class="mk-side-title">{L.guides}</p>
         <ul class="mk-side-links">

@@ -11,6 +11,9 @@ import { GUIDES, IMG, OG, PATHS, cityPath, guidePath, nichePath, t } from '../..
 import { NICHES } from '../../../content/seo/niches'
 import { CITIES } from '../../../content/seo/cities'
 import type { Lang, NichePage } from '../../../content/seo'
+// combos : début (pages « vendre [métier] à [ville] »)
+import { COMBOS, COMBO_NICHES, comboPath } from '../../../content/seo'
+// combos : fin
 
 interface Props {
   niche: NichePage
@@ -20,8 +23,8 @@ const { niche: n, lang } = Astro.props
 const fr = lang === 'fr'
 const appOrigin = import.meta.env.DEV ? 'http://localhost:5173' : (env.APP_ORIGIN ?? `https://app.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
 const L = fr
-  ? { niches: 'Vendre par métier', why: 'Pourquoi ça se vend bien en ligne', products: 'Idées de produits à proposer', ads: 'Dans tes pubs, à éviter absolument', adsText: 'Ces erreurs font refuser tes publicités ou bloquer ton compte publicitaire.', related: 'Guides pour aller plus loin', others: 'Autres métiers', cities: 'Vendre dans ta ville', cta: 'Créer ma boutique gratuitement', cta2: 'Lire le guide offert' }
-  : { niches: 'Sell by category', why: 'Why it sells well online', products: 'Product ideas to offer', ads: 'In your ads, never do this', adsText: 'These mistakes get ads rejected or your ad account restricted.', related: 'Guides to go further', others: 'Other categories', cities: 'Sell in your city', cta: 'Create my store for free', cta2: 'Read the free guide' }
+  ? { niches: 'Vendre par métier', why: 'Pourquoi ça se vend bien en ligne', products: 'Idées de produits à proposer', ads: 'Dans tes pubs, à éviter absolument', adsText: 'Ces erreurs font refuser tes publicités ou bloquer ton compte publicitaire.', related: 'Guides pour aller plus loin', others: 'Autres métiers', cities: 'Vendre en ligne par ville', cta: 'Créer ma boutique gratuitement', cta2: 'Lire le guide offert' }
+  : { niches: 'Sell by category', why: 'Why it sells well online', products: 'Product ideas to offer', ads: 'In your ads, never do this', adsText: 'These mistakes get ads rejected or your ad account restricted.', related: 'Guides to go further', others: 'Other categories', cities: 'Selling online by city', cta: 'Create my store for free', cta2: 'Read the free guide' }
 const related = n.related.map((s) => GUIDES.find((g) => g.slug.fr === s)).filter((g) => !!g)
 const bonus = GUIDES.find((g) => g.slug.fr === 'guide-offert-produit-gagnant-pub-facebook')
 const jsonLd = [
@@ -89,6 +92,20 @@ const jsonLd = [
         </section>
       )
     }
+    {/* combos : début (section « Vendre <métier> dans ta ville ») */}
+    {
+      COMBOS.some((x) => x.niche === n.slug.fr) && (
+        <section class="mk-block">
+          <h2 class="mk-h2-sm">{lang === 'fr' ? `Vendre ${COMBO_NICHES[n.slug.fr]?.phrase.fr ?? t(n.name, lang).toLowerCase()} : guides par ville` : `Sell ${COMBO_NICHES[n.slug.fr]?.phrase.en ?? t(n.name, lang).toLowerCase()}: city guides`}</h2>
+          <div class="mk-chips">
+            {COMBOS.filter((x) => x.niche === n.slug.fr).map((x) => (
+              <a class="mk-chip" href={comboPath(x.niche, x.city, lang)}>{CITIES.find((v) => v.slug === x.city)?.name ?? x.city}</a>
+            ))}
+          </div>
+        </section>
+      )
+    }
+    {/* combos : fin */}
     <section class="mk-block">
       <h2 class="mk-h2-sm">{L.others}</h2>
       <div class="mk-chips">{NICHES.filter((x) => x.slug.fr !== n.slug.fr).map((x) => <a class="mk-chip" href={nichePath(x.slug[lang], lang)}>{t(x.name, lang)}</a>)}</div>

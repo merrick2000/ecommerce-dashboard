@@ -100,3 +100,7 @@ const build = (d: CityData): CityPage => {
 
 export const CITIES: CityPage[] = D.map(build)
 export const findCity = (slug: string) => CITIES.find((c) => c.slug === slug)
+
+/** Données brutes d'une ville (note locale, conseil de livraison) : utilisées par les pages « métier × ville » (combos.ts). */
+export const cityNote = (slug: string) => D.find((d) => d.slug === slug)?.note
+export const cityTip = (slug: string) => D.find((d) => d.slug === slug)?.tip

@@ -1,12 +1,16 @@
 ---
 import NicheView from '../../../components/marketing/views/NicheView.astro'
-import { findNiche, nichePath, resolveSlug } from '../../../content/seo'
+import ComboView from '../../../components/marketing/views/ComboView.astro'
+import { findCombo, findNiche, nichePath, resolveSlug } from '../../../content/seo'
 export const prerender = false
 // Adresse alignée sur le titre ; l'ancienne adresse (clé) redirige en 301.
-const { key, legacy } = resolveSlug('niches', Astro.params.slug ?? '', 'en')
+// D'abord un métier (inchangé), sinon une combinaison métier × ville, sinon 404.
+const param = Astro.params.slug ?? ''
+const { key, legacy } = resolveSlug('niches', param, 'en')
 const item = findNiche(key, 'en')
-if (!item) return Astro.rewrite('/404')
-if (legacy) return Astro.redirect(nichePath(item.slug.en, 'en') + Astro.url.search, 301)
+const combo = item ? undefined : findCombo(resolveSlug('combos', param, 'en').key)
+if (!item && !combo) return Astro.rewrite('/404')
+if (item && legacy) return Astro.redirect(nichePath(item.slug.en, 'en') + Astro.url.search, 301)
 ---
 
-<NicheView niche={item} lang="en" />
+{item ? <NicheView niche={item} lang="en" /> : <ComboView combo={combo!} lang="en" />}
