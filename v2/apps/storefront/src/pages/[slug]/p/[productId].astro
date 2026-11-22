@@ -5,6 +5,7 @@ import Layout from '../../../components/Layout.astro'
 import Block from '../../../components/sales/Block.astro'
 import OrderBox from '../../../components/sales/OrderBox.astro'
 import PausedNotice from '../../../components/sales/PausedNotice.astro'
+import CustomPage from '../../../components/sales/CustomPage.astro'
 import { ApiError, apiGet } from '../../../lib/api'
 import { excerpt, jsonForScript, waLink } from '../../../lib/content'
 import { money } from '../../../lib/format'
@@ -57,6 +58,8 @@ const cache = 'public, s-maxage=30, stale-while-revalidate=300'
 Astro.response.headers.set('Cache-Control', cache)
 Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
 
+// Page HTML libre du vendeur : remplace le modèle (le formulaire, le suivi et les pixels restent ceux de Zuri).
+const custom = product.content.customPage?.enabled && product.content.customPage.html ? product.content.customPage : null
 const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebookPixelId, tt: tracking.tiktokPixelId, value: price.effective, currency: price.currency, name: product.name }
 ---
 
@@ -70,10 +73,21 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebo
   primaryColor={checkout.primaryColor}
   preconnect={[originOf(product.coverImage)]}
 >
+  {
+    custom && (
+      <Fragment slot="head">
+        {custom.fonts.map((f) => <link rel="stylesheet" href={f} />)}
+        {custom.tailwind && <script is:inline src="https://cdn.tailwindcss.com" />}
+        {custom.css && <style is:inline set:html={custom.css} />}
+      </Fragment>
+    )
+  }
   <div id="sf-promo" class="promo-bar" role="status" hidden></div>
 
   {
-    layout === 'product_split' ? (
+    custom ? (
+      <CustomPage d={d} orderBase={storeUrl(Astro.locals, '/order/')} ctaLabel={ctaLabel} waHref={waHref} />
+    ) : layout === 'product_split' ? (
       // Style boutique : image à gauche ; titre, prix et formulaire à droite ; le reste en dessous.
       <div class={`sales sales-split${titleAbove ? ' title-above' : ''}`}>
         {titleAbove && blocks.includes('product_name') && (

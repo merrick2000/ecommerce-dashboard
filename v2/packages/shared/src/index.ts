@@ -408,7 +408,26 @@ export const productContentSchema = z.object({
   gallery: z.array(z.string().max(500)).max(12).default([]),
   /** Formulaire propre à ce produit ; null = formulaire de la boutique. */
   orderForm: orderFormSchema.nullable().default(null),
+  /**
+   * Page HTML libre : le vendeur colle une page complète (générée ailleurs) qui remplace le modèle.
+   * `source` = HTML d'origine (rééditable) ; html / css / fonts / tailwind = version nettoyée par l'API.
+   * Repères remplacés par Zuri : {{formulaire}}, {{bouton}}, {{prix}}, {{prix_barre}}, {{nom}}, {{boutique}}, {{pack}}, {{urgence}}, {{whatsapp}}.
+   */
+  customPage: z
+    .object({
+      enabled: z.boolean().default(false),
+      source: z.string().max(400_000).default(''),
+      html: z.string().max(600_000).default(''),
+      css: z.string().max(300_000).default(''),
+      fonts: z.array(z.string().max(500)).max(10).default([]),
+      tailwind: z.boolean().default(false),
+    })
+    .nullable()
+    .default(null),
 })
+
+/** Repères utilisables dans une page HTML libre. */
+export const CUSTOM_PAGE_TOKENS = ['formulaire', 'bouton', 'prix', 'prix_barre', 'nom', 'boutique', 'pack', 'urgence', 'whatsapp'] as const
 export type ProductContent = z.infer<typeof productContentSchema>
 
 export const digitalDeliverySchema = z.discriminatedUnion('type', [

@@ -1,0 +1,113 @@
+---
+/**
+ * Page HTML libre du vendeur (déjà nettoyée par l'API) : son HTML et son CSS remplacent le modèle,
+ * et les repères {{…}} deviennent les vrais éléments Zuri (formulaire de commande, prix, bouton…).
+ * Sans repère {{formulaire}}, le formulaire est ajouté à la fin : la page vend toujours.
+ */
+import { money } from '../../lib/format'
+import { dict } from '../../lib/i18n'
+import type { CheckoutData } from '../../lib/types'
+import { img } from '../../lib/urls'
+import OrderBox from './OrderBox.astro'
+import PausedNotice from './PausedNotice.astro'
+import Urgency from './Urgency.astro'
+
+interface Props {
+  d: CheckoutData
+  orderBase: string
+  ctaLabel: string
+  waHref: string | null
+}
+const { d, orderBase, ctaLabel, waHref } = Astro.props
+const { product, store, checkout } = d
+const page = product.content.customPage!
+const price = product.price
+const m = (n: number) => money(n, price.currency, store.locale)
+const T = dict(store.locale)
+
+type Part = { kind: 'html'; html: string } | { kind: 'token'; name: string }
+const parts: Part[] = []
+const re = /\{\{\s*([a-z_]+)\s*\}\}/gi
+let last = 0
+for (const match of page.html.matchAll(re)) {
+  if (match.index! > last) parts.push({ kind: 'html', html: page.html.slice(last, match.index) })
+  parts.push({ kind: 'token', name: match[1]!.toLowerCase() })
+  last = match.index! + match[0].length
+}
+if (last < page.html.length) parts.push({ kind: 'html', html: page.html.slice(last) })
+const hasForm = parts.some((p) => p.kind === 'token' && (p.name === 'formulaire' || p.name === 'commande'))
+let formShown = false
+const formOnce = () => {
+  if (formShown) return false
+  formShown = true
+  return true
+}
+const ctaClass = `btn btn-lg cta-${checkout.ctaStyle}`
+// Prix barré : celui saisi par le vendeur, sinon le prix avant promotion.
+const oldPrice = product.compareAtPrice && product.compareAtPrice > price.effective ? product.compareAtPrice : price.regular > price.effective ? price.regular : null
+---
+
+<div class="custom-page">
+  {
+    parts.map((p) => {
+      if (p.kind === 'html') return <Fragment set:html={p.html} />
+      switch (p.name) {
+        case 'formulaire':
+        case 'commande':
+          return formOnce() ? (
+            <section class="custom-order" id="commander" aria-label={T.page.orderTitle}>
+              {store.status === 'paused' ? <PausedNotice message={store.pauseMessage} locale={store.locale} /> : <OrderBox d={d} orderBase={orderBase} />}
+            </section>
+          ) : (
+            <a class={ctaClass} href="#commander" data-cta="custom">
+              {ctaLabel}
+            </a>
+          )
+        case 'bouton':
+          return (
+            <a class={ctaClass} href="#commander" data-cta="custom">
+              {ctaLabel}
+            </a>
+          )
+        case 'prix':
+          return <span class="custom-price">{m(price.effective)}</span>
+        case 'prix_barre':
+          return oldPrice ? <s class="custom-price-old">{m(oldPrice)}</s> : null
+        case 'nom':
+          return <>{product.name}</>
+        case 'boutique':
+          return <>{store.name}</>
+        case 'urgence':
+          return <Urgency d={d} />
+        case 'whatsapp':
+          return waHref ? (
+            <a class="btn btn-lg custom-wa" href={waHref} target="_blank" rel="noopener" data-wa>
+              WhatsApp
+            </a>
+          ) : null
+        case 'pack':
+          return product.bundle?.length ? (
+            <ul class="bundle-list">
+              {product.bundle.map((b) => (
+                <li>
+                  {b.image && <img src={img(b.image, 120)} alt="" loading="lazy" width="52" height="52" />}
+                  <span>{b.name}</span>
+                  <span class="bundle-qty">x{b.quantity}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null
+        default:
+          // Repère inconnu : affiché tel quel, pour que le vendeur voie la faute de frappe.
+          return <>{`{{${p.name}}}`}</>
+      }
+    })
+  }
+  {
+    !hasForm && (
+      <section class="custom-order" id="commander" aria-label={T.page.orderTitle}>
+        {store.status === 'paused' ? <PausedNotice message={store.pauseMessage} locale={store.locale} /> : <OrderBox d={d} orderBase={orderBase} />}
+      </section>
+    )
+  }
+</div>

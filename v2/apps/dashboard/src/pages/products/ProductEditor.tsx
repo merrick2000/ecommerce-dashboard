@@ -11,6 +11,7 @@ import { useProduct, useSaveProduct } from '@/hooks/resources'
 import { serverErrors, validate, type Errors } from '@/lib/form'
 import type { Product } from '@/lib/types'
 import { BundleSection, FunnelSection } from './editor/funnel'
+import { CustomPageSection } from './editor/customPage'
 import { DeliverySection, GeneralSection, MediaSection, OffersSection, OrderFormSection, PaymentSection, SalesPageSection, type Form, type SectionProps } from './editor/sections'
 
 type Tab = 'general' | 'page' | 'media' | 'delivery' | 'offers' | 'funnel' | 'payment'
@@ -267,7 +268,12 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
             <BundleSection {...props} productId={productId} />
           </div>
         )}
-        {tab === 'page' && <SalesPageSection {...props} />}
+        {tab === 'page' && (
+          <div className="space-y-4">
+            <CustomPageSection {...props} productId={productId} saved={!dirty} />
+            <SalesPageSection {...props} />
+          </div>
+        )}
         {tab === 'media' && <MediaSection {...props} />}
         {tab === 'delivery' && <DeliverySection {...props} />}
         {tab === 'offers' && form.type === 'physical' && <OffersSection {...props} />}

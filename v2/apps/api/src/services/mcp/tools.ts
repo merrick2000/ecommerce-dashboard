@@ -223,6 +223,13 @@ const productFields = z.object({
       gallery: z.array(z.string().max(2000)).max(12).optional().describe('Extra images (URLs), replaces the gallery'),
       video: z.object({ url: z.string().url(), title: z.string().max(120).optional(), position: z.enum(['before_description', 'after_description', 'after_hero']).optional() }).nullable().optional(),
       whatsapp: z.object({ enabled: z.boolean(), phone: z.string().optional(), welcomeMessage: z.string().max(300).optional(), position: z.enum(['left', 'right']).optional() }).partial().optional(),
+      customPage: z
+        .object({ enabled: z.boolean(), source: z.string().max(400_000) })
+        .partial()
+        .optional()
+        .describe(
+          'Free HTML sales page replacing the template: full page HTML (CSS in <style>, Tailwind CDN and Google Fonts allowed; scripts and forms are removed). Place tokens where Zuri elements go: {{formulaire}} (order form, required to sell; added at the end if missing), {{bouton}} (button to the form), {{prix}}, {{prix_barre}}, {{nom}}, {{boutique}}, {{pack}}, {{urgence}}, {{whatsapp}}. Links to #commander scroll to the form.',
+        ),
     })
     .passthrough()
     .optional()

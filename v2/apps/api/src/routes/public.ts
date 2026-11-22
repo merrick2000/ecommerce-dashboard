@@ -150,7 +150,12 @@ export const publicRoutes = new Hono<AppEnv>()
         promo: product.promo,
         compareAtPrice: product.compareAtPrice,
         offers: product.offers,
-        content: { ...product.content, gallery: product.content.gallery.map((g) => publicUrl(g)) },
+        content: {
+          ...product.content,
+          gallery: product.content.gallery.map((g) => publicUrl(g)),
+          // Page libre : seule la version nettoyée sort (jamais le HTML d'origine du vendeur).
+          customPage: product.content.customPage?.enabled ? { enabled: true, html: product.content.customPage.html, css: product.content.customPage.css, fonts: product.content.customPage.fonts, tailwind: product.content.customPage.tailwind, source: '' } : null,
+        },
         payment: {
           method: product.payment.method,
           // Seuls les liens publics sortent ; les identifiants Chariow/Maketou restent côté serveur.

@@ -7,7 +7,7 @@ import { and, eq, inArray, notInArray } from 'drizzle-orm'
 import { db, type Tx } from '../db/client'
 import { productVariants, products, storeMemberProducts } from '../db/schema'
 import type { StoreAccess } from '../lib/context'
-import { sanitizeHtml } from '../lib/sanitize'
+import { sanitizeCustomPage, sanitizeHtml } from '../lib/sanitize'
 import { HttpError } from '../lib/errors'
 
 export function toRow(input: ProductInput, storeId: string, baseCurrency: string) {
@@ -18,7 +18,12 @@ export function toRow(input: ProductInput, storeId: string, baseCurrency: string
     baseCurrency,
     // Le HTML vendeur est nettoyé à l'écriture : le storefront peut l'afficher sans risque.
     description: sanitizeHtml(input.description),
-    content: { ...input.content, customText: input.content.customText ? sanitizeHtml(input.content.customText) : undefined },
+    content: {
+      ...input.content,
+      customText: input.content.customText ? sanitizeHtml(input.content.customText) : undefined,
+      // Page HTML libre : l'original est gardé pour l'édition, la version servie est nettoyée ici.
+      customPage: input.content.customPage ? { ...input.content.customPage, ...sanitizeCustomPage(input.content.customPage.source) } : null,
+    },
     delivery: input.type === 'digital' ? input.delivery : null,
   }
 }
