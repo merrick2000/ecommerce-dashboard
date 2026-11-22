@@ -147,7 +147,8 @@ function ProviderCard({ account, report }: { account: PaymentAccount; report: (p
             />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {/* autoComplete new-password : le navigateur ne remplit pas les clés avec un mot de passe enregistré. */}
+            {isPo && <p className="mb-2 text-[12px] text-muted">Pas besoin de choisir l’onglet : une clé sk_test_ est rangée en test, une clé sk_live_ en production.</p>}
+        {/* autoComplete new-password : le navigateur ne remplit pas les clés avec un mot de passe enregistré. */}
         {account.fields.map((f) => {
               const key = `${credMode}.${f}`
               const masked = current[f]

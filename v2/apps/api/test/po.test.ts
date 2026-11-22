@@ -73,7 +73,8 @@ describe('Payment Orchestrator', () => {
     await db.insert(users).values({ email: 'po-owner@test.dev', name: 'O', features: { onlinePayments: true }, passwordHash: await Bun.password.hash('motdepasse-solide', { algorithm: 'argon2id' }) }).onConflictDoNothing()
     await owner.post('/api/auth/login', { email: 'po-owner@test.dev', password: 'motdepasse-solide' })
     storeId = (await owner.post('/api/stores', { name: 'PO Shop', slug: 'po-shop', currency: 'XOF', kind: 'digital', country: 'BJ' })).body.id
-    const bad = await owner.put(`/api/stores/${storeId}/payment-accounts/orchestrator`, { enabled: true, mode: 'sandbox', sandbox: { secretKey: 'sk_live_oops' } })
+    // Secret de webhook mal formé : refusé.
+    const bad = await owner.put(`/api/stores/${storeId}/payment-accounts/orchestrator`, { enabled: true, mode: 'sandbox', sandbox: { secretKey: 'sk_test_store_key', webhookSecret: 'pas_un_secret' } })
     expect(bad.status).toBe(422)
     const ok = await owner.put(`/api/stores/${storeId}/payment-accounts/orchestrator`, { enabled: true, mode: 'sandbox', sandbox: { secretKey: 'sk_test_store_key', webhookSecret: WHSEC }, settings: { widgetMode: 'modal', locale: 'fr', allowedCountries: ['BJ', 'CI'], allowedOperators: [], defaultCountry: null } })
     expect(ok.status).toBe(200)
@@ -243,5 +244,21 @@ describe('Payment Orchestrator : abonnements et ouverture réservée', () => {
     expect(page.body.onlinePaymentEnabled).toBe(false)
     const o = await visitor.post('/api/v1/orders', { storeSlug: 'po-ferme', productId: p, customerName: 'Koffi', customerPhone: '+22961000000', customerEmail: 'k@test.dev' })
     expect(o.body.code).toBe('payments_disabled')
+  })
+})
+
+describe('Payment Orchestrator : clé collée sous le mauvais onglet', () => {
+  test('sk_test_ saisie dans « Production » : rangée en test, mode test activé', async () => {
+    const seller = new Client()
+    await db.insert(users).values({ email: 'po-onglet@test.dev', name: 'Onglet', features: { onlinePayments: true }, passwordHash: await Bun.password.hash('motdepasse-solide', { algorithm: 'argon2id' }) }).onConflictDoNothing()
+    await seller.post('/api/auth/login', { email: 'po-onglet@test.dev', password: 'motdepasse-solide' })
+    const s = (await seller.post('/api/stores', { name: 'Onglet', slug: 'po-onglet', currency: 'XOF', kind: 'digital' })).body.id
+    const r = await seller.put(`/api/stores/${s}/payment-accounts/orchestrator`, { enabled: true, mode: 'live', live: { secretKey: 'sk_test_store_key', webhookSecret: WHSEC } })
+    expect(r.status).toBe(200)
+    const po = (await seller.get(`/api/stores/${s}/payment-accounts`)).body.find((a: any) => a.provider === 'orchestrator')
+    expect(po.mode).toBe('sandbox')
+    expect(po.sandbox.secretKey).toBeTruthy()
+    expect(po.sandbox.webhookSecret).toBeTruthy()
+    expect(po.live.secretKey).toBeNull()
   })
 })

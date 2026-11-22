@@ -82,6 +82,24 @@ export const paymentAccountRoutes = new Hono<AppEnv>()
       creds[m] = current
     }
     if (provider === 'orchestrator') {
+      // Le préfixe de la clé dit son mode : une clé collée sous le mauvais onglet est rangée au bon endroit
+      // (avec le secret de webhook saisi au même endroit), au lieu d'être refusée.
+      for (const [from, to, prefix] of [['live', 'sandbox', 'sk_test_'], ['sandbox', 'live', 'sk_live_']] as const) {
+        const k = creds[from]?.secretKey
+        if (k?.startsWith(prefix)) {
+          const moved = { ...(creds[to] ?? {}), secretKey: k, ...(creds[from]?.webhookSecret && body[from]?.webhookSecret ? { webhookSecret: creds[from]!.webhookSecret } : {}) }
+          creds[to] = moved
+          const rest = { ...(creds[from] ?? {}) }
+          delete rest.secretKey
+          if (body[from]?.webhookSecret) delete rest.webhookSecret
+          creds[from] = rest
+        }
+      }
+      // Mode actif sans clé alors que l'autre mode en a une : on bascule sur le mode de la clé disponible.
+      if (body.enabled && !creds[body.mode]?.secretKey) {
+        const other = body.mode === 'live' ? 'sandbox' : 'live'
+        if (creds[other]?.secretKey) body.mode = other
+      }
       // Clé de test en mode test, clé live en production : une erreur ici ferait payer « pour de faux » ou l'inverse.
       for (const [m, prefix] of [['sandbox', 'sk_test_'], ['live', 'sk_live_']] as const) {
         const k = creds[m]?.secretKey
