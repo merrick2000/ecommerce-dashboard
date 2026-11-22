@@ -520,7 +520,7 @@ export default function OrderDetail() {
 
           <PaymentCard order={order} canEdit={canEditPayment} />
 
-          {canSeeCosts && <CostsCard key={`${order.id}-${order.deliveryCost}-${order.returnCost}`} order={order} storeId={storeId} />}
+          {canSeeCosts && physical && <CostsCard key={`${order.id}-${order.deliveryCost}-${order.returnCost}`} order={order} storeId={storeId} />}
 
           {(order.utmSource || order.utmCampaign) && (
             <Card title="Origine">

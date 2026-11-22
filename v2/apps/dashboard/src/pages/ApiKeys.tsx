@@ -78,6 +78,16 @@ const CLIENTS = [
   },
 ] as const
 
+/** Exemples pour une boutique digitale : paiements, accès, paniers. */
+const DIGITAL_EXAMPLES = [
+  'Fais-moi le récap des ventes du mois : taux de paiement, raisons des refus, opérateurs utilisés.',
+  'Liste les paiements refusés de cette semaine et envoie le lien de paiement à chacun par email.',
+  'Awa dit qu’elle n’a pas reçu son ebook : renvoie-lui l’accès à awa.diop@gmail.com.',
+  'Relance par email tous les paniers abandonnés d’hier.',
+  'Crée un pack « Formation + coaching » à 25 000 FCFA avec une offre complémentaire après l’achat.',
+  'Crée le code BLACKFRIDAY à -30 % valable jusqu’à dimanche.',
+]
+
 const EXAMPLES = [
   'Fais-moi le récap des ventes de la semaine dernière comparé à la semaine d’avant, par produit.',
   'Quelles commandes sont à appeler depuis plus de 24 h ? Classe-les par ville.',
@@ -226,7 +236,7 @@ export default function ApiKeys() {
         <div className="space-y-4">
           <Card title="Ce que tu peux demander">
             <ul className="space-y-2.5">
-              {EXAMPLES.map((x) => (
+              {(store?.kind === 'digital' ? DIGITAL_EXAMPLES : EXAMPLES).map((x) => (
                 <li key={x} className="flex gap-2 text-[13px]">
                   <Bot className="mt-0.5 size-4 shrink-0 text-accent" />
                   <span>« {x} »</span>

@@ -73,3 +73,28 @@ describe('vue digitale', () => {
     expect(r.body.downloads).toEqual({ total: 1, paidNeverDownloaded: 0 })
   })
 })
+
+describe('MCP, boutique digitale', () => {
+  test('outils digitaux : ventes par état, renvoi d’accès, paniers, stats', async () => {
+    const key = (await owner.post('/api/api-keys', { name: 'IA digi', storeId })).body.key as string
+    let rid = 0
+    const { app } = await import('../src/app')
+    const tool = async (name: string, args: Record<string, unknown> = {}) => {
+      const res = await app.request('/api/mcp', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json', 'cf-connecting-ip': '10.9.9.8' }, body: JSON.stringify({ jsonrpc: '2.0', id: ++rid, method: 'tools/call', params: { name, arguments: args } }) })
+      const b = (await res.json()) as any
+      expect(b.result.isError).toBeFalsy()
+      return b.result.structuredContent as any
+    }
+    const failed = await tool('list_orders', { paymentState: 'failed' })
+    expect(failed.orders).toHaveLength(1)
+    expect(failed.orders[0].paymentFailure).toContain('insufficient_balance')
+    expect(failed.paymentCounts.paid).toBe(1)
+    expect((await tool('resend_digital_access', { orderId: ids.paid })).ok).toBe(true)
+    expect((await tool('send_payment_link', { orderId: ids.failed, email: false })).url).toContain('/order/')
+    expect((await tool('get_digital_stats', { period: 'today' })).payments.failed).toBe(1)
+    await visitor.post('/api/v1/leads', { storeSlug: 'digi-shop', productId, email: 'panier2@test.dev', name: 'P2' })
+    const carts = await tool('list_abandoned_carts')
+    expect(carts.total).toBe(1)
+    expect((await tool('remind_abandoned_cart', { cartId: carts.data[0].id })).ok).toBe(true)
+  })
+})

@@ -4,12 +4,13 @@
  * et les actions utiles (renvoyer l'accès, copier le lien, relancer un paiement, relancer un panier).
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Copy, Download, Mail, MessageCircle, RotateCcw, Search, ShoppingBag, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { ChevronLeft, ChevronRight, Copy, Download, LayoutGrid, List, Mail, MessageCircle, RotateCcw, Search, ShoppingBag, Table2, Trash2 } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { ConfirmDialog, Dialog } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
-import { Badge, Button, buttonClass, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader } from '@/components/ui'
+import { Badge, Button, buttonClass, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Segmented } from '@/components/ui'
+import { DEFAULT_PREFS, useMediaQuery, usePref, type OrdersPrefs } from './views/prefs'
 import { useCan, useCurrentStore, useStoreId } from '@/hooks/auth'
 import { ordersCsvUrl, useOrders } from '@/hooks/resources'
 import { useDebounced } from '@/hooks/useDebounced'
@@ -55,6 +56,8 @@ interface Lead {
   createdAt: string
 }
 
+type Layout = 'card' | 'compact' | 'table'
+
 const wa = (phone: string | null | undefined, text: string) => (phone ? `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}` : null)
 
 function stateOf(o: OrderListItem & { paymentFailed?: boolean }) {
@@ -64,7 +67,7 @@ function stateOf(o: OrderListItem & { paymentFailed?: boolean }) {
   return { label: 'En attente de paiement', tone: 'amber' as const }
 }
 
-function OrderRow({ order, storeName }: { order: OrderListItem & { paymentFailed?: boolean; downloads?: number }; storeName: string }) {
+function OrderRow({ order, storeName, layout }: { order: OrderListItem & { paymentFailed?: boolean; downloads?: number }; storeName: string; layout: Layout }) {
   const navigate = useNavigate()
   const storeId = useStoreId()
   const toast = useToast()
@@ -107,23 +110,119 @@ function OrderRow({ order, storeName }: { order: OrderListItem & { paymentFailed
     if (link) window.open(link, '_blank', 'noopener')
   }
 
+  const unpaid = order.paymentStatus === 'pending' || order.paymentStatus === 'failed'
+  /** Actions : boutons complets (cartes) ou icônes avec info-bulle (liste et tableau). */
+  const act = (icon: ReactNode, label: string, onClick: () => void, variant: 'secondary' | 'ghost' = 'secondary') =>
+    compact ? (
+      <button key={label} type="button" title={label} aria-label={label} onClick={(e) => (e.stopPropagation(), onClick())} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg">
+        {icon}
+      </button>
+    ) : (
+      <Button key={label} size="sm" variant={variant} onClick={onClick}>
+        {icon} {label}
+      </Button>
+    )
+  const compact = layout !== 'card'
+  const actions = !canUpdate
+    ? []
+    : paid
+      ? [act(<RotateCcw className="size-3.5" />, 'Renvoyer l’accès', () => setResend(true)), act(<Copy className="size-3.5" />, 'Copier le lien d’accès', () => void copyAccess(), 'ghost')]
+      : unpaid
+        ? [
+            order.customerEmail ? act(<Mail className="size-3.5" />, 'Relancer par email', () => void payLink(true)) : null,
+            order.customerPhone ? act(<MessageCircle className="size-3.5" />, 'WhatsApp', () => void whatsappPay()) : null,
+            act(<Copy className="size-3.5" />, 'Copier le lien de paiement', () => void copyAccess(), 'ghost'),
+          ].filter(Boolean)
+        : []
+  const dl =
+    (order.downloads ?? 0) > 0 ? (
+      <span className="inline-flex items-center gap-1 text-[12px] text-muted" title="Téléchargements">
+        <Download className="size-3.5" /> {order.downloads}
+      </span>
+    ) : paid ? (
+      <span className="text-[12px] whitespace-nowrap text-amber-700 dark:text-amber-400">Pas encore téléchargé</span>
+    ) : null
+  const dialog = (
+    <Dialog
+      open={resend}
+      onClose={() => setResend(false)}
+      title="Renvoyer l’accès au produit"
+      size="sm"
+      footer={
+        <>
+          <Button onClick={() => setResend(false)}>Annuler</Button>
+          <Button variant="primary" loading={resendAccess.isPending} onClick={() => resendAccess.mutate()}>
+            Renvoyer
+          </Button>
+        </>
+      }
+    >
+      <p className="mb-3 text-sm text-muted">Le client reçoit à nouveau l’email avec le bouton d’accès. Corrige l’adresse s’il s’était trompé.</p>
+      <Input label="Email du client" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+    </Dialog>
+  )
+  const open = () => navigate(String(order.id))
+
+  if (layout === 'table') {
+    const cell = 'px-3 py-2.5'
+    return (
+      <tr className="cursor-pointer border-t border-line hover:bg-surface-2/60" onClick={open}>
+        <td className={cx(cell, 'whitespace-nowrap')}>
+          <p>{order.orderNumber}</p>
+          <p className="text-[12px] text-muted">{relative(order.createdAt)}</p>
+        </td>
+        <td className={cell}>
+          <p className="font-medium whitespace-nowrap">{order.customerName || 'Client'}</p>
+          {order.customerEmail && <p className="max-w-52 truncate text-[12px] text-muted">{order.customerEmail}</p>}
+        </td>
+        <td className={cx(cell, 'whitespace-nowrap text-muted')}>{order.customerPhone ? prettyPhone(order.customerPhone) : '-'}</td>
+        <td className={cx(cell, 'max-w-44 truncate')}>{items}</td>
+        <td className={cx(cell, 'tabular text-right font-medium whitespace-nowrap')}>{money(order.total, order.currency)}</td>
+        <td className={cell}>
+          <Badge tone={st.tone}>{st.label}</Badge>
+        </td>
+        <td className={cx(cell, 'tabular')}>
+          {(order.downloads ?? 0) > 0 ? order.downloads : paid ? <span className="text-amber-700 dark:text-amber-400" title="Pas encore téléchargé">0</span> : ''}
+        </td>
+        <td className={cx(cell, 'text-right')} onClick={(e) => e.stopPropagation()}>
+          <div className="flex justify-end gap-0.5">{actions}</div>
+          {dialog}
+        </td>
+      </tr>
+    )
+  }
+
+  if (layout === 'compact')
+    return (
+      <li className="flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-surface-2/60" onClick={open}>
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-medium">{order.customerName || 'Client'}</span>
+            <Badge tone={st.tone}>{st.label}</Badge>
+            {dl}
+          </p>
+          <p className="truncate text-[12px] text-muted">
+            {order.orderNumber} · {items} · {relative(order.createdAt)}
+          </p>
+        </div>
+        <span className="tabular text-sm font-semibold whitespace-nowrap">{money(order.total, order.currency)}</span>
+        <div className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
+          {actions}
+        </div>
+        {dialog}
+      </li>
+    )
+
   return (
     <li className="rounded-xl border border-line bg-surface p-3 sm:p-4">
       <div className="flex flex-wrap items-start gap-3">
-        <button type="button" onClick={() => navigate(String(order.id))} className="min-w-0 flex-1 text-left">
+        <button type="button" onClick={open} className="min-w-0 flex-1 text-left">
           <p className="flex flex-wrap items-center gap-2">
             <span className="font-semibold">{order.customerName || 'Client'}</span>
             <Badge tone={st.tone}>{st.label}</Badge>
-            {(order.downloads ?? 0) > 0 && (
-              <span className="inline-flex items-center gap-1 text-[12px] text-muted">
-                <Download className="size-3.5" /> {order.downloads}
-              </span>
-            )}
-            {paid && (order.downloads ?? 0) === 0 && <span className="text-[12px] text-amber-700 dark:text-amber-400">Pas encore téléchargé</span>}
+            {dl}
           </p>
-          <p className="mt-0.5 truncate text-[13px] text-muted">
-            {[order.customerEmail, order.customerPhone ? prettyPhone(order.customerPhone) : null].filter(Boolean).join(' · ')}
-          </p>
+          <p className="mt-0.5 truncate text-[13px] text-muted">{[order.customerEmail, order.customerPhone ? prettyPhone(order.customerPhone) : null].filter(Boolean).join(' · ')}</p>
           <p className="mt-1 truncate text-sm">{items}</p>
         </button>
         <div className="text-right">
@@ -133,58 +232,13 @@ function OrderRow({ order, storeName }: { order: OrderListItem & { paymentFailed
           </p>
         </div>
       </div>
-      {canUpdate && (
-        <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
-          {paid ? (
-            <>
-              <Button size="sm" onClick={() => setResend(true)}>
-                <RotateCcw className="size-3.5" /> Renvoyer l’accès
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => void copyAccess()}>
-                <Copy className="size-3.5" /> Copier le lien d’accès
-              </Button>
-            </>
-          ) : order.paymentStatus === 'pending' || order.paymentStatus === 'failed' ? (
-            <>
-              {order.customerEmail && (
-                <Button size="sm" onClick={() => void payLink(true)}>
-                  <Mail className="size-3.5" /> Relancer par email
-                </Button>
-              )}
-              {order.customerPhone && (
-                <Button size="sm" onClick={() => void whatsappPay()}>
-                  <MessageCircle className="size-3.5" /> WhatsApp
-                </Button>
-              )}
-              <Button size="sm" variant="ghost" onClick={() => void copyAccess()}>
-                <Copy className="size-3.5" /> Copier le lien de paiement
-              </Button>
-            </>
-          ) : null}
-        </div>
-      )}
-      <Dialog
-        open={resend}
-        onClose={() => setResend(false)}
-        title="Renvoyer l’accès au produit"
-        size="sm"
-        footer={
-          <>
-            <Button onClick={() => setResend(false)}>Annuler</Button>
-            <Button variant="primary" loading={resendAccess.isPending} onClick={() => resendAccess.mutate()}>
-              Renvoyer
-            </Button>
-          </>
-        }
-      >
-        <p className="mb-3 text-sm text-muted">Le client reçoit à nouveau l’email avec le bouton d’accès. Corrige l’adresse s’il s’était trompé.</p>
-        <Input label="Email du client" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      </Dialog>
+      {actions.length > 0 && <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">{actions}</div>}
+      {dialog}
     </li>
   )
 }
 
-function CartsList({ q }: { q: string }) {
+function CartsList({ q, view }: { q: string; view: 'cards' | 'compact' | 'table' }) {
   const storeId = useStoreId()
   const toast = useToast()
   const qc = useQueryClient()
@@ -216,47 +270,117 @@ function CartsList({ q }: { q: string }) {
       <p className="mb-2 px-1 text-[13px] text-muted">
         {list.data.total} panier{list.data.total > 1 ? 's' : ''} à relancer
       </p>
-      <ul className="grid gap-2.5 xl:grid-cols-2">
-        {list.data.data.map((l) => {
-          const waLink = wa(l.phone, `Bonjour ${l.name?.split(' ')[0] ?? ''}, vous étiez sur le point de commander « ${l.productName ?? 'notre produit'} » chez ${store?.name ?? 'nous'}. Il est toujours disponible ici : ${l.productUrl ?? ''}`)
-          return (
-            <li key={l.id} className="rounded-xl border border-line bg-surface p-3 sm:p-4">
-              <div className="flex flex-wrap items-start gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">{l.name || 'Visiteur'}</span>
-                    <Badge tone="amber">Panier abandonné</Badge>
-                    {l.reminderCount > 0 && <span className="text-[12px] text-muted">{l.reminderCount} relance{l.reminderCount > 1 ? 's' : ''}</span>}
-                  </p>
-                  <p className="mt-0.5 truncate text-[13px] text-muted">{[l.email, l.phone ? prettyPhone(l.phone) : null].filter(Boolean).join(' · ')}</p>
-                  <p className="mt-1 truncate text-sm">{l.productName ?? 'Produit supprimé'}</p>
-                </div>
-                <div className="text-right">
-                  {l.price != null && <p className="tabular font-semibold">{money(l.price, store?.currency ?? 'XOF')}</p>}
-                  <p className="text-[12px] text-muted">{relative(l.createdAt)}</p>
-                </div>
-              </div>
-              {canUpdate && (
-                <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
-                  {l.email && (
-                    <Button size="sm" onClick={() => remind.mutate(l.id)} loading={remind.isPending && remind.variables === l.id}>
-                      <Mail className="size-3.5" /> Relancer par email
-                    </Button>
-                  )}
-                  {waLink && (
-                    <a href={waLink} target="_blank" rel="noopener" className={buttonClass('secondary', 'sm')}>
-                      <MessageCircle className="size-3.5" /> WhatsApp
-                    </a>
-                  )}
-                  <Button size="sm" variant="ghost" onClick={() => setRemove(l)}>
-                    <Trash2 className="size-3.5" /> Retirer
-                  </Button>
-                </div>
-              )}
-            </li>
+      {(() => {
+        const iconBtn = (icon: ReactNode, label: string, onClick?: () => void, href?: string) =>
+          href ? (
+            <a key={label} href={href} target="_blank" rel="noopener" title={label} aria-label={label} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg">
+              {icon}
+            </a>
+          ) : (
+            <button key={label} type="button" title={label} aria-label={label} onClick={onClick} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg">
+              {icon}
+            </button>
           )
-        })}
-      </ul>
+        const waFor = (l: Lead) => wa(l.phone, `Bonjour ${l.name?.split(' ')[0] ?? ''}, vous étiez sur le point de commander « ${l.productName ?? 'notre produit'} » chez ${store?.name ?? 'nous'}. Il est toujours disponible ici : ${l.productUrl ?? ''}`)
+        const icons = (l: Lead) =>
+          canUpdate
+            ? [l.email ? iconBtn(<Mail className="size-3.5" />, 'Relancer par email', () => remind.mutate(l.id)) : null, waFor(l) ? iconBtn(<MessageCircle className="size-3.5" />, 'WhatsApp', undefined, waFor(l)!) : null, iconBtn(<Trash2 className="size-3.5" />, 'Retirer', () => setRemove(l))].filter(Boolean)
+            : []
+        const price = (l: Lead) => (l.price != null ? money(l.price, store?.currency ?? 'XOF') : '')
+        if (view === 'table')
+          return (
+            <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-surface-2 text-[12px] font-medium text-muted uppercase">
+                  <tr>
+                    {['Date', 'Nom', 'Email', 'Téléphone', 'Produit', 'Prix', 'Relances', ''].map((h, i) => (
+                      <th key={i} className={cx('px-3 py-2 font-medium whitespace-nowrap', h === 'Prix' && 'text-right')}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.data.data.map((l) => (
+                    <tr key={l.id} className="border-t border-line">
+                      <td className="px-3 py-2.5 whitespace-nowrap text-muted">{relative(l.createdAt)}</td>
+                      <td className="px-3 py-2.5 font-medium">{l.name || 'Visiteur'}</td>
+                      <td className="max-w-48 truncate px-3 py-2.5 text-muted">{l.email ?? '-'}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap text-muted">{l.phone ? prettyPhone(l.phone) : '-'}</td>
+                      <td className="max-w-56 truncate px-3 py-2.5">{l.productName ?? 'Produit supprimé'}</td>
+                      <td className="tabular px-3 py-2.5 text-right whitespace-nowrap">{price(l)}</td>
+                      <td className="tabular px-3 py-2.5 text-muted">{l.reminderCount}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex justify-end gap-0.5">{icons(l)}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        if (view === 'compact')
+          return (
+            <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+              {list.data.data.map((l) => (
+                <li key={l.id} className="flex items-center gap-3 px-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">
+                      {l.name || 'Visiteur'}
+                      {l.reminderCount > 0 && <span className="ml-2 text-[12px] font-normal text-muted">{l.reminderCount} relance{l.reminderCount > 1 ? 's' : ''}</span>}
+                    </p>
+                    <p className="truncate text-[12px] text-muted">{[l.productName, l.email, l.phone ? prettyPhone(l.phone) : null, relative(l.createdAt)].filter(Boolean).join(' · ')}</p>
+                  </div>
+                  <span className="tabular text-sm font-semibold whitespace-nowrap">{price(l)}</span>
+                  <div className="flex gap-0.5">{icons(l)}</div>
+                </li>
+              ))}
+            </ul>
+          )
+        return (
+      <ul className="grid gap-2.5 xl:grid-cols-2">
+          {list.data.data.map((l) => {
+            const waLink = wa(l.phone, `Bonjour ${l.name?.split(' ')[0] ?? ''}, vous étiez sur le point de commander « ${l.productName ?? 'notre produit'} » chez ${store?.name ?? 'nous'}. Il est toujours disponible ici : ${l.productUrl ?? ''}`)
+            return (
+              <li key={l.id} className="rounded-xl border border-line bg-surface p-3 sm:p-4">
+                <div className="flex flex-wrap items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold">{l.name || 'Visiteur'}</span>
+                      <Badge tone="amber">Panier abandonné</Badge>
+                      {l.reminderCount > 0 && <span className="text-[12px] text-muted">{l.reminderCount} relance{l.reminderCount > 1 ? 's' : ''}</span>}
+                    </p>
+                    <p className="mt-0.5 truncate text-[13px] text-muted">{[l.email, l.phone ? prettyPhone(l.phone) : null].filter(Boolean).join(' · ')}</p>
+                    <p className="mt-1 truncate text-sm">{l.productName ?? 'Produit supprimé'}</p>
+                  </div>
+                  <div className="text-right">
+                    {l.price != null && <p className="tabular font-semibold">{money(l.price, store?.currency ?? 'XOF')}</p>}
+                    <p className="text-[12px] text-muted">{relative(l.createdAt)}</p>
+                  </div>
+                </div>
+                {canUpdate && (
+                  <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
+                    {l.email && (
+                      <Button size="sm" onClick={() => remind.mutate(l.id)} loading={remind.isPending && remind.variables === l.id}>
+                        <Mail className="size-3.5" /> Relancer par email
+                      </Button>
+                    )}
+                    {waLink && (
+                      <a href={waLink} target="_blank" rel="noopener" className={buttonClass('secondary', 'sm')}>
+                        <MessageCircle className="size-3.5" /> WhatsApp
+                      </a>
+                    )}
+                    <Button size="sm" variant="ghost" onClick={() => setRemove(l)}>
+                      <Trash2 className="size-3.5" /> Retirer
+                    </Button>
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+        )
+      })()}
       {pages > 1 && (
         <nav className="mt-4 flex items-center justify-center gap-3" aria-label="Pagination">
           <Button size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)} aria-label="Page précédente">
@@ -281,6 +405,10 @@ export default function DigitalOrders() {
   const [params, setParams] = useSearchParams()
   const tab = (params.get('etat') ?? '') as Tab
   const [search, setSearch] = useState(params.get('q') ?? '')
+  // Même choix d'affichage que les boutiques physiques (Cartes / Liste / Tableau), mémorisé par boutique.
+  const wide = useMediaQuery('(min-width: 1024px)')
+  const [prefs, setPrefs] = usePref<OrdersPrefs>(`orders-view:digital:${storeId}`, DEFAULT_PREFS)
+  const view = prefs.view === 'table' && !wide ? 'compact' : prefs.view
   const q = useDebounced(search.trim(), 300)
   const page = Number(params.get('page') ?? 1) || 1
   const query = { paymentState: tab && tab !== 'carts' ? tab : undefined, q: q || undefined, page, archived: 'all' as const }
@@ -331,13 +459,25 @@ export default function DigitalOrders() {
           ))}
         </div>
       </div>
+      <div className="mb-3 flex justify-end">
+        <Segmented
+          label="Affichage"
+          value={view}
+          onChange={(v) => setPrefs({ ...prefs, view: v })}
+          options={[
+            { value: 'cards' as const, label: <span className="inline-flex items-center gap-1.5" title="Cartes"><LayoutGrid className="size-4" /><span className="hidden md:inline">Cartes</span></span> },
+            { value: 'compact' as const, label: <span className="inline-flex items-center gap-1.5" title="Liste compacte"><List className="size-4" /><span className="hidden md:inline">Liste compacte</span></span> },
+            ...(wide ? [{ value: 'table' as const, label: <span className="inline-flex items-center gap-1.5" title="Tableau"><Table2 className="size-4" /><span className="hidden md:inline">Tableau</span></span> }] : []),
+          ]}
+        />
+      </div>
       <div className="relative mb-3">
         <Search className="pointer-events-none absolute top-1/2 left-3 z-[1] size-4 -translate-y-1/2 text-subtle" />
         <Input type="search" placeholder="Nom, email, téléphone, n° de commande…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" aria-label="Rechercher" />
       </div>
 
       {tab === 'carts' ? (
-        <CartsList q={q} />
+        <CartsList q={q} view={view} />
       ) : orders.error && !orders.data ? (
         <ErrorState error={orders.error} onRetry={() => void orders.refetch()} />
       ) : orders.isPending ? (
@@ -346,11 +486,40 @@ export default function DigitalOrders() {
         <EmptyState icon={<ShoppingBag className="size-5" />} title={q || tab ? 'Aucune vente ne correspond' : 'Aucune vente pour le moment'} description={q || tab ? 'Essayez un autre onglet ou une autre recherche.' : 'Les ventes de vos pages arrivent ici dès qu’un client commande.'} />
       ) : (
         <>
-          <ul className="grid gap-2.5 xl:grid-cols-2">
-            {rows.map((o) => (
-              <OrderRow key={o.id} order={o} storeName={store?.name ?? ''} />
-            ))}
-          </ul>
+          {view === 'cards' && (
+            <ul className="grid gap-2.5 xl:grid-cols-2">
+              {rows.map((o) => (
+                <OrderRow key={o.id} order={o} storeName={store?.name ?? ''} layout="card" />
+              ))}
+            </ul>
+          )}
+          {view === 'compact' && (
+            <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+              {rows.map((o) => (
+                <OrderRow key={o.id} order={o} storeName={store?.name ?? ''} layout="compact" />
+              ))}
+            </ul>
+          )}
+          {view === 'table' && (
+            <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-surface-2 text-[12px] font-medium text-muted uppercase">
+                  <tr>
+                    {['Commande', 'Client', 'Téléphone', 'Produits', 'Total', 'Paiement', 'Téléch.', ''].map((h, i) => (
+                      <th key={i} className={cx('px-3 py-2 font-medium whitespace-nowrap', h === 'Total' && 'text-right')}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((o) => (
+                    <OrderRow key={o.id} order={o} storeName={store?.name ?? ''} layout="table" />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           {pages > 1 && (
             <nav className="mt-4 flex items-center justify-center gap-3" aria-label="Pagination">
               <Button size="sm" disabled={page <= 1} onClick={() => set({ page: String(page - 1) })} aria-label="Page précédente">

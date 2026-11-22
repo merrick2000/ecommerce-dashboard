@@ -158,6 +158,9 @@ function orderRow(o: any) {
     currency: o.currency,
     paymentMethod: o.paymentMethod,
     paymentStatus: o.paymentStatus,
+    paymentFailed: o.paymentFailed ?? undefined,
+    paymentFailure: o.poFailure ?? undefined,
+    downloads: o.downloads ?? undefined,
     status: o.fulfillmentStatus,
     assignedTo: o.assigneeName,
     archived: Boolean(o.archivedAt),
@@ -296,13 +299,13 @@ export const TOOLS: Tool[] = [
     readOnly: true,
     run: async (_a, ctx) => {
       const me = await ctx.call<any>('GET', '/auth/me')
-      return { user: { name: me.name, email: me.email }, plan: me.plan ?? null, stores: me.stores.map((s: any) => ({ id: s.id, name: s.name, slug: s.slug, currency: s.currency, status: s.status, role: s.role, storefrontUrl: `https://${s.slug}.${env.BASE_DOMAIN}` })) }
+      return { user: { name: me.name, email: me.email }, plan: me.plan ?? null, stores: me.stores.map((s: any) => ({ id: s.id, name: s.name, slug: s.slug, currency: s.currency, status: s.status, kind: s.kind, role: s.role, storefrontUrl: `https://${s.slug}.${env.BASE_DOMAIN}` })) }
     },
   },
   {
     name: 'get_store',
     title: 'Get store',
-    description: 'Store details: name, slug, currency, country, timezone, status, support contacts, domains.',
+    description: 'Store details: name, slug, kind (physical or digital: decides which tools make sense), currency, country, timezone, status, support contacts, domains.',
     input: z.object({ storeId: storeArg }),
     readOnly: true,
     run: async (a, ctx) => {
@@ -541,11 +544,12 @@ export const TOOLS: Tool[] = [
     name: 'list_orders',
     title: 'List orders',
     description:
-      'Search orders. Filter by status (new = to call, unreachable, confirmed, shipped, delivered, returned, cancelled), payment status, product type, dates, assignee or text (number, name, phone, city). Returns counts per status too.',
+      'Search orders. Physical stores: filter by status (new = to call, unreachable, confirmed, shipped, delivered, returned, cancelled). Digital stores: filter by paymentState (paid, pending, failed = payment refused or last attempt failed, refunded); rows include paymentFailure and downloads. Also payment status, product type, dates, assignee or text (number, name, phone, email, city). Returns counts per status and per payment state. Abandoned carts are in list_abandoned_carts.',
     input: z.object({
       storeId: storeArg,
       status: z.enum(['new', 'confirmed', 'unreachable', 'shipped', 'delivered', 'returned', 'cancelled']).optional(),
       paymentStatus: z.enum(['pending', 'paid', 'failed', 'refunded']).optional(),
+      paymentState: z.enum(['paid', 'pending', 'failed', 'refunded']).optional().describe('Digital stores: failed also covers pending orders whose last Mobile Money attempt was refused'),
       type: z.enum(['physical', 'digital']).optional(),
       search: z.string().max(100).optional(),
       period: periodArg,
@@ -561,15 +565,15 @@ export const TOOLS: Tool[] = [
       const id = await resolveStore(ctx, a.storeId)
       const range = a.period || a.from || a.to ? await rangeFor(ctx, id, a) : null
       const r = await ctx.call<any>('GET', `/stores/${id}/orders`, {
-        query: { fulfillmentStatus: a.status, paymentStatus: a.paymentStatus, type: a.type, q: a.search, from: range?.from, to: range?.to, assigned: a.assigned, archived: a.archived, page: a.page, pageSize: a.pageSize ?? 50 },
+        query: { fulfillmentStatus: a.status, paymentStatus: a.paymentStatus, paymentState: a.paymentState, type: a.type, q: a.search, from: range?.from, to: range?.to, assigned: a.assigned, archived: a.archived, page: a.page, pageSize: a.pageSize ?? 50 },
       })
-      return { total: r.total, page: r.page, pageSize: r.pageSize, statusCounts: r.statusCounts, range, orders: r.data.map(orderRow) }
+      return { total: r.total, page: r.page, pageSize: r.pageSize, statusCounts: r.statusCounts, paymentCounts: r.paymentCounts, range, orders: r.data.map(orderRow) }
     },
   },
   {
     name: 'get_order',
     title: 'Get order',
-    description: 'Full order: customer, address, items, amounts, payment, status history, notes, call attempts, assignee, allowed next statuses.',
+    description: 'Full order: customer, address, items, amounts, payment (Payment Orchestrator status, operator, failure reason), status history, notes, call attempts, assignee, allowed next statuses. customerUrl is the customer order page (product access when paid, payment page otherwise); downloads lists digital downloads.',
     input: z.object({ storeId: storeArg, orderId: z.string().max(40) }),
     readOnly: true,
     run: async (a, ctx) => ctx.call('GET', `/stores/${await resolveStore(ctx, a.storeId)}/orders/${a.orderId}`),
@@ -578,7 +582,7 @@ export const TOOLS: Tool[] = [
     name: 'update_order_status',
     title: 'Update order status',
     description:
-      'Move one or many orders to a new status: confirmed, unreachable, shipped (add courier and trackingNumber), delivered (cash on delivery counted as collected), returned, cancelled. Only allowed transitions pass (see get_order allowedTransitions).',
+      'Physical orders: move one or many orders to a new status: confirmed, unreachable, shipped (add courier and trackingNumber), delivered (cash on delivery counted as collected), returned, cancelled. Only allowed transitions pass (see get_order allowedTransitions). The customer automatically gets an email when the order is confirmed and when it is shipped (if they gave an email).',
     input: z.object({
       storeId: storeArg,
       orderIds: z.array(z.string().max(40)).min(1).max(200),
@@ -641,6 +645,43 @@ export const TOOLS: Tool[] = [
     run: async (a, ctx) => ctx.call('POST', `/stores/${await resolveStore(ctx, a.storeId)}/orders/archive`, { body: { ids: a.orderIds, archived: a.archived } }),
   },
   {
+    name: 'resend_digital_access',
+    title: 'Resend digital product access',
+    description: 'Digital store: email the customer their product access again (paid orders only), e.g. when they say they received nothing. Pass email to correct a wrong address (it is saved on the order).',
+    input: z.object({ storeId: storeArg, orderId: z.string().max(40), email: z.string().email().optional() }),
+    run: async (a, ctx) => ctx.call('POST', `/stores/${await resolveStore(ctx, a.storeId)}/orders/${a.orderId}/resend-access`, { body: strip({ email: a.email }) }),
+  },
+  {
+    name: 'send_payment_link',
+    title: 'Send payment link',
+    description: 'Unpaid online order (pending or refused payment): email the customer a link to finish paying (email true), and get the link (url) to share on WhatsApp. Not for cash on delivery orders.',
+    input: z.object({ storeId: storeArg, orderId: z.string().max(40), email: z.boolean().optional().describe('Send the reminder email (default true)') }),
+    run: async (a, ctx) => ctx.call('POST', `/stores/${await resolveStore(ctx, a.storeId)}/orders/${a.orderId}/send-payment-link`, { body: { email: a.email ?? true } }),
+  },
+  {
+    name: 'list_abandoned_carts',
+    title: 'List abandoned carts',
+    description: 'Visitors who left their email or phone on a sales page without ordering (not yet converted): name, email, phone, product, price, product page link, reminders already sent. Search by name, email or phone.',
+    input: z.object({ storeId: storeArg, search: z.string().max(100).optional(), page: z.number().int().min(1).optional() }),
+    readOnly: true,
+    run: async (a, ctx) => ctx.call('GET', `/stores/${await resolveStore(ctx, a.storeId)}/leads`, { query: { q: a.search, page: a.page } }),
+  },
+  {
+    name: 'remind_abandoned_cart',
+    title: 'Remind abandoned cart',
+    description: 'Email an abandoned cart right now (needs an email; otherwise use the phone and productUrl from list_abandoned_carts for a WhatsApp message). Automatic reminders keep running too.',
+    input: z.object({ storeId: storeArg, cartId: z.number().int().positive() }),
+    run: async (a, ctx) => ctx.call('POST', `/stores/${await resolveStore(ctx, a.storeId)}/leads/${a.cartId}/remind`),
+  },
+  {
+    name: 'remove_abandoned_cart',
+    title: 'Remove abandoned cart',
+    description: 'Remove an abandoned cart from the list (it will not be reminded anymore). Requires confirm: true, ask the user first.',
+    input: z.object({ storeId: storeArg, cartId: z.number().int().positive(), confirm: z.literal(true) }),
+    destructive: true,
+    run: async (a, ctx) => ctx.call('DELETE', `/stores/${await resolveStore(ctx, a.storeId)}/leads/${a.cartId}`),
+  },
+  {
     name: 'create_order',
     title: 'Create order',
     description: 'Record an order received outside the sales page (WhatsApp, phone, shop). Prices default to the product prices.',
@@ -689,6 +730,18 @@ export const TOOLS: Tool[] = [
         myResults: r.mine,
         profit: r.profit,
       }
+    },
+  },
+  {
+    name: 'get_digital_stats',
+    title: 'Digital store stats',
+    description:
+      'Digital store dashboard for a period (default last 30 days): orders created, paid, pending, refused, refunded, payment rate, revenue and average order, why payments fail (insufficient_balance, customer_timeout…), Mobile Money operators used, abandoned carts open and recovered (with recovered revenue), downloads and paid customers who never downloaded.',
+    input: z.object({ storeId: storeArg, period: periodArg, from: ymd.optional(), to: ymd.optional() }),
+    readOnly: true,
+    run: async (a, ctx) => {
+      const id = await resolveStore(ctx, a.storeId)
+      return ctx.call('GET', `/stores/${id}/stats/digital`, { query: await rangeFor(ctx, id, a) })
     },
   },
   {
@@ -1009,7 +1062,10 @@ How to work with it:
 - Order lifecycle for COD: new (to call) -> confirmed or unreachable -> shipped -> delivered (cash collected) or returned; cancelled before shipping.
 - "Revenue collected" = paid online or COD delivered. "Revenue booked" = ordered, excluding cancelled and returned.
 - Real profit = revenue collected - product cost (costPrice) - courier costs (delivered and returned orders) - return costs - expenses. Always distinguish revenue from profit. If unitsWithoutCost > 0, tell the user to set costPrice on those products, since profit is overestimated.
-- A store sells physical OR digital products, never both (see get_store kind).
+- A store sells physical OR digital products, never both (see list_stores / get_store kind). Adapt to it:
+  - Physical: COD lifecycle, calls, couriers, delivery zones (update_order_status, list_delivery_zones).
+  - Digital: no calls, no delivery, no statuses. What matters is payment: list_orders with paymentState (paid, pending, failed, refunded), get_digital_stats, resend_digital_access when a customer says they got nothing, send_payment_link for refused or unfinished payments, list_abandoned_carts / remind_abandoned_cart.
+- Emails are automatic: the seller gets a "new sale" email, the customer an order confirmation (or product access for digital), then confirmed and shipped emails for physical orders.
 - Bundles: a product whose bundle.items lists other products (create the included products first). Funnels: order bump (checkbox on the form), up to 3 one click upsells after the order, each with an optional downsell if refused; COD upsells are added to the same order. Offer products must exist in the store (they can be inactive).
 - Product sheets: get_product then update_product with only the fields to change; lists are replaced, objects merged. Image URLs are hosted on Zuri automatically.
 - Write customer facing copy in the store language (usually French), concrete and honest: no invented reviews, numbers or medical claims.
