@@ -54,7 +54,7 @@ describe('vue digitale', () => {
     expect(detail.body.customerUrl).toContain('/order/')
   })
 
-  test('paniers abandonnés : liste, relance, retrait', async () => {
+  test('paniers abandonnés : liste, relance, ignorer, réactiver', async () => {
     await visitor.post('/api/v1/leads', { storeSlug: 'digi-shop', productId, email: 'panier@test.dev', name: 'Panier' })
     const l = await owner.get(`/api/stores/${storeId}/leads`)
     expect(l.body.total).toBe(1)
@@ -62,8 +62,15 @@ describe('vue digitale', () => {
     expect(l.body.data[0].productUrl).toContain(`/digi-shop/p/${productId}`)
     expect((await owner.post(`/api/stores/${storeId}/leads/${l.body.data[0].id}/remind`)).body.ok).toBe(true)
     expect((await owner.get(`/api/stores/${storeId}/leads`)).body.data[0].reminderCount).toBe(1)
-    expect((await owner.req('DELETE', `/api/stores/${storeId}/leads/${l.body.data[0].id}`)).status).toBe(200)
-    expect((await owner.get(`/api/stores/${storeId}/leads`)).body.total).toBe(0)
+    const lid = l.body.data[0].id
+    expect((await owner.post(`/api/stores/${storeId}/leads/${lid}/ignore`)).status).toBe(200)
+    const after = await owner.get(`/api/stores/${storeId}/leads`)
+    expect(after.body.total).toBe(0)
+    expect(after.body.counts).toEqual({ open: 0, ignored: 1 })
+    expect((await owner.get(`/api/stores/${storeId}/leads?ignored=1`)).body.data[0].id).toBe(lid)
+    expect((await owner.post(`/api/stores/${storeId}/leads/${lid}/restore`)).status).toBe(200)
+    expect((await owner.get(`/api/stores/${storeId}/leads`)).body.total).toBe(1)
+    await owner.post(`/api/stores/${storeId}/leads/${lid}/ignore`)
   })
 
   test('statistiques digitales', async () => {

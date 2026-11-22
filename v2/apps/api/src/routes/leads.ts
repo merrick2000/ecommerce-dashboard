@@ -1,9 +1,10 @@
 /**
- * Paniers abandonnés (coordonnées laissées sans commande) : liste, relance immédiate par email, retrait.
+ * Paniers abandonnés (coordonnées laissées sans commande) : liste (à relancer ou ignorés), relance immédiate par email,
+ * « Ne plus relancer » (ignorer) et réactivation.
  * La relance WhatsApp se fait depuis le tableau de bord (lien wa.me avec le lien de la page de vente).
  * Un membre limité à certains produits ne voit que les paniers de ses produits.
  */
-import { and, desc, eq, ilike, inArray, isNull, or, sql as dsql } from 'drizzle-orm'
+import { and, desc, eq, ilike, inArray, isNotNull, isNull, or, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { db } from '../db/client'
@@ -21,12 +22,13 @@ const leadScope = (access: StoreAccess) => (access.productIds ? (access.productI
 const productUrl = (slug: string, productId: string) => `${env.STOREFRONT_URL.replace(/\/$/, '')}/${slug}/p/${productId}`
 
 export const leadRoutes = new Hono<AppEnv>()
-  .get('/', requirePermission('orders.view'), v('query', z.object({ q: z.string().max(100).optional(), page: z.coerce.number().int().min(1).default(1) })), async (c) => {
+  .get('/', requirePermission('orders.view'), v('query', z.object({ q: z.string().max(100).optional(), page: z.coerce.number().int().min(1).default(1), ignored: z.enum(['0', '1']).optional() })), async (c) => {
     const store = c.get('store')
-    const { q, page } = c.req.valid('query')
+    const { q, page, ignored } = c.req.valid('query')
     const like = q ? `%${q.replace(/[%_]/g, '\\$&')}%` : null
-    const where = and(eq(leads.storeId, store.id), isNull(leads.convertedAt), leadScope(c.get('access')), like ? or(ilike(leads.name, like), ilike(leads.email, like), ilike(leads.phone, like)) : undefined)
-    const [rows, [{ total } = { total: 0 }]] = await Promise.all([
+    const where = and(eq(leads.storeId, store.id), isNull(leads.convertedAt), ignored === '1' ? isNotNull(leads.ignoredAt) : isNull(leads.ignoredAt), leadScope(c.get('access')), like ? or(ilike(leads.name, like), ilike(leads.email, like), ilike(leads.phone, like)) : undefined)
+    const base = and(eq(leads.storeId, store.id), isNull(leads.convertedAt), leadScope(c.get('access')))
+    const [rows, [{ total } = { total: 0 }], [counts]] = await Promise.all([
       db
         .select({ lead: leads, productName: products.name, price: products.price })
         .from(leads)
@@ -36,9 +38,11 @@ export const leadRoutes = new Hono<AppEnv>()
         .limit(PAGE)
         .offset((page - 1) * PAGE),
       db.select({ total: dsql<number>`count(*)::int` }).from(leads).where(where),
+      db.select({ open: dsql<number>`count(*) filter (where ${leads.ignoredAt} is null)::int`, ignored: dsql<number>`count(*) filter (where ${leads.ignoredAt} is not null)::int` }).from(leads).where(base),
     ])
     return c.json({
       total,
+      counts: counts ?? { open: 0, ignored: 0 },
       page,
       pageSize: PAGE,
       data: rows.map(({ lead, productName, price }) => ({
@@ -52,6 +56,7 @@ export const leadRoutes = new Hono<AppEnv>()
         productUrl: lead.productId ? productUrl(store.slug, lead.productId) : null,
         reminderCount: lead.reminderCount,
         lastRemindedAt: lead.lastRemindedAt,
+        ignoredAt: lead.ignoredAt,
         createdAt: lead.createdAt,
       })),
     })
@@ -77,10 +82,21 @@ export const leadRoutes = new Hono<AppEnv>()
       .where(eq(leads.id, row.lead.id))
     return c.json({ ok: true })
   })
-  /** Retirer un panier de la liste (client recontacté autrement, doublon…). */
-  .delete('/:id', requirePermission('orders.update'), v('param', z.object({ id: z.coerce.number().int().positive() })), async (c) => {
+  /** « Ne plus relancer » : le panier passe dans l'onglet Ignorés et ne reçoit plus aucune relance automatique. */
+  .post('/:id/ignore', requirePermission('orders.update'), v('param', z.object({ id: z.coerce.number().int().positive() })), async (c) => {
     const [row] = await db
-      .delete(leads)
+      .update(leads)
+      .set({ ignoredAt: new Date(), nextReminderAt: null })
+      .where(and(eq(leads.id, c.req.valid('param').id), eq(leads.storeId, c.get('store').id), isNull(leads.convertedAt), leadScope(c.get('access'))))
+      .returning({ id: leads.id })
+    if (!row) throw notFound('Panier')
+    return c.json({ ok: true })
+  })
+  /** Remettre un panier ignoré dans la liste à relancer (relances manuelles ; les automatiques ne repartent pas). */
+  .post('/:id/restore', requirePermission('orders.update'), v('param', z.object({ id: z.coerce.number().int().positive() })), async (c) => {
+    const [row] = await db
+      .update(leads)
+      .set({ ignoredAt: null })
       .where(and(eq(leads.id, c.req.valid('param').id), eq(leads.storeId, c.get('store').id), leadScope(c.get('access'))))
       .returning({ id: leads.id })
     if (!row) throw notFound('Panier')

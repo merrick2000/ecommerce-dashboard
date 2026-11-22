@@ -726,6 +726,8 @@ export const leads = pgTable(
     convertedOrderId: ref('converted_order_id').references(() => orders.id, { onDelete: 'set null' }),
     /** Vendeur(s) prévenu(s) du panier abandonné. */
     sellerNotifiedAt: ts('seller_notified_at'),
+    /** Ignoré par le vendeur (« Ne plus relancer ») : plus aucune relance, visible dans l'onglet Ignorés. */
+    ignoredAt: ts('ignored_at'),
     reminderHistory: jsonb('reminder_history').$type<{ step: number; channel: string; at: string; promoCode?: string }[]>().notNull().default([]),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

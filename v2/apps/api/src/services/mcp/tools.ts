@@ -662,9 +662,9 @@ export const TOOLS: Tool[] = [
     name: 'list_abandoned_carts',
     title: 'List abandoned carts',
     description: 'Visitors who left their email or phone on a sales page without ordering (not yet converted): name, email, phone, product, price, product page link, reminders already sent. Search by name, email or phone.',
-    input: z.object({ storeId: storeArg, search: z.string().max(100).optional(), page: z.number().int().min(1).optional() }),
+    input: z.object({ storeId: storeArg, search: z.string().max(100).optional(), ignored: z.boolean().optional().describe('true: list the ignored carts instead'), page: z.number().int().min(1).optional() }),
     readOnly: true,
-    run: async (a, ctx) => ctx.call('GET', `/stores/${await resolveStore(ctx, a.storeId)}/leads`, { query: { q: a.search, page: a.page } }),
+    run: async (a, ctx) => ctx.call('GET', `/stores/${await resolveStore(ctx, a.storeId)}/leads`, { query: { q: a.search, page: a.page, ignored: a.ignored ? '1' : undefined } }),
   },
   {
     name: 'remind_abandoned_cart',
@@ -674,12 +674,11 @@ export const TOOLS: Tool[] = [
     run: async (a, ctx) => ctx.call('POST', `/stores/${await resolveStore(ctx, a.storeId)}/leads/${a.cartId}/remind`),
   },
   {
-    name: 'remove_abandoned_cart',
-    title: 'Remove abandoned cart',
-    description: 'Remove an abandoned cart from the list (it will not be reminded anymore). Requires confirm: true, ask the user first.',
-    input: z.object({ storeId: storeArg, cartId: z.number().int().positive(), confirm: z.literal(true) }),
-    destructive: true,
-    run: async (a, ctx) => ctx.call('DELETE', `/stores/${await resolveStore(ctx, a.storeId)}/leads/${a.cartId}`),
+    name: 'ignore_abandoned_cart',
+    title: 'Stop reminding an abandoned cart',
+    description: 'Stop all reminders for an abandoned cart (customer contacted another way, not interested, fake details). It moves to the Ignored list; restore: true puts it back in the list to remind.',
+    input: z.object({ storeId: storeArg, cartId: z.number().int().positive(), restore: z.boolean().optional() }),
+    run: async (a, ctx) => ctx.call('POST', `/stores/${await resolveStore(ctx, a.storeId)}/leads/${a.cartId}/${a.restore ? 'restore' : 'ignore'}`),
   },
   {
     name: 'create_order',
@@ -1064,7 +1063,7 @@ How to work with it:
 - Real profit = revenue collected - product cost (costPrice) - courier costs (delivered and returned orders) - return costs - expenses. Always distinguish revenue from profit. If unitsWithoutCost > 0, tell the user to set costPrice on those products, since profit is overestimated.
 - A store sells physical OR digital products, never both (see list_stores / get_store kind). Adapt to it:
   - Physical: COD lifecycle, calls, couriers, delivery zones (update_order_status, list_delivery_zones).
-  - Digital: no calls, no delivery, no statuses. What matters is payment: list_orders with paymentState (paid, pending, failed, refunded), get_digital_stats, resend_digital_access when a customer says they got nothing, send_payment_link for refused or unfinished payments, list_abandoned_carts / remind_abandoned_cart.
+  - Digital: no calls, no delivery, no statuses. What matters is payment: list_orders with paymentState (paid, pending, failed, refunded), get_digital_stats, resend_digital_access when a customer says they got nothing, send_payment_link for refused or unfinished payments, list_abandoned_carts / remind_abandoned_cart / ignore_abandoned_cart.
 - Emails are automatic: the seller gets a "new sale" email, the customer an order confirmation (or product access for digital), then confirmed and shipped emails for physical orders.
 - Bundles: a product whose bundle.items lists other products (create the included products first). Funnels: order bump (checkbox on the form), up to 3 one click upsells after the order, each with an optional downsell if refused; COD upsells are added to the same order. Offer products must exist in the store (they can be inactive).
 - Product sheets: get_product then update_product with only the fields to change; lists are replaced, objects merged. Image URLs are hosted on Zuri automatically.

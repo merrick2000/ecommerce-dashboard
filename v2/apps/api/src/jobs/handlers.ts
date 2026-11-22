@@ -195,7 +195,7 @@ export async function handleLeadsRemind() {
     .innerJoin(stores, eq(stores.id, leads.storeId))
     .innerJoin(products, eq(products.id, leads.productId))
     .leftJoin(checkoutSettings, eq(checkoutSettings.storeId, leads.storeId))
-    .where(and(isNull(leads.convertedAt), lte(leads.nextReminderAt, new Date()), dsql`${leads.email} is not null`))
+    .where(and(isNull(leads.convertedAt), isNull(leads.ignoredAt), lte(leads.nextReminderAt, new Date()), dsql`${leads.email} is not null`))
     .orderBy(asc(leads.nextReminderAt))
     .limit(200)
 
@@ -254,7 +254,7 @@ export async function handleLeadsNotifySellers() {
     .select({ lead: leads, productName: products.name })
     .from(leads)
     .innerJoin(products, eq(products.id, leads.productId))
-    .where(and(isNull(leads.convertedAt), isNull(leads.sellerNotifiedAt), lte(leads.createdAt, new Date(now - 20 * 60_000)), gte(leads.createdAt, new Date(now - 24 * 3600_000))))
+    .where(and(isNull(leads.convertedAt), isNull(leads.ignoredAt), isNull(leads.sellerNotifiedAt), lte(leads.createdAt, new Date(now - 20 * 60_000)), gte(leads.createdAt, new Date(now - 24 * 3600_000))))
     .orderBy(asc(leads.createdAt))
     .limit(100)
   for (const { lead, productName } of due) {

@@ -187,7 +187,7 @@ function Bars({ rows }: { rows: { label: string; value: number; sub: string }[] 
       {rows.map((r) => (
         <li key={r.label}>
           <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="truncate">{r.label}</span>
+            <span className="min-w-0 truncate" title={r.label}>{r.label}</span>
             <span className="tabular shrink-0 text-muted">{r.sub}</span>
           </div>
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-2">

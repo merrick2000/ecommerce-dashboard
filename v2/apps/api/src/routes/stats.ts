@@ -381,7 +381,7 @@ export const digitalStatsRoute = new Hono<AppEnv>().get('/digital', requirePermi
       from ${orders} where ${inRange} and ${orders.paymentStatus} = 'paid' and ${orders.poOperator} is not null
       group by 1 order by 2 desc limit 8`),
     db.execute<{ open: number; recovered: number; recovered_revenue: number }>(dsql`
-      select count(*) filter (where l.converted_at is null)::int as open,
+      select count(*) filter (where l.converted_at is null and l.ignored_at is null)::int as open,
              count(*) filter (where l.converted_at is not null)::int as recovered,
              coalesce(sum(o.total) filter (where l.converted_at is not null), 0)::float as recovered_revenue
       from leads l left join orders o on o.id = l.converted_order_id

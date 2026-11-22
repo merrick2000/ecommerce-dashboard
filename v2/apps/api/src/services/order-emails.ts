@@ -90,7 +90,7 @@ function itemsTable(o: EmailOrder, showAmounts: boolean, showRoles = false) {
       const sub = [i.variant, i.bundle?.length ? `Contient : ${i.bundle.join(', ')}` : null, showRoles ? ROLE_LABEL[i.role] || null : null].filter(Boolean).map((x) => e(x!)).join('<br>')
       return `<tr>
 <td width="68" valign="top" style="padding:10px 0">${img}</td>
-<td valign="top" style="padding:10px 8px;font-size:14px"><strong>${e(i.name)}</strong>${i.quantity > 1 ? ` <span style="color:#6b7280">x${i.quantity}</span>` : ''}${sub ? `<br><span style="font-size:12px;color:#6b7280">${sub}</span>` : ''}</td>
+<td valign="top" style="padding:10px 8px;font-size:14px;word-break:break-word;overflow-wrap:anywhere"><strong>${e(i.name)}</strong>${i.quantity > 1 ? ` <span style="color:#6b7280">x${i.quantity}</span>` : ''}${sub ? `<br><span style="font-size:12px;color:#6b7280">${sub}</span>` : ''}</td>
 ${showAmounts ? `<td valign="top" align="right" style="padding:10px 0;font-size:14px;white-space:nowrap">${money(i.total, o.currency)}</td>` : ''}
 </tr>`
     })

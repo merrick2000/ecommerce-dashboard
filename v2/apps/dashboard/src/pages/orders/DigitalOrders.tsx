@@ -4,10 +4,10 @@
  * et les actions utiles (renvoyer l'accès, copier le lien, relancer un paiement, relancer un panier).
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Copy, Download, LayoutGrid, List, Mail, MessageCircle, RotateCcw, Search, ShoppingBag, Table2, Trash2 } from 'lucide-react'
+import { BellOff, ChevronLeft, ChevronRight, Copy, Download, LayoutGrid, List, Mail, MessageCircle, RotateCcw, Search, ShoppingBag, Table2 } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
-import { ConfirmDialog, Dialog } from '@/components/Dialog'
+import { Dialog } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, buttonClass, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Segmented } from '@/components/ui'
 import { DEFAULT_PREFS, useMediaQuery, usePref, type OrdersPrefs } from './views/prefs'
@@ -245,30 +245,56 @@ function CartsList({ q, view }: { q: string; view: 'cards' | 'compact' | 'table'
   const { store } = useCurrentStore()
   const canUpdate = useCan('orders.update')
   const [page, setPage] = useState(1)
-  const [remove, setRemove] = useState<Lead | null>(null)
-  const key = ['store', storeId, 'leads', q, page] as const
-  const list = useQuery({ queryKey: key, queryFn: () => api.get<{ total: number; pageSize: number; data: Lead[] }>(`/stores/${storeId}/leads`, { q: q || undefined, page }) })
-  useEffect(() => setPage(1), [q])
+  const [ignoredView, setIgnoredView] = useState(false)
+  const key = ['store', storeId, 'leads', q, page, ignoredView] as const
+  const list = useQuery({ queryKey: key, queryFn: () => api.get<{ total: number; pageSize: number; counts: { open: number; ignored: number }; data: Lead[] }>(`/stores/${storeId}/leads`, { q: q || undefined, page, ignored: ignoredView ? '1' : undefined }) })
+  useEffect(() => setPage(1), [q, ignoredView])
   const refresh = () => void qc.invalidateQueries({ queryKey: ['store', storeId, 'leads'] })
   const remind = useMutation({
     mutationFn: (id: number) => api.post(`/stores/${storeId}/leads/${id}/remind`),
     onSuccess: () => (toast.success('Relance envoyée par email'), refresh()),
     onError: (e) => toast.error(errorMessage(e)),
   })
-  const drop = useMutation({
-    mutationFn: (id: number) => api.del(`/stores/${storeId}/leads/${id}`),
-    onSuccess: () => (setRemove(null), refresh()),
+  // « Ne plus relancer » : réversible depuis l'onglet Ignorés, donc pas de confirmation.
+  const ignore = useMutation({
+    mutationFn: ({ id, restore }: { id: number; restore?: boolean }) => api.post(`/stores/${storeId}/leads/${id}/${restore ? 'restore' : 'ignore'}`),
+    onSuccess: (_r, v) => (toast.success(v.restore ? 'Panier remis dans la liste à relancer' : 'Ce panier ne sera plus relancé. Retrouvez-le dans Ignorés.'), refresh()),
     onError: (e) => toast.error(errorMessage(e)),
   })
-  if (list.isPending) return <ListSkeleton rows={4} />
-  if (list.error) return <ErrorState error={list.error} onRetry={() => void list.refetch()} />
+  const switcher = (
+    <div className="mb-3">
+      <Segmented
+        label="Paniers"
+        value={ignoredView ? 'ignored' : 'open'}
+        onChange={(v) => setIgnoredView(v === 'ignored')}
+        options={[
+          { value: 'open', label: `À relancer${list.data ? ` (${list.data.counts.open})` : ''}` },
+          { value: 'ignored', label: `Ignorés${list.data ? ` (${list.data.counts.ignored})` : ''}` },
+        ]}
+      />
+    </div>
+  )
+  if (list.isPending) return <>{switcher}<ListSkeleton rows={4} /></>
+  if (list.error) return <>{switcher}<ErrorState error={list.error} onRetry={() => void list.refetch()} /></>
   if (!list.data.data.length)
-    return <EmptyState icon={<ShoppingBag className="size-5" />} title="Aucun panier abandonné" description="Les visiteurs qui laissent leur email ou leur numéro sans payer apparaissent ici. Zuri les relance aussi automatiquement par email si c’est activé dans Paramètres." />
+    return (
+      <>
+        {switcher}
+        {ignoredView ? (
+          <EmptyState icon={<ShoppingBag className="size-5" />} title="Aucun panier ignoré" description="Les paniers que vous ne voulez plus relancer (client déjà contacté, pas intéressé, fausses coordonnées) apparaissent ici." />
+        ) : (
+          <EmptyState icon={<ShoppingBag className="size-5" />} title="Aucun panier à relancer" description="Les visiteurs qui laissent leur email ou leur numéro sans payer apparaissent ici. Zuri les relance aussi automatiquement par email si c’est activé dans Paramètres." />
+        )}
+      </>
+    )
   const pages = Math.max(1, Math.ceil(list.data.total / list.data.pageSize))
+  const stopLabel = ignoredView ? 'Remettre à relancer' : 'Ne plus relancer'
+  const stop = (l: Lead) => ignore.mutate({ id: l.id, restore: ignoredView })
   return (
     <>
+      {switcher}
       <p className="mb-2 px-1 text-[13px] text-muted">
-        {list.data.total} panier{list.data.total > 1 ? 's' : ''} à relancer
+        {list.data.total} panier{list.data.total > 1 ? 's' : ''} {ignoredView ? (list.data.total > 1 ? 'ignorés' : 'ignoré') : 'à relancer'}
       </p>
       {(() => {
         const iconBtn = (icon: ReactNode, label: string, onClick?: () => void, href?: string) =>
@@ -284,7 +310,7 @@ function CartsList({ q, view }: { q: string; view: 'cards' | 'compact' | 'table'
         const waFor = (l: Lead) => wa(l.phone, `Bonjour ${l.name?.split(' ')[0] ?? ''}, vous étiez sur le point de commander « ${l.productName ?? 'notre produit'} » chez ${store?.name ?? 'nous'}. Il est toujours disponible ici : ${l.productUrl ?? ''}`)
         const icons = (l: Lead) =>
           canUpdate
-            ? [l.email ? iconBtn(<Mail className="size-3.5" />, 'Relancer par email', () => remind.mutate(l.id)) : null, waFor(l) ? iconBtn(<MessageCircle className="size-3.5" />, 'WhatsApp', undefined, waFor(l)!) : null, iconBtn(<Trash2 className="size-3.5" />, 'Retirer', () => setRemove(l))].filter(Boolean)
+            ? [!ignoredView && l.email ? iconBtn(<Mail className="size-3.5" />, 'Relancer par email', () => remind.mutate(l.id)) : null, waFor(l) ? iconBtn(<MessageCircle className="size-3.5" />, 'WhatsApp', undefined, waFor(l)!) : null, iconBtn(ignoredView ? <RotateCcw className="size-3.5" /> : <BellOff className="size-3.5" />, stopLabel, () => stop(l))].filter(Boolean)
             : []
         const price = (l: Lead) => (l.price != null ? money(l.price, store?.currency ?? 'XOF') : '')
         if (view === 'table')
@@ -360,7 +386,7 @@ function CartsList({ q, view }: { q: string; view: 'cards' | 'compact' | 'table'
                 </div>
                 {canUpdate && (
                   <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
-                    {l.email && (
+                    {!ignoredView && l.email && (
                       <Button size="sm" onClick={() => remind.mutate(l.id)} loading={remind.isPending && remind.variables === l.id}>
                         <Mail className="size-3.5" /> Relancer par email
                       </Button>
@@ -370,8 +396,8 @@ function CartsList({ q, view }: { q: string; view: 'cards' | 'compact' | 'table'
                         <MessageCircle className="size-3.5" /> WhatsApp
                       </a>
                     )}
-                    <Button size="sm" variant="ghost" onClick={() => setRemove(l)}>
-                      <Trash2 className="size-3.5" /> Retirer
+                    <Button size="sm" variant="ghost" onClick={() => stop(l)}>
+                      {ignoredView ? <RotateCcw className="size-3.5" /> : <BellOff className="size-3.5" />} {stopLabel}
                     </Button>
                   </div>
                 )}
@@ -394,7 +420,6 @@ function CartsList({ q, view }: { q: string; view: 'cards' | 'compact' | 'table'
           </Button>
         </nav>
       )}
-      <ConfirmDialog open={!!remove} onClose={() => setRemove(null)} onConfirm={() => remove && drop.mutate(remove.id)} title="Retirer ce panier ?" message="Il ne sera plus relancé. Vous pouvez toujours retrouver le client s’il recommande." confirmLabel="Retirer" loading={drop.isPending} />
     </>
   )
 }

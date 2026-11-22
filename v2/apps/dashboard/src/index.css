@@ -63,12 +63,31 @@ body {
 }
 
 body {
+  /* Noms très longs ou sans espace (produits, clients, villes) : on coupe plutôt que de déborder. */
+  overflow-wrap: break-word;
   font-family: var(--font-sans);
   font-feature-settings: 'cv11', 'ss01';
 }
 
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* Contenu des écrans : un mot sans espace (nom de produit de 160 caractères) peut se couper partout,
+   et les colonnes de grille ne s'élargissent jamais au-delà de l'écran. Les tableaux gardent leur défilement. */
+main {
+  overflow-wrap: anywhere;
+}
+main table {
+  overflow-wrap: normal;
+}
+main .grid > * {
+  min-width: 0;
+}
+/* Les montants ne se coupent jamais (« 15 000 FCFA » reste sur une ligne). */
+main .tabular {
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 
 @layer base {
