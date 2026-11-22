@@ -166,13 +166,20 @@ export function Select({
   id,
   wrapClass,
   ...rest
-}: SelectHTMLAttributes<HTMLSelectElement> & { label?: ReactNode; error?: string; hint?: ReactNode; options: { value: string; label: string }[]; wrapClass?: string }) {
+}: SelectHTMLAttributes<HTMLSelectElement> & { label?: ReactNode; error?: string; hint?: ReactNode; options: { value: string; label: string; title?: string }[]; wrapClass?: string }) {
   const auto = useId()
   const sid = id ?? auto
   const el = (
-    <select id={sid} aria-invalid={error ? true : undefined} className={cx(control, 'h-10 pr-8', error ? 'border-red-500' : 'border-line-strong', className)} {...rest}>
+    <select
+      id={sid}
+      aria-invalid={error ? true : undefined}
+      // Nom complet au survol, utile quand le libellé est raccourci.
+      title={options.find((o) => o.value === String(rest.value ?? ''))?.title}
+      className={cx(control, 'h-10 pr-8', error ? 'border-red-500' : 'border-line-strong', className)}
+      {...rest}
+    >
       {options.map((o) => (
-        <option key={o.value} value={o.value}>
+        <option key={o.value} value={o.value} title={o.title}>
           {o.label}
         </option>
       ))}

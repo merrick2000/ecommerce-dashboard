@@ -7,7 +7,7 @@ import { Button, ButtonLink, Card, EmptyState, Input, ListSkeleton, PageHeader, 
 import { useCurrency, useStoreId } from '@/hooks/auth'
 import { useCreateManualOrder, useProduct, useProducts, useZones } from '@/hooks/resources'
 import { numOrNull, serverErrors, strOrNull, validate, type Errors } from '@/lib/form'
-import { currencyLabel, money } from '@/lib/format'
+import { currencyLabel, money, optionLabel } from '@/lib/format'
 import { PAYMENT_METHOD_LABEL } from '@/lib/labels'
 import type { ProductListItem } from '@/lib/types'
 
@@ -54,8 +54,9 @@ function LineRow({
           wrapClass="flex-1"
           value={line.productId ?? ''}
           onChange={(e) => onChange({ ...line, productId: e.target.value || null, variantId: null, unitPrice: '' })}
-          options={[{ value: '', label: 'Choisir un produit…' }, ...products.map((p) => ({ value: String(p.id), label: `${p.name}${p.isActive ? '' : ' (inactif)'}` }))]}
+          options={[{ value: '', label: 'Choisir un produit…' }, ...products.map((p) => ({ value: String(p.id), title: p.name, label: optionLabel(p.name, p.isActive ? '' : ' (inactif)') }))]}
           error={errors[`items.${index}.productId`]}
+          hint={listItem && listItem.name.length > 52 ? listItem.name : undefined}
         />
         <Button variant="ghost" size="icon" onClick={onRemove} aria-label="Retirer la ligne">
           <Trash2 className="size-4" />
@@ -69,7 +70,7 @@ function LineRow({
               wrapClass="col-span-2 sm:col-span-1"
               value={line.variantId ?? ''}
               onChange={(e) => onChange({ ...line, variantId: e.target.value ? Number(e.target.value) : null })}
-              options={[{ value: '', label: '-' }, ...variants.map((v) => ({ value: String(v.id), label: `${v.name}${v.stock != null ? ` (stock ${v.stock})` : ''}` }))]}
+              options={[{ value: '', label: '-' }, ...variants.map((v) => ({ value: String(v.id), title: v.name, label: optionLabel(v.name, v.stock != null ? ` (stock ${v.stock})` : '', 40) }))]}
             />
           ) : (
             <div className="hidden sm:block" />

@@ -13,7 +13,7 @@ import { useCurrency, useStoreId } from '@/hooks/auth'
 import { useProducts } from '@/hooks/resources'
 import { api } from '@/lib/api'
 import { serverErrors, validate, type Errors } from '@/lib/form'
-import { isoDay, money } from '@/lib/format'
+import { isoDay, money, optionLabel } from '@/lib/format'
 import { NumberField } from './products/editor/fields'
 
 interface ExpenseRow {
@@ -126,7 +126,7 @@ export default function Expenses() {
                 hint="Optionnel : pour voir le bénéfice par produit."
                 value={form.productId}
                 onChange={(e) => setForm({ ...form, productId: e.target.value })}
-                options={[{ value: '', label: 'Toute la boutique' }, ...(products.data ?? []).map((p) => ({ value: p.id, label: p.name }))]}
+                options={[{ value: '', label: 'Toute la boutique' }, ...(products.data ?? []).map((p) => ({ value: p.id, title: p.name, label: optionLabel(p.name) }))]}
               />
               <Button type="submit" variant="primary" loading={add.isPending} className="w-full">
                 Ajouter
