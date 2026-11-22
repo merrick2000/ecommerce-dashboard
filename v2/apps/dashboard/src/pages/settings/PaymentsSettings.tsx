@@ -1,5 +1,5 @@
 import { Check, Copy, Lock } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, EmptyState, ErrorState, Input, Segmented, Select, Skeleton, Switch } from '@/components/ui'
 import { useCan, useStoreId } from '@/hooks/auth'
@@ -32,7 +32,10 @@ export function CopyButton({ text }: { text: string }) {
   )
 }
 
-function ProviderCard({ account }: { account: PaymentAccount }) {
+/** Ce que chaque carte expose à la page : un seul enregistrement pour tous les moyens modifiés. */
+type CardState = { dirty: boolean; save: () => Promise<void>; discard: () => void }
+
+function ProviderCard({ account, report }: { account: PaymentAccount; report: (provider: string, state: CardState) => void }) {
   const save = useSavePaymentAccount()
   const toast = useToast()
   const [enabled, setEnabled] = useState(account.enabled)
@@ -62,8 +65,14 @@ function ProviderCard({ account }: { account: PaymentAccount }) {
     }
   }
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
+  const discard = () => {
+    setEnabled(account.enabled)
+    setMode(account.mode)
+    setValues({ sandbox: {}, live: {} })
+    setCleared({})
+    setSettings(initialSettings)
+  }
+  const save_ = async () => {
     // Champ vide = conserver ; null = effacer.
     const build = (m: 'sandbox' | 'live') => {
       const out: Record<string, string | null> = {}
@@ -73,18 +82,26 @@ function ProviderCard({ account }: { account: PaymentAccount }) {
       }
       return out
     }
-    save.mutate(
-      { provider: account.provider, body: { enabled, mode, sandbox: build('sandbox'), live: build('live'), ...(isPo ? { settings } : {}) } },
-      {
-        onSuccess: () => {
-          setValues({ sandbox: {}, live: {} })
-          setCleared({})
-          toast.success(`${PROVIDER_LABEL[account.provider]} enregistré`)
-        },
-        onError: (err) => toast.error(err),
-      },
-    )
+    try {
+      await save.mutateAsync({ provider: account.provider, body: { enabled, mode, sandbox: build('sandbox'), live: build('live'), ...(isPo ? { settings } : {}) } })
+      setValues({ sandbox: {}, live: {} })
+      setCleared({})
+      toast.success(`${PROVIDER_LABEL[account.provider]} enregistré`)
+    } catch (err) {
+      toast.error(err)
+      throw err
+    }
   }
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    void save_().catch(() => undefined)
+  }
+  // La page rassemble l'état de toutes les cartes (fonctions à jour à chaque rendu).
+  const latest = useRef({ save: save_, discard })
+  latest.current = { save: save_, discard }
+  useEffect(() => {
+    report(account.provider, { dirty, save: () => latest.current.save(), discard: () => latest.current.discard() })
+  }, [dirty]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const current = account[credMode]
   const configured = account.fields.every((f) => account[account.mode][f])
@@ -130,7 +147,8 @@ function ProviderCard({ account }: { account: PaymentAccount }) {
             />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {account.fields.map((f) => {
+            {/* autoComplete new-password : le navigateur ne remplit pas les clés avec un mot de passe enregistré. */}
+        {account.fields.map((f) => {
               const key = `${credMode}.${f}`
               const masked = current[f]
               return (
@@ -143,7 +161,9 @@ function ProviderCard({ account }: { account: PaymentAccount }) {
                       </span>
                     }
                     type="password"
-                    autoComplete="off"
+                    autoComplete="new-password"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     placeholder={masked && !cleared[key] ? 'laisser vide pour conserver' : 'Non renseigné'}
                     value={values[credMode][f] ?? ''}
                     onChange={(e) => {
@@ -230,21 +250,6 @@ function ProviderCard({ account }: { account: PaymentAccount }) {
         ) : (
           <p className="text-[12.5px] text-muted">L’URL de webhook apparaîtra après le premier enregistrement.</p>
         )}
-        {/* Une barre par moyen de paiement : collée en bas tant que sa carte est à l'écran. */}
-        <SaveBar
-          submit
-          dirty={dirty}
-          saving={save.isPending}
-          alwaysOnMobile={false}
-          label={`Enregistrer ${PROVIDER_LABEL[account.provider]}`}
-          onDiscard={() => {
-            setEnabled(account.enabled)
-            setMode(account.mode)
-            setValues({ sandbox: {}, live: {} })
-            setCleared({})
-            setSettings(initialSettings)
-          }}
-        />
       </form>
     </Card>
   )
@@ -253,6 +258,21 @@ function ProviderCard({ account }: { account: PaymentAccount }) {
 export function PaymentsSettings() {
   const isOwner = useCan('payments.manage')
   const { data, error, isPending, refetch } = usePaymentAccounts(isOwner)
+  const [cards, setCards] = useState<Record<string, CardState>>({})
+  const [saving, setSaving] = useState(false)
+  const report = useCallback((provider: string, state: CardState) => setCards((c) => ({ ...c, [provider]: state })), [])
+  const dirtyCards = Object.values(cards).filter((c) => c.dirty)
+  const saveAll = async () => {
+    setSaving(true)
+    try {
+      for (const c of dirtyCards) await c.save()
+    } catch {
+      /* erreur déjà affichée par la carte */
+    } finally {
+      setSaving(false)
+    }
+  }
+  const discardAll = () => dirtyCards.forEach((c) => c.discard())
   const forbidden = !isOwner || (error instanceof ApiError && error.status === 403)
   if (forbidden) return <EmptyState icon={<Lock className="size-5" />} title="Réservé au propriétaire" description="Seul le propriétaire de la boutique peut voir et modifier les moyens de paiement." />
   if (error && !data) return <ErrorState error={error} onRetry={() => void refetch()} />
@@ -265,13 +285,20 @@ export function PaymentsSettings() {
     )
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted">Les identifiants sont chiffrés. Les valeurs actuelles ne sont jamais affichées en entier.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted">Les identifiants sont chiffrés. Les valeurs actuelles ne sont jamais affichées en entier.</p>
+        <Button variant="primary" onClick={() => void saveAll()} loading={saving} disabled={!dirtyCards.length}>
+          Enregistrer
+        </Button>
+      </div>
       <p className="rounded-lg bg-accent-soft p-3 text-[13px]">
         <strong>Recommandé : Payment Orchestrator.</strong> Un seul compte pour MTN, Moov, Orange, Wave… avec bascule automatique vers un autre prestataire en cas de panne. Crée tes clés sur payment.zurisell.store (Développeurs, Clés API), colle la clé secrète et le secret de webhook ci-dessous, puis ajoute l’URL de webhook affichée dans Développeurs, Webhooks. Commence en mode test.
       </p>
       {data.map((a) => (
-        <ProviderCard key={`${a.provider}-${a.enabled}-${a.mode}-${JSON.stringify(a.sandbox)}-${JSON.stringify(a.live)}`} account={a} />
+        <ProviderCard key={`${a.provider}-${a.enabled}-${a.mode}-${JSON.stringify(a.sandbox)}-${JSON.stringify(a.live)}`} account={a} report={report} />
       ))}
+      {/* Une seule barre pour toute la page : elle enregistre tous les moyens de paiement modifiés. */}
+      <SaveBar dirty={dirtyCards.length > 0} saving={saving} onSave={() => void saveAll()} onDiscard={discardAll} alwaysOnMobile={false} label={dirtyCards.length > 1 ? `Enregistrer (${dirtyCards.length})` : 'Enregistrer'} />
     </div>
   )
 }

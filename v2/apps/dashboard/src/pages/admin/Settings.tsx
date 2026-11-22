@@ -158,8 +158,8 @@ function PoPlatform({ po, onSave }: { po: PlatformSettings['po']; onSave: (body:
           setWebhookSecret('')
         }}
       >
-        <Input label="Clé secrète" placeholder="sk_test_… puis sk_live_…" value={secretKey} onChange={(e) => setSecretKey(e.target.value)} autoComplete="off" type="password" />
-        <Input label="Secret de webhook" placeholder="whsec_…" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} autoComplete="off" type="password" />
+        <Input label="Clé secrète" placeholder="sk_test_… puis sk_live_…" value={secretKey} onChange={(e) => setSecretKey(e.target.value)} autoComplete="new-password" data-lpignore="true" type="password" />
+        <Input label="Secret de webhook" placeholder="whsec_…" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} autoComplete="new-password" data-lpignore="true" type="password" />
         <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
           <Button type="submit" variant="primary" disabled={!secretKey.trim() && !webhookSecret.trim()}>
             Enregistrer
