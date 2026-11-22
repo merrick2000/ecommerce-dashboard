@@ -84,10 +84,13 @@ main table {
 main .grid > * {
   min-width: 0;
 }
-/* Les montants ne se coupent jamais (« 15 000 FCFA » reste sur une ligne). */
-main .tabular {
-  white-space: nowrap;
-  overflow-wrap: normal;
+/* Les montants ne se coupent jamais (« 15 000 FCFA » reste sur une ligne). Dans une couche : les classes
+   utilitaires (whitespace-normal, break-all) l'emportent pour les identifiants longs affichés en chiffres. */
+@layer components {
+  main .tabular {
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
 }
 
 @layer base {

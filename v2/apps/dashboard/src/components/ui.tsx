@@ -433,7 +433,7 @@ export function Stat({ label, value, sub }: { label: string; value: ReactNode; s
   return (
     <div>
       <dt className="text-[12.5px] text-muted">{label}</dt>
-      <dd className="tabular mt-0.5 font-semibold">{value}</dd>
+      <dd className="tabular mt-0.5 font-semibold whitespace-normal [overflow-wrap:anywhere]">{value}</dd>
       {sub && <dd className="text-[12px] text-subtle">{sub}</dd>}
     </div>
   )

@@ -25,6 +25,9 @@ function eventTitle(e: OrderEvent): string {
   if (e.type === 'note') return 'Note'
   if (e.type === 'created') return 'Commande créée'
   if (e.type === 'edited') return 'Informations modifiées'
+  if (e.type === 'access_resent') return 'Accès renvoyé'
+  if (e.type === 'payment_link_sent') return 'Lien de paiement envoyé'
+  if (e.type === 'payment_started') return 'Paiement commencé'
   if (e.type.startsWith('payment_')) {
     const s = e.type.slice(8) as PaymentStatus
     return `Paiement : ${PAYMENT_STATUS_LABEL[s] ?? s}`
@@ -226,8 +229,15 @@ function PaymentCard({ order, canEdit }: { order: Order; canEdit: boolean }) {
             {order.poStatus && <Badge tone={order.poStatus === 'paid' ? 'green' : order.poStatus === 'failed' || order.poStatus === 'mismatch' ? 'red' : 'neutral'}>{PO_STATUS_LABEL[order.poStatus] ?? order.poStatus}</Badge>}
           </p>
           <dl className="grid grid-cols-2 gap-3 text-sm">
-            <Stat label="Session" value={<code className="text-[12px] break-all">{order.poSessionId}</code>} />
-            {order.poTransactionId && <Stat label="Transaction" value={<code className="text-[12px] break-all">{order.poTransactionId}</code>} />}
+            {/* Identifiants longs : chacun sur toute la largeur, coupés n'importe où. */}
+            <div className="col-span-2">
+              <Stat label="Session" value={<code className="block text-[12px] font-medium break-all whitespace-normal">{order.poSessionId}</code>} />
+            </div>
+            {order.poTransactionId && (
+              <div className="col-span-2">
+                <Stat label="Transaction" value={<code className="block text-[12px] font-medium break-all whitespace-normal">{order.poTransactionId}</code>} />
+              </div>
+            )}
             {order.poProvider && <Stat label="Prestataire" value={order.poProvider} />}
             {order.poOperator && <Stat label="Opérateur" value={`${order.poOperator.toUpperCase()}${order.poCountry ? ` · ${order.poCountry}` : ''}`} />}
           </dl>
