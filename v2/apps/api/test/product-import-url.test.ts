@@ -238,3 +238,14 @@ describe('import par URL : réservé tant que le super admin ne l’ouvre pas', 
     expect((await seller.get(`/api/stores/${s}/products/import/url/config`)).body.enabled).toBe(false)
   })
 })
+
+describe('import par URL : boutique digitale', () => {
+  test('création : produit digital, sans variantes', async () => {
+    const dig = (await owner.post('/api/stores', { name: 'Formations', slug: 'import-digital', currency: 'XOF', kind: 'digital' })).body.id
+    const r = await owner.post(`/api/stores/${dig}/products/import/url/commit`, { draft: { ...DRAFT, variants: [{ name: 'Premium', price: 9000, available: true, sku: null }] }, imageUrls: [] })
+    expect(r.status).toBe(201)
+    const p = await owner.get(`/api/stores/${dig}/products/${r.body.id}`)
+    expect(p.body.type).toBe('digital')
+    expect(p.body.variants).toEqual([])
+  })
+})

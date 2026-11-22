@@ -57,7 +57,7 @@ export const productImportUrlRoutes = new Hono<AppEnv>()
   .get('/config', async (c) => c.json({ aiAvailable: aiAvailable(), browserAvailable: await firecrawlAvailable(), enabled: (await resolveFeatures(c.get('user'))).urlImport }))
   .post('/preview', rateLimit({ key: 'import-url', limit: 20, windowSec: 600 }), v('json', z.object({ url: z.string().trim().url().max(2000) })), async (c) => {
     await assertFeature(await planForStore(c.get('store').id), 'aiImport')
-    const preview = await previewFromUrl(c.req.valid('json').url, c.get('store').currency)
+    const preview = await previewFromUrl(c.req.valid('json').url, c.get('store').currency, c.get('store').kind)
     return c.json({ ...preview, aiAvailable: aiAvailable() })
   })
   /** Secours quand un site bloque toute lecture : le vendeur colle le texte de la page, l'IA remplit la fiche. */
@@ -69,7 +69,7 @@ export const productImportUrlRoutes = new Hono<AppEnv>()
       await assertFeature(await planForStore(c.get('store').id), 'aiImport')
       if (!aiAvailable()) throw badRequest('Analyse IA non configurée', 'ai_unavailable')
       const { text, url } = c.req.valid('json')
-      return c.json({ ...(await previewFromText(text, c.get('store').currency, url ?? null)), aiAvailable: true })
+      return c.json({ ...(await previewFromText(text, c.get('store').currency, url ?? null, c.get('store').kind)), aiAvailable: true })
     },
   )
   .post(
@@ -135,8 +135,9 @@ export const productImportUrlRoutes = new Hono<AppEnv>()
         compareAtPrice: draft.compareAtPrice != null && draft.compareAtPrice > draft.price ? draft.compareAtPrice : null,
         coverImage: cover,
         thumbnail: thumbnail ?? cover,
-        variantLabel: draft.variants.length ? (draft.variantLabel ?? 'Option') : null,
-        variants: draft.variants.map((x) => ({ name: noDash(x.name).slice(0, 80), sku: x.sku, price: x.price, isActive: x.available })),
+        // Produit digital : ni variantes ni stock (les formules se décrivent dans la page).
+        variantLabel: store.kind !== 'digital' && draft.variants.length ? (draft.variantLabel ?? 'Option') : null,
+        variants: store.kind === 'digital' ? [] : draft.variants.map((x) => ({ name: noDash(x.name).slice(0, 80), sku: x.sku, price: x.price, isActive: x.available })),
         content: {
           gallery: images.slice(1, 13),
           features: draft.features.map(noDash),

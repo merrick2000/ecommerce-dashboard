@@ -124,3 +124,29 @@ describe('import : fiche produit Firecrawl', () => {
     expect(cleanMarketplaceName('Montre - AliExpress')).toBe('Montre')
   })
 })
+
+describe('import : produits digitaux', () => {
+  test('fiche « Course » reconnue, type digital, aucune variante', async () => {
+    const COURSE = `<html><head><title>Formation</title><script type="application/ld+json">${JSON.stringify({ '@type': 'Course', name: 'Formation Facebook Ads', image: 'https://cdn.example.com/cours.jpg', offers: { '@type': 'Offer', price: '25000', priceCurrency: 'XOF' } })}</script></head><body>${'c'.repeat(5000)}</body></html>`
+    mockNet({ direct: { status: 200, html: COURSE } })
+    const p = await previewFromUrl(PAGE, 'XOF', 'digital')
+    expect(p.draft.type).toBe('digital')
+    expect(p.draft.name).toBe('Formation Facebook Ads')
+    expect(p.draft.price).toBe(25000)
+    expect(p.draft.variants).toEqual([])
+  })
+
+  test('texte collé d’un produit digital : consigne IA dédiée, pas de variantes', async () => {
+    env.KIE_API_KEY = 'kie-test'
+    let prompt = ''
+    globalThis.fetch = (async (_u: RequestInfo | URL, init?: RequestInit) => {
+      prompt = JSON.parse(String(init?.body)).messages[0].content
+      return Response.json(kieAnswer({ found: true, name: 'Ebook Business', price: 5000, currency: 'XOF', description: '<p>PDF de 80 pages.</p>', features: ['PDF 80 pages', 'Accès à vie'], variants: [{ name: 'Premium', price: 9000 }], imageUrls: [] }))
+    }) as typeof fetch
+    const p = await previewFromText('Ebook Business : 80 pages en PDF, accès à vie, 5 000 FCFA. Formule Premium 9 000 FCFA avec coaching.', 'XOF', null, 'digital')
+    expect(prompt).toContain('DIGITAL')
+    expect(p.draft.type).toBe('digital')
+    expect(p.draft.variants).toEqual([])
+    expect(p.draft.features).toContain('Accès à vie')
+  })
+})

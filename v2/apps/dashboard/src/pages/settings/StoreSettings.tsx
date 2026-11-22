@@ -7,6 +7,7 @@ import { useStoreInfo, useUpdateStore } from '@/hooks/resources'
 import { serverErrors, strOrNull, validate, type Errors } from '@/lib/form'
 import { COUNTRIES, CURRENCY_NAME } from '@/lib/labels'
 import type { Store } from '@/lib/types'
+import { SaveBar } from '@/components/SaveBar'
 import { StoreLifecycle } from './StoreLifecycle'
 
 const toForm = (s: Store) => ({
@@ -106,13 +107,7 @@ function StoreForm({ store, canEdit }: { store: Store; canEdit: boolean }) {
           </div>
         </Card>
       </fieldset>
-      {canEdit && (
-        <div className="flex justify-end">
-          <Button type="submit" variant="primary" disabled={!dirty} loading={update.isPending}>
-            Enregistrer
-          </Button>
-        </div>
-      )}
+      {canEdit && <SaveBar submit dirty={dirty} saving={update.isPending} onDiscard={() => setForm(toForm(store))} />}
     </form>
   )
 }

@@ -5,6 +5,7 @@ import { Button, ErrorState, Skeleton } from '@/components/ui'
 import { useCurrentStore } from '@/hooks/auth'
 import { useCheckoutSettings, useSaveCheckoutSettings } from '@/hooks/resources'
 import { serverErrors, validate } from '@/lib/form'
+import { SaveBar } from '@/components/SaveBar'
 import { normalizeForm, OrderFormBuilder } from './OrderFormBuilder'
 
 /** Formulaire de commande de la boutique : s'applique à tous les produits (sauf formulaire propre au produit). */
@@ -55,18 +56,7 @@ function Editor({ initial, canEdit }: { initial: OrderForm; canEdit: boolean }) 
     <form onSubmit={submit} className="space-y-4" noValidate>
       <p className="text-sm text-muted">S’applique à tous vos produits. Un produit peut avoir son propre formulaire (éditeur produit, onglet Paiement).</p>
       <OrderFormBuilder value={form} onChange={setForm} storeName={store?.name ?? 'Ma boutique'} currency={store?.currency ?? 'XOF'} disabled={!canEdit} />
-      {canEdit && (
-        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] flex justify-end gap-2 lg:bottom-4">
-          {dirty && (
-            <Button size="lg" onClick={() => setForm(initial)} className="shadow-lg">
-              Annuler
-            </Button>
-          )}
-          <Button type="submit" variant="primary" size="lg" disabled={!dirty} loading={save.isPending} className="shadow-lg">
-            Enregistrer
-          </Button>
-        </div>
-      )}
+      {canEdit && <SaveBar submit dirty={dirty} saving={save.isPending} onDiscard={() => setForm(JSON.parse(base) as typeof form)} />}
     </form>
   )
 }

@@ -3,6 +3,7 @@ import { ArrowLeft, Box, FileDown } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useBeforeUnload, useBlocker, useNavigate, useParams } from 'react-router'
 import { ConfirmDialog } from '@/components/Dialog'
+import { SaveBar } from '@/components/SaveBar'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, cx, ErrorState, Segmented, Skeleton } from '@/components/ui'
 import { useCan, useCurrency, useCurrentStore, useStoreId } from '@/hooks/auth'
@@ -253,7 +254,7 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
         </div>
       </div>
 
-      <div role="tabpanel" className="pb-20 sm:pb-0">
+      <div role="tabpanel">
         {tab === 'general' && <GeneralSection {...props} />}
         {tab === 'page' && <SalesPageSection {...props} />}
         {tab === 'media' && <MediaSection {...props} />}
@@ -267,12 +268,8 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
         )}
       </div>
 
-      {/* Barre d'enregistrement mobile, au-dessus de la navigation basse */}
-      <div className={cx('fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 border-t border-line bg-surface/95 p-3 backdrop-blur sm:hidden', !canEdit && 'hidden')}>
-        <Button variant="primary" size="lg" className="w-full" onClick={submit} loading={save.isPending}>
-          {dirty ? 'Enregistrer les modifications' : 'Enregistrer'}
-        </Button>
-      </div>
+      {/* Enregistrer sans remonter : barre collée en bas dès qu'il y a des modifications (toujours visible sur mobile). */}
+      {canEdit && <SaveBar dirty={dirty} saving={save.isPending} onSave={submit} onDiscard={() => setForm(JSON.parse(saved) as Form)} label={dirty ? 'Enregistrer' : 'Enregistré'} />}
 
       <ConfirmDialog
         open={blocker.state === 'blocked'}

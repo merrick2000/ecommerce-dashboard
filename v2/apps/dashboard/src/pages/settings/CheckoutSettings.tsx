@@ -7,6 +7,7 @@ import { Button, Card, cx, ErrorState, Field, Input, Segmented, Select, Skeleton
 import { useCheckoutSettings, usePromoCodes, useSaveCheckoutSettings } from '@/hooks/resources'
 import { serverErrors, validate, type Errors } from '@/lib/form'
 import { CTA_STYLE_LABEL, PAGE_BLOCK_LABEL, TEMPLATE_LABEL } from '@/lib/labels'
+import { SaveBar } from '@/components/SaveBar'
 import { NumberField } from '../products/editor/fields'
 
 const PAYMENT_LOGOS = ['mtn', 'moov', 'orange', 'wave', 'free', 'airtel', 'mpesa', 'visa', 'mastercard', 'paypal', 'celtiis', 'togocom']
@@ -307,13 +308,7 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
         </Card>
       </fieldset>
 
-      {canEdit && (
-        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] flex justify-end lg:bottom-4">
-          <Button type="submit" variant="primary" size="lg" disabled={!dirty} loading={save.isPending} className="shadow-lg">
-            Enregistrer
-          </Button>
-        </div>
-      )}
+      {canEdit && <SaveBar submit dirty={dirty} saving={save.isPending} onDiscard={() => setS(JSON.parse(base) as CheckoutSettings)} />}
     </form>
   )
 }

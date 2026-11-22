@@ -19,7 +19,7 @@ export default function ImportHub() {
       to: `${base}/import/url`,
       icon: Link2,
       title: 'Depuis une URL',
-      text: 'Collez le lien d’une page produit (Shopify, AliExpress, Amazon, Jumia…) : nom, prix, variantes, images et texte sont repris automatiquement.',
+      text: 'Collez le lien d’une page produit, physique (Shopify, AliExpress, Amazon, Jumia…) ou digital (Selar, Chariow, Gumroad, Systeme.io…) : nom, prix, images et texte sont repris automatiquement.',
       tag: 'Le plus rapide',
     }] : []),
     {

@@ -50,12 +50,21 @@ const TOOL = {
 
 const fence = (s: string) => s.replace(/</g, '‹').replace(/>/g, '›')
 
-export async function extractWithAi(input: { text: string; url?: string | null; imageCandidates?: string[] }): Promise<AiExtraction> {
+export async function extractWithAi(input: { text: string; url?: string | null; imageCandidates?: string[]; kind?: 'physical' | 'digital' }): Promise<AiExtraction> {
+  const digital = input.kind === 'digital'
   if (!env.KIE_API_KEY) throw new HttpError(404, 'Extraction IA non configurée', 'ai_unavailable')
   const candidates = (input.imageCandidates ?? []).slice(0, 60)
-  const prompt = `Tu extrais la fiche d'UN produit à partir du contenu d'une page de boutique en ligne${input.url ? ` (${input.url})` : ''}.
+  const prompt = `Tu extrais la fiche d'UN produit ${digital ? 'DIGITAL (ebook, formation en ligne, coaching, modèle, logiciel, fichier)' : ''} à partir du contenu d'une page de vente${input.url ? ` (${input.url})` : ''}.
 
-Règles :
+Règles :${
+    digital
+      ? `
+- Produit digital : pas de variantes de taille ou couleur. S'il existe plusieurs formules (ex. Essentiel, Premium), prends le prix de la formule principale ou la moins chère, et décris les formules dans la description.
+- Points forts : ce que l'acheteur obtient (format PDF ou vidéo, nombre de pages, de modules ou d'heures, accès à vie, bonus, certificat, groupe privé), seulement si c'est écrit sur la page.
+- Description : à qui s'adresse le produit, ce qu'on apprend ou obtient, le contenu (modules, chapitres), le format et l'accès. Reprends les questions fréquentes si la page en a.
+- Images : la couverture, le visuel du produit ou des captures du contenu (pas la photo de profil de l'auteur sauf s'il n'y a rien d'autre).`
+      : ''
+  }
 - Ne mets que des informations présentes dans la page. N'invente rien (caractéristiques, prix, avis, garanties).
 - Si la page n'est pas une page produit (blocage, captcha, accueil, catégorie), réponds found=false.
 - Prix : le prix de vente réel du produit, en nombre. Devise en code ISO.

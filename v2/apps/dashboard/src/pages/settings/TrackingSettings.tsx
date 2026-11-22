@@ -5,13 +5,16 @@ import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, ErrorState, Input, Skeleton } from '@/components/ui'
 import { useCheckoutSettings, useSaveTracking } from '@/hooks/resources'
 import { serverErrors, strOrNull, validate, type Errors } from '@/lib/form'
+import { SaveBar } from '@/components/SaveBar'
 import type { CheckoutSettingsResponse } from '@/lib/types'
 
 function Form({ tracking, canEdit }: { tracking: CheckoutSettingsResponse['tracking']; canEdit: boolean }) {
   const save = useSaveTracking()
   const toast = useToast()
-  const [f, setF] = useState({ facebookPixelId: tracking.facebookPixelId ?? '', facebookTestEventCode: tracking.facebookTestEventCode ?? '', tiktokPixelId: tracking.tiktokPixelId ?? '', token: '' })
+  const initial = { facebookPixelId: tracking.facebookPixelId ?? '', facebookTestEventCode: tracking.facebookTestEventCode ?? '', tiktokPixelId: tracking.tiktokPixelId ?? '', token: '' }
+  const [f, setF] = useState(initial)
   const [clearToken, setClearToken] = useState(false)
+  const dirty = JSON.stringify(f) !== JSON.stringify(initial) || clearToken
   const [errors, setErrors] = useState<Errors>({})
 
   const submit = (e: FormEvent) => {
@@ -84,11 +87,15 @@ function Form({ tracking, canEdit }: { tracking: CheckoutSettingsResponse['track
         </Card>
       </fieldset>
       {canEdit && (
-        <div className="flex justify-end">
-          <Button type="submit" variant="primary" loading={save.isPending}>
-            Enregistrer
-          </Button>
-        </div>
+        <SaveBar
+          submit
+          dirty={dirty}
+          saving={save.isPending}
+          onDiscard={() => {
+            setF(initial)
+            setClearToken(false)
+          }}
+        />
       )}
     </form>
   )

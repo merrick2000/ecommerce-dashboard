@@ -295,6 +295,7 @@ function Review({ preview, onRestart }: { preview: Preview; onRestart: () => voi
         </div>
       </Card>
 
+      {store?.kind !== 'digital' && (
       <Card title={`Variantes (${variants.length})`} description={variants.length ? 'Détectées sur la page. Les variantes indisponibles seront importées désactivées.' : 'Aucune variante détectée.'}>
         {variants.length > 0 && (
           <div className="space-y-3 p-4 sm:p-5">
@@ -314,6 +315,7 @@ function Review({ preview, onRestart }: { preview: Preview; onRestart: () => voi
           </div>
         )}
       </Card>
+      )}
 
       <Card title="Description">
         <div className="p-4 sm:p-5">
@@ -455,7 +457,7 @@ export default function ImportUrl() {
     <div className="mx-auto max-w-5xl">
       <PageHeader
         title="Importer depuis un lien"
-        description="Collez le lien d’une page produit (Shopify, WooCommerce, AliExpress, Jumia, Amazon, autre boutique) : nom, prix, variantes, images, vidéo et contenu sont détectés automatiquement."
+        description="Collez le lien d’une page produit : boutique (Shopify, WooCommerce, AliExpress, Jumia, Amazon) ou produit digital (Selar, Chariow, Gumroad, Systeme.io…). Nom, prix, images, contenu et questions fréquentes sont repris automatiquement."
         back={
           <Link to={`/stores/${storeId}/products`} className="mb-1 inline-block text-sm text-muted hover:text-fg">
             ← Produits

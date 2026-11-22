@@ -6,6 +6,7 @@ import { useCan } from '@/hooks/auth'
 import { usePaymentAccounts, useSavePaymentAccount } from '@/hooks/resources'
 import { ApiError } from '@/lib/api'
 import { FIELD_LABEL, PROVIDER_LABEL } from '@/lib/labels'
+import { SaveBar } from '@/components/SaveBar'
 import type { PaymentAccount } from '@/lib/types'
 
 export function CopyButton({ text }: { text: string }) {
@@ -154,11 +155,20 @@ function ProviderCard({ account }: { account: PaymentAccount }) {
         ) : (
           <p className="text-[12.5px] text-muted">L’URL de webhook apparaîtra après le premier enregistrement.</p>
         )}
-        <div className="flex justify-end">
-          <Button type="submit" variant="primary" disabled={!dirty} loading={save.isPending}>
-            Enregistrer
-          </Button>
-        </div>
+        {/* Une barre par moyen de paiement : collée en bas tant que sa carte est à l'écran. */}
+        <SaveBar
+          submit
+          dirty={dirty}
+          saving={save.isPending}
+          alwaysOnMobile={false}
+          label={`Enregistrer ${PROVIDER_LABEL[account.provider]}`}
+          onDiscard={() => {
+            setEnabled(account.enabled)
+            setMode(account.mode)
+            setValues({ sandbox: {}, live: {} })
+            setCleared({})
+          }}
+        />
       </form>
     </Card>
   )

@@ -340,7 +340,8 @@ function ldOffer(offers: unknown): { price: number | null; currency: string | nu
 }
 
 function fromJsonLd(nodes: Node[], base: string): { product: Partial<ImportDraft>; faqs: ImportDraft['faqs']; testimonials: ImportDraft['testimonials'] } | null {
-  const product = nodes.find((n) => typeIs(n, 'Product') || typeIs(n, 'ProductGroup'))
+  // Produits physiques, mais aussi formations (Course), ebooks (Book), logiciels, documents : les fiches digitales.
+  const product = nodes.find((n) => ['Product', 'ProductGroup', 'Course', 'Book', 'SoftwareApplication', 'DigitalDocument', 'CreativeWork'].some((t) => typeIs(n, t)))
   const faqPage = nodes.find((n) => typeIs(n, 'FAQPage'))
   const faqs = asArray(faqPage?.mainEntity as Node | Node[])
     .map((q) => ({ question: clean(q?.name, 300), answer: clean(stripTags(String((q?.acceptedAnswer as Node | undefined)?.text ?? '')), 3000) }))
@@ -626,7 +627,8 @@ function finishWarnings(draft: ImportDraft, warnings: string[], storeCurrency: s
  * 1. lecture directe (+ API Shopify) ; 2. Firecrawl (navigateur réel, proxys) si la page est bloquée,
  * rendue en JavaScript ou incomplète ; 3. IA sur le texte de la page pour combler ce qui manque.
  */
-export async function previewFromUrl(rawUrl: string, storeCurrency: string): Promise<UrlPreview> {
+export async function previewFromUrl(rawUrl: string, storeCurrency: string, kind: 'physical' | 'digital' = 'physical'): Promise<UrlPreview> {
+  let renderedPage: FetchedPage | null = null
   const url = new URL(rawUrl)
   const log: string[] = []
   let best: { r: Omit<UrlPreview, 'domain'>; page: FetchedPage | null } | null = null
@@ -666,7 +668,10 @@ export async function previewFromUrl(rawUrl: string, storeCurrency: string): Pro
     try {
       const page = await fetchWithFirecrawl(rawUrl)
       const blocked = softBlocked(rawUrl, page)
-      if (!blocked) lastPage = page
+      if (!blocked) {
+        lastPage = page
+        renderedPage = page
+      }
       const fromHtml = page.html && !blocked ? await extractProduct(page.html, page.url, { allowShopifyFetch: false }) : null
       if (page.product?.title && !(blocked && !page.product.variants?.length)) {
         const draft = combineBrowser(draftFromFirecrawl(page.product), fromHtml?.draft ?? null)
@@ -682,12 +687,13 @@ export async function previewFromUrl(rawUrl: string, storeCurrency: string): Pro
 
   // 3. IA sur le texte de la page : comble nom, prix, images, description manquants.
   const current = best as { r: Omit<UrlPreview, 'domain'>; page: FetchedPage | null } | null
-  const page = current?.page ?? lastPage
+  // L'IA lit de préférence la page rendue par le navigateur distant : prix et contenus affichés en JavaScript y figurent.
+  const page = renderedPage?.markdown ? renderedPage : (current?.page ?? lastPage)
   if (!done() && aiAvailable() && page && (page.markdown || page.html) && !(page.status >= 400 && !page.markdown)) {
     try {
       const text = page.markdown ?? htmlToText(page.html)
       if (text.length > 40) {
-        const ai = await extractWithAi({ text, url: page.url, imageCandidates: await imageCandidates(page) })
+        const ai = await extractWithAi({ text, url: page.url, imageCandidates: await imageCandidates(page), kind })
         if (ai.found) {
           const structured = (current?.r.detected ?? []).some((x) => x === 'shopify' || x === 'jsonld' || x === 'microdata')
           const draft = mergeAi(current?.r.draft ?? null, ai, structured)
@@ -711,17 +717,19 @@ export async function previewFromUrl(rawUrl: string, storeCurrency: string): Pro
       'page_unreadable',
     )
   }
-  const draft = final.r.draft
+  const draft = { ...final.r.draft, type: kind }
+  if (kind === 'digital') Object.assign(draft, { variants: [], variantLabel: null })
   if (draft.compareAtPrice != null && draft.price != null && draft.compareAtPrice <= draft.price) draft.compareAtPrice = null
   return { ...final.r, draft, warnings: finishWarnings(draft, final.r.warnings, storeCurrency), domain: url.hostname.replace(/^www\./, '') }
 }
 
 /** Secours ultime : le vendeur colle le texte de la page (et éventuellement des liens d'images) ; l'IA remplit la fiche. */
-export async function previewFromText(text: string, storeCurrency: string, sourceUrl?: string | null): Promise<UrlPreview> {
+export async function previewFromText(text: string, storeCurrency: string, sourceUrl?: string | null, kind: 'physical' | 'digital' = 'physical'): Promise<UrlPreview> {
   const candidates = dedupe([...text.matchAll(/https?:\/\/[^\s"'<>)]+\.(?:jpe?g|png|webp|avif)(?:\?[^\s"'<>)]*)?/gi)].map((m) => m[0]))
-  const ai = await extractWithAi({ text, url: sourceUrl, imageCandidates: candidates })
+  const ai = await extractWithAi({ text, url: sourceUrl, imageCandidates: candidates, kind })
   if (!ai.found && !ai.name) throw badRequest('Aucun produit reconnu dans ce texte. Copie bien le contenu de la page produit (nom, prix, description).', 'no_product')
-  const draft = mergeAi(null, ai)
+  const draft = { ...mergeAi(null, ai), type: kind }
+  if (kind === 'digital') Object.assign(draft, { variants: [], variantLabel: null })
   const domain = sourceUrl ? new URL(sourceUrl).hostname.replace(/^www\./, '') : 'texte collé'
   return { sourceUrl: sourceUrl ?? '', domain, detected: ['ai'], warnings: finishWarnings(draft, [], storeCurrency), draft, fetchedVia: 'text' }
 }
