@@ -138,7 +138,8 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
         .from(paymentAccounts)
         .where(and(eq(paymentAccounts.storeId, store.id), eq(paymentAccounts.enabled, true), inArray(paymentAccounts.provider, [...NATIVE_PROVIDERS])))
         .limit(1)
-      if (!account) throw badRequest('Le paiement en ligne n’est pas activé pour cette boutique', 'payments_disabled')
+      // Compte Payment Orchestrator de la plateforme (boutiques du super admin) : pas de ligne en base.
+      if (!account && !(await (await import('./po')).poAccount(store.id))) throw badRequest('Le paiement en ligne n’est pas activé pour cette boutique', 'payments_disabled')
     }
     const paymentMethod: PaymentMethod = choice === 'cod' ? 'cod' : choice === 'integration' ? 'external' : 'mobile_money'
 
@@ -456,6 +457,10 @@ export async function transitionFulfillment(
     return { becamePaid }
   })
   if (result.becamePaid) await enqueue('order.paid', { orderId })
+  // Commande annulée avant paiement : la session Payment Orchestrator ne doit plus être payable.
+  if (to === 'cancelled') {
+    void (await import('./po')).expireOrderSession(orderId).catch((e) => console.warn('[po] expiration', (e as Error).message))
+  }
 }
 
 async function restock(tx: Tx, orderId: string, sign: 1 | -1 = 1) {

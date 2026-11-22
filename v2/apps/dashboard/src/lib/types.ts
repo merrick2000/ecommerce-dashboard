@@ -3,6 +3,7 @@
  * Les entrées (payloads) viennent des schémas zod de @zuri/shared.
  */
 import type {
+  PoSettings,
   Bundle,
   Funnel,
   CheckoutSettings,
@@ -141,6 +142,15 @@ export interface OrderBase {
   discount: number
   shippingFee: number
   total: number
+  /** Payment Orchestrator : session, transaction, état, prestataire et opérateur utilisés, raison d'échec. */
+  poSessionId?: string | null
+  poTransactionId?: string | null
+  poStatus?: string | null
+  poLivemode?: boolean | null
+  poProvider?: string | null
+  poOperator?: string | null
+  poCountry?: string | null
+  poFailure?: string | null
   /** Coûts réels (bénéfice) : livreur et retour. */
   deliveryCost?: number | null
   returnCost?: number | null
@@ -303,6 +313,8 @@ export interface PaymentAccount {
   sandbox: Record<string, string | null>
   live: Record<string, string | null>
   webhookUrl: string | null
+  /** Payment Orchestrator : réglages du widget (null pour les autres moyens). */
+  settings?: PoSettings | null
 }
 
 export interface KpiBlock {

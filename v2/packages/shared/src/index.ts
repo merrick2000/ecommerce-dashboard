@@ -228,7 +228,7 @@ export const PAYMENT_METHODS = ['mobile_money', 'cod', 'external', 'manual'] as 
 export const paymentMethodSchema = z.enum(PAYMENT_METHODS)
 export type PaymentMethod = z.infer<typeof paymentMethodSchema>
 
-export const PAYMENT_PROVIDERS = ['feexpay', 'fedapay', 'paydunya', 'pawapay', 'chariow', 'maketou'] as const
+export const PAYMENT_PROVIDERS = ['orchestrator', 'feexpay', 'fedapay', 'paydunya', 'pawapay', 'chariow', 'maketou'] as const
 export const paymentProviderSchema = z.enum(PAYMENT_PROVIDERS)
 export type PaymentProvider = z.infer<typeof paymentProviderSchema>
 
@@ -446,7 +446,20 @@ export const PAYMENT_CHOICES = ['native', 'integration', 'cod'] as const
 export const paymentChoiceSchema = z.enum(PAYMENT_CHOICES)
 export type PaymentChoice = z.infer<typeof paymentChoiceSchema>
 
-export const NATIVE_PROVIDERS = ['feexpay', 'fedapay', 'paydunya', 'pawapay'] as const
+export const NATIVE_PROVIDERS = ['orchestrator', 'feexpay', 'fedapay', 'paydunya', 'pawapay'] as const
+
+/**
+ * Payment Orchestrator (payment.zurisell.store) : réglages d'affichage du paiement, par boutique.
+ * Le widget s'ouvre en fenêtre sur la page (modal), en redirection, ou en auto (fenêtre sur ordinateur, redirection sur mobile).
+ */
+export const poSettingsSchema = z.object({
+  widgetMode: z.enum(['auto', 'modal', 'redirect']).default('auto'),
+  locale: z.enum(['fr', 'en']).nullable().default(null),
+  allowedCountries: z.array(z.string().length(2).toUpperCase()).max(30).default([]),
+  allowedOperators: z.array(z.string().trim().toLowerCase().min(2).max(20)).max(20).default([]),
+  defaultCountry: z.string().length(2).toUpperCase().nullable().default(null),
+})
+export type PoSettings = z.infer<typeof poSettingsSchema>
 export const INTEGRATION_PLATFORMS = ['chariow', 'maketou', 'selar', 'link'] as const
 export const integrationPlatformSchema = z.enum(INTEGRATION_PLATFORMS)
 export type IntegrationPlatform = z.infer<typeof integrationPlatformSchema>

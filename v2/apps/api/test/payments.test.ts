@@ -1,3 +1,4 @@
+import type { PaymentProvider } from '@zuri/shared'
 import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../src/db/client'
@@ -11,7 +12,7 @@ import { Client } from './helpers'
 
 /** Provider simulé : on pilote ses réponses depuis le test. */
 const state: Record<string, { initiate: 'ok' | 'fail' | 'redirect'; status: StatusResult; calls: number }> = {}
-function fake(name: 'feexpay' | 'fedapay' | 'paydunya' | 'pawapay' | 'chariow' | 'maketou'): PaymentProviderClient {
+function fake(name: PaymentProvider): PaymentProviderClient {
   state[name] ??= { initiate: 'ok', status: { status: 'pending' }, calls: 0 }
   return {
     name,

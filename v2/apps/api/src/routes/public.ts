@@ -15,6 +15,7 @@ import { badRequest, HttpError, notFound } from '../lib/errors'
 import { clientIp, rateLimit } from '../lib/rate-limit'
 import { v } from '../lib/validate'
 import { answerFunnelOffer, createPublicOrder, normalizePhone } from '../services/orders'
+import { poAccount } from '../services/po'
 import { displayPrice, evaluatePromoCode } from '../services/pricing'
 import { publicUrl, signedUrl } from '../services/storage'
 import { DEFAULT_CHECKOUT, withCheckoutDefaults } from './stores'
@@ -134,7 +135,9 @@ export const publicRoutes = new Hono<AppEnv>()
         : [],
       db.select({ provider: paymentAccounts.provider }).from(paymentAccounts).where(and(eq(paymentAccounts.storeId, store.id), eq(paymentAccounts.enabled, true))),
     ])
-    const onlinePaymentEnabled = providers.some((p) => (NATIVE_PROVIDERS as readonly string[]).includes(p.provider))
+    // Payment Orchestrator (compte de la boutique, ou de la plateforme pour le super admin) : passe avant les autres moyens.
+    const poAcc = product.payment.method === 'native' ? await poAccount(store.id) : null
+    const onlinePaymentEnabled = Boolean(poAcc) || providers.some((p) => (NATIVE_PROVIDERS as readonly string[]).includes(p.provider))
     const { bundle, funnel } = await publicLinks(store, product)
     c.header('Cache-Control', 'public, max-age=30, stale-while-revalidate=120')
     return c.json({
@@ -176,6 +179,8 @@ export const publicRoutes = new Hono<AppEnv>()
       orderForm: parseOrderForm(product.content.orderForm ?? cfg?.settings.form),
       tracking: { facebookPixelId: cfg?.facebookPixelId ?? null, tiktokPixelId: cfg?.tiktokPixelId ?? null },
       onlinePaymentEnabled,
+      /** Paiement en ligne : via Payment Orchestrator (widget) ou directement réseau par réseau. Aucun secret ici. */
+      paymentGateway: poAcc ? { kind: 'orchestrator' as const, widgetMode: poAcc.settings.widgetMode, locale: poAcc.settings.locale, widgetUrl: `${env.PO_BASE_URL.replace(/\/$/, '')}/widget.js`, test: !poAcc.livemode } : { kind: 'direct' as const },
     })
   })
   .post('/promo/check', rateLimit({ key: 'promo', limit: 30, windowSec: 300 }), v('json', z.object({ storeSlug: z.string(), productId: productIdSchema, code: z.string().trim().toUpperCase().max(30), subtotal: z.coerce.number().min(0) })), async (c) => {
@@ -211,8 +216,11 @@ export const publicRoutes = new Hono<AppEnv>()
     const [cfg] = await db.select({ settings: checkoutSettings.settings, facebookPixelId: checkoutSettings.facebookPixelId, tiktokPixelId: checkoutSettings.tiktokPixelId }).from(checkoutSettings).where(eq(checkoutSettings.storeId, order.storeId)).limit(1)
     const items = await db.select({ productId: orderItems.productId, name: orderItems.name, variantName: orderItems.variantName, quantity: orderItems.quantity, total: orderItems.total, productType: orderItems.productType }).from(orderItems).where(eq(orderItems.orderId, order.id))
     c.header('Cache-Control', 'no-store')
+    // Paiement en attente via Payment Orchestrator : la page commande propose de finaliser avec le widget.
+    const poAcc = order.paymentStatus === 'pending' && order.paymentMethod === 'mobile_money' ? await poAccount(order.storeId) : null
     return c.json({
       orderNumber: order.orderNumber,
+      paymentGateway: poAcc ? { kind: 'orchestrator' as const, widgetMode: poAcc.settings.widgetMode, locale: poAcc.settings.locale, widgetUrl: `${env.PO_BASE_URL.replace(/\/$/, '')}/widget.js`, test: !poAcc.livemode } : { kind: 'direct' as const },
       store: store ? publicStore(store) : null,
       customerName: order.customerName,
       items,

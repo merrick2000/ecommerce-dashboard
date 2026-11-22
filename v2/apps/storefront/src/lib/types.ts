@@ -62,6 +62,8 @@ export interface PublicFunnel {
   thankYou: { buttonLabel: string; buttonUrl: string } | null
 }
 
+export type PaymentGateway = { kind: 'orchestrator'; widgetMode: 'auto' | 'modal' | 'redirect'; locale: 'fr' | 'en' | null; widgetUrl: string; test: boolean } | { kind: 'direct' }
+
 export interface CheckoutData {
   store: PublicStore
   product: {
@@ -85,6 +87,8 @@ export interface CheckoutData {
   }
   /** Tunnel de vente (order bump, upsells, remerciement). */
   funnel: PublicFunnel | null
+  /** Paiement en ligne : Payment Orchestrator (widget) ou direct (réseau par réseau). */
+  paymentGateway?: PaymentGateway
   zones: Zone[]
   checkout: CheckoutSettings
   orderForm: OrderForm
@@ -100,6 +104,7 @@ export interface CatalogData {
 
 export interface PublicOrder {
   orderNumber: string
+  paymentGateway?: PaymentGateway
   store: PublicStore | null
   customerName: string
   items: { name: string; variantName: string | null; quantity: number; total: number; productType: ProductType }[]

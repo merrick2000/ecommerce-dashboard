@@ -129,6 +129,11 @@ const fr = {
     failed: 'Le paiement a échoué. Vérifiez votre solde puis réessayez.',
     loading: 'Chargement…',
     badPhone: 'Numéro Mobile Money invalide',
+    poPay: 'Payer {0} par Mobile Money',
+    poHint: 'MTN, Moov, Orange, Wave… Vous validez sur votre téléphone.',
+    poTest: 'Mode test : aucun argent réel n’est débité.',
+    poFailed: 'Paiement refusé. Vérifiez votre solde ou essayez un autre numéro.',
+    poConfirming: 'Paiement reçu, confirmation en cours…',
   },
   order: {
     title: 'Ma commande',
@@ -297,6 +302,11 @@ const en: Dict = {
     failed: 'Payment failed. Check your balance and try again.',
     loading: 'Loading…',
     badPhone: 'Invalid Mobile Money number',
+    poPay: 'Pay {0} with Mobile Money',
+    poHint: 'MTN, Moov, Orange, Wave… You confirm on your phone.',
+    poTest: 'Test mode: no real money is charged.',
+    poFailed: 'Payment declined. Check your balance or try another number.',
+    poConfirming: 'Payment received, confirming…',
   },
   order: {
     title: 'My order',

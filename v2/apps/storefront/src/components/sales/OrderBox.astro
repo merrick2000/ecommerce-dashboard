@@ -59,6 +59,7 @@ const m = (n: number) => money(n, price.currency, store.locale)
         form={d.orderForm}
         storeName={store.name}
         funnel={d.funnel ?? null}
+        gateway={d.paymentGateway ?? { kind: 'direct' }}
       />
     ) : (
       <div class="notice warn soldout">

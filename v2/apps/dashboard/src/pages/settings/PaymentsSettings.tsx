@@ -1,10 +1,10 @@
 import { Check, Copy, Lock } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useToast } from '@/components/Toast'
-import { Badge, Button, Card, EmptyState, ErrorState, Input, Segmented, Skeleton, Switch } from '@/components/ui'
-import { useCan } from '@/hooks/auth'
+import { Badge, Button, Card, EmptyState, ErrorState, Input, Segmented, Select, Skeleton, Switch } from '@/components/ui'
+import { useCan, useStoreId } from '@/hooks/auth'
 import { usePaymentAccounts, useSavePaymentAccount } from '@/hooks/resources'
-import { ApiError } from '@/lib/api'
+import { api, ApiError, errorMessage } from '@/lib/api'
 import { FIELD_LABEL, PROVIDER_LABEL } from '@/lib/labels'
 import { SaveBar } from '@/components/SaveBar'
 import type { PaymentAccount } from '@/lib/types'
@@ -40,7 +40,27 @@ function ProviderCard({ account }: { account: PaymentAccount }) {
   const [values, setValues] = useState<Record<'sandbox' | 'live', Record<string, string>>>({ sandbox: {}, live: {} })
   const [cleared, setCleared] = useState<Record<string, boolean>>({})
   const [credMode, setCredMode] = useState<'sandbox' | 'live'>(account.mode)
-  const dirty = enabled !== account.enabled || mode !== account.mode || Object.values(values.sandbox).some(Boolean) || Object.values(values.live).some(Boolean) || Object.values(cleared).some(Boolean)
+  const isPo = account.provider === 'orchestrator'
+  const initialSettings = account.settings ?? { widgetMode: 'auto' as const, locale: null, allowedCountries: [], allowedOperators: [], defaultCountry: null }
+  const [settings, setSettings] = useState(initialSettings)
+  const [testing, setTesting] = useState<string | null>(null)
+  const storeId = useStoreId()
+  const dirty =
+    enabled !== account.enabled ||
+    mode !== account.mode ||
+    Object.values(values.sandbox).some(Boolean) ||
+    Object.values(values.live).some(Boolean) ||
+    Object.values(cleared).some(Boolean) ||
+    (isPo && JSON.stringify(settings) !== JSON.stringify(initialSettings))
+  const testConnection = async () => {
+    setTesting('…')
+    try {
+      const r = await api.post<{ ok: boolean; merchant?: { name: string }; livemode?: boolean; error?: string }>(`/stores/${storeId}/payment-accounts/orchestrator/test`)
+      setTesting(r.ok ? `Connecté à « ${r.merchant?.name} » (${r.livemode ? 'production' : 'test'})` : `Échec : ${r.error}`)
+    } catch (e) {
+      setTesting(`Échec : ${errorMessage(e)}`)
+    }
+  }
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -54,7 +74,7 @@ function ProviderCard({ account }: { account: PaymentAccount }) {
       return out
     }
     save.mutate(
-      { provider: account.provider, body: { enabled, mode, sandbox: build('sandbox'), live: build('live') } },
+      { provider: account.provider, body: { enabled, mode, sandbox: build('sandbox'), live: build('live'), ...(isPo ? { settings } : {}) } },
       {
         onSuccess: () => {
           setValues({ sandbox: {}, live: {} })
@@ -141,6 +161,61 @@ function ProviderCard({ account }: { account: PaymentAccount }) {
             })}
           </div>
         </div>
+        {isPo && (
+          <div className="space-y-3 rounded-lg border border-line p-3">
+            <p className="text-[13px] font-medium text-muted">Paiement sur ta boutique</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Select
+                label="Affichage du paiement"
+                value={settings.widgetMode}
+                onChange={(e) => setSettings({ ...settings, widgetMode: e.target.value as typeof settings.widgetMode })}
+                options={[
+                  { value: 'auto', label: 'Auto (fenêtre sur ordinateur, page sur mobile)' },
+                  { value: 'modal', label: 'Fenêtre sur la page de vente' },
+                  { value: 'redirect', label: 'Page de paiement séparée' },
+                ]}
+              />
+              <Select
+                label="Langue"
+                value={settings.locale ?? ''}
+                onChange={(e) => setSettings({ ...settings, locale: (e.target.value || null) as typeof settings.locale })}
+                options={[
+                  { value: '', label: 'Celle du navigateur du client' },
+                  { value: 'fr', label: 'Français' },
+                  { value: 'en', label: 'Anglais' },
+                ]}
+              />
+              <Input
+                label="Pays autorisés"
+                optional
+                placeholder="BJ, CI, SN (vide = tous)"
+                value={settings.allowedCountries.join(', ')}
+                onChange={(e) => setSettings({ ...settings, allowedCountries: e.target.value.toUpperCase().split(/[\s,;]+/).filter((x) => /^[A-Z]{2}$/.test(x)) })}
+              />
+              <Input
+                label="Opérateurs autorisés"
+                optional
+                placeholder="mtn, moov, wave (vide = tous)"
+                value={settings.allowedOperators.join(', ')}
+                onChange={(e) => setSettings({ ...settings, allowedOperators: e.target.value.toLowerCase().split(/[\s,;]+/).filter((x) => /^[a-z0-9_-]{2,20}$/.test(x)) })}
+              />
+              <Input
+                label="Pays présélectionné"
+                optional
+                placeholder="Pays de la boutique par défaut"
+                maxLength={2}
+                value={settings.defaultCountry ?? ''}
+                onChange={(e) => setSettings({ ...settings, defaultCountry: /^[A-Za-z]{2}$/.test(e.target.value) ? e.target.value.toUpperCase() : null })}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button size="sm" onClick={testConnection} disabled={!account[account.mode].secretKey}>
+                Tester la connexion
+              </Button>
+              {testing && <span className="text-[13px] text-muted">{testing}</span>}
+            </div>
+          </div>
+        )}
         {account.webhookUrl ? (
           <div>
             <p className="mb-1.5 text-[13px] font-medium">URL de webhook</p>
@@ -167,6 +242,7 @@ function ProviderCard({ account }: { account: PaymentAccount }) {
             setMode(account.mode)
             setValues({ sandbox: {}, live: {} })
             setCleared({})
+            setSettings(initialSettings)
           }}
         />
       </form>
@@ -190,6 +266,9 @@ export function PaymentsSettings() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted">Les identifiants sont chiffrés. Les valeurs actuelles ne sont jamais affichées en entier.</p>
+      <p className="rounded-lg bg-accent-soft p-3 text-[13px]">
+        <strong>Recommandé : Payment Orchestrator.</strong> Un seul compte pour MTN, Moov, Orange, Wave… avec bascule automatique vers un autre prestataire en cas de panne. Crée tes clés sur payment.zurisell.store (Développeurs, Clés API), colle la clé secrète et le secret de webhook ci-dessous, puis ajoute l’URL de webhook affichée dans Développeurs, Webhooks. Commence en mode test.
+      </p>
       {data.map((a) => (
         <ProviderCard key={`${a.provider}-${a.enabled}-${a.mode}-${JSON.stringify(a.sandbox)}-${JSON.stringify(a.live)}`} account={a} />
       ))}

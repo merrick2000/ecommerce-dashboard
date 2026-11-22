@@ -8,6 +8,7 @@ import { decryptJson } from '../lib/crypto'
 import { env } from '../lib/env'
 import { badRequest, conflict, HttpError, notFound } from '../lib/errors'
 import { markOrderPaid } from '../services/orders'
+import { reconcilePoOrders, refreshPoOrder } from '../services/po'
 import { Chariow } from './providers/chariow'
 import { FedaPay } from './providers/fedapay'
 import { FeexPay } from './providers/feexpay'
@@ -38,6 +39,9 @@ export let makeClient = (provider: PaymentProvider, mode: ProviderMode, c: Recor
       return c.apiKey ? new Chariow({ apiKey: c.apiKey }) : null
     case 'maketou':
       return c.apiKey ? new Maketou({ apiKey: c.apiKey }) : null
+    // Payment Orchestrator : pas de paiement réseau par réseau, une session de paiement (voir services/po.ts).
+    case 'orchestrator':
+      return null
   }
 }
 export function setClientFactory(f: typeof makeClient) {
@@ -218,6 +222,8 @@ export async function refreshOrderPayment(orderId: string): Promise<'paid' | 'pe
   const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1)
   if (!order) return 'failed'
   if (order.paymentStatus === 'paid') return 'paid'
+  // Payment Orchestrator : lecture serveur de la session (seule voie avec le webhook signé).
+  if (order.poSessionId) return refreshPoOrder(order)
   const txs = await db
     .select()
     .from(paymentTransactions)
@@ -313,5 +319,6 @@ export async function reconcilePendingPayments() {
     .limit(200)
   let paid = 0
   for (const { orderId } of rows) if ((await refreshOrderPayment(orderId)) === 'paid') paid++
-  return { checked: rows.length, paid }
+  const po = await reconcilePoOrders()
+  return { checked: rows.length + po.checked, paid: paid + po.paid }
 }

@@ -183,6 +183,24 @@ function CostsCard({ order, storeId }: { order: Order; storeId: string }) {
   )
 }
 
+const PO_STATUS_LABEL: Record<string, string> = { unpaid: 'Non payée', paid: 'Payée', failed: 'Échec', expired: 'Expirée', refunded: 'Remboursée', mismatch: 'Montant incorrect' }
+/** Raisons d'échec Payment Orchestrator, en clair pour le vendeur. */
+const PO_FAILURE_LABEL: Record<string, string> = {
+  customer_declined: 'le client a refusé ou s’est trompé de code',
+  customer_timeout: 'le client n’a pas validé à temps',
+  customer_unreachable: 'téléphone éteint ou hors réseau',
+  insufficient_balance: 'solde insuffisant',
+  payer_limit_reached: 'plafond du portefeuille atteint',
+  invalid_phone: 'numéro invalide pour ce pays',
+  not_on_operator: 'le numéro n’est pas sur cet opérateur',
+  wallet_locked: 'portefeuille bloqué',
+  duplicate_transaction: 'paiement en double refusé par l’opérateur',
+  mno_unavailable: 'opérateur momentanément indisponible',
+  provider_error: 'erreur technique du prestataire',
+  network_error: 'erreur réseau du prestataire',
+  cancelled: 'paiement annulé',
+}
+
 function PaymentCard({ order, canEdit }: { order: Order; canEdit: boolean }) {
   const pay = useOrderPayment(order.id)
   const toast = useToast()
@@ -198,8 +216,24 @@ function PaymentCard({ order, canEdit }: { order: Order; canEdit: boolean }) {
         <Stat label="Méthode" value={<span className="font-medium">{PAYMENT_METHOD_LABEL[order.paymentMethod]}</span>} />
         <Stat label="Statut" value={<PaymentBadge status={order.paymentStatus} />} />
         {order.paidAt && <Stat label="Payée le" value={dateTime(order.paidAt)} />}
-        {order.paymentProvider && <Stat label="Prestataire" value={order.paymentProvider} sub={order.paymentRef ?? undefined} />}
+        {order.paymentProvider && !order.poSessionId && <Stat label="Prestataire" value={order.paymentProvider} sub={order.paymentRef ?? undefined} />}
       </dl>
+      {order.poSessionId && (
+        <div className="mt-4 rounded-lg border border-line p-3">
+          <p className="mb-2 flex items-center gap-2 text-[13px] font-medium">
+            Payment Orchestrator
+            {order.poLivemode === false && <Badge tone="amber">Test</Badge>}
+            {order.poStatus && <Badge tone={order.poStatus === 'paid' ? 'green' : order.poStatus === 'failed' || order.poStatus === 'mismatch' ? 'red' : 'neutral'}>{PO_STATUS_LABEL[order.poStatus] ?? order.poStatus}</Badge>}
+          </p>
+          <dl className="grid grid-cols-2 gap-3 text-sm">
+            <Stat label="Session" value={<code className="text-[12px] break-all">{order.poSessionId}</code>} />
+            {order.poTransactionId && <Stat label="Transaction" value={<code className="text-[12px] break-all">{order.poTransactionId}</code>} />}
+            {order.poProvider && <Stat label="Prestataire" value={order.poProvider} />}
+            {order.poOperator && <Stat label="Opérateur" value={`${order.poOperator.toUpperCase()}${order.poCountry ? ` · ${order.poCountry}` : ''}`} />}
+          </dl>
+          {order.poFailure && <p className="mt-2 text-[13px] text-red-600 dark:text-red-400">Dernier échec : {PO_FAILURE_LABEL[order.poFailure.split(' : ')[0]!] ?? order.poFailure}</p>}
+        </div>
+      )}
       {canEdit && (
         <div className="mt-4 flex items-end gap-2 border-t border-line pt-4">
           <Select label="Changer le statut" wrapClass="flex-1" value={status} onChange={(e) => setStatus(e.target.value as PaymentStatus)} options={PAYMENT_STATUSES.map((s) => ({ value: s, label: PAYMENT_STATUS_LABEL[s] }))} />

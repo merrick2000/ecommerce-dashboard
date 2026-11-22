@@ -83,6 +83,7 @@ const numItems = o?.items.reduce((s, i) => s + i.quantity, 0) ?? 1
             canDownload={o.canDownload}
             t={t}
             pt={T.pay}
+            gateway={o.paymentGateway}
           />
         </section>
 

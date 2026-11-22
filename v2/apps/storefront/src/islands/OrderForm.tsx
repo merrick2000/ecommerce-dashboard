@@ -11,7 +11,8 @@ import { getJSON, setJSON } from '../client/storage'
 import { initiateCheckout, noTrack, orderAttribution, purchaseOnce, track } from '../client/track'
 import { money, roundMoney } from '../lib/format'
 import type { FormStrings, PayStrings } from '../lib/i18n'
-import type { CreatedOrder, DisplayPrice, PaymentResponse, PublicFunnel, PublicOffer, Variant, Zone } from '../lib/types'
+import type { CreatedOrder, DisplayPrice, PaymentGateway, PaymentResponse, PublicFunnel, PublicOffer, Variant, Zone } from '../lib/types'
+import PoPayStep from './PoPayStep'
 import PaymentStep from './PaymentStep'
 
 export interface OrderFormProps {
@@ -46,6 +47,8 @@ export interface OrderFormProps {
   preview?: boolean
   /** Tunnel de vente : order bump, offres après commande, bouton de remerciement. */
   funnel?: PublicFunnel | null
+  /** Paiement en ligne : Payment Orchestrator (widget) ou direct. */
+  gateway?: PaymentGateway
 }
 
 /** Champs intégrés, « form » (erreur générale) ou clé d'un champ personnalisé (« cf_xxxx »). */
@@ -454,7 +457,11 @@ export default function OrderForm(p: OrderFormProps) {
     return (
       <div ref={rootRef}>
         {summary()}
-        <PaymentStep token={stage.token} slug={p.slug} total={stage.total} currency={p.currency} locale={p.locale} storeCountry={p.country} phone={phone} t={p.pt} onPaid={() => location.assign(p.orderBase + stage.token)} />
+        {p.gateway?.kind === 'orchestrator' ? (
+          <PoPayStep token={stage.token} total={stage.total} currency={p.currency} locale={p.locale} gateway={p.gateway} orderUrl={p.orderBase + stage.token} t={p.pt} />
+        ) : (
+          <PaymentStep token={stage.token} slug={p.slug} total={stage.total} currency={p.currency} locale={p.locale} storeCountry={p.country} phone={phone} t={p.pt} onPaid={() => location.assign(p.orderBase + stage.token)} />
+        )}
       </div>
     )
   }

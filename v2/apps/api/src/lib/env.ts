@@ -30,6 +30,10 @@ const schema = z.object({
   KIE_MODEL: z.string().optional(),
   /** Firecrawl (rendu JavaScript + proxys anti-blocage) : secours de l'import de produit par lien. */
   FIRECRAWL_API_KEY: z.string().optional(),
+  /** Payment Orchestrator (payment.zurisell.store) : compte de la plateforme (boutiques du super admin, webhook global). */
+  PO_BASE_URL: z.string().url().default('https://payment.zurisell.store'),
+  PO_SECRET_KEY: z.string().optional(),
+  PO_WEBHOOK_SECRET: z.string().optional(),
   /** Inscriptions ouvertes à tous (par défaut). « false » : seul le premier compte peut s'inscrire (outil perso). */
   REGISTRATION_OPEN: z.enum(['true', 'false']).default('true'),
 })

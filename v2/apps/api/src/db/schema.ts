@@ -349,6 +349,8 @@ export const paymentAccounts = pgTable(
     credentialsEnc: text('credentials_enc'),
     /** Secret de webhook propre à ce compte (URL de webhook par boutique). */
     webhookToken: varchar('webhook_token', { length: 64 }).notNull(),
+    /** Réglages non secrets propres au provider (ex. Payment Orchestrator : mode du widget, pays autorisés). */
+    settings: jsonb('settings').$type<Record<string, unknown> | null>(),
     updatedAt: updatedAt(),
   },
   (t) => [uniqueIndex('payment_accounts_store_provider_uq').on(t.storeId, t.provider), uniqueIndex('payment_accounts_webhook_uq').on(t.webhookToken)],
@@ -525,6 +527,21 @@ export const orders = pgTable(
     discount: money('discount').notNull().default(0),
     shippingFee: money('shipping_fee').notNull().default(0),
     total: money('total').notNull(),
+    // Payment Orchestrator : session de paiement, transaction réussie, état, mode test/live.
+    poSessionId: varchar('po_session_id', { length: 80 }),
+    poTransactionId: varchar('po_transaction_id', { length: 80 }),
+    /** unpaid | paid | failed | expired | refunded | mismatch */
+    poStatus: varchar('po_status', { length: 20 }),
+    poLivemode: boolean('po_livemode'),
+    /** Numéro de la session (une nouvelle session si le total change ou après expiration). */
+    poSessionSeq: smallint('po_session_seq').notNull().default(0),
+    /** Prestataire et opérateur réellement utilisés (pawapay, mtn…), raison d'échec. */
+    poProvider: varchar('po_provider', { length: 30 }),
+    poOperator: varchar('po_operator', { length: 30 }),
+    poCountry: varchar('po_country', { length: 2 }),
+    poFailure: varchar('po_failure', { length: 300 }),
+    /** Dernière vérification serveur de la session (réconciliation toutes les 15 min). */
+    poCheckedAt: ts('po_checked_at'),
     /** Coût réel du livreur pour cette commande (copié de la zone à la création, modifiable). */
     deliveryCost: money('delivery_cost'),
     /** Coût du retour si la commande est refusée (copié de la zone, modifiable). */
@@ -569,6 +586,7 @@ export const orders = pgTable(
   },
   (t) => [
     index('orders_store_created_idx').on(t.storeId, t.createdAt),
+    index('orders_po_session_idx').on(t.poSessionId),
     index('orders_store_archived_idx').on(t.storeId, t.archivedAt),
     index('orders_store_fulfillment_idx').on(t.storeId, t.fulfillmentStatus),
     index('orders_store_payment_idx').on(t.storeId, t.paymentStatus),
@@ -602,6 +620,13 @@ export const orderItems = pgTable(
   },
   (t) => [index('order_items_order_idx').on(t.orderId), index('order_items_product_idx').on(t.productId)],
 )
+
+/** Événements webhook Payment Orchestrator déjà traités (un même événement peut arriver plusieurs fois). */
+export const poWebhookEvents = pgTable('po_webhook_events', {
+  eventId: varchar('event_id', { length: 80 }).primaryKey(),
+  type: varchar('type', { length: 40 }),
+  receivedAt: createdAt(),
+})
 
 /** Dépenses de la boutique (publicité, emballage, salaires, outils…) déduites du bénéfice réel. */
 export const storeExpenses = pgTable(

@@ -8,6 +8,8 @@ import { getJSON } from '../client/storage'
 import { purchaseOnce, setTrackConfig } from '../client/track'
 import type { OrderStrings, PayStrings } from '../lib/i18n'
 import PaymentStep from './PaymentStep'
+import PoPayStep from './PoPayStep'
+import type { PaymentGateway } from '../lib/types'
 
 export interface OrderLiveProps {
   token: string
@@ -25,6 +27,7 @@ export interface OrderLiveProps {
   canDownload: boolean
   t: OrderStrings
   pt: PayStrings
+  gateway?: PaymentGateway
 }
 
 const POLL_MS = 4000
@@ -109,7 +112,11 @@ export default function OrderLive(p: OrderLiveProps) {
           )}
           {p.paymentMethod === 'mobile_money' &&
             (showPay ? (
+              p.gateway?.kind === 'orchestrator' ? (
+                <PoPayStep token={p.token} total={p.total} currency={p.currency} locale={p.locale} gateway={p.gateway} orderUrl={location.pathname} t={p.pt} />
+              ) : (
               <PaymentStep token={p.token} slug={p.slug} total={p.total} currency={p.currency} locale={p.locale} storeCountry={p.storeCountry} t={p.pt} onPaid={() => location.reload()} />
+              )
             ) : (
               <button type="button" class="btn btn-block btn-lg" onClick={() => setShowPay(true)}>
                 {p.t.finish}

@@ -55,6 +55,7 @@ export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
 }
 
 export const PROVIDER_LABEL: Record<PaymentProvider, string> = {
+  orchestrator: 'Payment Orchestrator',
   feexpay: 'FeexPay',
   fedapay: 'FedaPay',
   paydunya: 'PayDunya',
@@ -64,6 +65,7 @@ export const PROVIDER_LABEL: Record<PaymentProvider, string> = {
 }
 
 export const FIELD_LABEL: Record<string, string> = {
+  secretKey: 'Clé secrète (sk_…)',
   apiKey: 'Clé API',
   shopId: 'ID boutique',
   webhookSecret: 'Secret webhook',
