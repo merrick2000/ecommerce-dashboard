@@ -829,6 +829,8 @@ export const orderListQuerySchema = z.object({
   q: z.string().max(100).optional(),
   type: productTypeSchema.optional(),
   paymentStatus: paymentStatusSchema.optional(),
+  /** Vue des produits digitaux : payée, en attente, échouée (dernière tentative refusée), remboursée. */
+  paymentState: z.enum(['paid', 'pending', 'failed', 'refunded']).optional(),
   fulfillmentStatus: fulfillmentStatusSchema.optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),

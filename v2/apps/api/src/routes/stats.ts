@@ -343,3 +343,67 @@ export const funnelStatsRoute = new Hono<AppEnv>().get(
     })
   },
 )
+
+/**
+ * Tableau de bord des boutiques digitales : tunnel de paiement (commandes créées, payées, en attente, refusées),
+ * raisons des refus, opérateurs Mobile Money, paniers abandonnés et récupérés, téléchargements.
+ */
+export const digitalStatsRoute = new Hono<AppEnv>().get('/digital', requirePermission('stats.view'), v('query', rangeSchema), async (c) => {
+  const store = c.get('store')
+  const access = c.get('access')
+  const revenueVisible = can(access, 'stats.revenue')
+  const { from, to } = c.req.valid('query')
+  const tz = store.timezone
+  const startDay = from.toISOString().slice(0, 10)
+  const endDay = to.toISOString().slice(0, 10)
+  const start = localMidnight(startDay, tz)
+  const end = localMidnight(addDays(endDay, 1), tz)
+  const scope = orderScope(access)
+  const inRange = dsql`${orders.storeId} = ${store.id} and ${orders.createdAt} >= ${start.toISOString()}::timestamptz and ${orders.createdAt} < ${end.toISOString()}::timestamptz ${scope ? dsql`and ${scope}` : dsql``}`
+  const failed = dsql`(${orders.paymentStatus} = 'failed' or (${orders.paymentStatus} = 'pending' and coalesce(${orders.poStatus}, '') in ('failed', 'mismatch')))`
+  const leadScope = access.productIds ? (access.productIds.length ? dsql`and l.product_id in (${dsql.join(access.productIds.map((id) => dsql`${id}`), dsql`, `)})` : dsql`and false`) : dsql``
+
+  const [funnel, reasons, operators, carts, dl] = await Promise.all([
+    db.execute<{ created: number; paid: number; pending: number; failed: number; refunded: number; revenue: number }>(dsql`
+      select count(*)::int as created,
+             count(*) filter (where ${orders.paymentStatus} = 'paid')::int as paid,
+             count(*) filter (where ${orders.paymentStatus} = 'pending' and not ${failed})::int as pending,
+             count(*) filter (where ${failed})::int as failed,
+             count(*) filter (where ${orders.paymentStatus} = 'refunded')::int as refunded,
+             coalesce(sum(${orders.total}) filter (where ${orders.paymentStatus} = 'paid'), 0)::float as revenue
+      from ${orders} where ${inRange}`),
+    db.execute<{ reason: string; n: number }>(dsql`
+      select split_part(${orders.poFailure}, ' : ', 1) as reason, count(*)::int as n
+      from ${orders} where ${inRange} and ${orders.poFailure} is not null and ${orders.paymentStatus} <> 'paid'
+      group by 1 order by 2 desc limit 8`),
+    db.execute<{ operator: string; n: number; revenue: number }>(dsql`
+      select ${orders.poOperator} as operator, count(*)::int as n, coalesce(sum(${orders.total}), 0)::float as revenue
+      from ${orders} where ${inRange} and ${orders.paymentStatus} = 'paid' and ${orders.poOperator} is not null
+      group by 1 order by 2 desc limit 8`),
+    db.execute<{ open: number; recovered: number; recovered_revenue: number }>(dsql`
+      select count(*) filter (where l.converted_at is null)::int as open,
+             count(*) filter (where l.converted_at is not null)::int as recovered,
+             coalesce(sum(o.total) filter (where l.converted_at is not null), 0)::float as recovered_revenue
+      from leads l left join orders o on o.id = l.converted_order_id
+      where l.store_id = ${store.id} and l.created_at >= ${start.toISOString()}::timestamptz and l.created_at < ${end.toISOString()}::timestamptz ${leadScope}`),
+    db.execute<{ downloads: number; never: number }>(dsql`
+      select (select count(*)::int from downloads d join ${orders} on ${orders.id} = d.order_id where ${inRange}) as downloads,
+             count(*) filter (where not exists (select 1 from downloads d2 where d2.order_id = ${orders.id}))::int as never
+      from ${orders} where ${inRange} and ${orders.paymentStatus} = 'paid'`),
+  ])
+  const f = [...funnel][0]!
+  const cr = [...carts][0]!
+  const d = [...dl][0]!
+  const rate = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 1000) / 10 : null)
+  const m = (n: number) => (revenueVisible ? Math.round(Number(n) * 100) / 100 : null)
+  return c.json({
+    range: { from: startDay, to: endDay },
+    currency: store.currency,
+    revenueVisible,
+    payments: { created: f.created, paid: f.paid, pending: f.pending, failed: f.failed, refunded: f.refunded, paymentRate: rate(f.paid, f.created), revenue: m(f.revenue), averageOrder: f.paid ? m(f.revenue / f.paid) : null },
+    failureReasons: [...reasons].map((r) => ({ reason: r.reason, count: Number(r.n) })),
+    operators: [...operators].map((o) => ({ operator: o.operator, count: Number(o.n), revenue: m(o.revenue) })),
+    carts: { open: cr.open, recovered: cr.recovered, recoveredRevenue: m(cr.recovered_revenue), recoveryRate: rate(cr.recovered, cr.open + cr.recovered) },
+    downloads: { total: Number(d.downloads ?? 0), paidNeverDownloaded: Number(d.never ?? 0) },
+  })
+})

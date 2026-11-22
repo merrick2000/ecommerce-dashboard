@@ -61,11 +61,20 @@ export function useCurrentStore() {
   const { storeId } = useParams()
   const { data: me } = useMe()
   const id = storeId ?? ''
-  const store = me?.stores.find((s) => s.id === id) ?? null
+  const member = me?.stores.find((s) => s.id === id) ?? null
+  // Admin plateforme dans une boutique dont il n'est pas membre : on charge la boutique pour connaître son type (physique ou digital).
+  const { data: visited } = useQuery({
+    queryKey: ['store', id, 'info'],
+    queryFn: () => api.get<{ id: string; name: string; slug: string; currency: string; status: string; kind: 'physical' | 'digital' }>(`/stores/${id}`),
+    enabled: !!id && !member && !!me?.isPlatformAdmin,
+    staleTime: 300_000,
+  })
+  const store = member
   const role: StoreRole | null = store?.role ?? (me?.isPlatformAdmin ? 'owner' : null)
   // Admin plateforme sans appartenance : accès complet, comme côté API.
   const permissions: readonly Permission[] = store?.permissions ?? (me?.isPlatformAdmin ? PERMISSIONS : [])
   const productIds = store ? store.productIds : null
+  if (!store && visited) return { storeId: id, store: { ...visited, role: 'owner' as StoreRole, permissions: PERMISSIONS, productIds: null } as unknown as NonNullable<typeof member>, me: me ?? null, role, permissions, productIds }
   return { storeId: id, store, me: me ?? null, role, permissions, productIds }
 }
 

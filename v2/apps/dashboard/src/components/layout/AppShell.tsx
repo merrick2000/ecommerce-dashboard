@@ -52,11 +52,13 @@ interface NavItem {
   perm?: Permission
   /** Entrée réservée à un type de boutique (ex. Livraison : boutiques physiques). */
   kind?: 'physical' | 'digital'
+  /** Libellé pour une boutique digitale. */
+  digitalLabel?: string
 }
 
 const NAV: NavItem[] = [
   { to: '', label: 'Tableau de bord', short: 'Accueil', icon: LayoutDashboard, end: true },
-  { to: 'orders', label: 'Commandes', icon: ShoppingBag, perm: 'orders.view' },
+  { to: 'orders', label: 'Commandes', digitalLabel: 'Ventes', icon: ShoppingBag, perm: 'orders.view' },
   { to: 'products', label: 'Produits', icon: Package, perm: 'products.view' },
   { to: 'customers', label: 'Clients', icon: Users, perm: 'customers.view' },
   { to: 'zones', label: 'Livraison', icon: Truck, perm: 'delivery.edit', kind: 'physical' },
@@ -184,6 +186,7 @@ export function AppShell() {
   }
   const permissions = usePermissions()
   const nav = NAV.filter((i) => (!i.kind || !store || store.kind === i.kind) && (i.to === 'settings' ? SETTINGS_PERMS.some((p) => permissions.includes(p)) : !i.perm || permissions.includes(i.perm)))
+    .map((i) => (store?.kind === 'digital' && i.digitalLabel ? { ...i, label: i.digitalLabel } : i))
   const primaryMobile = nav.slice(0, 4)
   const moreMobile = nav.slice(4)
   const canOrders = permissions.includes('orders.view')

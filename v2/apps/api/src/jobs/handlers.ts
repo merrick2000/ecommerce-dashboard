@@ -12,9 +12,9 @@ import { notify } from '../services/notifications'
 import { sendAccountNotice, type AccountNotice } from '../services/account'
 
 const storefrontUrl = (slug: string, path = '') => `${env.STOREFRONT_URL.replace(/\/$/, '')}/${slug}${path}`
-const orderUrl = (slug: string, token: string) => storefrontUrl(slug, `/order/${token}`)
+export const orderUrl = (slug: string, token: string) => storefrontUrl(slug, `/order/${token}`)
 
-async function loadOrder(orderId: string) {
+export async function loadOrder(orderId: string) {
   const [row] = await db.select({ order: orders, store: stores }).from(orders).innerJoin(stores, eq(stores.id, orders.storeId)).where(eq(orders.id, orderId)).limit(1)
   if (!row) return null
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId))
@@ -25,7 +25,7 @@ async function loadOrder(orderId: string) {
 type Loaded = NonNullable<Awaited<ReturnType<typeof loadOrder>>>
 
 /** Données communes aux emails de commande : photos des produits, couleur de la boutique, délai, moyen de paiement réel. */
-async function emailOrder(o: Loaded): Promise<EmailOrder> {
+export async function emailOrder(o: Loaded): Promise<EmailOrder> {
   const ids = [...new Set(o.items.map((i) => i.productId).filter((x): x is string => !!x))]
   const imgs = ids.length ? await db.select({ id: products.id, thumbnail: products.thumbnail, cover: products.coverImage }).from(products).where(inArray(products.id, ids)) : []
   const img = new Map(imgs.map((p) => [p.id, publicUrl(p.thumbnail ?? p.cover)]))
@@ -109,7 +109,7 @@ async function capiPurchase(o: Loaded) {
 }
 
 /** Emails au client : expéditeur = nom de la boutique, réponses vers l'email de support. */
-const customerMailOpts = (o: Loaded) => ({ fromName: o.store.name, replyTo: o.store.supportEmail })
+export const customerMailOpts = (o: Loaded) => ({ fromName: o.store.name, replyTo: o.store.supportEmail })
 /**
  * Prévient l'équipe (push / email / Telegram selon les réglages de chacun),
  * uniquement les membres qui ont accès aux produits de la commande.

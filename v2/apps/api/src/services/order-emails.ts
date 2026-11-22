@@ -267,3 +267,21 @@ ${totals(o, o.cod ? 'À payer à la livraison' : 'Payé')}
     }),
   }
 }
+
+/** Paiement en attente ou refusé : lien pour finaliser, envoyé par le vendeur depuis Zuri. */
+export function customerPaymentReminderEmail(o: EmailOrder & { payUrl: string }) {
+  const name = first(o.customerName)
+  return {
+    subject: `Finalisez votre commande ${o.orderNumber} · ${o.storeName}`,
+    html: layout({
+      storeName: o.storeName,
+      color: o.color,
+      preheader: `Votre commande vous attend : ${money(o.total, o.currency)}, paiement par Mobile Money en un instant.`,
+      inner: `${hero(`${name}, votre commande vous attend`, `Votre paiement de <strong>${money(o.total, o.currency)}</strong> n’a pas abouti. Vous pouvez le finaliser en un instant par Mobile Money (MTN, Moov, Orange, Wave…).`)}
+<div style="margin:0 0 20px">${btn(o.payUrl, 'Finaliser mon paiement', o.color)}</div>
+${itemsTable(o, true)}
+${totals(o, 'À payer')}`,
+      footer: supportFooter(o),
+    }),
+  }
+}

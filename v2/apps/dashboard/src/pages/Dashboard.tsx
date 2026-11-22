@@ -6,6 +6,7 @@ import { ButtonLink, Card, cx, EmptyState, ErrorState, PageHeader, Segmented, Sk
 import { useCan, useCurrentStore } from '@/hooks/auth'
 import { usePaymentAccounts, useProducts, useStats, useZones } from '@/hooks/resources'
 import { salesPageUrl } from './products/ProductsList'
+import { DigitalOverview } from './DigitalOverview'
 import { useToast } from '@/components/Toast'
 import { day, isoDay, money, num, percent } from '@/lib/format'
 import type { ProfitTotals, StatsOverview } from '@/lib/types'
@@ -66,7 +67,7 @@ function Kpi({ label, value, icon, delta, hint, to }: { label: string; value: Re
  * Du chiffre encaissé au bénéfice net : ce qui reste vraiment, une fois payés les produits,
  * les livreurs (y compris les colis refusés, fréquents en paiement à la livraison) et les dépenses.
  */
-function ProfitCard({ profit, previous, currency, base }: { profit: ProfitTotals; previous: ProfitTotals; currency: string; base: string }) {
+function ProfitCard({ profit, previous, currency, base, digital }: { profit: ProfitTotals; previous: ProfitTotals; currency: string; base: string; digital?: boolean }) {
   const line = (label: string, value: number, opts: { minus?: boolean; strong?: boolean; to?: string; hint?: string } = {}) => (
     <li className={cx('flex items-baseline justify-between gap-3 py-1.5', opts.strong && 'border-t border-line pt-2.5 font-semibold')}>
       <span className={cx('text-[13px]', !opts.strong && 'text-muted')}>
@@ -95,9 +96,9 @@ function ProfitCard({ profit, previous, currency, base }: { profit: ProfitTotals
     >
       <div className="grid gap-5 md:grid-cols-[1fr_minmax(0,16rem)]">
         <ul>
-          {line('Chiffre encaissé', profit.revenueCollected, { hint: `${num(profit.ordersCollected)} commandes payées ou livrées` })}
-          {line('Prix d’achat des produits', profit.productCost, { minus: true, to: `${base}/products` })}
-          {line('Livreurs', profit.deliveryCost, { minus: true, to: `${base}/zones`, hint: 'livrées et retournées' })}
+          {line('Chiffre encaissé', profit.revenueCollected, { hint: digital ? `${num(profit.ordersCollected)} ventes payées` : `${num(profit.ordersCollected)} commandes payées ou livrées` })}
+          {!digital && line('Prix d’achat des produits', profit.productCost, { minus: true, to: `${base}/products` })}
+          {!digital && line('Livreurs', profit.deliveryCost, { minus: true, to: `${base}/zones`, hint: 'livrées et retournées' })}
           {profit.returnCost > 0 && line('Frais de retour', profit.returnCost, { minus: true })}
           {line('Marge brute', profit.grossProfit, { strong: true })}
           {line('Dépenses (pub, emballage…)', profit.expenses, { minus: true, to: `${base}/expenses` })}
@@ -271,6 +272,8 @@ export default function Dashboard() {
     <div className={cx('transition-opacity', isFetching && 'opacity-70')}>
       {header}
 
+      {!physical && <DigitalOverview from={range.from} to={range.to} base={base} />}
+      {physical && (
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {rv && <Kpi label="Chiffre encaissé" value={money(c.revenue, currency)} icon={<Banknote className="size-4" />} delta={<Delta current={c.revenue ?? 0} previous={p.revenue ?? 0} />} />}
         {data.profit && <Kpi label="Bénéfice net" value={money(data.profit.current.netProfit, currency)} icon={<PiggyBank className="size-4" />} delta={<Delta current={data.profit.current.netProfit} previous={data.profit.previous.netProfit} />} hint={data.profit.current.netMargin != null ? `marge ${data.profit.current.netMargin} %` : undefined} />}
@@ -283,10 +286,11 @@ export default function Dashboard() {
         {physical && <Kpi label="Taux de livraison" value={percent(rates.delivery)} hint={`${num(c.delivered)} livrées · ${num(c.returned)} retours`} />}
         <Kpi label="Conversion" value={percent(rates.conversion)} hint={`${num(data.visitors.visitors)} visiteurs`} />
       </div>
+      )}
 
       {data.profit && !empty && (
         <div className="mt-4">
-          <ProfitCard profit={data.profit.current} previous={data.profit.previous} currency={currency} base={base} />
+          <ProfitCard profit={data.profit.current} previous={data.profit.previous} currency={currency} base={base} digital={!physical} />
         </div>
       )}
 

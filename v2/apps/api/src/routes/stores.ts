@@ -19,8 +19,9 @@ import { productRoutes } from './products'
 import { productImportRoutes } from './product-import'
 import { productImportUrlRoutes } from './product-import-url'
 import { promoRoutes } from './promos'
-import { funnelStatsRoute, statsRoutes } from './stats'
+import { digitalStatsRoute, funnelStatsRoute, statsRoutes } from './stats'
 import { expenseRoutes } from './expenses'
+import { leadRoutes } from './leads'
 import { uploadRoutes } from './uploads'
 import { zoneRoutes } from './zones'
 import { rotateIntegrationSecret } from './integrations'
@@ -151,7 +152,9 @@ const storeScoped = new Hono<AppEnv>()
   .route('/payment-accounts', paymentAccountRoutes)
   .route('/stats', statsRoutes)
   .route('/stats', funnelStatsRoute)
+  .route('/stats', digitalStatsRoute)
   .route('/expenses', expenseRoutes)
+  .route('/leads', leadRoutes)
   .route('/uploads', uploadRoutes)
   .route('/team', teamRoutes)
   .route('/activity', activityRoutes)

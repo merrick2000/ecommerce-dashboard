@@ -349,7 +349,7 @@ export default function OrderDetail() {
   const [editing, setEditing] = useState(false)
   const back = (
     <Link to={`/stores/${storeId}/orders`} className="mb-2 inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
-      <ArrowLeft className="size-4" /> Commandes
+      <ArrowLeft className="size-4" /> {store?.kind === 'digital' ? 'Ventes' : 'Commandes'}
     </Link>
   )
 
@@ -372,7 +372,7 @@ export default function OrderDetail() {
         back={back}
         title={
           <span className="flex flex-wrap items-center gap-2">
-            {order.orderNumber} <StatusBadge status={order.fulfillmentStatus} />
+            {order.orderNumber} {physical ? <StatusBadge status={order.fulfillmentStatus} /> : <PaymentBadge status={order.paymentStatus} />}
           </span>
         }
         description={`${dateTime(order.createdAt)} · ${order.source === 'manual' ? 'Saisie manuelle' : 'Page de vente'}`}
@@ -386,8 +386,10 @@ export default function OrderDetail() {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
         <div className="space-y-4">
+          {/* Produit digital : pas d'appel ni d'expédition, mais accès, lien de paiement, téléchargements. */}
+          {!physical && <DigitalActions order={order} canUpdate={canUpdate} />}
           {/* Actions rapides */}
-          {((canUpdate && order.allowedTransitions.length > 0) || order.customerPhone) && (
+          {physical && ((canUpdate && order.allowedTransitions.length > 0) || order.customerPhone) && (
             <Card>
               <div className="space-y-3 p-4">
                 {order.customerPhone && <ContactButtons phone={order.customerPhone} waUrl={whatsappUrl(order, order.items, store?.name)} className="[&>a]:flex-1 sm:[&>a]:flex-none" />}
@@ -450,7 +452,7 @@ export default function OrderDetail() {
         </div>
 
         <div className="space-y-4">
-          <AssignmentCard order={order} />
+          {physical && <AssignmentCard order={order} />}
           <Card
             title="Client"
             actions={
@@ -534,5 +536,81 @@ export default function OrderDetail() {
 
       <EditDialog order={order} open={editing} onClose={() => setEditing(false)} />
     </>
+  )
+}
+
+/** Fiche d'une commande digitale : renvoyer l'accès, copier le lien, relancer le paiement, historique des téléchargements. */
+function DigitalActions({ order, canUpdate }: { order: Order; canUpdate: boolean }) {
+  const { storeId } = useCurrentStore()
+  const toast = useToast()
+  const qc = useQueryClient()
+  const extra = order as Order & { customerUrl?: string; downloads?: { at: string }[] }
+  const [email, setEmail] = useState(order.customerEmail ?? '')
+  const [open, setOpen] = useState(false)
+  const paid = order.paymentStatus === 'paid'
+  const resend = useMutation({
+    mutationFn: () => api.post<{ email: string }>(`/stores/${storeId}/orders/${order.id}/resend-access`, { email: email.trim() || undefined }),
+    onSuccess: (r) => {
+      toast.success(`Accès renvoyé à ${r.email}`)
+      setOpen(false)
+      void qc.invalidateQueries({ queryKey: ['store', storeId] })
+    },
+    onError: (e) => toast.error(e),
+  })
+  const payLink = useMutation({
+    mutationFn: () => api.post<{ emailed: boolean }>(`/stores/${storeId}/orders/${order.id}/send-payment-link`, { email: true }),
+    onSuccess: (r) => toast.success(r.emailed ? 'Lien de paiement envoyé par email' : 'Pas d’email pour ce client'),
+    onError: (e) => toast.error(e),
+  })
+  const copy = async () => {
+    if (!extra.customerUrl) return
+    await navigator.clipboard?.writeText(extra.customerUrl)
+    toast.success(paid ? 'Lien d’accès copié' : 'Lien de paiement copié')
+  }
+  const phone = order.customerPhone?.replace(/\D/g, '')
+  const wa = phone && extra.customerUrl ? `https://wa.me/${phone}?text=${encodeURIComponent(paid ? `Bonjour, voici votre accès à votre commande ${order.orderNumber} : ${extra.customerUrl}` : `Bonjour, votre commande ${order.orderNumber} vous attend. Vous pouvez finaliser votre paiement ici : ${extra.customerUrl}`)}` : null
+  const downloads = extra.downloads ?? []
+  return (
+    <Card>
+      <div className="space-y-3 p-4">
+        {canUpdate && (
+          <div className="flex flex-wrap gap-2">
+            {paid ? (
+              <Button variant="primary" onClick={() => setOpen(true)}>Renvoyer l’accès</Button>
+            ) : order.paymentStatus !== 'refunded' && order.customerEmail ? (
+              <Button variant="primary" loading={payLink.isPending} onClick={() => payLink.mutate()}>Relancer le paiement par email</Button>
+            ) : null}
+            {wa && (
+              <a href={wa} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-medium hover:bg-surface-2">
+                <Send className="size-4" /> WhatsApp
+              </a>
+            )}
+            <Button onClick={() => void copy()}>{paid ? 'Copier le lien d’accès' : 'Copier le lien de paiement'}</Button>
+          </div>
+        )}
+        {paid && (
+          <p className="text-sm text-muted">
+            {downloads.length
+              ? `Téléchargé ${downloads.length} fois, dernière fois le ${dateTime(downloads[0]!.at)}.`
+              : 'Pas encore téléchargé. Si le client dit ne rien avoir reçu, renvoie l’accès ou envoie-lui le lien par WhatsApp.'}
+          </p>
+        )}
+      </div>
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Renvoyer l’accès au produit"
+        size="sm"
+        footer={
+          <>
+            <Button onClick={() => setOpen(false)}>Annuler</Button>
+            <Button variant="primary" loading={resend.isPending} onClick={() => resend.mutate()}>Renvoyer</Button>
+          </>
+        }
+      >
+        <p className="mb-3 text-sm text-muted">Le client reçoit à nouveau l’email avec le bouton d’accès. Corrige l’adresse s’il s’était trompé.</p>
+        <Input label="Email du client" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      </Dialog>
+    </Card>
   )
 }

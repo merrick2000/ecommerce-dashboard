@@ -18,6 +18,7 @@ import { OrdersCompact } from './views/OrdersCompact'
 import { OrdersTable } from './views/OrdersTable'
 import { DEFAULT_PREFS, useMediaQuery, usePref, type OrdersPrefs } from './views/prefs'
 import { ViewToolbar } from './views/ViewToolbar'
+import DigitalOrders from './DigitalOrders'
 
 const TABS: FulfillmentStatus[] = ['new', 'unreachable', 'confirmed', 'shipped', 'delivered', 'returned', 'cancelled']
 
@@ -198,7 +199,13 @@ function BulkBar({ ids, orders, onDone, archivedView }: { ids: string[]; orders:
   )
 }
 
+/** Boutique digitale : vue dédiée (paiements, accès, paniers abandonnés) ; sinon la vue complète (appels, livraison). */
 export default function OrdersList() {
+  const { store } = useCurrentStore()
+  return store?.kind === 'digital' ? <DigitalOrders /> : <PhysicalOrders />
+}
+
+function PhysicalOrders() {
   const { storeId, store, me } = useCurrentStore()
   // Vue choisie, mémorisée par utilisateur et par boutique ; le tableau n'existe qu'à partir des écrans larges.
   const [prefs, setPrefs] = usePref<OrdersPrefs>(`zuri:orders-view:${me?.id ?? 'anon'}:${storeId}`, DEFAULT_PREFS)

@@ -13,7 +13,10 @@ import { alias } from 'drizzle-orm/pg-core'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { db } from '../db/client'
-import { customers, deliveryZones, orderEvents, orderItems, orders, paymentTransactions, productVariants, products, storeMembers, users, type Order } from '../db/schema'
+import { customers, deliveryZones, downloads, orderEvents, orderItems, orders, paymentTransactions, productVariants, products, storeMembers, users, type Order } from '../db/schema'
+import { customerMailOpts, emailOrder, loadOrder, orderUrl } from '../jobs/handlers'
+import { customerDigitalEmail, customerPaymentReminderEmail } from '../services/order-emails'
+import { sendEmail } from '../services/notify'
 import { can, loadAccess, requirePermission } from '../lib/auth'
 import type { StoreAccess } from '../lib/context'
 import { assertProductsInScope, loadScopedOrder, orderScope } from '../lib/scope'
@@ -80,6 +83,17 @@ async function autoClaim(access: StoreAccess, orderId: string) {
   if (row) await db.insert(orderEvents).values({ orderId, type: 'assigned', message: 'Prise en charge', data: { assignedTo: access.userId }, userId: access.userId })
 }
 
+/** Paiement refusé : statut « failed », ou en attente dont la dernière tentative a échoué (Payment Orchestrator ou prestataire). */
+const FAILED_SQL = dsql`(${orders.paymentStatus} = 'failed' or (${orders.paymentStatus} = 'pending' and (coalesce(${orders.poStatus}, '') in ('failed', 'mismatch') or (exists (select 1 from payment_transactions pt where pt.order_id = ${orders.id} and pt.status = 'failed') and not exists (select 1 from payment_transactions pt2 where pt2.order_id = ${orders.id} and pt2.status in ('processing', 'redirect', 'otp_required', 'paid'))))))`
+
+function paymentStateFilter(state: z.infer<typeof orderListQuerySchema>['paymentState']): SQL | undefined {
+  if (state === 'paid') return eq(orders.paymentStatus, 'paid')
+  if (state === 'refunded') return eq(orders.paymentStatus, 'refunded')
+  if (state === 'failed') return FAILED_SQL
+  if (state === 'pending') return dsql`(${orders.paymentStatus} = 'pending' and not ${FAILED_SQL})`
+  return undefined
+}
+
 function listFilters(storeId: string, q: z.infer<typeof orderListQuerySchema>, access: StoreAccess): SQL {
   const conds: SQL[] = [eq(orders.storeId, storeId)]
   const scope = orderScope(access)
@@ -91,6 +105,8 @@ function listFilters(storeId: string, q: z.infer<typeof orderListQuerySchema>, a
   else if (q.archived !== 'all') conds.push(isNull(orders.archivedAt))
   if (q.type) conds.push(eq(orders.kind, q.type))
   if (q.paymentStatus) conds.push(eq(orders.paymentStatus, q.paymentStatus))
+  const ps = paymentStateFilter(q.paymentState)
+  if (ps) conds.push(ps)
   if (q.fulfillmentStatus) conds.push(eq(orders.fulfillmentStatus, q.fulfillmentStatus))
   if (q.from) conds.push(gte(orders.createdAt, q.from))
   if (q.to) {
@@ -121,6 +137,8 @@ export const orderRoutes = new Hono<AppEnv>()
           customerFlag: dsql<boolean>`coalesce(${customers.isBlocked}, false)`,
           customerReturns: dsql<number>`coalesce(${customers.returnedCount}, 0)`,
           assigneeName: assignee.name,
+          downloads: dsql<number>`(select count(*)::int from downloads d where d.order_id = "orders"."id")`,
+          paymentFailed: FAILED_SQL.mapWith(Boolean),
         })
         .from(orders)
         .leftJoin(customers, eq(customers.id, orders.customerId))
@@ -137,6 +155,16 @@ export const orderRoutes = new Hono<AppEnv>()
         .where(listFilters(store.id, { ...q, fulfillmentStatus: undefined }, access))
         .groupBy(orders.fulfillmentStatus),
     ])
+    // Compteurs par état de paiement (onglets de la vue digitale), sans le filtre d'état lui-même.
+    const [pc] = await db
+      .select({
+        paid: dsql<number>`count(*) filter (where ${orders.paymentStatus} = 'paid')::int`,
+        refunded: dsql<number>`count(*) filter (where ${orders.paymentStatus} = 'refunded')::int`,
+        failed: dsql<number>`count(*) filter (where ${FAILED_SQL})::int`,
+        pending: dsql<number>`count(*) filter (where ${orders.paymentStatus} = 'pending' and not ${FAILED_SQL})::int`,
+      })
+      .from(orders)
+      .where(listFilters(store.id, { ...q, paymentState: undefined, paymentStatus: undefined }, access))
     return c.json({
       data: rows.map(({ order, ...rest }) => {
         const { accessToken: _t, trackingContext: _tc, ...safe } = order
@@ -146,6 +174,7 @@ export const orderRoutes = new Hono<AppEnv>()
       page: q.page,
       pageSize: q.pageSize,
       statusCounts: Object.fromEntries(counts.map((r) => [r.status, r.n])),
+      paymentCounts: pc ?? { paid: 0, refunded: 0, failed: 0, pending: 0 },
     })
   })
   .get('/export.csv', requirePermission('orders.view', 'orders.export'), v('query', orderListQuerySchema), async (c) => {
@@ -217,6 +246,9 @@ export const orderRoutes = new Hono<AppEnv>()
       zone: zone && !seesCosts ? { ...zone, courierCost: null, returnCost: null } : zone,
       assigneeName,
       allowedTransitions: FULFILLMENT_TRANSITIONS[order.fulfillmentStatus],
+      // Produits digitaux : lien client (accès au produit, ou paiement à finaliser) et historique des téléchargements.
+      customerUrl: orderUrl(c.get('store').slug, order.accessToken),
+      downloads: await db.select({ at: downloads.createdAt, productId: downloads.productId }).from(downloads).where(eq(downloads.orderId, order.id)).orderBy(desc(downloads.createdAt)).limit(50),
     })
   })
   .post('/:id/status', requirePermission('orders.update'), v('param', idParam), v('json', orderStatusUpdateSchema), async (c) => {
@@ -357,6 +389,38 @@ export const orderRoutes = new Hono<AppEnv>()
     return c.json({ ok: true })
   })
   /** Commande saisie à la main (WhatsApp, téléphone, boutique physique). */
+  /** Produit digital : renvoyer l'accès au client (avec correction de l'email si besoin). */
+  .post('/:id/resend-access', requirePermission('orders.update'), v('param', idParam), v('json', z.object({ email: z.string().trim().toLowerCase().email().optional() })), async (c) => {
+    const { id } = c.req.valid('param')
+    const order = await loadScopedOrder(c.get('access'), c.get('store').id, id)
+    if (order.paymentStatus !== 'paid') throw badRequest('La commande n’est pas encore payée', 'not_paid')
+    if (order.kind === 'physical') throw badRequest('Réservé aux produits digitaux', 'not_digital')
+    const email = c.req.valid('json').email ?? order.customerEmail
+    if (!email) throw badRequest('Indique l’email du client', 'email_required')
+    if (email !== order.customerEmail) await db.update(orders).set({ customerEmail: email }).where(eq(orders.id, order.id))
+    const o = (await loadOrder(order.id))!
+    const mail = customerDigitalEmail({ ...(await emailOrder(o)), accessUrl: orderUrl(o.store.slug, o.order.accessToken) })
+    await sendEmail(email, mail.subject, mail.html, customerMailOpts(o))
+    await db.insert(orderEvents).values({ orderId: order.id, type: 'access_resent', message: `Accès renvoyé à ${email}`, userId: c.get('user').id })
+    return c.json({ ok: true, email })
+  })
+  /** Paiement en attente ou refusé : envoyer au client le lien pour finaliser (email), et le renvoyer pour WhatsApp. */
+  .post('/:id/send-payment-link', requirePermission('orders.update'), v('param', idParam), v('json', z.object({ email: z.boolean().default(true) })), async (c) => {
+    const { id } = c.req.valid('param')
+    const order = await loadScopedOrder(c.get('access'), c.get('store').id, id)
+    if (order.paymentStatus === 'paid') throw badRequest('Cette commande est déjà payée', 'already_paid')
+    if (order.paymentMethod === 'cod') throw badRequest('Commande payée à la livraison', 'cod_order')
+    const o = (await loadOrder(order.id))!
+    const payUrl = orderUrl(o.store.slug, o.order.accessToken)
+    let emailed = false
+    if (c.req.valid('json').email && order.customerEmail) {
+      const mail = customerPaymentReminderEmail({ ...(await emailOrder(o)), payUrl })
+      await sendEmail(order.customerEmail, mail.subject, mail.html, customerMailOpts(o))
+      emailed = true
+    }
+    await db.insert(orderEvents).values({ orderId: order.id, type: 'payment_link_sent', message: emailed ? `Lien de paiement envoyé à ${order.customerEmail}` : 'Lien de paiement copié', userId: c.get('user').id })
+    return c.json({ ok: true, url: payUrl, emailed })
+  })
   .post('/', requirePermission('orders.create'), v('json', manualOrderCreateSchema), async (c) => {
     const store = c.get('store')
     const input = c.req.valid('json')
