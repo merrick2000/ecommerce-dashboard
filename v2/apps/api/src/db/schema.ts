@@ -36,6 +36,9 @@ import type {
   SignupSource,
   PlanId,
   ExpenseCategory,
+  Bundle,
+  Funnel,
+  FunnelRole,
 } from '@zuri/shared'
 
 /** Montants : numeric(12,2) lu en `number` (les montants FCFA tiennent large dans un double). */
@@ -378,6 +381,10 @@ export const products = pgTable(
     payment: jsonb('payment').$type<ProductPayment>().notNull(),
     /** Digital : livraison. */
     delivery: jsonb('delivery').$type<{ type: 'file'; filePath: string | null } | { type: 'external_url'; url: string } | null>(),
+    /** Pack : liste des produits inclus (null = produit simple). */
+    bundle: jsonb('bundle').$type<Bundle | null>(),
+    /** Tunnel de vente : order bump, upsells, downsells, page de remerciement. */
+    funnel: jsonb('funnel').$type<Funnel | null>(),
     /** Ancien identifiant numérique (Sellit v1) : redirige les vieux liens de pub /p/123. */
     legacyId: integer('legacy_id'),
     /** Code produit Selar (webhook externe). */
@@ -587,6 +594,10 @@ export const orderItems = pgTable(
     unitPrice: money('unit_price').notNull(),
     /** Prix d'achat unitaire au moment de la commande (le bénéfice d'hier ne change pas si le coût change). */
     unitCost: money('unit_cost'),
+    /** main | bump | upsell | downsell : origine de la ligne dans le tunnel de vente. */
+    role: varchar('role', { length: 10 }).$type<FunnelRole>().notNull().default('main'),
+    /** Pack : contenu figé à la commande (livraison des fichiers, stock, coût). */
+    bundle: jsonb('bundle').$type<{ productId: string; variantId: number | null; name: string; quantity: number }[] | null>(),
     total: money('total').notNull(),
   },
   (t) => [index('order_items_order_idx').on(t.orderId), index('order_items_product_idx').on(t.productId)],

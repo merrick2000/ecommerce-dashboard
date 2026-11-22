@@ -58,6 +58,7 @@ const m = (n: number) => money(n, price.currency, store.locale)
         pt={T.pay}
         form={d.orderForm}
         storeName={store.name}
+        funnel={d.funnel ?? null}
       />
     ) : (
       <div class="notice warn soldout">

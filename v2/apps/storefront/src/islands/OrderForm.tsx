@@ -11,7 +11,7 @@ import { getJSON, setJSON } from '../client/storage'
 import { initiateCheckout, noTrack, orderAttribution, purchaseOnce, track } from '../client/track'
 import { money, roundMoney } from '../lib/format'
 import type { FormStrings, PayStrings } from '../lib/i18n'
-import type { CreatedOrder, DisplayPrice, PaymentResponse, Variant, Zone } from '../lib/types'
+import type { CreatedOrder, DisplayPrice, PaymentResponse, PublicFunnel, PublicOffer, Variant, Zone } from '../lib/types'
 import PaymentStep from './PaymentStep'
 
 export interface OrderFormProps {
@@ -44,6 +44,8 @@ export interface OrderFormProps {
   storeName: string
   /** Aperçu dans le dashboard : aucune commande, aucun suivi, aucun envoi de coordonnées. */
   preview?: boolean
+  /** Tunnel de vente : order bump, offres après commande, bouton de remerciement. */
+  funnel?: PublicFunnel | null
 }
 
 /** Champs intégrés, « form » (erreur générale) ou clé d'un champ personnalisé (« cf_xxxx »). */
@@ -51,7 +53,9 @@ type Field = string
 type Errors = Partial<Record<Field, string>>
 type Buyer = { name?: string; phone?: string; dial?: string; email?: string; address?: string; cityKey?: string; city?: string }
 type Promo = { code: string; status: 'checking' | 'ok' | 'bad'; discount: number; subtotal: number; reason?: string }
-type Stage = { kind: 'form' } | { kind: 'done'; orderNumber: string; token: string } | { kind: 'pay'; token: string; total: number } | { kind: 'lead' } | { kind: 'redirect' }
+/** Offre en cours du tunnel : index de l'upsell, et s'il s'agit de son offre de repli. */
+type OfferStage = { kind: 'offer'; token: string; orderNumber: string; total: number; eventId: string | null; method: string; idx: number; down: boolean; added: number }
+type Stage = { kind: 'form' } | { kind: 'done'; orderNumber: string; token: string } | { kind: 'pay'; token: string; total: number } | { kind: 'lead' } | { kind: 'redirect' } | OfferStage
 
 const ISSUE_FIELD: Record<string, Field> = { customerName: 'name', customerPhone: 'phone', customerEmail: 'email', city: 'city', address: 'address', variantId: 'variant', note: 'note' }
 
@@ -105,7 +109,11 @@ export default function OrderForm(p: OrderFormProps) {
   const discount = promo?.status === 'ok' ? Math.min(promo.discount, subtotal) : 0
   const zone = picked?.zone ?? null
   const shipping = zone ? (zone.freeAbove != null && subtotal - discount >= zone.freeAbove ? 0 : zone.fee) : 0
-  const total = roundMoney(subtotal - discount + shipping, p.currency)
+  // Order bump : case cochée = offre ajoutée au total (prix fixé par le vendeur, revérifié par l'API).
+  const bumpOffer = p.funnel?.bump ?? null
+  const [bumpOn, setBumpOn] = useState(false)
+  const bumpAmount = bumpOn && bumpOffer ? bumpOffer.price : 0
+  const total = roundMoney(subtotal - discount + shipping + bumpAmount, p.currency)
   const leadMode = p.method === 'native' && !p.onlineEnabled
   const allSoldOut = !p.inStock || (p.variants.length > 0 && !firstInStock)
 
@@ -236,6 +244,7 @@ export default function OrderForm(p: OrderFormProps) {
       note: physical && shows('note') && note.trim() ? note.trim().slice(0, 500) : null,
       customFields: Object.keys(custom).length ? custom : undefined,
       promoCode: promo?.status === 'ok' ? promo.code : null,
+      ...(bumpOn && bumpOffer ? { bump: true } : {}),
       ...orderAttribution(),
     }
 
@@ -268,6 +277,16 @@ export default function OrderForm(p: OrderFormProps) {
     // Pour la page commande (Purchase après paiement en ligne) : l'API ne renvoie pas les pixels avec la commande.
     setJSON(`sf_o_${o.token}`, { fb: p.fb, tt: p.tt, productId: p.productId, name: p.productName, storeId: p.storeId }, 'local')
 
+    // Tunnel : offres juste après la commande (COD : ajoutées à la livraison ; en ligne : avant le paiement).
+    const upsells = p.funnel?.upsells ?? []
+    if (upsells.length && o.paymentStatus !== 'paid' && (o.paymentMethod === 'cod' || (p.method === 'native' && o.paymentMethod !== 'external'))) {
+      setStage({ kind: 'offer', token: o.token, orderNumber: o.orderNumber, total: o.total, eventId: o.eventId, method: o.paymentMethod, idx: 0, down: false, added: 0 })
+      busyRef.current = false
+      setBusy(false)
+      requestAnimationFrame(() => rootRef.current?.scrollIntoView({ block: 'start' }))
+      return
+    }
+
     if (o.paymentMethod === 'cod') {
       purchaseOnce(o.token, { value: o.total, currency: o.currency, eventId: o.eventId, numItems: quantity })
       setStage({ kind: 'done', orderNumber: o.orderNumber, token: o.token })
@@ -297,6 +316,43 @@ export default function OrderForm(p: OrderFormProps) {
     setBusy(false)
   }
 
+  /** Fin du tunnel : COD → remerciement (pixel d'achat avec le total final) ; en ligne → paiement du total. */
+  const finishFunnel = (st: OfferStage, finalTotal: number) => {
+    if (st.method === 'cod') {
+      purchaseOnce(st.token, { value: finalTotal, currency: p.currency, eventId: st.eventId, numItems: quantity })
+      setStage({ kind: 'done', orderNumber: st.orderNumber, token: st.token })
+    } else {
+      setStage({ kind: 'pay', token: st.token, total: finalTotal })
+    }
+    requestAnimationFrame(() => rootRef.current?.scrollIntoView({ block: 'start' }))
+  }
+
+  const answerOffer = async (st: OfferStage, accept: boolean) => {
+    if (busyRef.current) return
+    const ups = p.funnel?.upsells ?? []
+    const current = st.down ? ups[st.idx]?.downsell : ups[st.idx]
+    if (!current) return finishFunnel(st, st.total)
+    // Étape suivante : refus d'un upsell qui a une offre de repli → l'offre de repli ; sinon upsell suivant.
+    const next = !accept && !st.down && ups[st.idx]?.downsell ? { idx: st.idx, down: true } : ups[st.idx + 1] ? { idx: st.idx + 1, down: false } : null
+    busyRef.current = true
+    setBusy(true)
+    const r = await api<{ accepted: boolean; order: { total: number } }>(`/orders/${st.token}/funnel`, { body: { offerId: current.id, accept, last: !next }, timeoutMs: 20_000 })
+    busyRef.current = false
+    setBusy(false)
+    const newTotal = r.ok && r.data ? r.data.order.total : st.total
+    if (accept && r.ok) track('cta_click', { offer: current.id, accepted: true })
+    const moved = { ...st, total: newTotal, added: st.added + (accept && r.ok && r.data?.accepted ? current.price : 0) }
+    if (next) setStage({ ...moved, ...next })
+    else finishFunnel(moved, newTotal)
+  }
+
+  // Offre introuvable (retirée entre-temps) : on termine le tunnel proprement, hors du rendu.
+  useEffect(() => {
+    if (stage.kind !== 'offer') return
+    const ups = p.funnel?.upsells ?? []
+    if (!(stage.down ? ups[stage.idx]?.downsell : ups[stage.idx])) finishFunnel(stage, stage.total)
+  }, [stage])
+
   // ─── Rendus ───
   if (allSoldOut) return null
 
@@ -316,6 +372,37 @@ export default function OrderForm(p: OrderFormProps) {
     commande: stage.kind === 'done' ? stage.orderNumber : '',
   }
   const tx = (text: string) => interpolate(text, vars)
+
+  if (stage.kind === 'offer') {
+    const ups = p.funnel?.upsells ?? []
+    const offer: PublicOffer | null | undefined = stage.down ? ups[stage.idx]?.downsell : ups[stage.idx]
+    if (!offer) return null
+    return (
+      <div class="upsell" ref={rootRef} role="dialog" aria-labelledby="upsell-title">
+        <p class="upsell-kicker">{t.offerKicker}</p>
+        {offer.image && <img class="upsell-img" src={offer.image} alt={offer.productName} loading="eager" />}
+        <h3 id="upsell-title" class="upsell-title">{offer.title}</h3>
+        {offer.text && <p class="upsell-text pre">{offer.text}</p>}
+        <p class="upsell-price">
+          <strong>{fmtMoney(offer.price)}</strong>
+          {offer.regularPrice != null && (
+            <span class="muted">
+              {' '}
+              {t.offerInstead} <s>{fmtMoney(offer.regularPrice)}</s>
+            </span>
+          )}
+        </p>
+        <p class="muted upsell-note">{stage.method === 'cod' ? t.offerSame : t.offerSameOnline}</p>
+        <button type="button" class={`btn btn-block btn-lg cta-${p.ctaStyle}`} disabled={busy} aria-busy={busy} onClick={() => answerOffer(stage, true)}>
+          {busy ? t.sending : offer.acceptLabel || t.offerAccept}
+        </button>
+        <button type="button" class="btn btn-block btn-ghost upsell-decline" disabled={busy} onClick={() => answerOffer(stage, false)}>
+          {offer.declineLabel || t.offerDecline}
+        </button>
+        {stage.added > 0 && <p class="upsell-added">{t.offerAdded} : +{fmtMoney(stage.added)}</p>}
+      </div>
+    )
+  }
 
   if (stage.kind === 'done') {
     return (
@@ -340,9 +427,16 @@ export default function OrderForm(p: OrderFormProps) {
             </button>
           </>
         ) : (
-          <a class="btn btn-block btn-ghost" href={p.orderBase + stage.token}>
-            {t.track}
-          </a>
+          <>
+            {p.funnel?.thankYou && (
+              <a class={`btn btn-block btn-lg cta-${p.ctaStyle}`} href={p.funnel.thankYou.buttonUrl} target="_blank" rel="noopener">
+                {p.funnel.thankYou.buttonLabel}
+              </a>
+            )}
+            <a class="btn btn-block btn-ghost" href={p.orderBase + stage.token}>
+              {t.track}
+            </a>
+          </>
         )}
       </div>
     )
@@ -387,6 +481,14 @@ export default function OrderForm(p: OrderFormProps) {
           <div>
             <dt>{t.shipping}</dt>
             <dd>{zone ? (shipping === 0 ? t.free : fmtMoney(shipping)) : cityOptions.length ? t.shippingPick : t.free}</dd>
+          </div>
+        )}
+        {bumpAmount > 0 && bumpOffer && (
+          <div>
+            <dt>
+              {t.bumpLine} : {bumpOffer.productName}
+            </dt>
+            <dd>{fmtMoney(bumpAmount)}</dd>
           </div>
         )}
         <div class="total">
@@ -751,6 +853,26 @@ export default function OrderForm(p: OrderFormProps) {
             )}
             {promo?.status === 'bad' && <p class="err">{promo.reason}</p>}
           </details>
+        )}
+
+        {bumpOffer && !leadMode && (
+          <label class={`bump${bumpOn ? ' on' : ''}`}>
+            <input type="checkbox" checked={bumpOn} onChange={(e) => setBumpOn((e.target as HTMLInputElement).checked)} />
+            {bumpOffer.image && <img src={bumpOffer.image} alt="" loading="lazy" />}
+            <span class="bump-body">
+              <strong>{bumpOffer.title}</strong>
+              {bumpOffer.text && <span class="bump-text">{bumpOffer.text}</span>}
+              <span class="bump-price">
+                {t.bumpYes} : <strong>+{fmtMoney(bumpOffer.price)}</strong>
+                {bumpOffer.regularPrice != null && (
+                  <>
+                    {' '}
+                    <s class="muted">{fmtMoney(bumpOffer.regularPrice)}</s>
+                  </>
+                )}
+              </span>
+            </span>
+          </label>
         )}
 
         {summary()}

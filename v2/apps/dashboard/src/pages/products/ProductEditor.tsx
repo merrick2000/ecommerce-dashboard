@@ -10,16 +10,18 @@ import { useCan, useCurrency, useCurrentStore, useStoreId } from '@/hooks/auth'
 import { useProduct, useSaveProduct } from '@/hooks/resources'
 import { serverErrors, validate, type Errors } from '@/lib/form'
 import type { Product } from '@/lib/types'
+import { BundleSection, FunnelSection } from './editor/funnel'
 import { DeliverySection, GeneralSection, MediaSection, OffersSection, OrderFormSection, PaymentSection, SalesPageSection, type Form, type SectionProps } from './editor/sections'
 
-type Tab = 'general' | 'page' | 'media' | 'delivery' | 'offers' | 'payment'
+type Tab = 'general' | 'page' | 'media' | 'delivery' | 'offers' | 'funnel' | 'payment'
 
 const TABS: { id: Tab; label: string; physicalOnly?: boolean; match: (k: string) => boolean }[] = [
-  { id: 'general', label: 'Général', match: (k) => /^(name|isActive|price|compareAtPrice|promo|currencyPrices)/.test(k) },
+  { id: 'general', label: 'Général', match: (k) => /^(name|isActive|price|compareAtPrice|costPrice|promo|currencyPrices|bundle)/.test(k) },
   { id: 'page', label: 'Page de vente', match: (k) => k === 'description' || (k.startsWith('content.') && !k.startsWith('content.gallery')) },
   { id: 'media', label: 'Médias', match: (k) => /^(coverImage|thumbnail|content\.gallery)/.test(k) },
   { id: 'delivery', label: 'Livraison', match: (k) => /^(delivery|sku|trackInventory|stock|weightGrams|variantLabel|variants)/.test(k) },
   { id: 'offers', label: 'Offres', physicalOnly: true, match: (k) => k.startsWith('offers') },
+  { id: 'funnel', label: 'Tunnel', match: (k) => k.startsWith('funnel') },
   { id: 'payment', label: 'Paiement', match: (k) => /^(payment|externalProductId)/.test(k) },
 ]
 
@@ -47,6 +49,8 @@ function emptyForm(type: ProductType): Form {
     weightGrams: null,
     variantLabel: null,
     variants: [],
+    bundle: null,
+    funnel: null,
   }
 }
 
@@ -77,6 +81,8 @@ function fromProduct(p: Product): Form {
     weightGrams: p.weightGrams,
     variantLabel: p.variantLabel,
     variants: p.variants.map((v) => ({ id: v.id, name: v.name, sku: v.sku, price: v.price, costPrice: v.costPrice ?? null, stock: v.stock, isActive: v.isActive })),
+    bundle: p.bundle ?? null,
+    funnel: p.funnel ?? null,
   }
 }
 
@@ -255,11 +261,17 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
       </div>
 
       <div role="tabpanel">
-        {tab === 'general' && <GeneralSection {...props} />}
+        {tab === 'general' && (
+          <div className="space-y-4">
+            <GeneralSection {...props} />
+            <BundleSection {...props} productId={productId} />
+          </div>
+        )}
         {tab === 'page' && <SalesPageSection {...props} />}
         {tab === 'media' && <MediaSection {...props} />}
         {tab === 'delivery' && <DeliverySection {...props} />}
         {tab === 'offers' && form.type === 'physical' && <OffersSection {...props} />}
+        {tab === 'funnel' && <FunnelSection {...props} productId={productId} />}
         {tab === 'payment' && (
           <>
             <PaymentSection {...props} />

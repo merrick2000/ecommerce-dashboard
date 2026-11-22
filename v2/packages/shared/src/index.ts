@@ -471,6 +471,48 @@ export const variantInputSchema = z.object({
   isActive: z.boolean().default(true),
 })
 
+// ─── Packs (bundles) et tunnel de vente ──────────────────────────────────────
+
+/** Pack : un produit vendu comme un lot d'autres produits de la boutique (physiques OU digitaux). */
+export const bundleSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        productId: productIdSchema,
+        variantId: z.coerce.number().int().positive().nullable().default(null),
+        quantity: z.coerce.number().int().min(1).max(50).default(1),
+      }),
+    )
+    .min(2, 'Un pack contient au moins 2 produits')
+    .max(20),
+})
+export type Bundle = z.infer<typeof bundleSchema>
+
+/** Offre du tunnel : un produit de la boutique proposé à un prix spécial (order bump, upsell, downsell). */
+export const funnelOfferSchema = z.object({
+  id: z.string().trim().min(1).max(40),
+  productId: productIdSchema,
+  variantId: z.coerce.number().int().positive().nullable().default(null),
+  price: money,
+  title: z.string().trim().min(2).max(120),
+  text: z.string().trim().max(600).default(''),
+  image: z.string().max(500).nullable().default(null),
+  acceptLabel: z.string().trim().max(60).default(''),
+  declineLabel: z.string().trim().max(80).default(''),
+})
+export type FunnelOffer = z.infer<typeof funnelOfferSchema>
+
+export const funnelSchema = z.object({
+  /** Case à cocher sur le formulaire : « Ajoute aussi… ». */
+  bump: funnelOfferSchema.nullable().default(null),
+  /** Offres proposées juste après la commande, une par une ; un refus peut déclencher une offre de repli. */
+  upsells: z.array(funnelOfferSchema.extend({ downsell: funnelOfferSchema.nullable().default(null) })).max(3).default([]),
+  /** Page de remerciement : bouton d'action (groupe WhatsApp, chaîne, autre produit…). */
+  thankYou: z.object({ buttonLabel: z.string().trim().max(60), buttonUrl: z.string().trim().url().max(500) }).nullable().default(null),
+})
+export type Funnel = z.infer<typeof funnelSchema>
+export type FunnelRole = 'main' | 'bump' | 'upsell' | 'downsell'
+
 export const productInputSchema = z.object({
   type: productTypeSchema,
   name: z.string().trim().min(2).max(160),
@@ -489,6 +531,10 @@ export const productInputSchema = z.object({
   /** Absent → défaut selon le type (COD pour le physique, paiement intégré pour le digital). */
   payment: productPaymentSchema.optional(),
   delivery: digitalDeliverySchema.nullable().default(null),
+  /** Pack de produits (null = produit simple). */
+  bundle: bundleSchema.nullable().default(null),
+  /** Tunnel de vente : order bump, upsells / downsells, page de remerciement. */
+  funnel: funnelSchema.nullable().default(null),
   externalProductId: z.string().max(100).nullable().default(null),
   // physique
   sku: z.string().max(60).nullable().default(null),
@@ -705,6 +751,8 @@ export const publicOrderCreateSchema = z
     promoCode: z.string().trim().toUpperCase().max(30).nullable().optional(),
     /** Identifiant d'événement partagé pixel ↔ Conversions API (déduplication). */
     eventId: z.string().max(64).optional(),
+    /** Case « order bump » cochée par le client. */
+    bump: z.boolean().optional(),
   })
   .merge(attributionSchema)
 export type PublicOrderCreate = z.infer<typeof publicOrderCreateSchema>
@@ -968,4 +1016,12 @@ export const billingCheckoutSchema = z.object({
   phone: z.string().trim().min(6).max(30),
   country: z.string().length(2),
   network: z.string().min(1).max(30),
+})
+
+/** Réponse du client à une offre du tunnel (upsell / downsell) après la commande. */
+export const funnelAnswerSchema = z.object({
+  offerId: z.string().trim().min(1).max(40),
+  accept: z.boolean(),
+  /** true : dernière étape du tunnel (le vendeur est alors prévenu avec le total final). */
+  last: z.boolean().optional(),
 })

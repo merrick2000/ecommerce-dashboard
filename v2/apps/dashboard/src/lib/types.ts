@@ -3,6 +3,8 @@
  * Les entrées (payloads) viennent des schémas zod de @zuri/shared.
  */
 import type {
+  Bundle,
+  Funnel,
   CheckoutSettings,
   Currency,
   FulfillmentStatus,
@@ -95,6 +97,8 @@ export interface Product {
   price: number
   compareAtPrice: number | null
   costPrice: number | null
+  bundle?: Bundle | null
+  funnel?: Funnel | null
   baseCurrency: string
   currencyPrices: { currency: Currency; price: number }[]
   promo: Promo

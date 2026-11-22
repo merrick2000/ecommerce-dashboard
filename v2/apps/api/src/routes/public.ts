@@ -2,8 +2,8 @@
  * API publique consommée par le storefront (/api/v1). Aucune authentification :
  * chaque route ne renvoie que ce qu'un visiteur a le droit de voir.
  */
-import { NATIVE_PROVIDERS, parseOrderForm, productIdSchema, publicOrderCreateSchema, storeIdSchema } from '@zuri/shared'
-import { and, asc, desc, eq, gte, isNull, sql as dsql } from 'drizzle-orm'
+import { funnelAnswerSchema, NATIVE_PROVIDERS, parseOrderForm, productIdSchema, publicOrderCreateSchema, storeIdSchema } from '@zuri/shared'
+import { and, asc, desc, eq, gte, inArray, isNull, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { db } from '../db/client'
@@ -14,7 +14,7 @@ import { env } from '../lib/env'
 import { badRequest, HttpError, notFound } from '../lib/errors'
 import { clientIp, rateLimit } from '../lib/rate-limit'
 import { v } from '../lib/validate'
-import { createPublicOrder, normalizePhone } from '../services/orders'
+import { answerFunnelOffer, createPublicOrder, normalizePhone } from '../services/orders'
 import { displayPrice, evaluatePromoCode } from '../services/pricing'
 import { publicUrl, signedUrl } from '../services/storage'
 import { DEFAULT_CHECKOUT, withCheckoutDefaults } from './stores'
@@ -32,6 +32,59 @@ async function storeBySlug(slug: string) {
 }
 
 const publicStore = (s: typeof stores.$inferSelect) => ({ id: s.id, status: s.status, pauseMessage: s.pauseMessage, name: s.name, slug: s.slug, currency: s.currency, locale: s.locale, country: s.country, supportPhone: s.supportPhone, supportEmail: s.supportEmail })
+
+/**
+ * Données publiques des liens d'un produit : contenu du pack et offres du tunnel
+ * (nom, image, prix normal pour afficher l'économie). Rien d'autre ne sort (ni coût, ni stock exact).
+ */
+async function publicLinks(store: typeof stores.$inferSelect, product: typeof products.$inferSelect) {
+  const bundleItems = product.bundle?.items ?? []
+  const f = product.funnel
+  const offers = f ? [f.bump, ...f.upsells.flatMap((u) => [u, u.downsell])].filter((o): o is NonNullable<typeof o> => !!o) : []
+  const ids = [...new Set([...bundleItems.map((i) => i.productId), ...offers.map((o) => o.productId)])]
+  if (!ids.length) return { bundle: null, funnel: null }
+  const rows = await db.select().from(products).where(and(eq(products.storeId, store.id), inArray(products.id, ids)))
+  const vIds = [...bundleItems, ...offers].map((x) => x.variantId).filter((v): v is number => typeof v === 'number')
+  const vars = vIds.length ? await db.select().from(productVariants).where(inArray(productVariants.id, vIds)) : []
+  const byId = new Map(rows.map((r) => [r.id, r]))
+  const stockOk = (p: typeof products.$inferSelect, variantId: number | null, need: number) => {
+    if (p.type !== 'physical' || !p.trackInventory) return true
+    const v = variantId ? vars.find((x) => x.id === variantId) : null
+    const stock = v ? v.stock : p.stock
+    return stock == null || stock >= need
+  }
+  const bundle = bundleItems.length
+    ? {
+        items: bundleItems
+          .map((i) => {
+            const p = byId.get(i.productId)
+            if (!p) return null
+            const v = i.variantId ? vars.find((x) => x.id === i.variantId) : null
+            return { productId: p.id, name: v ? `${p.name} (${v.name})` : p.name, quantity: i.quantity, image: publicUrl(p.thumbnail ?? p.coverImage), price: displayPrice(p, store.currency, v ?? null).effective }
+          })
+          .filter((x): x is NonNullable<typeof x> => !!x),
+        inStock: bundleItems.every((i) => {
+          const p = byId.get(i.productId)
+          return !!p && stockOk(p, i.variantId, i.quantity)
+        }),
+      }
+    : null
+  const pub = (o: NonNullable<(typeof offers)[number]>) => {
+    const p = byId.get(o.productId)
+    if (!p || !stockOk(p, o.variantId, 1)) return null
+    const v = o.variantId ? vars.find((x) => x.id === o.variantId) : null
+    const regular = displayPrice(p, store.currency, v ?? null).effective
+    return { id: o.id, title: o.title, text: o.text, price: o.price, regularPrice: regular > o.price ? regular : null, productName: v ? `${p.name} (${v.name})` : p.name, image: publicUrl(o.image ?? p.thumbnail ?? p.coverImage), acceptLabel: o.acceptLabel || null, declineLabel: o.declineLabel || null }
+  }
+  const funnel = f
+    ? {
+        bump: f.bump ? pub(f.bump) : null,
+        upsells: f.upsells.map((u) => ({ ...pub(u), downsell: u.downsell ? pub(u.downsell) : null })).filter((u) => u.id),
+        thankYou: f.thankYou,
+      }
+    : null
+  return { bundle, funnel }
+}
 
 export const publicRoutes = new Hono<AppEnv>()
   /** Résolution sous-domaine / domaine perso → slug (appelé par le Worker/middleware). */
@@ -82,6 +135,7 @@ export const publicRoutes = new Hono<AppEnv>()
       db.select({ provider: paymentAccounts.provider }).from(paymentAccounts).where(and(eq(paymentAccounts.storeId, store.id), eq(paymentAccounts.enabled, true))),
     ])
     const onlinePaymentEnabled = providers.some((p) => (NATIVE_PROVIDERS as readonly string[]).includes(p.provider))
+    const { bundle, funnel } = await publicLinks(store, product)
     c.header('Cache-Control', 'public, max-age=30, stale-while-revalidate=120')
     return c.json({
       store: publicStore(store),
@@ -105,8 +159,12 @@ export const publicRoutes = new Hono<AppEnv>()
         },
         variantLabel: product.variantLabel,
         variants: variants.map((vr) => ({ id: vr.id, name: vr.name, price: vr.price != null ? displayPrice(product, store.currency, vr) : null, inStock: !product.trackInventory || vr.stock == null || vr.stock > 0 })),
-        inStock: !product.trackInventory || product.stock == null || product.stock > 0,
+        inStock: bundle ? bundle.inStock : !product.trackInventory || product.stock == null || product.stock > 0,
+        /** Pack : produits inclus (pour la page de vente). */
+        bundle: bundle?.items ?? null,
       },
+      /** Tunnel : order bump et offres après commande, avec les infos produit nécessaires à l'affichage. */
+      funnel,
       zones,
       checkout: withCheckoutDefaults(cfg?.settings),
       /** Formulaire effectif : celui du produit s'il est personnalisé, sinon celui de la boutique. */
@@ -135,6 +193,10 @@ export const publicRoutes = new Hono<AppEnv>()
       },
       201,
     )
+  })
+  /** Tunnel : réponse du client à un upsell / downsell (ajout à la même commande). */
+  .post('/orders/:token/funnel', rateLimit({ key: 'funnel', limit: 30, windowSec: 600 }), v('param', z.object({ token: z.string().min(20).max(64) })), v('json', funnelAnswerSchema), async (c) => {
+    return c.json(await answerFunnelOffer(c.req.valid('param').token, c.req.valid('json')))
   })
   /** Vue publique d'une commande, par jeton opaque uniquement (plus d'ID séquentiel). */
   .get('/orders/:token', v('param', z.object({ token: z.string().min(20).max(64) })), async (c) => {
@@ -170,11 +232,10 @@ export const publicRoutes = new Hono<AppEnv>()
     const [order] = await db.select().from(orders).where(eq(orders.accessToken, c.req.valid('param').token)).limit(1)
     if (!order) throw notFound('Commande')
     if (order.paymentStatus !== 'paid') throw badRequest('Paiement non confirmé', 'not_paid')
-    const rows = await db
-      .select({ productId: products.id, name: products.name, delivery: products.delivery })
-      .from(orderItems)
-      .innerJoin(products, eq(products.id, orderItems.productId))
-      .where(and(eq(orderItems.orderId, order.id), eq(orderItems.productType, 'digital')))
+    // Toutes les lignes digitales (produit, order bump, upsells) ; un pack livre chacun des produits inclus.
+    const lines = await db.select({ productId: orderItems.productId, bundle: orderItems.bundle }).from(orderItems).where(and(eq(orderItems.orderId, order.id), eq(orderItems.productType, 'digital')))
+    const ids = [...new Set(lines.flatMap((l) => (l.bundle?.length ? l.bundle.map((b) => b.productId) : l.productId ? [l.productId] : [])))]
+    const rows = ids.length ? await db.select({ productId: products.id, name: products.name, delivery: products.delivery }).from(products).where(inArray(products.id, ids)) : []
     const links = rows.flatMap((r) => {
       if (!r.delivery) return []
       if (r.delivery.type === 'external_url') return [{ name: r.name, url: r.delivery.url, external: true }]

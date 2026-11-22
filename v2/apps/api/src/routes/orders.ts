@@ -21,7 +21,7 @@ import type { AppEnv } from '../lib/context'
 import { orderNumber, randomToken } from '../lib/crypto'
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors'
 import { v } from '../lib/validate'
-import { normalizePhone, setPaymentStatus, transitionFulfillment } from '../services/orders'
+import { normalizePhone, reserveLine, setPaymentStatus, transitionFulfillment } from '../services/orders'
 import { notify } from '../services/notifications'
 import { displayPrice, roundMoney, shippingFee } from '../services/pricing'
 
@@ -379,22 +379,12 @@ export const orderRoutes = new Hono<AppEnv>()
     const phone = normalizePhone(input.customerPhone)
 
     const order = await db.transaction(async (tx) => {
-      // Stock : même règle que les commandes du storefront (verrou + contrôle + réservation).
+      // Stock : même règle que les commandes du storefront (verrou + contrôle + réservation ; pack : chaque produit inclus).
+      const reserved: Awaited<ReturnType<typeof reserveLine>>[] = []
       for (const l of lines) {
-        if (l.p.type !== 'physical' || !l.p.trackInventory) continue
-        if (l.variant) {
-          const [vr] = await tx.select({ stock: productVariants.stock }).from(productVariants).where(eq(productVariants.id, l.variant.id)).for('update')
-          if (vr?.stock != null) {
-            if (vr.stock < l.quantity) throw conflict(`Stock insuffisant : ${l.p.name} (${l.variant.name})`, 'out_of_stock')
-            await tx.update(productVariants).set({ stock: vr.stock - l.quantity }).where(eq(productVariants.id, l.variant.id))
-          }
-        } else {
-          const [pr] = await tx.select({ stock: products.stock }).from(products).where(eq(products.id, l.p.id)).for('update')
-          if (pr?.stock != null) {
-            if (pr.stock < l.quantity) throw conflict(`Stock insuffisant : ${l.p.name}`, 'out_of_stock')
-            await tx.update(products).set({ stock: pr.stock - l.quantity }).where(eq(products.id, l.p.id))
-          }
-        }
+        const [locked] = await tx.select().from(products).where(eq(products.id, l.p.id)).for('update')
+        const [lv] = l.variant ? await tx.select().from(productVariants).where(eq(productVariants.id, l.variant.id)).for('update') : []
+        reserved.push(await reserveLine(tx, store.id, locked!, lv ?? null, l.quantity))
       }
       const [customer] = await tx
         .insert(customers)
@@ -440,7 +430,7 @@ export const orderRoutes = new Hono<AppEnv>()
         .returning()
       if (!o) throw new Error('Création commande échouée')
       await tx.insert(orderItems).values(
-        lines.map((l) => ({ orderId: o.id, productId: l.p.id, variantId: l.variant?.id ?? null, productType: l.p.type, name: l.p.name, variantName: l.variant?.name ?? null, quantity: l.quantity, unitPrice: l.unit, unitCost: l.variant?.costPrice ?? l.p.costPrice ?? null, total: l.total })),
+        lines.map((l, k) => ({ orderId: o.id, productId: l.p.id, variantId: l.variant?.id ?? null, productType: l.p.type, name: l.p.name, variantName: l.variant?.name ?? null, quantity: l.quantity, unitPrice: l.unit, unitCost: reserved[k]!.unitCost, bundle: reserved[k]!.bundle, total: l.total })),
       )
       await tx.insert(orderEvents).values({ orderId: o.id, type: 'created', message: 'Commande saisie manuellement', userId: c.get('user').id })
       return o

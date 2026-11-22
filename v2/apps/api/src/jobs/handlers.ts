@@ -104,6 +104,13 @@ export async function handleOrderPaid({ orderId }: { orderId: string }) {
 
 /** Nouvelle commande COD : notifier vendeur + client, CAPI Purchase (optimisation des pubs). */
 export async function handleOrderNotifyNew({ orderId }: { orderId: string }) {
+  // Une seule notification par commande : la fin du tunnel et le filet de sécurité (5 min) peuvent tous deux arriver.
+  const [claimed] = await db
+    .update(orders)
+    .set({ metadata: dsql`coalesce(${orders.metadata}, '{}'::jsonb) || '{"notified": true}'::jsonb` })
+    .where(and(eq(orders.id, orderId), dsql`coalesce((${orders.metadata}->>'notified')::boolean, false) = false`))
+    .returning({ id: orders.id })
+  if (!claimed) return
   const o = await loadOrder(orderId)
   if (!o) return
   const tasks: Promise<unknown>[] = [notifyTeam(o, 'order.new'), capiPurchase(o)]

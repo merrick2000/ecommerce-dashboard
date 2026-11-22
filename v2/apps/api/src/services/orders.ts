@@ -32,7 +32,7 @@ import { orderNumber, randomToken } from '../lib/crypto'
 import { badRequest, conflict, notFound } from '../lib/errors'
 import { ValidationError } from '../lib/validate'
 import { enqueue } from '../jobs/queue'
-import { quote } from './pricing'
+import { quote, roundMoney } from './pricing'
 
 /** Normalise un numéro pour en faire une clé client stable (+229 97 00 00 00 → +22997000000). */
 export function normalizePhone(phone: string): string {
@@ -55,6 +55,60 @@ export interface CreatedOrder {
  * Tout se fait dans une transaction : verrou sur le produit (stock), client,
  * commande, ligne, utilisation du code promo, historique.
  */
+type ProductRow = typeof products.$inferSelect
+type VariantRow = typeof productVariants.$inferSelect
+type BundleSnapshot = { productId: string; variantId: number | null; name: string; quantity: number }[]
+
+/**
+ * Réserve le stock d'une ligne et calcule son prix d'achat unitaire.
+ * Pack : chaque produit inclus est réservé (stock du pack = stock de ses composants), coût = somme des coûts.
+ */
+export async function reserveLine(tx: Tx, storeId: string, product: ProductRow, variant: VariantRow | null, quantity: number): Promise<{ unitCost: number | null; bundle: BundleSnapshot | null }> {
+  const items = product.bundle?.items ?? []
+  if (items.length) {
+    const comps = await tx
+      .select()
+      .from(products)
+      .where(and(eq(products.storeId, storeId), inArray(products.id, items.map((i) => i.productId))))
+      .for('update')
+    const vIds = items.map((i) => i.variantId).filter((x): x is number => typeof x === 'number')
+    const vars = vIds.length ? await tx.select().from(productVariants).where(inArray(productVariants.id, vIds)).for('update') : []
+    let cost: number | null = 0
+    const snapshot: BundleSnapshot = []
+    for (const item of items) {
+      const comp = comps.find((c) => c.id === item.productId)
+      if (!comp) throw conflict('Un produit du pack n’est plus disponible', 'bundle_unavailable')
+      const v = item.variantId ? (vars.find((x) => x.id === item.variantId) ?? null) : null
+      const need = item.quantity * quantity
+      if (comp.type === 'physical' && comp.trackInventory) {
+        const available = v ? v.stock : comp.stock
+        if (available != null && available < need) throw conflict(`Stock insuffisant : ${comp.name}`, 'out_of_stock')
+        if (v && v.stock != null) await tx.update(productVariants).set({ stock: dsql`${productVariants.stock} - ${need}` }).where(eq(productVariants.id, v.id))
+        else if (comp.stock != null) await tx.update(products).set({ stock: dsql`${products.stock} - ${need}` }).where(eq(products.id, comp.id))
+      }
+      const c = v?.costPrice ?? comp.costPrice ?? (comp.type === 'digital' ? 0 : null)
+      cost = cost == null || c == null ? null : cost + c * item.quantity
+      snapshot.push({ productId: comp.id, variantId: v?.id ?? null, name: v ? `${comp.name} (${v.name})` : comp.name, quantity: item.quantity })
+    }
+    return { unitCost: product.costPrice ?? cost, bundle: snapshot }
+  }
+  if (product.type === 'physical' && product.trackInventory) {
+    const available = variant ? variant.stock : product.stock
+    if (available != null && available < quantity) throw conflict('Stock insuffisant', 'out_of_stock')
+    if (variant && variant.stock != null) await tx.update(productVariants).set({ stock: dsql`${productVariants.stock} - ${quantity}` }).where(eq(productVariants.id, variant.id))
+    else if (product.stock != null) await tx.update(products).set({ stock: dsql`${products.stock} - ${quantity}` }).where(eq(products.id, product.id))
+  }
+  return { unitCost: variant?.costPrice ?? product.costPrice ?? null, bundle: null }
+}
+
+/** Charge (et verrouille) le produit d'une offre du tunnel. Les produits inactifs sont permis : un produit peut n'exister que comme offre. */
+export async function loadOfferProduct(tx: Tx, storeId: string, offer: { productId: string; variantId: number | null }) {
+  const [p] = await tx.select().from(products).where(and(eq(products.id, offer.productId), eq(products.storeId, storeId))).for('update').limit(1)
+  if (!p) throw conflict('Cette offre n’est plus disponible', 'offer_unavailable')
+  const v = offer.variantId ? ((await tx.select().from(productVariants).where(and(eq(productVariants.id, offer.variantId), eq(productVariants.productId, p.id))).limit(1))[0] ?? null) : null
+  return { product: p, variant: v }
+}
+
 export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestContext): Promise<CreatedOrder> {
   const result = await db.transaction(async (tx) => {
     const [store] = await tx.select().from(stores).where(eq(stores.slug, input.storeSlug)).limit(1)
@@ -133,16 +187,18 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
       zone: zone ?? null,
     })
 
-    // Stock : réservé à la commande, rendu en cas d'annulation/retour.
-    if (isPhysical && product.trackInventory) {
-      const available = variant ? variant.stock : product.stock
-      if (available != null && available < q.quantity) throw conflict('Stock insuffisant', 'out_of_stock')
-      if (variant && variant.stock != null) {
-        await tx.update(productVariants).set({ stock: dsql`${productVariants.stock} - ${q.quantity}` }).where(eq(productVariants.id, variant.id))
-      } else if (product.stock != null) {
-        await tx.update(products).set({ stock: dsql`${products.stock} - ${q.quantity}` }).where(eq(products.id, product.id))
-      }
+    // Stock : réservé à la commande, rendu en cas d'annulation/retour (pack : chaque produit inclus).
+    const mainLine = await reserveLine(tx, store.id, product, variant ?? null, q.quantity)
+
+    // Order bump : case cochée par le client, prix fixé par le vendeur (jamais par le navigateur).
+    const bumpOffer = input.bump && product.funnel?.bump ? product.funnel.bump : null
+    let bump: { offer: NonNullable<typeof bumpOffer>; product: ProductRow; variant: VariantRow | null; line: Awaited<ReturnType<typeof reserveLine>>; price: number } | null = null
+    if (bumpOffer) {
+      const loaded = await loadOfferProduct(tx, store.id, bumpOffer)
+      const line = await reserveLine(tx, store.id, loaded.product, loaded.variant, 1)
+      bump = { offer: bumpOffer, ...loaded, line, price: roundMoney(bumpOffer.price, q.currency) }
     }
+    const bumpAmount = bump?.price ?? 0
 
     const phone = normalizePhone(input.customerPhone)
     const customer = await upsertCustomer(tx, store.id, {
@@ -171,10 +227,10 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
         returnCost: isPhysical ? (zone?.returnCost ?? null) : null,
         customerNote: input.note ?? null,
         kind: product.type,
-        subtotal: q.subtotal,
+        subtotal: roundMoney(q.subtotal + bumpAmount, q.currency),
         discount: q.discount,
         shippingFee: q.shippingFee,
-        total: q.total,
+        total: roundMoney(q.total + bumpAmount, q.currency),
         currency: q.currency,
         paymentMethod,
         promoCodeId: q.discount > 0 && promo ? promo.id : null,
@@ -189,8 +245,13 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
         eventId: input.eventId ?? randomToken(16),
         trackingContext: { ip: ctx.ip, userAgent: ctx.userAgent, fbp: input.fbp, fbc: input.fbc },
         metadata:
-          customer.isBlocked || custom.answers.length
-            ? { ...(customer.isBlocked ? { flagged: 'blocked_customer' } : {}), ...(custom.answers.length ? { customFields: custom.answers } : {}) }
+          customer.isBlocked || custom.answers.length || product.funnel
+            ? {
+                ...(customer.isBlocked ? { flagged: 'blocked_customer' } : {}),
+                ...(custom.answers.length ? { customFields: custom.answers } : {}),
+                // Tunnel : ce qui a été proposé et accepté (statistiques de conversion).
+                ...(product.funnel ? { funnel: { bumpOffered: Boolean(product.funnel.bump), bumpAccepted: Boolean(bump), answers: {} as Record<string, 'accepted' | 'declined'> } } : {}),
+              }
             : null,
       })
       .returning()
@@ -205,9 +266,26 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
       variantName: variant?.name ?? null,
       quantity: q.quantity,
       unitPrice: q.unitPrice,
-      unitCost: variant?.costPrice ?? product.costPrice ?? null,
+      unitCost: mainLine.unitCost,
+      bundle: mainLine.bundle,
       total: q.subtotal,
     })
+    if (bump) {
+      await tx.insert(orderItems).values({
+        orderId: order.id,
+        productId: bump.product.id,
+        variantId: bump.variant?.id ?? null,
+        productType: bump.product.type,
+        name: bump.product.name,
+        variantName: bump.variant?.name ?? null,
+        quantity: 1,
+        unitPrice: bump.price,
+        unitCost: bump.line.unitCost,
+        bundle: bump.line.bundle,
+        role: 'bump',
+        total: bump.price,
+      })
+    }
 
     if (order.promoCodeId) {
       await tx.update(promoCodes).set({ usedCount: dsql`${promoCodes.usedCount} + 1` }).where(eq(promoCodes.id, order.promoCodeId))
@@ -225,7 +303,9 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
 
   if (result.order.paymentMethod === 'cod') {
     // Une commande COD est une vente (à confirmer) : on notifie tout de suite.
-    await enqueue('order.notify-new', { orderId: result.order.id })
+    // Avec des upsells, on attend la fin du tunnel (total final) ; filet de sécurité à 5 min si le client part.
+    const hasUpsells = Boolean((await db.select({ funnel: products.funnel }).from(products).where(eq(products.id, input.productId)).limit(1))[0]?.funnel?.upsells.length)
+    await enqueue('order.notify-new', { orderId: result.order.id }, hasUpsells ? { startAfter: 300 } : {})
   }
   return { order: result.order, promoError: result.promoError }
 }
@@ -379,24 +459,30 @@ export async function transitionFulfillment(
 }
 
 async function restock(tx: Tx, orderId: string, sign: 1 | -1 = 1) {
-  const items = await tx
-    .select({ item: orderItems, track: products.trackInventory })
-    .from(orderItems)
-    .innerJoin(products, eq(products.id, orderItems.productId))
-    .where(eq(orderItems.orderId, orderId))
-  for (const { item, track } of items) {
-    if (!track || item.productType !== 'physical') continue
-    const delta = item.quantity * sign
-    if (item.variantId) {
+  const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, orderId))
+  // Pack : on rend le stock de chaque produit inclus (contenu figé à la commande).
+  const lines = items.flatMap((item) =>
+    item.bundle?.length
+      ? item.bundle.map((b) => ({ productId: b.productId, variantId: b.variantId, quantity: b.quantity * item.quantity }))
+      : [{ productId: item.productId, variantId: item.variantId, quantity: item.quantity }],
+  )
+  const ids = [...new Set(lines.map((l) => l.productId).filter((x): x is string => !!x))]
+  if (!ids.length) return
+  const tracked = new Map((await tx.select({ id: products.id, track: products.trackInventory, type: products.type }).from(products).where(inArray(products.id, ids))).map((p) => [p.id, p]))
+  for (const l of lines) {
+    const p = l.productId ? tracked.get(l.productId) : undefined
+    if (!p || !p.track || p.type !== 'physical') continue
+    const delta = l.quantity * sign
+    if (l.variantId) {
       await tx
         .update(productVariants)
         .set({ stock: dsql`${productVariants.stock} + ${delta}` })
-        .where(and(eq(productVariants.id, item.variantId), dsql`${productVariants.stock} is not null`))
-    } else if (item.productId) {
+        .where(and(eq(productVariants.id, l.variantId), dsql`${productVariants.stock} is not null`))
+    } else {
       await tx
         .update(products)
         .set({ stock: dsql`${products.stock} + ${delta}` })
-        .where(and(eq(products.id, item.productId), dsql`${products.stock} is not null`))
+        .where(and(eq(products.id, p.id), dsql`${products.stock} is not null`))
     }
   }
 }
@@ -410,4 +496,80 @@ export async function setPaymentStatus(store: Store, orderId: string, status: Pa
     await tx.insert(orderEvents).values({ orderId, type: `payment_${status}`, message: note ?? `Paiement : ${status}`, userId })
   })
   return true
+}
+
+const FUNNEL_WINDOW_MS = 30 * 60_000
+
+/**
+ * Réponse du client à une offre du tunnel (upsell / downsell), juste après sa commande.
+ * Accepter ajoute le produit à la MÊME commande (en COD : le livreur encaisse le tout ; en paiement
+ * en ligne : avant le paiement, un seul paiement). Prix fixé par le vendeur, jamais par le navigateur.
+ */
+export async function answerFunnelOffer(token: string, input: { offerId: string; accept: boolean; last?: boolean }) {
+  const result = await db.transaction(async (tx) => {
+    const [order] = await tx.select().from(orders).where(eq(orders.accessToken, token)).for('update').limit(1)
+    if (!order) throw notFound('Commande')
+    if (Date.now() - order.createdAt.getTime() > FUNNEL_WINDOW_MS) throw conflict('Cette offre a expiré', 'offer_expired')
+    if (order.paymentStatus === 'paid' || order.fulfillmentStatus !== 'new' || order.paymentMethod === 'external') throw conflict('Cette commande ne peut plus être modifiée', 'order_locked')
+    const [main] = await tx.select().from(orderItems).where(and(eq(orderItems.orderId, order.id), eq(orderItems.role, 'main'))).limit(1)
+    const [mainProduct] = main?.productId ? await tx.select({ funnel: products.funnel }).from(products).where(eq(products.id, main.productId)).limit(1) : []
+    const upsells = mainProduct?.funnel?.upsells ?? []
+    let found: { offer: (typeof upsells)[number] | NonNullable<(typeof upsells)[number]['downsell']>; role: 'upsell' | 'downsell'; parentId: string | null } | null = null
+    for (const u of upsells) {
+      if (u.id === input.offerId) found = { offer: u, role: 'upsell', parentId: null }
+      else if (u.downsell?.id === input.offerId) found = { offer: u.downsell, role: 'downsell', parentId: u.id }
+    }
+    if (!found) throw notFound('Offre')
+    const meta = (order.metadata ?? {}) as { funnel?: { bumpOffered?: boolean; bumpAccepted?: boolean; answers?: Record<string, 'accepted' | 'declined'> } }
+    const answers = { ...(meta.funnel?.answers ?? {}) }
+    // Déjà répondu (double clic, retour arrière) : réponse idempotente.
+    if (answers[found.offer.id]) return { order, accepted: answers[found.offer.id] === 'accepted', changed: false }
+    if (found.role === 'downsell' && answers[found.parentId!] !== 'declined') throw conflict('Offre indisponible', 'offer_unavailable')
+
+    let updated = order
+    if (input.accept) {
+      const loaded = await loadOfferProduct(tx, order.storeId, found.offer)
+      const line = await reserveLine(tx, order.storeId, loaded.product, loaded.variant, 1)
+      const price = roundMoney(found.offer.price, order.currency)
+      await tx.insert(orderItems).values({
+        orderId: order.id,
+        productId: loaded.product.id,
+        variantId: loaded.variant?.id ?? null,
+        productType: loaded.product.type,
+        name: loaded.product.name,
+        variantName: loaded.variant?.name ?? null,
+        quantity: 1,
+        unitPrice: price,
+        unitCost: line.unitCost,
+        bundle: line.bundle,
+        role: found.role,
+        total: price,
+      })
+      const kinds = new Set([order.kind, loaded.product.type])
+      const [u] = await tx
+        .update(orders)
+        .set({ subtotal: roundMoney(order.subtotal + price, order.currency), total: roundMoney(order.total + price, order.currency), kind: kinds.size > 1 ? 'mixed' : order.kind })
+        .where(eq(orders.id, order.id))
+        .returning()
+      updated = u!
+    }
+    answers[found.offer.id] = input.accept ? 'accepted' : 'declined'
+    const [withAnswer] = await tx
+      .update(orders)
+      .set({ metadata: { ...(updated.metadata ?? {}), funnel: { ...(meta.funnel ?? {}), answers } } })
+      .where(eq(orders.id, order.id))
+      .returning()
+    updated = withAnswer!
+    await tx.insert(orderEvents).values({
+      orderId: order.id,
+      type: input.accept ? `${found.role}_accepted` : `${found.role}_declined`,
+      message: input.accept ? `${found.role === 'upsell' ? 'Upsell' : 'Offre de repli'} acceptée : ${found.offer.title} (+${found.offer.price})` : `${found.role === 'upsell' ? 'Upsell' : 'Offre de repli'} refusée : ${found.offer.title}`,
+      data: { offerId: found.offer.id, price: found.offer.price },
+    })
+    return { order: updated, accepted: input.accept, changed: true }
+  })
+  // Fin du tunnel : le vendeur est prévenu tout de suite, avec le total final (COD).
+  if (input.last && result.order.paymentMethod === 'cod') await enqueue('order.notify-new', { orderId: result.order.id }, { singletonKey: `order.notify-new:${result.order.id}:final` })
+  const o = result.order
+  return { accepted: result.accepted, order: { token: o.accessToken, orderNumber: o.orderNumber, total: o.total, currency: o.currency, paymentMethod: o.paymentMethod, paymentStatus: o.paymentStatus, eventId: o.eventId } }
 }

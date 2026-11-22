@@ -78,6 +78,13 @@
       "when": 1795191629417,
       "tag": "0010_profit_and_store_kind",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795353490799,
+      "tag": "0011_bundles_and_funnel",
+      "breakpoints": true
     }
   ]
 }

@@ -3,7 +3,7 @@
  * Mêmes règles partout : HTML nettoyé, variantes synchronisées, périmètre du membre étendu.
  */
 import type { ProductInput } from '@zuri/shared'
-import { and, eq, notInArray } from 'drizzle-orm'
+import { and, eq, inArray, notInArray } from 'drizzle-orm'
 import { db, type Tx } from '../db/client'
 import { productVariants, products, storeMemberProducts } from '../db/schema'
 import type { StoreAccess } from '../lib/context'
@@ -61,9 +61,40 @@ export function assertStoreKind(store: { kind?: string | null }, type: string) {
   }
 }
 
+/**
+ * Liens d'un produit vers d'autres produits (contenu d'un pack, offres du tunnel) :
+ * même boutique, même type ; un pack ne contient ni lui-même ni un autre pack.
+ */
+export async function assertProductLinks(storeId: string, selfId: string | null, input: Pick<ProductInput, 'type' | 'bundle' | 'funnel'>) {
+  const bundleItems = input.bundle?.items ?? []
+  const offers = input.funnel ? [input.funnel.bump, ...input.funnel.upsells.flatMap((u) => [u, u.downsell])].filter((o): o is NonNullable<typeof o> => !!o) : []
+  const ids = [...new Set([...bundleItems.map((i) => i.productId), ...offers.map((o) => o.productId)])]
+  if (!ids.length) return
+  const rows = await db.select({ id: products.id, type: products.type, name: products.name, bundle: products.bundle }).from(products).where(and(eq(products.storeId, storeId), inArray(products.id, ids)))
+  const byId = new Map(rows.map((r) => [r.id, r]))
+  const variantIds = [...bundleItems, ...offers].map((x) => x.variantId).filter((v): v is number => typeof v === 'number')
+  const variants = variantIds.length ? await db.select({ id: productVariants.id, productId: productVariants.productId }).from(productVariants).where(inArray(productVariants.id, variantIds)) : []
+  const checkRef = (ref: { productId: string; variantId: number | null }, what: string) => {
+    const p = byId.get(ref.productId)
+    if (!p) throw new HttpError(400, `${what} : produit introuvable dans cette boutique`, 'invalid_link')
+    if (p.type !== input.type) throw new HttpError(400, `${what} : « ${p.name} » n’est pas du même type que ce produit`, 'invalid_link')
+    if (ref.variantId && !variants.some((v) => v.id === ref.variantId && v.productId === ref.productId)) throw new HttpError(400, `${what} : variante introuvable pour « ${p.name} »`, 'invalid_link')
+    return p
+  }
+  for (const item of bundleItems) {
+    const p = checkRef(item, 'Pack')
+    if (selfId && p.id === selfId) throw new HttpError(400, 'Un pack ne peut pas se contenir lui-même', 'invalid_link')
+    if (p.bundle?.items?.length) throw new HttpError(400, `Pack : « ${p.name} » est déjà un pack`, 'invalid_link')
+  }
+  for (const o of offers) checkRef(o, 'Tunnel')
+  const offerIds = offers.map((o) => o.id)
+  if (new Set(offerIds).size !== offerIds.length) throw new HttpError(400, 'Tunnel : deux offres ont le même identifiant', 'invalid_link')
+}
+
 /** Crée un produit (déjà validé par productInputSchema) et l'ajoute au périmètre du membre. */
 export async function createProduct(access: StoreAccess, store: { id: string; currency: string; kind?: string | null }, input: ProductInput): Promise<string> {
   assertStoreKind(store, input.type)
+  await assertProductLinks(store.id, null, input)
   const id = await db.transaction(async (tx) => {
     const [row] = await tx.insert(products).values(toRow(input, store.id, store.currency)).returning({ id: products.id })
     if (!row) throw new Error('Création produit échouée')

@@ -173,6 +173,18 @@ const testimonial = z.object({ name: z.string().max(80), city: z.string().max(80
 const offer = z.object({ id: z.string().max(40).describe('Stable id, e.g. "pack2"'), quantity: z.number().int().min(1).max(100), price: z.number().min(0).describe('Total price for this quantity'), label: z.string().max(80).optional(), badge: z.string().max(30).optional() })
 const variant = z.object({ id: z.number().int().optional().describe('Existing variant id to keep it (omit for a new one)'), name: z.string().max(80), sku: z.string().max(60).nullable().optional(), price: z.number().min(0).nullable().optional(), costPrice: z.number().min(0).nullable().optional(), stock: z.number().int().min(0).nullable().optional(), isActive: z.boolean().optional() })
 
+const offerShape = z.object({
+  id: z.string().max(40).describe('Stable id, e.g. "bump1", "up1"'),
+  productId: z.string().max(40).describe('Another product of the store (same type), can be inactive'),
+  variantId: z.number().int().nullable().optional(),
+  price: z.number().min(0).describe('Special price for this offer'),
+  title: z.string().max(120),
+  text: z.string().max(600).optional(),
+  image: z.string().max(500).nullable().optional(),
+  acceptLabel: z.string().max(60).optional(),
+  declineLabel: z.string().max(80).optional(),
+})
+
 const productFields = z.object({
   type: z.enum(['physical', 'digital']).optional().describe('Must match the store kind (a store sells physical OR digital products). Defaults to the store kind.'),
   name: z.string().min(2).max(160).optional(),
@@ -215,6 +227,20 @@ const productFields = z.object({
     .passthrough()
     .optional()
     .describe('Sales page content. Objects are merged, lists are replaced.'),
+  bundle: z
+    .object({ items: z.array(z.object({ productId: z.string().max(40), variantId: z.number().int().nullable().optional(), quantity: z.number().int().min(1).max(50).optional() })).min(2).max(20) })
+    .nullable()
+    .optional()
+    .describe('Make this product a BUNDLE of other products of the store (same type: physical or digital). Stock and cost of each included product are used. null = not a bundle.'),
+  funnel: z
+    .object({
+      bump: offerShape.nullable().optional().describe('Order bump: checkbox on the order form'),
+      upsells: z.array(offerShape.extend({ downsell: offerShape.nullable().optional().describe('Shown only if this upsell is refused') })).max(3).optional().describe('One click offers right after the order (COD: added to the same order)'),
+      thankYou: z.object({ buttonLabel: z.string().max(60), buttonUrl: z.string().url() }).nullable().optional().describe('Call to action button on the thank you page'),
+    })
+    .nullable()
+    .optional()
+    .describe('Sales funnel. Sending funnel replaces the whole funnel config (send the full object). null removes it.'),
 })
 
 /** Produit tel que renvoyé par l'API → forme d'entrée (comme l'éditeur du dashboard). */
@@ -242,6 +268,8 @@ function productToInput(p: any) {
     weightGrams: p.weightGrams,
     variantLabel: p.variantLabel,
     variants: (p.variants ?? []).map((v: any) => ({ id: v.id, name: v.name, sku: v.sku, price: v.price, costPrice: v.costPrice ?? null, stock: v.stock, isActive: v.isActive })),
+    bundle: p.bundle ?? null,
+    funnel: p.funnel ?? null,
   }
 }
 
@@ -403,6 +431,9 @@ export const TOOLS: Tool[] = [
       const id = await resolveStore(ctx, storeId)
       const current = productToInput(await ctx.call<any>('GET', `/stores/${id}/products/${productId}`))
       const body: Record<string, any> = deepMerge(current, patch)
+      // Pack et tunnel : remplacés en entier (pas de fusion partielle d'offres).
+      if (patch.funnel !== undefined) body.funnel = patch.funnel
+      if (patch.bundle !== undefined) body.bundle = patch.bundle
       if (patch.coverImage && !patch.thumbnail) body.thumbnail = null
       await rehostProductImages(ctx, id, body)
       if (!body.thumbnail) body.thumbnail = body.coverImage ?? null
@@ -859,6 +890,19 @@ export const TOOLS: Tool[] = [
     run: async (a, ctx) => ctx.call('DELETE', `/stores/${await resolveStore(ctx, a.storeId)}/zones/${a.zoneId}`),
   },
 
+  {
+    name: 'get_funnel_stats',
+    title: 'Sales funnel results',
+    description: 'Results of the sales funnels for a period (optionally one product): order bump acceptance rate, each upsell / downsell accepted vs refused, revenue added by the funnel.',
+    input: z.object({ storeId: storeArg, productId: z.string().max(40).optional(), period: periodArg, from: ymd.optional(), to: ymd.optional() }),
+    readOnly: true,
+    run: async (a, ctx) => {
+      const id = await resolveStore(ctx, a.storeId)
+      const range = await rangeFor(ctx, id, a)
+      return ctx.call('GET', `/stores/${id}/stats/funnel`, { query: { ...range, productId: a.productId } })
+    },
+  },
+
   // Dépenses (bénéfice réel)
   {
     name: 'list_expenses',
@@ -959,6 +1003,7 @@ How to work with it:
 - "Revenue collected" = paid online or COD delivered. "Revenue booked" = ordered, excluding cancelled and returned.
 - Real profit = revenue collected - product cost (costPrice) - courier costs (delivered and returned orders) - return costs - expenses. Always distinguish revenue from profit. If unitsWithoutCost > 0, tell the user to set costPrice on those products, since profit is overestimated.
 - A store sells physical OR digital products, never both (see get_store kind).
+- Bundles: a product whose bundle.items lists other products (create the included products first). Funnels: order bump (checkbox on the form), up to 3 one click upsells after the order, each with an optional downsell if refused; COD upsells are added to the same order. Offer products must exist in the store (they can be inactive).
 - Product sheets: get_product then update_product with only the fields to change; lists are replaced, objects merged. Image URLs are hosted on Zuri automatically.
 - Write customer facing copy in the store language (usually French), concrete and honest: no invented reviews, numbers or medical claims.
 - Destructive tools need confirm: true: always ask the user first.

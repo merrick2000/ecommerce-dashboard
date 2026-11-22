@@ -2,7 +2,7 @@ import { and, eq, gte, inArray, lt, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { db } from '../db/client'
-import { orderItems, orders, pageEvents, users } from '../db/schema'
+import { orderItems, orders, pageEvents, products, users } from '../db/schema'
 import type { AppEnv } from '../lib/context'
 import { can, requirePermission } from '../lib/auth'
 import { orderScope } from '../lib/scope'
@@ -272,3 +272,74 @@ export const statsRoutes = new Hono<AppEnv>().get('/overview', requirePermission
       })
     },
   )
+
+/**
+ * Performance du tunnel de vente : order bump (proposé / accepté), chaque upsell ou offre de repli
+ * (accepté / refusé) et chiffre ajouté par le tunnel. Filtrable par produit principal.
+ */
+export const funnelStatsRoute = new Hono<AppEnv>().get(
+  '/funnel',
+  requirePermission('stats.view'),
+  v('query', rangeSchema.extend({ productId: z.string().max(40).optional() })),
+  async (c) => {
+    const store = c.get('store')
+    const access = c.get('access')
+    const revenueVisible = can(access, 'stats.revenue')
+    const { from, to, productId } = c.req.valid('query')
+    const tz = store.timezone
+    const startDay = from.toISOString().slice(0, 10)
+    const endDay = to.toISOString().slice(0, 10)
+    const start = localMidnight(startDay, tz)
+    const end = localMidnight(addDays(endDay, 1), tz)
+    const scope = orderScope(access)
+    const where = dsql`${orders.storeId} = ${store.id} and ${orders.createdAt} >= ${start.toISOString()}::timestamptz and ${orders.createdAt} < ${end.toISOString()}::timestamptz
+      ${scope ? dsql`and ${scope}` : dsql``}
+      ${productId ? dsql`and exists (select 1 from order_items m where m.order_id = ${orders.id} and m.role = 'main' and m.product_id = ${productId})` : dsql``}`
+
+    const [bumpRows, answerRows, revenueRows, funnels] = await Promise.all([
+      db.execute<{ offered: number; accepted: number; orders: number }>(dsql`
+        select count(*) filter (where ${orders.metadata}->'funnel'->>'bumpOffered' = 'true')::int as offered,
+               count(*) filter (where ${orders.metadata}->'funnel'->>'bumpAccepted' = 'true')::int as accepted,
+               count(*) filter (where ${orders.metadata} ? 'funnel')::int as orders
+        from ${orders} where ${where}`),
+      db.execute<{ offer_id: string; answer: string; n: number }>(dsql`
+        select a.key as offer_id, a.value as answer, count(*)::int as n
+        from ${orders}, jsonb_each_text(coalesce(${orders.metadata}->'funnel'->'answers', '{}'::jsonb)) a
+        where ${where} group by 1, 2`),
+      db.execute<{ role: string; lines: number; booked: number; collected: number }>(dsql`
+        select oi.role, count(*)::int as lines,
+               coalesce(sum(oi.total) filter (where ${orders.fulfillmentStatus} not in ('cancelled', 'returned')), 0)::float as booked,
+               coalesce(sum(oi.total) filter (where ${orders.paymentStatus} = 'paid'), 0)::float as collected
+        from order_items oi join ${orders} on ${orders.id} = oi.order_id
+        where oi.role <> 'main' and ${where} group by oi.role`),
+      db.select({ id: products.id, name: products.name, funnel: products.funnel }).from(products).where(and(eq(products.storeId, store.id), productId ? eq(products.id, productId) : dsql`${products.funnel} is not null`)),
+    ])
+    const titles = new Map<string, { title: string; role: 'upsell' | 'downsell'; product: string }>()
+    for (const p of funnels) for (const u of p.funnel?.upsells ?? []) {
+      titles.set(u.id, { title: u.title, role: 'upsell', product: p.name })
+      if (u.downsell) titles.set(u.downsell.id, { title: u.downsell.title, role: 'downsell', product: p.name })
+    }
+    const offers = new Map<string, { id: string; title: string; role: string; product: string | null; accepted: number; declined: number }>()
+    for (const r of answerRows) {
+      const t = titles.get(r.offer_id)
+      const o = offers.get(r.offer_id) ?? { id: r.offer_id, title: t?.title ?? r.offer_id, role: t?.role ?? 'upsell', product: t?.product ?? null, accepted: 0, declined: 0 }
+      if (r.answer === 'accepted') o.accepted += Number(r.n)
+      else o.declined += Number(r.n)
+      offers.set(r.offer_id, o)
+    }
+    const rate = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 1000) / 10 : null)
+    const b = [...bumpRows][0]
+    const rev = Object.fromEntries([...revenueRows].map((r) => [r.role, r]))
+    const money = (n: number | undefined) => (revenueVisible ? Math.round(Number(n ?? 0) * 100) / 100 : null)
+    const sum = (k: 'booked' | 'collected') => ['bump', 'upsell', 'downsell'].reduce((a, role) => a + Number(rev[role]?.[k] ?? 0), 0)
+    return c.json({
+      range: { from: startDay, to: endDay },
+      currency: store.currency,
+      revenueVisible,
+      ordersWithFunnel: Number(b?.orders ?? 0),
+      bump: { offered: Number(b?.offered ?? 0), accepted: Number(b?.accepted ?? 0), rate: rate(Number(b?.accepted ?? 0), Number(b?.offered ?? 0)), revenueBooked: money(rev.bump?.booked) },
+      offers: [...offers.values()].map((o) => ({ ...o, rate: rate(o.accepted, o.accepted + o.declined) })).sort((x, y) => y.accepted - x.accepted),
+      revenue: { booked: money(sum('booked')), collected: money(sum('collected')), upsellBooked: money(rev.upsell?.booked), downsellBooked: money(rev.downsell?.booked) },
+    })
+  },
+)

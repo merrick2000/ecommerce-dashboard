@@ -44,6 +44,24 @@ export interface Variant {
   inStock: boolean
 }
 
+/** Offre du tunnel telle qu'exposée par l'API (prix fixé par le vendeur). */
+export interface PublicOffer {
+  id: string
+  title: string
+  text: string
+  price: number
+  regularPrice: number | null
+  productName: string
+  image: string | null
+  acceptLabel: string | null
+  declineLabel: string | null
+}
+export interface PublicFunnel {
+  bump: PublicOffer | null
+  upsells: (PublicOffer & { downsell: PublicOffer | null })[]
+  thankYou: { buttonLabel: string; buttonUrl: string } | null
+}
+
 export interface CheckoutData {
   store: PublicStore
   product: {
@@ -62,7 +80,11 @@ export interface CheckoutData {
     variantLabel: string | null
     variants: Variant[]
     inStock: boolean
+    /** Pack : produits inclus. */
+    bundle: { productId: string; name: string; quantity: number; image: string | null; price: number }[] | null
   }
+  /** Tunnel de vente (order bump, upsells, remerciement). */
+  funnel: PublicFunnel | null
   zones: Zone[]
   checkout: CheckoutSettings
   orderForm: OrderForm
