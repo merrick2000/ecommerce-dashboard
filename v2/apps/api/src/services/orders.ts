@@ -458,6 +458,8 @@ export async function transitionFulfillment(
     return { becamePaid }
   })
   if (result.becamePaid) await enqueue('order.paid', { orderId })
+  // Email de suivi au client : commande confirmée, colis en route.
+  if (to === 'confirmed' || to === 'shipped') await enqueue('order.customer-status', { orderId, status: to }, { singletonKey: `order.customer-status:${orderId}:${to}` })
   // Commande annulée avant paiement : la session Payment Orchestrator ne doit plus être payable.
   if (to === 'cancelled') {
     void (await import('./po')).expireOrderSession(orderId).catch((e) => console.warn('[po] expiration', (e as Error).message))

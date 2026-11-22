@@ -4,7 +4,7 @@
  * Les retours du widget ne servent qu'à l'affichage : la commande n'est payée que lorsque
  * NOTRE serveur l'a confirmé (webhook signé ou lecture de la session), la page commande l'attend.
  */
-import { useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { api, fmt } from '../client/http'
 import { money } from '../lib/format'
 import type { PayStrings } from '../lib/i18n'
@@ -44,6 +44,8 @@ export interface PoPayStepProps {
   /** Page commande : affiche « confirmation en cours » puis le statut confirmé par le serveur. */
   orderUrl: string
   t: PayStrings
+  /** Juste après la commande : le paiement s'ouvre tout seul (aucun clic de plus). Le bouton reste pour réessayer. */
+  autoStart?: boolean
 }
 
 export default function PoPayStep(p: PoPayStepProps) {
@@ -80,6 +82,15 @@ export default function PoPayStep(p: PoPayStepProps) {
       onClose: () => setBusy(false),
     })
   }
+
+  // Ouverture automatique, une seule fois : le client vient déjà de cliquer sur « Commander ».
+  const started = useRef(false)
+  useEffect(() => {
+    if (p.autoStart && !started.current) {
+      started.current = true
+      void pay()
+    }
+  }, [])
 
   return (
     <div class="pay po-pay">

@@ -17,6 +17,7 @@ import { env } from '../lib/env'
 import { escapeHtml } from '../lib/sanitize'
 import { enqueue } from '../jobs/queue'
 import { notificationEmail } from './emails'
+import { sellerSaleEmail, type SaleEmailData } from './order-emails'
 import { sendEmail, sendTelegramTo, telegramApi } from './notify'
 
 export interface NotifyData {
@@ -35,6 +36,8 @@ export interface NotifyData {
   excludeUserId?: number
   tag?: string
   sound?: PushPayload['sound']
+  /** Nouvelle commande / vente : email détaillé « Génial, une nouvelle vente ! » au lieu de l'email simple. */
+  sale?: SaleEmailData
 }
 
 /** Met la notification en file : l'envoi réel se fait dans le worker (jamais dans la requête HTTP). */
@@ -182,7 +185,10 @@ export async function dispatchNotification(job: { storeId: string; event: Notifi
       const tasks: Promise<unknown>[] = []
       if (r.channels.push) tasks.push(sendPushToUser(r.userId, { title: data.title, body, url, tag: data.tag, event, sound: data.sound }))
       if (r.channels.email) {
-        const mail = notificationEmail({ title: data.title, body, url, storeName: store.name })
+        const mail =
+          data.sale && (event === 'order.new' || event === 'order.paid')
+            ? sellerSaleEmail(data.sale, { event, showAmounts: r.canSeeRevenue })
+            : notificationEmail({ title: data.title, body, url, storeName: store.name })
         tasks.push(sendEmail(r.email, mail.subject, mail.html, { fromName: `${store.name} via Zuri`, localPart: 'notifications' }))
       }
       if (r.channels.telegram && r.telegramChatId && telegramEnabled()) {

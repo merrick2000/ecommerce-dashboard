@@ -44,7 +44,7 @@ async function orderProductIds(orderIds: string[]) {
   return rows.map((r) => r.productId).filter((x): x is string => !!x)
 }
 
-const STATUS_LABELS: Record<string, string> = { confirmed: '✅ Confirmée', shipped: '🚚 Expédiée', delivered: '📦 Livrée', returned: '↩️ Retournée', cancelled: '❌ Annulée' }
+const STATUS_LABELS: Record<string, string> = { confirmed: 'Confirmée', shipped: 'Expédiée', delivered: 'Livrée', returned: 'Retournée', cancelled: 'Annulée' }
 const NOTIFIED_STATUSES = new Set(Object.keys(STATUS_LABELS))
 
 /** Prévient l'équipe d'un changement de statut fait par un membre (sauf lui-même). */

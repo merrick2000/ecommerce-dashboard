@@ -154,7 +154,7 @@ export async function acceptInvitation(user: User, token: string): Promise<strin
     joined = true
   })
   if (joined) await notify(inv.storeId, 'team.activity', {
-    title: `👋 ${user.name} a rejoint ${row.storeName}`,
+    title: `${user.name} a rejoint ${row.storeName}`,
     body: `${user.name} (${user.email}) fait maintenant partie de l’équipe en tant que ${ROLE_LABELS[inv.role]}.`,
     path: `/stores/${inv.storeId}/team`,
     excludeUserId: user.id,

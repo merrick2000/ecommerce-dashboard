@@ -65,7 +65,7 @@ export const notificationRoutes = new Hono<AppEnv>()
   .post('/test', rateLimit({ key: 'notif-test', limit: 10, windowSec: 600 }), async (c) => {
     const user = c.get('user')
     const push = await sendPushToUser(user.id, {
-      title: '💰 Notification de test',
+      title: 'Notification de test',
       body: 'Tout fonctionne : vous serez prévenu ici à chaque vente.',
       url: '/',
       event: 'test',
@@ -74,7 +74,7 @@ export const notificationRoutes = new Hono<AppEnv>()
     })
     let telegram = false
     if (user.telegramChatId && telegramEnabled()) {
-      telegram = await sendTelegramTo(user.telegramChatId, '<b>💰 Notification de test</b>\nTout fonctionne : vous serez prévenu ici à chaque vente.')
+      telegram = await sendTelegramTo(user.telegramChatId, '<b>Notification de test</b>\nTout fonctionne : vous serez prévenu ici à chaque vente.')
         .then(() => true)
         .catch(() => false)
     }

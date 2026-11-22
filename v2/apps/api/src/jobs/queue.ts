@@ -8,13 +8,15 @@ import type { NotifyData } from '../services/notifications'
 export interface JobPayloads {
   'order.paid': { orderId: string }
   'order.notify-new': { orderId: string }
+  /** Email au client : commande confirmée ou colis en route. */
+  'order.customer-status': { orderId: string; status: 'confirmed' | 'shipped' }
   'leads.remind': Record<string, never>
   'payments.reconcile': Record<string, never>
   'account.notify': AccountNotice
   'notify.dispatch': { storeId: string; event: NotificationEvent; data: NotifyData }
 }
 export type JobName = keyof JobPayloads
-export const JOB_NAMES: JobName[] = ['order.paid', 'order.notify-new', 'leads.remind', 'payments.reconcile', 'account.notify', 'notify.dispatch']
+export const JOB_NAMES: JobName[] = ['order.paid', 'order.notify-new', 'order.customer-status', 'leads.remind', 'payments.reconcile', 'account.notify', 'notify.dispatch']
 
 let boss: PgBoss | null = null
 let starting: Promise<PgBoss> | null = null

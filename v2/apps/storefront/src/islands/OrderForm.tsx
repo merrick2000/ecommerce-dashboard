@@ -458,7 +458,7 @@ export default function OrderForm(p: OrderFormProps) {
       <div ref={rootRef}>
         {summary()}
         {p.gateway?.kind === 'orchestrator' ? (
-          <PoPayStep token={stage.token} total={stage.total} currency={p.currency} locale={p.locale} gateway={p.gateway} orderUrl={p.orderBase + stage.token} t={p.pt} />
+          <PoPayStep token={stage.token} total={stage.total} currency={p.currency} locale={p.locale} gateway={p.gateway} orderUrl={p.orderBase + stage.token} t={p.pt} autoStart />
         ) : (
           <PaymentStep token={stage.token} slug={p.slug} total={stage.total} currency={p.currency} locale={p.locale} storeCountry={p.country} phone={phone} t={p.pt} onPaid={() => location.assign(p.orderBase + stage.token)} />
         )}

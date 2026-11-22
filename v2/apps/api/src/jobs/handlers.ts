@@ -1,9 +1,12 @@
-import { and, asc, eq, gte, isNull, lte, sql as dsql } from 'drizzle-orm'
+import { and, asc, eq, gte, inArray, isNull, lte, sql as dsql } from 'drizzle-orm'
 import { db } from '../db/client'
-import { checkoutSettings, leads, orderItems, orders, products, promoCodes, stores, users } from '../db/schema'
+import { checkoutSettings, deliveryZones, leads, orderItems, orders, products, promoCodes, stores, users } from '../db/schema'
 import { decrypt } from '../lib/crypto'
 import { env } from '../lib/env'
-import { abandonedCartEmail, digitalReceiptEmail, formatMoney, physicalConfirmationEmail } from '../services/emails'
+import { abandonedCartEmail, formatMoney } from '../services/emails'
+import { customerDigitalEmail, customerOrderEmail, customerStatusEmail, type EmailOrder, type SaleEmailData } from '../services/order-emails'
+import { publicUrl } from '../services/storage'
+import { localMidnight } from '../routes/stats'
 import { sendCapiEvent, sendEmail } from '../services/notify'
 import { notify } from '../services/notifications'
 import { sendAccountNotice, type AccountNotice } from '../services/account'
@@ -20,6 +23,64 @@ async function loadOrder(orderId: string) {
   return { ...row, items, lines, cfg }
 }
 type Loaded = NonNullable<Awaited<ReturnType<typeof loadOrder>>>
+
+/** Données communes aux emails de commande : photos des produits, couleur de la boutique, délai, moyen de paiement réel. */
+async function emailOrder(o: Loaded): Promise<EmailOrder> {
+  const ids = [...new Set(o.items.map((i) => i.productId).filter((x): x is string => !!x))]
+  const imgs = ids.length ? await db.select({ id: products.id, thumbnail: products.thumbnail, cover: products.coverImage }).from(products).where(inArray(products.id, ids)) : []
+  const img = new Map(imgs.map((p) => [p.id, publicUrl(p.thumbnail ?? p.cover)]))
+  const [zone] = o.order.deliveryZoneId ? await db.select({ eta: deliveryZones.etaLabel }).from(deliveryZones).where(eq(deliveryZones.id, o.order.deliveryZoneId)).limit(1) : []
+  const order = o.order
+  const paymentLabel =
+    order.paymentMethod === 'cod'
+      ? 'Paiement à la livraison'
+      : order.poOperator
+        ? `${order.poOperator.toUpperCase()} Mobile Money`
+        : order.paymentProvider
+          ? `Paiement en ligne (${order.paymentProvider})`
+          : 'Paiement en ligne'
+  return {
+    storeName: o.store.name,
+    color: o.cfg?.settings.primaryColor ?? '#f59e0b',
+    orderNumber: order.orderNumber,
+    createdAt: order.createdAt.toISOString(),
+    customerName: order.customerName,
+    customerPhone: order.customerPhone,
+    customerEmail: order.customerEmail,
+    city: order.city,
+    address: order.address,
+    note: order.customerNote,
+    items: o.items.map((i) => ({ name: i.name, variant: i.variantName, quantity: i.quantity, total: Number(i.total), image: i.productId ? (img.get(i.productId) ?? null) : null, role: i.role, bundle: i.bundle?.map((b) => (b.quantity > 1 ? `${b.quantity} x ${b.name}` : b.name)) ?? null })),
+    subtotal: Number(order.subtotal),
+    discount: Number(order.discount),
+    shippingFee: Number(order.shippingFee),
+    total: Number(order.total),
+    currency: order.currency,
+    cod: order.paymentMethod === 'cod',
+    digital: order.kind === 'digital',
+    paymentLabel,
+    support: { phone: o.store.supportPhone, email: o.store.supportEmail },
+    trackUrl: orderUrl(o.store.slug, order.accessToken),
+    etaLabel: zone?.eta ?? null,
+  }
+}
+
+/** Email client adapté : accès au produit (digital payé) ou confirmation de commande (physique). */
+async function customerConfirmation(o: Loaded) {
+  const data = await emailOrder(o)
+  return o.order.kind === 'digital' && o.order.paymentStatus === 'paid' ? customerDigitalEmail({ ...data, accessUrl: orderUrl(o.store.slug, o.order.accessToken) }) : customerOrderEmail(data)
+}
+
+/** Bilan du jour de la boutique (fuseau de la boutique), pour l'email « nouvelle vente ». */
+async function todayStats(storeId: string, tz: string) {
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  const start = localMidnight(day, tz)
+  const [r] = await db
+    .select({ n: dsql<number>`count(*)::int`, revenue: dsql<number>`coalesce(sum(${orders.total}) filter (where ${orders.fulfillmentStatus} not in ('cancelled','returned')), 0)::float` })
+    .from(orders)
+    .where(and(eq(orders.storeId, storeId), gte(orders.createdAt, start)))
+  return { orders: Number(r?.n ?? 0), revenue: Number(r?.revenue ?? 0) }
+}
 
 async function capiPurchase(o: Loaded) {
   const pixelId = o.cfg?.facebookPixelId
@@ -58,8 +119,10 @@ async function notifyTeam(o: Loaded, event: 'order.new' | 'order.paid') {
   const who = [o.order.customerName, o.order.city].filter(Boolean).join(', ')
   const what = o.lines.join(', ')
   const base = `${who} · ${what}`
+  const sale: SaleEmailData = { ...(await emailOrder(o)), dashboardUrl: `${env.APP_URL.replace(/\/$/, '')}/stores/${o.store.id}/orders/${o.order.id}`, today: await todayStats(o.store.id, o.store.timezone) }
   await notify(o.store.id, event, {
-    title: event === 'order.new' ? `🛒 Nouvelle commande ${o.order.orderNumber}` : `💰 Paiement reçu ${o.order.orderNumber}`,
+    title: event === 'order.new' ? `Nouvelle commande ${o.order.orderNumber}` : `Nouvelle vente : paiement reçu ${o.order.orderNumber}`,
+    sale,
     body: base,
     bodyWithAmount: `${base} · ${formatMoney(o.order.total, o.order.currency)} (${method})`,
     path: `/stores/${o.store.id}/orders/${o.order.id}`,
@@ -86,10 +149,7 @@ export async function handleOrderPaid({ orderId }: { orderId: string }) {
     // Les commandes COD ont déjà été notifiées et envoyées à la CAPI à leur création.
     tasks.push(capiPurchase(o), notifyTeam(o, 'order.paid'))
     if (o.order.customerEmail) {
-      const mail =
-        o.order.kind === 'physical'
-          ? physicalConfirmationEmail({ storeName: o.store.name, customerName: o.order.customerName, orderNumber: o.order.orderNumber, items: o.lines, total: o.order.total, currency: o.order.currency, cod: false, trackUrl: orderUrl(o.store.slug, o.order.accessToken) })
-          : digitalReceiptEmail({ storeName: o.store.name, customerName: o.order.customerName, orderNumber: o.order.orderNumber, items: o.lines, total: o.order.total, currency: o.order.currency, accessUrl: orderUrl(o.store.slug, o.order.accessToken) })
+      const mail = await customerConfirmation(o)
       tasks.push(sendEmail(o.order.customerEmail, mail.subject, mail.html, customerMailOpts(o)))
     }
   }
@@ -115,7 +175,7 @@ export async function handleOrderNotifyNew({ orderId }: { orderId: string }) {
   if (!o) return
   const tasks: Promise<unknown>[] = [notifyTeam(o, 'order.new'), capiPurchase(o)]
   if (o.order.customerEmail) {
-    const mail = physicalConfirmationEmail({ storeName: o.store.name, customerName: o.order.customerName, orderNumber: o.order.orderNumber, items: o.lines, total: o.order.total, currency: o.order.currency, cod: true, trackUrl: orderUrl(o.store.slug, o.order.accessToken) })
+    const mail = await customerConfirmation(o)
     tasks.push(sendEmail(o.order.customerEmail, mail.subject, mail.html, customerMailOpts(o)))
   }
   const failed = (await Promise.allSettled(tasks)).filter((r) => r.status === 'rejected')
@@ -202,7 +262,7 @@ export async function handleLeadsNotifySellers() {
     if (!claimed) continue
     const who = [lead.name ?? 'Un client', lead.phone].filter(Boolean).join(' · ')
     await notify(lead.storeId, 'lead.abandoned', {
-      title: '🛒 Panier abandonné',
+      title: 'Panier abandonné',
       body: `${who} a commencé une commande « ${productName} » sans la terminer. Un appel peut la sauver.`,
       path: `/stores/${lead.storeId}/products/${lead.productId}`,
       productIds: lead.productId ? [lead.productId] : null,
@@ -210,4 +270,12 @@ export async function handleLeadsNotifySellers() {
       sound: 'soft',
     })
   }
+}
+
+/** Suivi client : commande confirmée par la boutique, colis remis au livreur (si le client a donné un email). */
+export async function handleCustomerStatus({ orderId, status }: { orderId: string; status: 'confirmed' | 'shipped' }) {
+  const o = await loadOrder(orderId)
+  if (!o?.order.customerEmail || o.order.kind === 'digital') return
+  const mail = customerStatusEmail({ ...(await emailOrder(o)), status, courier: o.order.courier, trackingNumber: o.order.trackingNumber })
+  await sendEmail(o.order.customerEmail, mail.subject, mail.html, customerMailOpts(o))
 }
