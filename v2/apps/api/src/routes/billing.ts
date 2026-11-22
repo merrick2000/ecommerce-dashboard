@@ -6,7 +6,7 @@ import type { AppEnv } from '../lib/context'
 import { HttpError } from '../lib/errors'
 import { rateLimit } from '../lib/rate-limit'
 import { v } from '../lib/validate'
-import { billingHistory, billingNetworks, refreshBillingPayment, startBillingPayment } from '../services/billing'
+import { billingGateway, billingHistory, billingNetworks, refreshBillingPayment, startBillingPayment } from '../services/billing'
 import { countOwnedStores, planForUser, resolveFeatures } from '../services/platform'
 
 export const billingRoutes = new Hono<AppEnv>()
@@ -21,6 +21,8 @@ export const billingRoutes = new Hono<AppEnv>()
       usage: { stores: await countOwnedStores(user.id) },
       canPay: features.billing,
       networks: features.billing ? await billingNetworks() : [],
+      /** Payment Orchestrator (widget) quand le compte de la plateforme est configuré, sinon paiement direct. */
+      gateway: features.billing ? await billingGateway() : { kind: 'direct' as const },
       payments: await billingHistory(user.id),
     })
   })

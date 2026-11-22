@@ -11,6 +11,7 @@ interface PlatformSettings {
   billingAccount: { storeId?: string } | null
   urlImport: boolean
   firecrawl: { configured: boolean; source: 'admin' | 'env' | null; hint: string | null }
+  po: { configured: boolean; source: 'admin' | 'env' | null; hint: string | null; livemode: boolean | null; webhookSecretSet: boolean; webhookUrl: string }
   myStores: { id: string; name: string; accounts: { provider: string; enabled: boolean; mode: string }[] }[]
 }
 
@@ -27,9 +28,12 @@ export default function AdminSettings() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Réglages de la plateforme</h1>
-      <Card title="Ouverture des paiements" description="Tant que c’est désactivé, seuls toi et les comptes que tu autorises (fiche du compte) y ont accès.">
+      <Card title="Payment Orchestrator de la plateforme" description="Ton compte payment.zurisell.store : il encaisse les abonnements Zuri et les ventes de tes propres boutiques. Jamais celles des autres vendeurs (ils connectent leur propre compte).">
+        <PoPlatform po={data.po} onSave={(body, msg) => put(body, msg)} />
+      </Card>
+      <Card title="Ouverture des paiements" description="Tant que c’est désactivé, seules tes boutiques (et les comptes que tu autorises dans leur fiche) encaissent en ligne. Les autres vendeurs restent en paiement à la livraison.">
         <div className="space-y-3">
-          <Switch label="Paiements en ligne (Mobile Money) ouverts à tous les vendeurs" checked={data.paymentsOnline} onChange={(v) => put({ paymentsOnline: v }, v ? 'Paiements en ligne ouverts à tous' : 'Paiements en ligne réservés')} />
+          <Switch label="Paiement en ligne (Payment Orchestrator, Mobile Money) ouvert à tous les vendeurs" checked={data.paymentsOnline} onChange={(v) => put({ paymentsOnline: v }, v ? 'Paiements en ligne ouverts à tous' : 'Paiements en ligne réservés')} />
           <Switch label="Paiement des abonnements ouvert à tous" checked={data.billingEnabled} onChange={(v) => put({ billingEnabled: v }, v ? 'Abonnements payants ouverts' : 'Abonnements payants réservés')} />
         </div>
       </Card>
@@ -117,6 +121,74 @@ function FirecrawlKey({ firecrawl, onSave }: { firecrawl: PlatformSettings['fire
           </Button>
         )}
       </form>
+    </div>
+  )
+}
+
+/** Clés du compte Payment Orchestrator de la plateforme (chiffrées en base, prioritaires sur les variables d'environnement). */
+function PoPlatform({ po, onSave }: { po: PlatformSettings['po']; onSave: (body: unknown, msg: string) => void }) {
+  const [secretKey, setSecretKey] = useState('')
+  const [webhookSecret, setWebhookSecret] = useState('')
+  const [test, setTest] = useState<string | null>(null)
+  return (
+    <div className="space-y-3">
+      <p className="flex flex-wrap items-center gap-2 text-sm">
+        {po.configured ? (
+          <>
+            <Badge tone="green">configuré</Badge>
+            <Badge tone={po.livemode ? 'blue' : 'amber'}>{po.livemode ? 'production' : 'test'}</Badge>
+            <code className="text-[12px]">{po.hint}</code>
+            <span className="text-[12px] text-muted">({po.source === 'admin' ? 'enregistré ici' : 'variable d’environnement'})</span>
+            {!po.webhookSecretSet && <Badge tone="amber">secret de webhook manquant</Badge>}
+          </>
+        ) : (
+          <Badge tone="amber">non configuré : abonnements payés par l’ancien moyen</Badge>
+        )}
+      </p>
+      <form
+        className="grid gap-2 sm:grid-cols-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const body: Record<string, string> = {}
+          if (secretKey.trim()) body.poSecretKey = secretKey.trim()
+          if (webhookSecret.trim()) body.poWebhookSecret = webhookSecret.trim()
+          if (!Object.keys(body).length) return
+          onSave(body, 'Compte Payment Orchestrator enregistré')
+          setSecretKey('')
+          setWebhookSecret('')
+        }}
+      >
+        <Input label="Clé secrète" placeholder="sk_test_… puis sk_live_…" value={secretKey} onChange={(e) => setSecretKey(e.target.value)} autoComplete="off" type="password" />
+        <Input label="Secret de webhook" placeholder="whsec_…" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} autoComplete="off" type="password" />
+        <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+          <Button type="submit" variant="primary" disabled={!secretKey.trim() && !webhookSecret.trim()}>
+            Enregistrer
+          </Button>
+          <Button
+            type="button"
+            disabled={!po.configured}
+            onClick={async () => {
+              setTest('…')
+              const r = await api.post<{ ok: boolean; merchant?: { name: string }; livemode?: boolean; error?: string }>('/admin/po/test').catch((e) => ({ ok: false, error: String(e) }) as { ok: false; error: string })
+              setTest(r.ok ? `Connecté à « ${r.merchant?.name} » (${r.livemode ? 'production' : 'test'})` : `Échec : ${r.error}`)
+            }}
+          >
+            Tester la connexion
+          </Button>
+          {po.source === 'admin' && (
+            <Button type="button" variant="ghost" onClick={() => onSave({ poSecretKey: null, poWebhookSecret: null }, 'Compte Payment Orchestrator retiré')}>
+              Retirer
+            </Button>
+          )}
+          {test && <span className="text-[13px] text-muted">{test}</span>}
+        </div>
+      </form>
+      <div>
+        <p className="mb-1 text-[13px] font-medium">URL de webhook à ajouter dans payment.zurisell.store (Développeurs, Webhooks)</p>
+        <code className="block truncate rounded-lg bg-surface-2 px-3 py-2 text-[12.5px]" title={po.webhookUrl}>
+          {po.webhookUrl}
+        </code>
+      </div>
     </div>
   )
 }

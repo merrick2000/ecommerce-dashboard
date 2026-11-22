@@ -9,7 +9,7 @@ import { db } from '../db/client'
 import { platformSettings, storeMembers, stores, subscriptions, users, type User } from '../db/schema'
 import { HttpError } from '../lib/errors'
 
-export type SettingKey = 'payments.online' | 'billing.enabled' | 'billing.account' | 'import.url' | 'firecrawl.key'
+export type SettingKey = 'payments.online' | 'billing.enabled' | 'billing.account' | 'import.url' | 'firecrawl.key' | 'po.platform'
 
 export async function getSetting<T>(key: SettingKey, fallback: T): Promise<T> {
   const [row] = await db.select({ value: platformSettings.value }).from(platformSettings).where(eq(platformSettings.key, key)).limit(1)
@@ -17,6 +17,11 @@ export async function getSetting<T>(key: SettingKey, fallback: T): Promise<T> {
 }
 
 export async function setSetting(key: SettingKey, value: unknown) {
+  // Valeur vide = réglage retiré (la colonne n'accepte pas null).
+  if (value === null || value === undefined) {
+    await db.delete(platformSettings).where(eq(platformSettings.key, key))
+    return
+  }
   await db.insert(platformSettings).values({ key, value }).onConflictDoUpdate({ target: platformSettings.key, set: { value, updatedAt: new Date() } })
 }
 
@@ -100,3 +105,9 @@ export function readSignupSource(c: Context, method: SignupSource['method'], fro
 }
 
 export type { PlanId }
+
+/** Paiement en ligne ouvert pour cette boutique (super admin, réglage global ou option du compte du propriétaire). */
+export async function storeOnlinePayments(storeId: string): Promise<boolean> {
+  const owner = await storeOwner(storeId)
+  return Boolean(owner && (await resolveFeatures(owner)).onlinePayments)
+}

@@ -139,7 +139,8 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
         .where(and(eq(paymentAccounts.storeId, store.id), eq(paymentAccounts.enabled, true), inArray(paymentAccounts.provider, [...NATIVE_PROVIDERS])))
         .limit(1)
       // Compte Payment Orchestrator de la plateforme (boutiques du super admin) : pas de ligne en base.
-      if (!account && !(await (await import('./po')).poAccount(store.id))) throw badRequest('Le paiement en ligne n’est pas activé pour cette boutique', 'payments_disabled')
+      const online = account ? await (await import('./platform')).storeOnlinePayments(store.id) : false
+      if (!online && !(await (await import('./po')).poAccount(store.id))) throw badRequest('Le paiement en ligne n’est pas activé pour cette boutique', 'payments_disabled')
     }
     const paymentMethod: PaymentMethod = choice === 'cod' ? 'cod' : choice === 'integration' ? 'external' : 'mobile_money'
 

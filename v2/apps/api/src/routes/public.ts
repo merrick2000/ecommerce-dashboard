@@ -16,6 +16,7 @@ import { clientIp, rateLimit } from '../lib/rate-limit'
 import { v } from '../lib/validate'
 import { answerFunnelOffer, createPublicOrder, normalizePhone } from '../services/orders'
 import { poAccount } from '../services/po'
+import { storeOnlinePayments } from '../services/platform'
 import { displayPrice, evaluatePromoCode } from '../services/pricing'
 import { publicUrl, signedUrl } from '../services/storage'
 import { DEFAULT_CHECKOUT, withCheckoutDefaults } from './stores'
@@ -137,7 +138,7 @@ export const publicRoutes = new Hono<AppEnv>()
     ])
     // Payment Orchestrator (compte de la boutique, ou de la plateforme pour le super admin) : passe avant les autres moyens.
     const poAcc = product.payment.method === 'native' ? await poAccount(store.id) : null
-    const onlinePaymentEnabled = Boolean(poAcc) || providers.some((p) => (NATIVE_PROVIDERS as readonly string[]).includes(p.provider))
+    const onlinePaymentEnabled = Boolean(poAcc) || (providers.some((p) => (NATIVE_PROVIDERS as readonly string[]).includes(p.provider)) && (await storeOnlinePayments(store.id)))
     const { bundle, funnel } = await publicLinks(store, product)
     c.header('Cache-Control', 'public, max-age=30, stale-while-revalidate=120')
     return c.json({

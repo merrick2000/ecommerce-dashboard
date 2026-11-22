@@ -15,10 +15,10 @@ import { and, eq, gte, isNotNull, isNull, lt, or, sql as dsql } from 'drizzle-or
 import { db } from '../db/client'
 import { orderEvents, orderItems, orders, paymentAccounts, poWebhookEvents, stores, type Order } from '../db/schema'
 import { decryptJson } from '../lib/crypto'
+import { getSetting, resolveFeatures } from './platform'
 import { env } from '../lib/env'
 import { badRequest, conflict, HttpError, notFound } from '../lib/errors'
 import { markOrderPaid } from './orders'
-import { storeOwner } from './platform'
 
 export interface PoAccount {
   secretKey: string
@@ -71,7 +71,21 @@ type Creds = Partial<Record<'sandbox' | 'live', Record<string, string>>>
  * sinon celui de la plateforme pour les boutiques du super admin (variables PO_SECRET_KEY / PO_WEBHOOK_SECRET).
  * Jamais le compte plateforme pour un autre vendeur : son argent irait sur le compte de la plateforme.
  */
+/**
+ * Compte Payment Orchestrator de la PLATEFORME (encaisse les abonnements, paie les boutiques du super admin) :
+ * réglé dans Super admin > Réglages (chiffré en base), sinon variables PO_SECRET_KEY / PO_WEBHOOK_SECRET.
+ */
+export async function platformPo(): Promise<{ secretKey: string; webhookSecret: string | null; livemode: boolean } | null> {
+  const stored = decryptJson<{ secretKey?: string; webhookSecret?: string } | null>(await getSetting<string | null>('po.platform', null), null)
+  const secretKey = stored?.secretKey || env.PO_SECRET_KEY
+  if (!secretKey) return null
+  return { secretKey, webhookSecret: stored?.webhookSecret || env.PO_WEBHOOK_SECRET || null, livemode: secretKey.startsWith('sk_live_') }
+}
+
 export async function poAccount(storeId: string): Promise<PoAccount | null> {
+  // Paiement en ligne réservé : le super admin l'ouvre à tous ou compte par compte (Super admin).
+  const owner = await (await import('./platform')).storeOwner(storeId)
+  if (!owner || !(await resolveFeatures(owner)).onlinePayments) return null
   const [row] = await db.select().from(paymentAccounts).where(and(eq(paymentAccounts.storeId, storeId), eq(paymentAccounts.provider, 'orchestrator'))).limit(1)
   if (row?.enabled) {
     const creds = decryptJson<Creds>(row.credentialsEnc, {})[row.mode] ?? {}
@@ -79,12 +93,8 @@ export async function poAccount(storeId: string): Promise<PoAccount | null> {
       return { secretKey: creds.secretKey, webhookSecret: creds.webhookSecret || null, livemode: creds.secretKey.startsWith('sk_live_'), settings: poSettingsSchema.parse(row.settings ?? {}), source: 'store' }
     }
   }
-  if (env.PO_SECRET_KEY) {
-    const owner = await storeOwner(storeId)
-    if (owner?.isPlatformAdmin) {
-      return { secretKey: env.PO_SECRET_KEY, webhookSecret: env.PO_WEBHOOK_SECRET ?? null, livemode: env.PO_SECRET_KEY.startsWith('sk_live_'), settings: poSettingsSchema.parse(row?.settings ?? {}), source: 'platform' }
-    }
-  }
+  const platform = owner.isPlatformAdmin ? await platformPo() : null
+  if (platform) return { ...platform, settings: poSettingsSchema.parse(row?.settings ?? {}), source: 'platform' }
   return null
 }
 
@@ -308,6 +318,23 @@ export async function handlePoWebhook(rawBody: string, signature: string | undef
   }
   const tx = event.data?.object ?? null
 
+  // Abonnement Zuri (référence « bill_<id> ») : compte de la plateforme ; la session est relue côté serveur.
+  const billingId = tx?.client_reference?.match(/^bill_(\d{1,12})$/)?.[1]
+  if (billingId && !webhookToken) {
+    const secretP = (await platformPo())?.webhookSecret
+    if (!secretP || !verifyPoSignature(rawBody, signature, secretP)) return 400
+    const [freshB] = await db.insert(poWebhookEvents).values({ eventId: String(event.id).slice(0, 80), type: event.type?.slice(0, 40) }).onConflictDoNothing().returning({ id: poWebhookEvents.eventId })
+    if (!freshB) return 200
+    try {
+      if (event.type === 'payment.succeeded') await (await import('./billing')).refreshBillingPayment(Number(billingId))
+      return 200
+    } catch (e) {
+      console.error('[po webhook billing]', e)
+      await db.delete(poWebhookEvents).where(eq(poWebhookEvents.eventId, String(event.id).slice(0, 80)))
+      return 500
+    }
+  }
+
   // 1. Trouver le compte (et donc le secret) sans encore croire le contenu.
   let storeId: string | null = null
   let secret: string | null = null
@@ -319,7 +346,7 @@ export async function handlePoWebhook(rawBody: string, signature: string | undef
   }
   const order = tx ? await findOrder(tx, storeId) : null
   if (!secret && order) secret = (await poAccount(order.storeId))?.webhookSecret ?? null
-  secret ??= env.PO_WEBHOOK_SECRET ?? null
+  secret ??= (await platformPo())?.webhookSecret ?? null
   if (!secret || !verifyPoSignature(rawBody, signature, secret)) return 400
 
   // 2. Idempotence : un événement n'est traité qu'une fois.
@@ -391,5 +418,6 @@ export async function reconcilePoOrders() {
     .limit(200)
   let paid = 0
   for (const o of rows) if ((await refreshPoOrder(o)) === 'paid') paid++
-  return { checked: rows.length, paid }
+  const billing = await (await import('./billing')).reconcilePoBilling()
+  return { checked: rows.length + billing.checked, paid: paid + billing.paid }
 }

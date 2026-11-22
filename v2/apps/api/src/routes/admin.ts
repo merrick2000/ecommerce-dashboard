@@ -15,9 +15,10 @@ import { HttpError } from '../lib/errors'
 import { v } from '../lib/validate'
 import { extendSubscription } from '../services/billing'
 import { getSetting, setSetting } from '../services/platform'
-import { decrypt, encrypt } from '../lib/crypto'
 import { env } from '../lib/env'
 import { resetFirecrawlKeyCache } from '../services/page-fetch'
+import { platformPo, po, PoError } from '../services/po'
+import { decrypt, decryptJson, encrypt, encryptJson } from '../lib/crypto'
 
 const requirePlatformAdmin = createMiddleware<AppEnv>(async (c, next) => {
   if (!c.get('user').isPlatformAdmin) throw new HttpError(404, 'Route introuvable', 'not_found')
@@ -198,6 +199,18 @@ export const adminRoutes = new Hono<AppEnv>()
       billingEnabled: await getSetting('billing.enabled', false),
       billingAccount: await getSetting<{ storeId?: string } | null>('billing.account', null),
       urlImport: await getSetting('import.url', false),
+      po: await (async () => {
+        const stored = decryptJson<{ secretKey?: string; webhookSecret?: string } | null>(await getSetting<string | null>('po.platform', null), null)
+        const acc = await platformPo()
+        return {
+          configured: Boolean(acc),
+          source: stored?.secretKey ? 'admin' : acc ? 'env' : null,
+          hint: acc ? `${acc.secretKey.slice(0, 8)}…${acc.secretKey.slice(-4)}` : null,
+          livemode: acc?.livemode ?? null,
+          webhookSecretSet: Boolean(acc?.webhookSecret),
+          webhookUrl: `${env.APP_URL.replace(/\/$/, '')}/api/v1/webhooks/payment-orchestrator`,
+        }
+      })(),
       firecrawl: await (async () => {
         const stored = await getSetting<string | null>('firecrawl.key', null)
         const key = stored ? decrypt(stored) : (env.FIRECRAWL_API_KEY ?? null)
@@ -206,9 +219,14 @@ export const adminRoutes = new Hono<AppEnv>()
       myStores: myStores.map((s) => ({ ...s, accounts: accounts.filter((a) => a.storeId === s.id && ['fedapay', 'feexpay', 'pawapay'].includes(a.provider)) })),
     })
   })
-  .put('/settings', v('json', z.object({ paymentsOnline: z.boolean().optional(), billingEnabled: z.boolean().optional(), billingStoreId: z.string().max(40).nullable().optional(), urlImport: z.boolean().optional(), firecrawlKey: z.string().trim().regex(/^fc-[A-Za-z0-9]{16,80}$/, 'Clé Firecrawl invalide (fc-…)').nullable().optional() })), async (c) => {
+  .put('/settings', v('json', z.object({ paymentsOnline: z.boolean().optional(), billingEnabled: z.boolean().optional(), billingStoreId: z.string().max(40).nullable().optional(), urlImport: z.boolean().optional(), poSecretKey: z.string().trim().regex(/^sk_(test|live)_[A-Za-z0-9_]{8,200}$/, 'Clé secrète invalide (sk_test_… ou sk_live_…)').nullable().optional(), poWebhookSecret: z.string().trim().regex(/^whsec_[A-Za-z0-9_]{8,200}$/, 'Secret de webhook invalide (whsec_…)').nullable().optional(), firecrawlKey: z.string().trim().regex(/^fc-[A-Za-z0-9]{16,80}$/, 'Clé Firecrawl invalide (fc-…)').nullable().optional() })), async (c) => {
     const body = c.req.valid('json')
     if (body.urlImport !== undefined) await setSetting('import.url', body.urlImport)
+    if (body.poSecretKey !== undefined || body.poWebhookSecret !== undefined) {
+      const cur = decryptJson<{ secretKey?: string; webhookSecret?: string } | null>(await getSetting<string | null>('po.platform', null), null) ?? {}
+      const next = { ...cur, ...(body.poSecretKey !== undefined ? { secretKey: body.poSecretKey ?? undefined } : {}), ...(body.poWebhookSecret !== undefined ? { webhookSecret: body.poWebhookSecret ?? undefined } : {}) }
+      await setSetting('po.platform', next.secretKey || next.webhookSecret ? encryptJson(next) : null)
+    }
     if (body.firecrawlKey !== undefined) {
       await setSetting('firecrawl.key', body.firecrawlKey ? encrypt(body.firecrawlKey) : null)
       resetFirecrawlKeyCache()
@@ -217,6 +235,17 @@ export const adminRoutes = new Hono<AppEnv>()
     if (body.billingEnabled !== undefined) await setSetting('billing.enabled', body.billingEnabled)
     if (body.billingStoreId !== undefined) await setSetting('billing.account', body.billingStoreId ? { storeId: body.billingStoreId } : null)
     return c.json({ ok: true })
+  })
+  /** Payment Orchestrator de la plateforme : test de la clé (GET /ping). */
+  .post('/po/test', async (c) => {
+    const acc = await platformPo()
+    if (!acc) return c.json({ ok: false, error: 'Aucune clé enregistrée' })
+    try {
+      const r = await po<{ merchant: { name: string }; livemode: boolean }>(acc.secretKey, '/ping')
+      return c.json({ ok: true, merchant: r.merchant, livemode: r.livemode })
+    } catch (e) {
+      return c.json({ ok: false, error: e instanceof PoError ? (e.code === 'invalid_api_key' ? 'Clé invalide ou révoquée' : e.message) : 'Service injoignable' })
+    }
   })
 
 export { isNotNull }

@@ -1045,9 +1045,10 @@ export function effectivePlan(input: { createdAt: Date | string; subscription?: 
 export const billingCheckoutSchema = z.object({
   plan: z.enum(['starter', 'pro', 'business']),
   months: z.union([z.literal(1), z.literal(12)]),
-  phone: z.string().trim().min(6).max(30),
-  country: z.string().length(2),
-  network: z.string().min(1).max(30),
+  /** Paiement direct réseau par réseau ; inutiles avec Payment Orchestrator (le client choisit dans le widget). */
+  phone: z.string().trim().min(6).max(30).optional(),
+  country: z.string().length(2).optional(),
+  network: z.string().min(1).max(30).optional(),
 })
 
 /** Réponse du client à une offre du tunnel (upsell / downsell) après la commande. */

@@ -192,3 +192,56 @@ describe('Payment Orchestrator', () => {
     }
   })
 })
+
+describe('Payment Orchestrator : abonnements et ouverture réservée', () => {
+  test('abonnement payé via le compte de la plateforme : session, webhook signé, formule prolongée une fois', async () => {
+    mockPo()
+    const admin = new Client()
+    await db.insert(users).values({ email: 'po-admin@test.dev', name: 'Admin', isPlatformAdmin: true, passwordHash: await Bun.password.hash('motdepasse-solide', { algorithm: 'argon2id' }) }).onConflictDoNothing()
+    await admin.post('/api/auth/login', { email: 'po-admin@test.dev', password: 'motdepasse-solide' })
+    expect((await admin.put('/api/admin/settings', { poSecretKey: 'sk_live_mauvais_mode_ok', poWebhookSecret: 'pas_un_secret' })).status).toBe(422)
+    expect((await admin.put('/api/admin/settings', { poSecretKey: 'sk_test_platform_key', poWebhookSecret: WHSEC })).status).toBe(200)
+    const settings = await admin.get('/api/admin/settings')
+    expect(settings.body.po).toMatchObject({ configured: true, source: 'admin', livemode: false, webhookSecretSet: true })
+    expect(JSON.stringify(settings.body)).not.toContain('platform_key')
+    expect((await admin.post('/api/admin/po/test')).body).toMatchObject({ ok: true })
+
+    const billing = await admin.get('/api/billing')
+    expect(billing.body.gateway).toMatchObject({ kind: 'orchestrator', test: true })
+    const r = await admin.post('/api/billing/checkout', { plan: 'pro', months: 1 })
+    expect(r.status).toBe(200)
+    expect(r.body).toMatchObject({ status: 'po' })
+    const create = calls.find((c) => c.method === 'POST' && c.path === '/checkout/sessions' && c.body.client_reference === `bill_${r.body.id}`)!
+    expect(create.headers['idempotency-key']).toBe(`billing_${r.body.id}`)
+    expect(create.body.amount).toBe(9900)
+
+    // Paiement confirmé : webhook signé avec le secret de la plateforme, la session est relue côté serveur.
+    sessions[r.body.sessionId] = { ...sessions[r.body.sessionId], status: 'complete', payment_status: 'paid', transaction: { id: 'tx_bill', status: 'succeeded' } }
+    const body = event('payment.succeeded', { id: 'tx_bill', status: 'succeeded', amount: 9900, currency: 'XOF', client_reference: `bill_${r.body.id}`, checkout_session: r.body.sessionId })
+    expect((await hook('/api/v1/webhooks/payment-orchestrator', body, sign(body, 'whsec_autre'))).status).toBe(400)
+    expect((await hook('/api/v1/webhooks/payment-orchestrator', body, sign(body))).status).toBe(200)
+    const status = await admin.get(`/api/billing/payments/${r.body.id}`)
+    expect(status.body.status).toBe('paid')
+    expect(status.body.plan.plan).toBe('pro')
+    await admin.put('/api/admin/settings', { poSecretKey: null, poWebhookSecret: null })
+  })
+
+  test('paiement en ligne non ouvert au vendeur : ses clés ne suffisent pas', async () => {
+    mockPo()
+    const seller = new Client()
+    await db.insert(users).values({ email: 'po-ferme@test.dev', name: 'Ferme', passwordHash: await Bun.password.hash('motdepasse-solide', { algorithm: 'argon2id' }) }).onConflictDoNothing()
+    await seller.post('/api/auth/login', { email: 'po-ferme@test.dev', password: 'motdepasse-solide' })
+    const s = (await seller.post('/api/stores', { name: 'Fermé', slug: 'po-ferme', currency: 'XOF', kind: 'digital' })).body.id
+    // Sans l'option, l'enregistrement des clés est refusé…
+    expect((await seller.put(`/api/stores/${s}/payment-accounts/orchestrator`, { enabled: true, mode: 'sandbox', sandbox: { secretKey: 'sk_test_store_key' } })).status).toBe(403)
+    // …et même un compte déjà présent (option retirée ensuite) n'est plus utilisé.
+    const { paymentAccounts } = await import('../src/db/schema')
+    const { encryptJson } = await import('../src/lib/crypto')
+    await db.insert(paymentAccounts).values({ storeId: s, provider: 'orchestrator', enabled: true, mode: 'sandbox', credentialsEnc: encryptJson({ sandbox: { secretKey: 'sk_test_store_key' } }), webhookToken: `tok_${crypto.randomUUID()}` })
+    const p = (await seller.post(`/api/stores/${s}/products`, { type: 'digital', name: 'Cours', isActive: true, price: 3000 })).body.id
+    const page = await visitor.get(`/api/v1/checkout/po-ferme/${p}`)
+    expect(page.body.onlinePaymentEnabled).toBe(false)
+    const o = await visitor.post('/api/v1/orders', { storeSlug: 'po-ferme', productId: p, customerName: 'Koffi', customerPhone: '+22961000000', customerEmail: 'k@test.dev' })
+    expect(o.body.code).toBe('payments_disabled')
+  })
+})

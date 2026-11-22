@@ -8,6 +8,7 @@ import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, cx, ErrorState, Input, Segmented, Select, Skeleton } from '@/components/ui'
 import { meKey, useMe } from '@/hooks/auth'
 import { api } from '@/lib/api'
+import { openPoCheckout } from '@/lib/poWidget'
 import { COUNTRIES } from '@/lib/labels'
 import { LAST_STORE_KEY, readLocal } from '@/lib/storage'
 import { Logo } from '@/components/layout/Guards'
@@ -18,6 +19,8 @@ interface BillingInfo {
   usage: { stores: number }
   canPay: boolean
   networks: { country: string; networks: string[] }[]
+  /** Payment Orchestrator (widget) si le compte de la plateforme est configuré. */
+  gateway?: { kind: 'orchestrator'; widgetMode: 'auto' | 'modal' | 'redirect'; locale: string | null; widgetUrl: string; test: boolean } | { kind: 'direct' }
   payments: { id: number; plan: string; months: number; amount: number; status: string; provider: string; createdAt: string; paidAt: string | null }[]
 }
 
@@ -83,7 +86,28 @@ function Checkout({ info, plan, months, onClose }: { info: BillingInfo; plan: Pl
   const [phone, setPhone] = useState('')
   const [pending, setPending] = useState<{ id: number; message: string } | null>(null)
   useEffect(() => setNetwork(nets[0] ?? ''), [country]) // eslint-disable-line react-hooks/exhaustive-deps
-  const start = useMutation({ mutationFn: () => api.post<{ id: number; status: string; message?: string; redirectUrl?: string }>('/billing/checkout', { plan: plan.id, months, phone, country, network }) })
+  const po = info.gateway?.kind === 'orchestrator' ? info.gateway : null
+  const start = useMutation({
+    mutationFn: () =>
+      api.post<{ id: number; status: string; message?: string; redirectUrl?: string; sessionId?: string; url?: string; mode?: 'auto' | 'modal' | 'redirect'; locale?: string }>('/billing/checkout', po ? { plan: plan.id, months } : { plan: plan.id, months, phone, country, network }),
+  })
+  const payWithPo = () =>
+    start.mutate(undefined, {
+      onSuccess: (r) => {
+        if (!po || r.status !== 'po' || !r.sessionId || !r.url) return
+        // Le serveur confirme le paiement (webhook ou lecture de la session) ; on attend sa réponse.
+        void openPoCheckout({
+          widgetUrl: po.widgetUrl,
+          sessionId: r.sessionId,
+          url: r.url,
+          mode: r.mode ?? po.widgetMode,
+          locale: r.locale,
+          onSuccess: () => setPending({ id: r.id, message: 'Paiement reçu, confirmation en cours…' }),
+          onFailed: () => toast.error('Paiement refusé. Vérifie ton solde ou essaie un autre numéro.'),
+        })
+      },
+      onError: (e) => toast.error(e),
+    })
   const poll = useQuery({
     queryKey: ['billing-payment', pending?.id],
     queryFn: () => api.get<{ status: string }>(`/billing/payments/${pending!.id}`),
@@ -112,6 +136,11 @@ function Checkout({ info, plan, months, onClose }: { info: BillingInfo; plan: Pl
         !pending && (
           <>
             <Button onClick={onClose}>Annuler</Button>
+            {po ? (
+              <Button variant="primary" loading={start.isPending} onClick={payWithPo}>
+                Payer par Mobile Money
+              </Button>
+            ) : (
             <Button
               variant="primary"
               disabled={!country || !network || phone.trim().length < 6}
@@ -128,6 +157,7 @@ function Checkout({ info, plan, months, onClose }: { info: BillingInfo; plan: Pl
             >
               Payer
             </Button>
+            )}
           </>
         )
       }
@@ -140,6 +170,12 @@ function Checkout({ info, plan, months, onClose }: { info: BillingInfo; plan: Pl
             <Loader2 className="size-4 animate-spin" /> En attente de la confirmation de l’opérateur…
           </p>
         </div>
+      ) : po ? (
+        <div className="space-y-2 text-sm">
+          <p>Tu choisis ton pays et ton opérateur (MTN, Moov, Orange, Wave…) dans la fenêtre de paiement, puis tu valides sur ton téléphone.</p>
+          <p className="text-[12px] text-muted">Aucune carte bancaire nécessaire.</p>
+          {po.test && <p className="rounded-lg bg-amber-50 p-2 text-[12px] text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">Mode test : aucun argent réel n’est débité.</p>}
+        </div>
       ) : info.networks.length === 0 ? (
         <p className="text-sm text-muted">Le paiement en ligne des abonnements n’est pas encore configuré.</p>
       ) : (
@@ -151,6 +187,33 @@ function Checkout({ info, plan, months, onClose }: { info: BillingInfo; plan: Pl
         </div>
       )}
     </Dialog>
+  )
+}
+
+/** Retour de la page de paiement (redirection) : /billing?payment=<id>, on attend la confirmation du serveur. */
+function ReturnCheck() {
+  const toast = useToast()
+  const qc = useQueryClient()
+  const id = Number(new URLSearchParams(window.location.search).get('payment')) || null
+  const poll = useQuery({
+    queryKey: ['billing-return', id],
+    queryFn: () => api.get<{ status: string }>(`/billing/payments/${id}`),
+    enabled: !!id,
+    refetchInterval: (q) => (q.state.data?.status === 'pending' || !q.state.data ? 3000 : false),
+  })
+  useEffect(() => {
+    if (poll.data?.status === 'paid') {
+      toast.success('Paiement reçu : ta formule est activée')
+      void qc.invalidateQueries({ queryKey: meKey })
+      void qc.invalidateQueries({ queryKey: ['billing'] })
+      window.history.replaceState(null, '', '/billing')
+    }
+  }, [poll.data?.status]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (!id || poll.data?.status === 'paid' || poll.data?.status === 'failed') return null
+  return (
+    <p className="mt-4 flex items-center gap-2 rounded-lg bg-surface px-4 py-3 text-sm">
+      <Loader2 className="size-4 animate-spin" /> Paiement reçu, confirmation en cours…
+    </p>
   )
 }
 
@@ -175,6 +238,7 @@ export default function Billing() {
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <h1 className="text-2xl font-bold">Abonnement</h1>
         <p className="mt-1 text-muted">Une seule formule couvre toutes tes boutiques. Paiement par Mobile Money, sans carte bancaire.</p>
+        <ReturnCheck />
         {error && !data ? (
           <div className="mt-6">
             <ErrorState error={error} onRetry={() => void refetch()} />
