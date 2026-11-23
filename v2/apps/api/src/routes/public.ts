@@ -21,6 +21,29 @@ import { displayPrice, evaluatePromoCode } from '../services/pricing'
 import { publicUrl, signedUrl } from '../services/storage'
 import { DEFAULT_CHECKOUT, withCheckoutDefaults } from './stores'
 
+/**
+ * Position approximative transmise par le relais de la boutique (Cloudflare connaît la ville de chaque visiteur).
+ * Coordonnées arrondies à 2 décimales (~1 km) : assez pour le globe, jamais une adresse.
+ */
+function geoOf(header: (name: string) => string | undefined) {
+  const text = (n: string) => {
+    const raw = header(n)
+    if (!raw) return null
+    try {
+      return decodeURIComponent(raw).trim().slice(0, 120) || null
+    } catch {
+      return null
+    }
+  }
+  const coord = (n: string, max: number) => {
+    const x = Number(header(n))
+    return header(n) && Number.isFinite(x) && Math.abs(x) <= max ? Math.round(x * 100) / 100 : null
+  }
+  const lat = coord('x-geo-lat', 90)
+  const lon = coord('x-geo-lon', 180)
+  return { city: text('x-geo-city'), region: text('x-geo-region'), lat: lat !== null && lon !== null ? lat : null, lon: lat !== null && lon !== null ? lon : null }
+}
+
 const EVENT_TYPES = [
   'page_view', 'page_leave', 'scroll_25', 'scroll_50', 'scroll_75', 'scroll_100', 'cta_click', 'form_focus',
   'checkout_initiate', 'order_created', 'payment_started', 'payment_completed', 'js_error', 'video_play', 'whatsapp_click', 'offer_select',
@@ -292,10 +315,11 @@ export const publicRoutes = new Hono<AppEnv>()
       if (!ua || BOT_UA.test(ua)) return c.body(null, 204)
       const device = /tablet|ipad/i.test(ua) ? 'tablet' : /mobi|android|iphone/i.test(ua) ? 'mobile' : 'desktop'
       const metadata = b.metadata && JSON.stringify(b.metadata).length <= 4000 ? b.metadata : undefined
+      const geo = geoOf((n) => c.req.header(n))
       // L'insert ignore silencieusement une boutique/produit inexistant (pas de 500 exploitable).
       await db.execute(dsql`
-        insert into ${pageEvents} (store_id, product_id, event_type, session_id, visitor_id, ip_hash, referrer, utm_source, utm_medium, utm_campaign, device_type, country, metadata)
-        select ${b.storeId}, p.id, ${b.eventType}, ${b.sessionId}, ${b.visitorId ?? null}, ${sha256(clientIp((n) => c.req.header(n)))}, ${b.referrer ?? null}, ${b.utmSource ?? null}, ${b.utmMedium ?? null}, ${b.utmCampaign ?? null}, ${device}, ${c.req.header('cf-ipcountry')?.slice(0, 2) ?? null}, ${metadata ? JSON.stringify(metadata) : null}::jsonb
+        insert into ${pageEvents} (store_id, product_id, event_type, session_id, visitor_id, ip_hash, referrer, utm_source, utm_medium, utm_campaign, device_type, country, city, region, latitude, longitude, metadata)
+        select ${b.storeId}, p.id, ${b.eventType}, ${b.sessionId}, ${b.visitorId ?? null}, ${sha256(clientIp((n) => c.req.header(n)))}, ${b.referrer ?? null}, ${b.utmSource ?? null}, ${b.utmMedium ?? null}, ${b.utmCampaign ?? null}, ${device}, ${c.req.header('cf-ipcountry')?.slice(0, 2) ?? null}, ${geo.city}, ${geo.region}, ${geo.lat}, ${geo.lon}, ${metadata ? JSON.stringify(metadata) : null}::jsonb
         from ${stores} s left join ${products} p on p.id = ${b.productId ?? null} and p.store_id = s.id
         where s.id = ${b.storeId}`)
       return c.body(null, 204)

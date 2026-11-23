@@ -144,7 +144,7 @@ export const telegramWebhookRoutes = new Hono<AppEnv>().post('/webhooks/telegram
       return c.json({ ok: true })
     }
     const [user] = await db.update(users).set({ telegramChatId: String(chatId) }).where(eq(users.id, link.userId)).returning({ name: users.name })
-    await reply(`✅ C’est fait, ${user?.name ?? ''} ! Vos notifications Zuri arriveront ici.\n\nAstuce : dans les réglages de cette conversation, choisissez un son de notification qui vous plaît (ex. un son de caisse).\n\nEnvoyez /stop pour ne plus rien recevoir.`)
+    await reply(`C’est fait, ${user?.name ?? ''} ! Vos notifications Zuri arriveront ici.\n\nAstuce : dans les réglages de cette conversation, choisissez un son de notification qui vous plaît (ex. un son de caisse).\n\nEnvoyez /stop pour ne plus rien recevoir.`)
     return c.json({ ok: true })
   }
   if (/^\/stop/.test(text)) {

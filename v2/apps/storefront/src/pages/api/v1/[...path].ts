@@ -26,6 +26,16 @@ export const ALL: APIRoute = async ({ request, url, params }) => {
     headers.set('cf-connecting-ip', ip)
     headers.set('x-forwarded-for', ip)
   }
+  // Position approximative du visiteur (ville) pour la vue en direct : seulement pour la collecte de visites.
+  const cf = (request as Request & { cf?: { city?: string; region?: string; latitude?: string; longitude?: string } }).cf
+  if (path === 'track' && cf) {
+    if (cf.city) headers.set('x-geo-city', encodeURIComponent(cf.city))
+    if (cf.region) headers.set('x-geo-region', encodeURIComponent(cf.region))
+    if (cf.latitude && cf.longitude) {
+      headers.set('x-geo-lat', String(cf.latitude))
+      headers.set('x-geo-lon', String(cf.longitude))
+    }
+  }
   headers.set('x-forwarded-host', url.host)
   headers.set('x-forwarded-proto', url.protocol.replace(':', ''))
   if (env.EDGE_SECRET) headers.set('x-edge-secret', env.EDGE_SECRET)

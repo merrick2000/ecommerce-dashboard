@@ -35,7 +35,7 @@ export function whatsappUrl(order: Pick<OrderBase, 'customerPhone' | 'customerNa
   const lines = items.map((i) => `• ${i.quantity} × ${i.name}${i.variantName ? ` (${i.variantName})` : ''}`)
   const address = [order.address, order.city].filter(Boolean).join(', ')
   const text = [
-    `Bonjour${firstName ? ` ${firstName}` : ''} 👋`,
+    `Bonjour${firstName ? ` ${firstName}` : ''},`,
     `Merci pour votre commande n° ${order.orderNumber}${storeName ? ` chez ${storeName}` : ''} :`,
     ...lines,
     `Total : ${money(order.total, order.currency)}${order.paymentMethod === 'cod' ? ' (à payer à la livraison)' : ''}`,

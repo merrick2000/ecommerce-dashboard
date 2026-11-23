@@ -91,6 +91,57 @@ describe('attribution premier / dernier clic', () => {
   })
 })
 
+describe('vue en direct', () => {
+  test('position du visiteur, étapes, fil et commandes sur le globe', async () => {
+    const geo = new Client()
+    geo.headers['user-agent'] = browser.headers['user-agent']!
+    geo.headers['x-geo-city'] = encodeURIComponent('Porto-Novo')
+    geo.headers['x-geo-region'] = encodeURIComponent('Ouémé')
+    geo.headers['x-geo-lat'] = '6.49712'
+    geo.headers['x-geo-lon'] = '2.60359'
+    geo.headers['cf-ipcountry'] = 'BJ'
+    await view(geo, 'sessE1-000', { visitorId: 'visitorE-00', utmSource: 'tiktok' })
+    await geo.post('/api/v1/track', { storeId, productId, eventType: 'checkout_initiate', sessionId: 'sessE1-000', visitorId: 'visitorE-00' })
+    const row = (await db.select().from(pageEvents).where(eq(pageEvents.sessionId, 'sessE1-000')))[0]!
+    expect(row).toMatchObject({ city: 'Porto-Novo', region: 'Ouémé', country: 'BJ' })
+    expect(row.latitude).toBeCloseTo(6.5, 2)
+    expect(row.longitude).toBeCloseTo(2.6, 2)
+
+    // Coordonnées invalides : rien d'enregistré (jamais une moitié de position).
+    const bad = new Client()
+    bad.headers['user-agent'] = browser.headers['user-agent']!
+    bad.headers['x-geo-lat'] = '999'
+    bad.headers['x-geo-lon'] = '2'
+    bad.headers['x-geo-city'] = '%E0%A4%A'
+    await view(bad, 'sessF1-000', { visitorId: 'visitorF-00' })
+    const b = (await db.select().from(pageEvents).where(eq(pageEvents.sessionId, 'sessF1-000')))[0]!
+    expect(b).toMatchObject({ latitude: null, longitude: null, city: null })
+
+    const o = await geo.post('/api/v1/orders', { storeSlug: 'trafic-shop', productId, customerName: 'Sena Dossou', customerPhone: '+22963000000', customerEmail: 'sena@test.dev', sessionId: 'sessE1-000', visitorId: 'visitorE-00' })
+    expect(o.status).toBe(201)
+
+    const l = (await owner.get(`/api/stores/${storeId}/stats/live`)).body
+    expect(l.now.visitors).toBeGreaterThanOrEqual(2)
+    expect(l.now.points).toContainEqual(expect.objectContaining({ city: 'Porto-Novo', country: 'BJ', visitors: 1 }))
+    // A commandé : compté dans « Ont commandé », plus dans « Au formulaire ».
+    expect(l.now.stages.ordered).toBeGreaterThanOrEqual(1)
+    expect(l.now.channels.map((c: any) => c.channel)).toContain('tiktok')
+    expect(l.now.products[0]).toMatchObject({ id: productId })
+    expect(l.today.orders).toBeGreaterThanOrEqual(3)
+    expect(l.today.series).toHaveLength(24)
+    expect(l.today.locations).toContainEqual(expect.objectContaining({ city: 'Porto-Novo', sessions: 1 }))
+    const order = l.feed.find((f: any) => f.kind === 'order' && f.name === 'Sena')
+    expect(order).toMatchObject({ product: 'Guide', total: 5000 })
+    expect(l.feed.some((f: any) => f.kind === 'visit' && f.city === 'Porto-Novo' && f.channel === 'tiktok')).toBe(true)
+    expect(l.orders).toContainEqual(expect.objectContaining({ city: 'Porto-Novo' }))
+
+    // Produit hors périmètre : rien.
+    const none = (await owner.get(`/api/stores/${storeId}/stats/live?productId=prd_inconnu`)).body
+    expect(none.now.visitors).toBe(0)
+    expect(none.feed).toHaveLength(0)
+  })
+})
+
 describe('MCP, trafic', () => {
   test('get_traffic_stats', async () => {
     const key = (await owner.post('/api/api-keys', { name: 'IA trafic', storeId })).body.key as string
@@ -98,7 +149,11 @@ describe('MCP, trafic', () => {
     const res = await app.request('/api/mcp', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json', 'cf-connecting-ip': '10.9.9.7' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_traffic_stats', arguments: { period: 'today' } } }) })
     const b = (await res.json()) as any
     expect(b.result.isError).toBeFalsy()
-    expect(b.result.structuredContent.current.visitors).toBe(4)
+    expect(b.result.structuredContent.current.visitors).toBe(6)
     expect(b.result.structuredContent.channels.map((c: any) => c.channel)).toContain('facebook')
+    const live = await app.request('/api/mcp', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json', 'cf-connecting-ip': '10.9.9.7' }, body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'get_live_view', arguments: {} } }) })
+    const lb = (await live.json()) as any
+    expect(lb.result.isError).toBeFalsy()
+    expect(lb.result.structuredContent.now.visitors).toBeGreaterThan(0)
   })
 })

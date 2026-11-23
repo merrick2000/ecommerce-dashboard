@@ -377,7 +377,7 @@ export const orderRoutes = new Hono<AppEnv>()
     await db.insert(orderEvents).values({ orderId: id, type: 'assigned', message, data: { assignedTo: userId }, userId: access.userId })
     if (userId && userId !== access.userId) {
       await notify(store.id, 'order.assigned', {
-        title: `📋 Commande ${order.orderNumber} pour vous`,
+        title: `Commande ${order.orderNumber} pour vous`,
         body: `${c.get('user').name} vous a confié la commande de ${order.customerName ?? 'un client'}${order.city ? ` (${order.city})` : ''}.`,
         path: `/stores/${store.id}/orders/${id}`,
         productIds: await orderProductIds([id]),

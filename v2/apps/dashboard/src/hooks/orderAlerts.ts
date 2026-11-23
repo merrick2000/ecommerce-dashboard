@@ -48,7 +48,7 @@ export function useOrderAlerts(storeId: string, enabled: boolean) {
       const who = [o.customerName, o.city].filter(Boolean).join(', ')
       const what = o.items.map((i) => `${i.quantity > 1 ? `${i.quantity} × ` : ''}${i.name}`).join(', ')
       showInAppAlert({
-        title: o.paymentMethod === 'cod' ? `🛒 Nouvelle commande ${o.orderNumber}` : `💰 Paiement reçu ${o.orderNumber}`,
+        title: o.paymentMethod === 'cod' ? `Nouvelle commande ${o.orderNumber}` : `Paiement reçu ${o.orderNumber}`,
         body: [who, what].filter(Boolean).join(' · '),
         url: `/stores/${storeId}/orders/${o.id}`,
         tag: `order-${o.id}`,

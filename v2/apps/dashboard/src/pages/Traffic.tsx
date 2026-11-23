@@ -15,8 +15,8 @@ import { useCan, useCurrentStore, useStoreId } from '@/hooks/auth'
 import { useProducts } from '@/hooks/resources'
 import { api } from '@/lib/api'
 import { day, isoDay, money, num, percent } from '@/lib/format'
+import { CHANNEL, regionName, type Channel } from '@/lib/traffic'
 
-type Channel = 'facebook' | 'instagram' | 'tiktok' | 'whatsapp' | 'google' | 'youtube' | 'snapchat' | 'telegram' | 'x' | 'search' | 'email' | 'sms' | 'campaign' | 'referral' | 'direct'
 
 type Outcome = { orders: number; revenue: number | null; conversion: number | null }
 /** Dernier clic à la racine, premier clic dans `first`. */
@@ -59,23 +59,6 @@ interface Traffic {
   hours: { hour: number; visitors: number; orders: number }[]
 }
 
-const CHANNEL: Record<Channel, { label: string; color: string }> = {
-  facebook: { label: 'Facebook', color: '#1877F2' },
-  instagram: { label: 'Instagram', color: '#E1306C' },
-  tiktok: { label: 'TikTok', color: 'var(--fg)' },
-  whatsapp: { label: 'WhatsApp', color: '#25D366' },
-  google: { label: 'Google', color: '#EA4335' },
-  youtube: { label: 'YouTube', color: '#FF0000' },
-  snapchat: { label: 'Snapchat', color: '#EAB308' },
-  telegram: { label: 'Telegram', color: '#229ED9' },
-  x: { label: 'X (Twitter)', color: 'var(--muted)' },
-  search: { label: 'Autres moteurs', color: '#8B5CF6' },
-  email: { label: 'Email', color: '#0EA5E9' },
-  sms: { label: 'SMS', color: '#14B8A6' },
-  campaign: { label: 'Autres campagnes', color: '#F59E0B' },
-  referral: { label: 'Sites référents', color: '#64748B' },
-  direct: { label: 'Accès direct', color: '#94A3B8' },
-}
 
 const DEVICE: Record<string, { label: string; icon: ReactNode }> = {
   mobile: { label: 'Mobile', icon: <Smartphone className="size-4" /> },
@@ -92,14 +75,6 @@ const PRESETS = [
 ] as const
 type Preset = (typeof PRESETS)[number]['value']
 
-const regionName = (() => {
-  try {
-    const dn = new Intl.DisplayNames(['fr'], { type: 'region' })
-    return (code: string) => (code === 'XX' ? 'Inconnu' : (dn.of(code) ?? code))
-  } catch {
-    return (code: string) => (code === 'XX' ? 'Inconnu' : code)
-  }
-})()
 
 const share = (a: number, total: number) => (total > 0 ? Math.round((a / total) * 100) : 0)
 /** Part en texte : « moins de 1 % » plutôt que « 0 % » quand il y a quand même quelque chose. */
@@ -173,7 +148,7 @@ export default function Traffic() {
   return (
     <div className={cx('transition-opacity', q.isFetching && 'opacity-70')}>
       {header}
-      <LivePill n={t.live} />
+      <LivePill n={t.live} to={`${base}/traffic/live`} />
 
       {c.visitors === 0 && p.visitors === 0 ? (
         <div className="mt-4 space-y-4">
@@ -245,9 +220,9 @@ export default function Traffic() {
   )
 }
 
-function LivePill({ n }: { n: number }) {
+function LivePill({ n, to }: { n: number; to: string }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-[13px]">
+    <Link to={to} className="group inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] transition-colors hover:border-line-strong">
       <span className="relative flex size-2.5">
         {n > 0 && <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-60" />}
         <span className={cx('relative inline-flex size-2.5 rounded-full', n > 0 ? 'bg-emerald-500' : 'bg-line-strong')} />
@@ -255,7 +230,10 @@ function LivePill({ n }: { n: number }) {
       <span>
         <span className="tabular font-semibold">{num(n)}</span> <span className="text-muted">{n > 1 ? 'visiteurs en ce moment' : 'visiteur en ce moment'}</span>
       </span>
-    </div>
+      <span className="inline-flex items-center gap-1 border-l border-line pl-2 font-medium text-accent">
+        <Globe className="size-3.5" /> Voir en direct
+      </span>
+    </Link>
   )
 }
 
