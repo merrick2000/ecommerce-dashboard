@@ -25,6 +25,7 @@ const EVENT_TYPES = [
   'page_view', 'page_leave', 'scroll_25', 'scroll_50', 'scroll_75', 'scroll_100', 'cta_click', 'form_focus',
   'checkout_initiate', 'order_created', 'payment_started', 'payment_completed', 'js_error', 'video_play', 'whatsapp_click', 'offer_select',
 ] as const
+const BOT_UA = /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|telegram|headless|lighthouse|pingdom|uptime|curl|wget|python|axios|node-fetch|go-http/i
 
 async function storeBySlug(slug: string) {
   const [store] = await db.select().from(stores).where(eq(stores.slug, slug)).limit(1)
@@ -283,16 +284,18 @@ export const publicRoutes = new Hono<AppEnv>()
   .post(
     '/track',
     rateLimit({ key: 'track', limit: 240, windowSec: 60 }),
-    v('json', z.object({ storeId: storeIdSchema, productId: productIdSchema.nullable().optional(), eventType: z.enum(EVENT_TYPES), sessionId: z.string().min(8).max(64), referrer: z.string().max(2048).optional(), utmSource: z.string().max(255).optional(), utmMedium: z.string().max(255).optional(), utmCampaign: z.string().max(255).optional(), metadata: z.record(z.string(), z.unknown()).optional() })),
+    v('json', z.object({ storeId: storeIdSchema, productId: productIdSchema.nullable().optional(), eventType: z.enum(EVENT_TYPES), sessionId: z.string().min(8).max(64), visitorId: z.string().min(8).max(64).optional(), referrer: z.string().max(2048).optional(), utmSource: z.string().max(255).optional(), utmMedium: z.string().max(255).optional(), utmCampaign: z.string().max(255).optional(), metadata: z.record(z.string(), z.unknown()).optional() })),
     async (c) => {
       const b = c.req.valid('json')
       const ua = c.req.header('user-agent') ?? ''
+      // Robots (aperçus de liens, moteurs, outils de test) : jamais comptés comme visiteurs.
+      if (!ua || BOT_UA.test(ua)) return c.body(null, 204)
       const device = /tablet|ipad/i.test(ua) ? 'tablet' : /mobi|android|iphone/i.test(ua) ? 'mobile' : 'desktop'
       const metadata = b.metadata && JSON.stringify(b.metadata).length <= 4000 ? b.metadata : undefined
       // L'insert ignore silencieusement une boutique/produit inexistant (pas de 500 exploitable).
       await db.execute(dsql`
-        insert into ${pageEvents} (store_id, product_id, event_type, session_id, ip_hash, referrer, utm_source, utm_medium, utm_campaign, device_type, country, metadata)
-        select ${b.storeId}, p.id, ${b.eventType}, ${b.sessionId}, ${sha256(clientIp((n) => c.req.header(n)))}, ${b.referrer ?? null}, ${b.utmSource ?? null}, ${b.utmMedium ?? null}, ${b.utmCampaign ?? null}, ${device}, ${c.req.header('cf-ipcountry')?.slice(0, 2) ?? null}, ${metadata ? JSON.stringify(metadata) : null}::jsonb
+        insert into ${pageEvents} (store_id, product_id, event_type, session_id, visitor_id, ip_hash, referrer, utm_source, utm_medium, utm_campaign, device_type, country, metadata)
+        select ${b.storeId}, p.id, ${b.eventType}, ${b.sessionId}, ${b.visitorId ?? null}, ${sha256(clientIp((n) => c.req.header(n)))}, ${b.referrer ?? null}, ${b.utmSource ?? null}, ${b.utmMedium ?? null}, ${b.utmCampaign ?? null}, ${device}, ${c.req.header('cf-ipcountry')?.slice(0, 2) ?? null}, ${metadata ? JSON.stringify(metadata) : null}::jsonb
         from ${stores} s left join ${products} p on p.id = ${b.productId ?? null} and p.store_id = s.id
         where s.id = ${b.storeId}`)
       return c.body(null, 204)

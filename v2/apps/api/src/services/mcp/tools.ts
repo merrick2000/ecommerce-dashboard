@@ -744,6 +744,18 @@ export const TOOLS: Tool[] = [
     },
   },
   {
+    name: 'get_traffic_stats',
+    title: 'Store traffic',
+    description:
+      'Visitors and where they come from, for a period (default last 30 days), optionally for one product: unique visitors, visits, page views, new vs returning, engagement, conversion rate (web orders / visitors), visitors active right now, daily series, journey funnel (visits, scrolled, clicked, started the form, ordered, paid), channels (facebook, instagram, tiktok, whatsapp, google, youtube, snapchat, telegram, x, search, email, sms, campaign, referral, direct) with visitors, paid-ad visitors, orders, revenue and conversion, UTM campaigns, referring sites, devices, countries (ISO codes), products (visitors, form starts, orders, conversion) and hours of the day. Use it to tell which ads and channels really sell.',
+    input: z.object({ storeId: storeArg, period: periodArg, from: ymd.optional(), to: ymd.optional(), productId: z.string().optional().describe('Limit to one product') }),
+    readOnly: true,
+    run: async (a, ctx) => {
+      const id = await resolveStore(ctx, a.storeId)
+      return ctx.call('GET', `/stores/${id}/stats/traffic`, { query: { ...(await rangeFor(ctx, id, a)), ...(a.productId ? { productId: a.productId } : {}) } })
+    },
+  },
+  {
     name: 'get_sales_report',
     title: 'Sales report',
     description:
@@ -1064,6 +1076,7 @@ How to work with it:
 - A store sells physical OR digital products, never both (see list_stores / get_store kind). Adapt to it:
   - Physical: COD lifecycle, calls, couriers, delivery zones (update_order_status, list_delivery_zones).
   - Digital: no calls, no delivery, no statuses. What matters is payment: list_orders with paymentState (paid, pending, failed, refunded), get_digital_stats, resend_digital_access when a customer says they got nothing, send_payment_link for refused or unfinished payments, list_abandoned_carts / remind_abandoned_cart / ignore_abandoned_cart.
+- Traffic: get_traffic_stats gives visitors, channels (Facebook, TikTok, WhatsApp…), campaigns and conversion per channel; combine with get_sales_report to judge ads.
 - Emails are automatic: the seller gets a "new sale" email, the customer an order confirmation (or product access for digital), then confirmed and shipped emails for physical orders.
 - Bundles: a product whose bundle.items lists other products (create the included products first). Funnels: order bump (checkbox on the form), up to 3 one click upsells after the order, each with an optional downsell if refused; COD upsells are added to the same order. Offer products must exist in the store (they can be inactive).
 - Product sheets: get_product then update_product with only the fields to change; lists are replaced, objects merged. Image URLs are hosted on Zuri automatically.

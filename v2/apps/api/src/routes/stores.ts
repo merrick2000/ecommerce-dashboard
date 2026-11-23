@@ -20,6 +20,7 @@ import { productImportRoutes } from './product-import'
 import { productImportUrlRoutes } from './product-import-url'
 import { promoRoutes } from './promos'
 import { digitalStatsRoute, funnelStatsRoute, statsRoutes } from './stats'
+import { trafficRoute } from './traffic'
 import { expenseRoutes } from './expenses'
 import { leadRoutes } from './leads'
 import { uploadRoutes } from './uploads'
@@ -153,6 +154,7 @@ const storeScoped = new Hono<AppEnv>()
   .route('/stats', statsRoutes)
   .route('/stats', funnelStatsRoute)
   .route('/stats', digitalStatsRoute)
+  .route('/stats', trafficRoute)
   .route('/expenses', expenseRoutes)
   .route('/leads', leadRoutes)
   .route('/uploads', uploadRoutes)

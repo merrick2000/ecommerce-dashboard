@@ -4,6 +4,8 @@ import { app } from '../src/app'
 export class Client {
   /** Cookies conservés par nom (session, appareil…), comme un navigateur. */
   jar = new Map<string, string>()
+  /** En-têtes ajoutés à chaque requête (ex. user-agent d'un vrai navigateur). */
+  headers: Record<string, string> = {}
   get cookie() {
     return [...this.jar].map(([k, v]) => `${k}=${v}`).join('; ')
   }
@@ -17,7 +19,7 @@ export class Client {
   async req(method: string, path: string, body?: unknown) {
     const res = await app.request(path, {
       method,
-      headers: { 'content-type': 'application/json', cookie: this.cookie, 'cf-connecting-ip': '10.0.0.1' },
+      headers: { 'content-type': 'application/json', cookie: this.cookie, 'cf-connecting-ip': '10.0.0.1', ...this.headers },
       body: body === undefined ? undefined : JSON.stringify(body),
     })
     for (const c of res.headers.getSetCookie()) {

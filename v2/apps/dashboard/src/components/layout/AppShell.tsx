@@ -1,31 +1,5 @@
 import type { Permission } from '@zuri/shared'
-import {
-  Bell,
-  Bot,
-  Receipt,
-  Check,
-  Crown,
-  PauseCircle,
-  Shield,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Activity,
-  ChevronsUpDown,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  Moon,
-  Package,
-  Plus,
-  Settings,
-  ShoppingBag,
-  Sun,
-  Tag,
-  Truck,
-  UserPlus,
-  Users,
-  type LucideIcon,
-} from 'lucide-react'
+import { Activity, Bell, Bot, ChartLine, Check, ChevronsUpDown, Crown, LayoutDashboard, LogOut, Menu, Moon, Package, PanelLeftClose, PanelLeftOpen, PauseCircle, Plus, Receipt, Settings, Shield, ShoppingBag, Sun, Tag, Truck, UserPlus, Users, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Outlet, useLocation, useNavigate, useNavigation } from 'react-router'
 import { useCurrentStore, useLogout, usePermissions } from '@/hooks/auth'
@@ -61,6 +35,7 @@ const NAV: NavItem[] = [
   { to: 'orders', label: 'Commandes', digitalLabel: 'Ventes', icon: ShoppingBag, perm: 'orders.view' },
   { to: 'products', label: 'Produits', icon: Package, perm: 'products.view' },
   { to: 'customers', label: 'Clients', icon: Users, perm: 'customers.view' },
+  { to: 'traffic', label: 'Trafic', icon: ChartLine, perm: 'stats.view' },
   { to: 'zones', label: 'Livraison', icon: Truck, perm: 'delivery.edit', kind: 'physical' },
   { to: 'expenses', label: 'Dépenses', icon: Receipt, perm: 'stats.revenue' },
   { to: 'promo-codes', label: 'Codes promo', icon: Tag, perm: 'marketing.edit' },

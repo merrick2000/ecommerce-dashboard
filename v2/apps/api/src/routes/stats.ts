@@ -79,7 +79,7 @@ export const statsRoutes = new Hono<AppEnv>().get('/overview', requirePermission
       group by d.day order by d.day`),
     db
       .select({
-        visitors: dsql<number>`count(distinct ${pageEvents.sessionId}) filter (where ${pageEvents.eventType} = 'page_view')::int`,
+        visitors: dsql<number>`count(distinct coalesce(${pageEvents.visitorId}, ${pageEvents.sessionId})) filter (where ${pageEvents.eventType} = 'page_view')::int`,
         views: dsql<number>`count(*) filter (where ${pageEvents.eventType} = 'page_view')::int`,
         checkouts: dsql<number>`count(distinct ${pageEvents.sessionId}) filter (where ${pageEvents.eventType} = 'checkout_initiate')::int`,
       })

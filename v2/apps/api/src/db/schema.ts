@@ -749,6 +749,8 @@ export const pageEvents = pgTable(
     productId: ref('product_id').references(() => products.id, { onDelete: 'set null' }),
     eventType: varchar('event_type', { length: 30 }).notNull(),
     sessionId: varchar('session_id', { length: 64 }).notNull(),
+    /** Visiteur persistant (localStorage) : un même visiteur revenu demain ou dans un autre onglet compte une fois. */
+    visitorId: varchar('visitor_id', { length: 64 }),
     ipHash: varchar('ip_hash', { length: 64 }),
     referrer: varchar('referrer', { length: 2048 }),
     utmSource: varchar('utm_source', { length: 255 }),

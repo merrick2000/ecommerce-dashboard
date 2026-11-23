@@ -66,6 +66,16 @@ export function sessionId(): string {
   return id
 }
 
+/** Visiteur persistant (localStorage) : compté une seule fois même s'il revient demain ou ouvre un autre onglet. */
+export function visitorId(): string {
+  let id = getStr('sf_vid')
+  if (!id) {
+    id = `v${(crypto.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`).replace(/-/g, '').slice(0, 31)}`
+    setStr('sf_vid', id)
+  }
+  return id
+}
+
 function cookie(name: string): string | undefined {
   const m = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
   return m ? decodeURIComponent(m[1]!) : undefined
@@ -114,7 +124,7 @@ export function track(eventType: string, metadata?: Record<string, unknown>): vo
   const c = config()
   if (!c || noTrack()) return
   const a = attribution()
-  const body = JSON.stringify({ storeId: c.storeId, productId: c.productId, eventType, sessionId: sessionId(), referrer: a.referrer, utmSource: a.utmSource, utmMedium: a.utmMedium, utmCampaign: a.utmCampaign, metadata })
+  const body = JSON.stringify({ storeId: c.storeId, productId: c.productId, eventType, sessionId: sessionId(), visitorId: visitorId(), referrer: a.referrer, utmSource: a.utmSource, utmMedium: a.utmMedium, utmCampaign: a.utmCampaign, metadata })
   try {
     const blob = new Blob([body], { type: 'application/json' })
     if (navigator.sendBeacon?.('/api/v1/track', blob)) return

@@ -1,0 +1,1 @@
+ALTER TABLE "page_events" ADD COLUMN "visitor_id" varchar(64);

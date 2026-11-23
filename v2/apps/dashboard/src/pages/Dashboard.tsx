@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Banknote, Check, Copy, ExternalLink, Inbox, PackageCheck, PhoneCall, PiggyBank, Plus, ShoppingBag, Truck, UserCheck } from 'lucide-react'
+import { AlertTriangle, Banknote, Check, Copy, ExternalLink, Inbox, PackageCheck, PhoneCall, PiggyBank, Plus, ShoppingBag, Truck, UserCheck } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
@@ -7,6 +7,7 @@ import { useCan, useCurrentStore } from '@/hooks/auth'
 import { usePaymentAccounts, useProducts, useStats, useZones } from '@/hooks/resources'
 import { salesPageUrl } from './products/ProductsList'
 import { DigitalOverview } from './DigitalOverview'
+import { Delta, Kpi } from '@/components/Kpi'
 import { useToast } from '@/components/Toast'
 import { day, isoDay, money, num, percent } from '@/lib/format'
 import type { ProfitTotals, StatsOverview } from '@/lib/types'
@@ -23,44 +24,6 @@ function rangeFor(days: number) {
   const from = new Date()
   from.setDate(from.getDate() - (days - 1))
   return { from: isoDay(from), to: isoDay(to) }
-}
-
-function Delta({ current, previous, invert }: { current: number; previous: number; invert?: boolean }) {
-  if (!previous && !current) return <span className="text-[12px] text-subtle">-</span>
-  if (!previous) return <span className="text-[12px] text-subtle">nouveau</span>
-  const pct = Math.round(((current - previous) / previous) * 100)
-  const up = pct >= 0
-  const good = invert ? !up : up
-  return (
-    <span className={cx('inline-flex items-center gap-0.5 text-[12px] font-medium', pct === 0 ? 'text-subtle' : good ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
-      {up ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}
-      {Math.abs(pct)} %
-    </span>
-  )
-}
-
-function Kpi({ label, value, icon, delta, hint, to }: { label: string; value: ReactNode; icon?: ReactNode; delta?: ReactNode; hint?: ReactNode; to?: string }) {
-  const inner = (
-    <>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[13px] text-muted">{label}</p>
-        {icon && <span className="text-subtle">{icon}</span>}
-      </div>
-      <p className="tabular mt-2 text-xl font-semibold tracking-tight sm:text-2xl">{value}</p>
-      <div className="mt-1 flex min-h-4 items-center gap-2">
-        {delta}
-        {hint && <span className="text-[12px] text-subtle">{hint}</span>}
-      </div>
-    </>
-  )
-  const cls = 'block rounded-xl border border-line bg-surface p-4 transition-colors'
-  return to ? (
-    <Link to={to} className={cx(cls, 'hover:border-line-strong')}>
-      {inner}
-    </Link>
-  ) : (
-    <div className={cls}>{inner}</div>
-  )
 }
 
 /**
@@ -284,7 +247,7 @@ export default function Dashboard() {
         {physical && rv && c.codInTransit != null && <Kpi label="Chez les livreurs" value={money(c.codInTransit, currency)} icon={<Truck className="size-4" />} hint="à encaisser" to={`${base}/orders?status=shipped`} />}
         {physical && <Kpi label="Taux de confirmation" value={percent(rates.confirmation)} hint="COD confirmées" />}
         {physical && <Kpi label="Taux de livraison" value={percent(rates.delivery)} hint={`${num(c.delivered)} livrées · ${num(c.returned)} retours`} />}
-        <Kpi label="Conversion" value={percent(rates.conversion)} hint={`${num(data.visitors.visitors)} visiteurs`} />
+        <Kpi label="Conversion" value={percent(rates.conversion)} hint={`${num(data.visitors.visitors)} visiteurs`} to={`${base}/traffic`} />
       </div>
       )}
 
@@ -323,7 +286,7 @@ export default function Dashboard() {
                 <p className="text-sm text-muted">Aucune vente sur la période.</p>
               )}
             </Card>
-            <Card title="Sources de trafic">
+            <Card title="Sources de trafic" actions={<ButtonLink to={`${base}/traffic`} size="sm">Voir le trafic</ButtonLink>}>
               {data.sources.length ? (
                 <Bars rows={data.sources.map((s) => ({ label: s.source === 'direct' ? 'Direct' : s.source, value: s.orders, sub: rv ? `${num(s.orders)} cmd · ${money(s.revenue, currency)}` : `${num(s.orders)} cmd` }))} />
               ) : (

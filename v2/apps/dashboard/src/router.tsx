@@ -50,6 +50,7 @@ export const router = createBrowserRouter([
               { path: 'products/import/csv', lazy: page(() => import('@/pages/products/import/ImportCsv')) },
               { path: 'products/:productId', lazy: page(() => import('@/pages/products/ProductEditor')) },
               { path: 'customers', lazy: page(() => import('@/pages/customers/CustomersList')) },
+              { path: 'traffic', lazy: page(() => import('@/pages/Traffic')) },
               { path: 'customers/:customerId', lazy: page(() => import('@/pages/customers/CustomerDetail')) },
               { path: 'zones', lazy: page(() => import('@/pages/Zones')) },
               { path: 'promo-codes', lazy: page(() => import('@/pages/PromoCodes')) },
