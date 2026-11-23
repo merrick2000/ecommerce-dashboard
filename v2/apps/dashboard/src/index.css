@@ -108,6 +108,13 @@ dialog[open] {
   animation: dialog-in 160ms ease-out;
 }
 
+@keyframes select-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
 @keyframes dialog-in {
   from {
     opacity: 0;

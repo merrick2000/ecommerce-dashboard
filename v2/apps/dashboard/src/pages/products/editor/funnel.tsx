@@ -9,7 +9,7 @@ import { Badge, Button, Card, Input, Select, Switch, Textarea } from '@/componen
 import { useCan, useStoreId } from '@/hooks/auth'
 import { useProducts } from '@/hooks/resources'
 import { api } from '@/lib/api'
-import { currencyLabel, isoDay, money, optionLabel } from '@/lib/format'
+import { currencyLabel, isoDay, money } from '@/lib/format'
 import type { ProductListItem } from '@/lib/types'
 import { NumberField } from './fields'
 import type { Form, SectionProps } from './sections'
@@ -35,7 +35,7 @@ function ProductSelect({ value, onChange, list, label = 'Produit', error }: { va
         const name = list.find((p) => p.id === value)?.name
         return name && name.length > 52 ? name : undefined
       })()}
-      options={[{ value: '', label: list.length ? 'Choisir un produit…' : 'Crée d’abord un autre produit' }, ...list.map((p) => ({ value: p.id, title: p.name, label: optionLabel(p.name, `${p.isActive ? '' : ' (inactif)'} · ${money(p.price.effective, p.price.currency)}`) }))]}
+      options={[{ value: '', label: list.length ? 'Choisir un produit…' : 'Crée d’abord un autre produit' }, ...list.map((p) => ({ value: p.id, title: p.name, label: p.name, meta: `${p.isActive ? '' : 'Inactif · '}${money(p.price.effective, p.price.currency)}` }))]}
     />
   )
 }

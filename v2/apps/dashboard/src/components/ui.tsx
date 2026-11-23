@@ -11,7 +11,6 @@ import {
   type KeyboardEvent,
   type Ref,
   type ReactNode,
-  type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react'
 import { Link } from 'react-router'
@@ -157,41 +156,7 @@ export function Textarea({
   )
 }
 
-export function Select({
-  label,
-  error,
-  hint,
-  options,
-  className,
-  id,
-  wrapClass,
-  ...rest
-}: SelectHTMLAttributes<HTMLSelectElement> & { label?: ReactNode; error?: string; hint?: ReactNode; options: { value: string; label: string; title?: string }[]; wrapClass?: string }) {
-  const auto = useId()
-  const sid = id ?? auto
-  const el = (
-    <select
-      id={sid}
-      aria-invalid={error ? true : undefined}
-      // Nom complet au survol, utile quand le libellé est raccourci.
-      title={options.find((o) => o.value === String(rest.value ?? ''))?.title}
-      className={cx(control, 'h-10 pr-8', error ? 'border-red-500' : 'border-line-strong', className)}
-      {...rest}
-    >
-      {options.map((o) => (
-        <option key={o.value} value={o.value} title={o.title}>
-          {o.label}
-        </option>
-      ))}
-    </select>
-  )
-  if (!label && !error && !hint) return wrapClass ? <div className={wrapClass}>{el}</div> : el
-  return (
-    <Field label={label} error={error} hint={hint} htmlFor={sid} className={wrapClass}>
-      {el}
-    </Field>
-  )
-}
+export { Select, type SelectOption } from './Select'
 
 export function Switch({
   checked,

@@ -76,13 +76,3 @@ export function fileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${nf.format(bytes / 1024)} Ko`
   return `${nf.format(bytes / 1024 / 1024)} Mo`
 }
-
-/**
- * Libellé d'option de liste déroulante : un nom trop long est raccourci au milieu de la phrase (« … »)
- * pour que la fin utile (prix, « inactif ») reste visible, la liste native ne passant jamais à la ligne.
- */
-export function optionLabel(name: string, suffix = '', max = 52): string {
-  const n = name.trim()
-  const short = n.length > max ? `${n.slice(0, max - 1).trimEnd()}…` : n
-  return suffix ? `${short}${suffix}` : short
-}
