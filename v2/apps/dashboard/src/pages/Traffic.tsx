@@ -7,6 +7,7 @@ import { Clock, Copy, Eye, Globe, Megaphone, Monitor, MousePointerClick, Smartph
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Bar, CartesianGrid, ComposedChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Flag } from '@/components/Flag'
 import { Delta, Kpi } from '@/components/Kpi'
 import { Card, cx, EmptyState, ErrorState, PageHeader, Segmented, Select, Skeleton } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -226,7 +227,7 @@ export default function Traffic() {
               <Devices rows={t.devices} />
             </Card>
             <Card title="Pays" actions={<Globe className="size-4 text-subtle" />}>
-              <SimpleBars rows={t.countries.map((r) => ({ key: r.country, label: regionName(r.country), value: r.visitors }))} empty="Aucune donnée." />
+              <SimpleBars rows={t.countries.map((r) => ({ key: r.country, label: regionName(r.country), value: r.visitors, icon: <Flag code={r.country} /> }))} empty="Aucune donnée." />
             </Card>
             <Card title="Sites référents" description="Liens cliqués sur d’autres sites">
               <SimpleBars rows={t.referrers.map((r) => ({ key: r.host, label: r.host, value: r.visitors, color: CHANNEL[r.channel]?.color }))} empty="Aucun site référent : les visiteurs arrivent par des liens directs ou des pubs." />
@@ -526,7 +527,7 @@ function Devices({ rows }: { rows: Traffic['devices'] }) {
   )
 }
 
-function SimpleBars({ rows, empty }: { rows: { key: string; label: string; value: number; color?: string }[]; empty: string }) {
+function SimpleBars({ rows, empty }: { rows: { key: string; label: string; value: number; color?: string; icon?: ReactNode }[]; empty: string }) {
   if (!rows.length) return <p className="text-sm text-muted">{empty}</p>
   const max = Math.max(...rows.map((r) => r.value))
   return (
@@ -534,8 +535,11 @@ function SimpleBars({ rows, empty }: { rows: { key: string; label: string; value
       {rows.map((r) => (
         <li key={r.key}>
           <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="min-w-0 truncate" title={r.label}>
-              {r.label}
+            <span className="flex min-w-0 items-center gap-2">
+              {r.icon}
+              <span className="min-w-0 truncate" title={r.label}>
+                {r.label}
+              </span>
             </span>
             <span className="tabular shrink-0 text-muted">{num(r.value)}</span>
           </div>
