@@ -4,15 +4,15 @@
  * et les actions utiles (renvoyer l'accès, copier le lien, relancer un paiement, relancer un panier).
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BellOff, ChevronLeft, ChevronRight, Copy, Download, LayoutGrid, List, Mail, MessageCircle, RotateCcw, Search, ShoppingBag, Table2 } from 'lucide-react'
+import { Archive, BellOff, CheckCheck, ChevronLeft, ChevronRight, Copy, Download, LayoutGrid, List, Mail, MessageCircle, RotateCcw, Search, ShoppingBag, Table2, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { Dialog } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
-import { Badge, Button, buttonClass, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Segmented } from '@/components/ui'
+import { Badge, Button, buttonClass, Checkbox, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Segmented } from '@/components/ui'
 import { DEFAULT_PREFS, useMediaQuery, usePref, type OrdersPrefs } from './views/prefs'
 import { useCan, useCurrentStore, useStoreId } from '@/hooks/auth'
-import { ordersCsvUrl, useOrders } from '@/hooks/resources'
+import { ordersCsvUrl, useArchiveOrders, useBulkOrderStatus, useOrders } from '@/hooks/resources'
 import { useDebounced } from '@/hooks/useDebounced'
 import { api, errorMessage } from '@/lib/api'
 import { money, prettyPhone, relative } from '@/lib/format'
@@ -67,7 +67,9 @@ function stateOf(o: OrderListItem & { paymentFailed?: boolean }) {
   return { label: 'En attente de paiement', tone: 'amber' as const }
 }
 
-function OrderRow({ order, storeName, layout }: { order: OrderListItem & { paymentFailed?: boolean; downloads?: number }; storeName: string; layout: Layout }) {
+type Row = OrderListItem & { paymentFailed?: boolean; downloads?: number }
+
+function OrderRow({ order, storeName, layout, selected = false, onSelect }: { order: Row; storeName: string; layout: Layout; selected?: boolean; onSelect?: (v: boolean) => void }) {
   const navigate = useNavigate()
   const storeId = useStoreId()
   const toast = useToast()
@@ -162,11 +164,17 @@ function OrderRow({ order, storeName, layout }: { order: OrderListItem & { payme
     </Dialog>
   )
   const open = () => navigate(String(order.id))
+  const check = onSelect ? (
+    <span onClick={(e) => e.stopPropagation()} className="flex shrink-0">
+      <Checkbox checked={selected} onChange={onSelect} label={`Sélectionner ${order.orderNumber}`} />
+    </span>
+  ) : null
 
   if (layout === 'table') {
     const cell = 'px-3 py-2.5'
     return (
-      <tr className="cursor-pointer border-t border-line hover:bg-surface-2/60" onClick={open}>
+      <tr className={cx('cursor-pointer border-t border-line hover:bg-surface-2/60', selected && 'bg-accent/5')} onClick={open}>
+        {onSelect && <td className={cx(cell, 'w-8')}>{check}</td>}
         <td className={cx(cell, 'whitespace-nowrap')}>
           <p>{order.orderNumber}</p>
           <p className="text-[12px] text-muted">{relative(order.createdAt)}</p>
@@ -194,7 +202,8 @@ function OrderRow({ order, storeName, layout }: { order: OrderListItem & { payme
 
   if (layout === 'compact')
     return (
-      <li className="flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-surface-2/60" onClick={open}>
+      <li className={cx('flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-surface-2/60', selected && 'bg-accent/5')} onClick={open}>
+        {check}
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-2 text-sm">
             <span className="font-medium">{order.customerName || 'Client'}</span>
@@ -214,8 +223,9 @@ function OrderRow({ order, storeName, layout }: { order: OrderListItem & { payme
     )
 
   return (
-    <li className="rounded-xl border border-line bg-surface p-3 sm:p-4">
+    <li className={cx('rounded-xl border bg-surface p-3 sm:p-4', selected ? 'border-accent ring-1 ring-accent' : 'border-line')}>
       <div className="flex flex-wrap items-start gap-3">
+        {check && <span className="mt-0.5">{check}</span>}
         <button type="button" onClick={open} className="min-w-0 flex-1 text-left">
           <p className="flex flex-wrap items-center gap-2">
             <span className="font-semibold">{order.customerName || 'Client'}</span>
@@ -424,6 +434,75 @@ function CartsList({ q, view }: { q: string; view: 'cards' | 'compact' | 'table'
   )
 }
 
+/** Actions en lot sur les ventes cochées : chaque action ne touche que les ventes concernées. */
+function BulkBar({ rows, onDone }: { rows: Row[]; onDone: () => void }) {
+  const storeId = useStoreId()
+  const toast = useToast()
+  const qc = useQueryClient()
+  const status = useBulkOrderStatus()
+  const archive = useArchiveOrders()
+  const canPay = useCan('orders.payment')
+  const [busy, setBusy] = useState<string | null>(null)
+  const paid = rows.filter((o) => o.paymentStatus === 'paid' && o.customerEmail)
+  const unpaid = rows.filter((o) => o.paymentStatus === 'pending' || o.paymentStatus === 'failed')
+  const remindable = unpaid.filter((o) => o.customerEmail)
+  const cancellable = unpaid.filter((o) => ['new', 'unreachable', 'confirmed'].includes(o.fulfillmentStatus))
+  const refresh = () => void qc.invalidateQueries({ queryKey: ['store', storeId, 'orders'] })
+
+  /** Appels un par un (3 à la fois) pour les actions sans route groupée : on compte les réussites. */
+  const each = async (key: string, list: Row[], call: (o: Row) => Promise<unknown>, ok: (n: number) => string) => {
+    setBusy(key)
+    let n = 0
+    for (let i = 0; i < list.length; i += 3) {
+      const res = await Promise.allSettled(list.slice(i, i + 3).map(call))
+      n += res.filter((r) => r.status === 'fulfilled').length
+    }
+    setBusy(null)
+    if (n < list.length) toast.error(`${list.length - n} vente(s) n’ont pas pu être traitées`)
+    if (n) toast.success(ok(n))
+    refresh()
+    onDone()
+  }
+  const markPaid = () => {
+    if (!window.confirm(`Marquer ${unpaid.length} vente(s) comme payée(s) ? À faire seulement si vous avez bien reçu l’argent : chaque client reçoit aussitôt son accès.`)) return
+    void each('paid', unpaid, (o) => api.post(`/stores/${storeId}/orders/${o.id}/payment`, { paymentStatus: 'paid', note: 'Paiement confirmé à la main' }), (n) => `${n} vente${n > 1 ? 's' : ''} payée${n > 1 ? 's' : ''}, accès envoyé${n > 1 ? 's' : ''}`)
+  }
+  const cancel = () => {
+    if (!window.confirm(`Annuler ${cancellable.length} vente(s) non payée(s) ? Leur lien de paiement ne fonctionnera plus.`)) return
+    status.mutate({ ids: cancellable.map((o) => o.id), fulfillmentStatus: 'cancelled', note: 'Annulée (non payée)' }, { onSuccess: () => (toast.success('Ventes annulées'), onDone()), onError: (e) => toast.error(e) })
+  }
+  const doArchive = () => archive.mutate({ ids: rows.map((o) => o.id), archived: true }, { onSuccess: (r) => (toast.success(`${r.updated} vente(s) archivée(s)`), onDone()), onError: (e) => toast.error(e) })
+
+  const act = (key: string, label: string, icon: ReactNode, count: number, onClick: () => void, variant: 'primary' | 'secondary' = 'secondary') =>
+    count > 0 ? (
+      <Button key={key} size="sm" variant={variant} onClick={onClick} loading={busy === key || (key === 'cancel' && status.isPending) || (key === 'archive' && archive.isPending)} disabled={!!busy || status.isPending || archive.isPending}>
+        {icon} {label} ({count})
+      </Button>
+    ) : null
+
+  return (
+    <div className="sticky bottom-20 z-20 mt-4 rounded-xl border border-line bg-surface/95 px-3 py-2.5 shadow-lg backdrop-blur lg:bottom-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-sm font-medium">
+          {rows.length} sélectionnée{rows.length > 1 ? 's' : ''}
+        </span>
+        {canPay && act('paid', 'Marquer payées', <CheckCheck className="size-3.5" />, unpaid.length, markPaid, 'primary')}
+        {act('access', 'Renvoyer l’accès', <RotateCcw className="size-3.5" />, paid.length, () =>
+          void each('access', paid, (o) => api.post(`/stores/${storeId}/orders/${o.id}/resend-access`, {}), (n) => `Accès renvoyé à ${n} client${n > 1 ? 's' : ''}`),
+        )}
+        {act('remind', 'Relancer le paiement', <Mail className="size-3.5" />, remindable.length, () =>
+          void each('remind', remindable, (o) => api.post(`/stores/${storeId}/orders/${o.id}/send-payment-link`, { email: true }), (n) => `Relance envoyée à ${n} client${n > 1 ? 's' : ''}`),
+        )}
+        {act('cancel', 'Annuler', <X className="size-3.5" />, cancellable.length, cancel)}
+        {act('archive', 'Archiver', <Archive className="size-3.5" />, rows.length, doArchive)}
+        <Button size="sm" variant="ghost" className="ml-auto" onClick={onDone}>
+          Désélectionner
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export default function DigitalOrders() {
   const { storeId, store } = useCurrentStore()
   const canExport = useCan('orders.export')
@@ -449,7 +528,13 @@ export default function DigitalOrders() {
   }
   const n = (k: Tab) =>
     k === 'carts' ? (leadsCount.data?.total ?? 0) : k === '' ? (counts ? (counts.paid ?? 0) + (counts.pending ?? 0) + (counts.failed ?? 0) + (counts.refunded ?? 0) : 0) : (counts?.[k] ?? 0)
-  const rows = (orders.data?.data ?? []) as (OrderListItem & { paymentFailed?: boolean; downloads?: number })[]
+  const rows = (orders.data?.data ?? []) as Row[]
+  const canUpdate = useCan('orders.update')
+  const [selected, setSelected] = useState<string[]>([])
+  useEffect(() => setSelected([]), [tab, q, page])
+  const toggle = (id: string, v: boolean) => setSelected((s) => (v ? [...s, id] : s.filter((x) => x !== id)))
+  const sel = (o: Row) => (canUpdate ? { selected: selected.includes(o.id), onSelect: (v: boolean) => toggle(o.id, v) } : {})
+  const allOn = rows.length > 0 && rows.every((r) => selected.includes(r.id))
   const pages = orders.data ? Math.max(1, Math.ceil(orders.data.total / orders.data.pageSize)) : 1
 
   return (
@@ -511,17 +596,23 @@ export default function DigitalOrders() {
         <EmptyState icon={<ShoppingBag className="size-5" />} title={q || tab ? 'Aucune vente ne correspond' : 'Aucune vente pour le moment'} description={q || tab ? 'Essayez un autre onglet ou une autre recherche.' : 'Les ventes de vos pages arrivent ici dès qu’un client commande.'} />
       ) : (
         <>
+          {canUpdate && view !== 'table' && (
+            <div className="mb-2 flex items-center gap-2 px-1">
+              <Checkbox checked={allOn} onChange={(v) => setSelected(v ? rows.map((r) => r.id) : [])} label="Tout sélectionner" />
+              <span className="text-[13px] text-muted">{selected.length ? `${selected.length} sélectionnée${selected.length > 1 ? 's' : ''}` : 'Tout sélectionner'}</span>
+            </div>
+          )}
           {view === 'cards' && (
             <ul className="grid gap-2.5 xl:grid-cols-2">
               {rows.map((o) => (
-                <OrderRow key={o.id} order={o} storeName={store?.name ?? ''} layout="card" />
+                <OrderRow key={o.id} order={o} storeName={store?.name ?? ''} layout="card" {...sel(o)} />
               ))}
             </ul>
           )}
           {view === 'compact' && (
             <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
               {rows.map((o) => (
-                <OrderRow key={o.id} order={o} storeName={store?.name ?? ''} layout="compact" />
+                <OrderRow key={o.id} order={o} storeName={store?.name ?? ''} layout="compact" {...sel(o)} />
               ))}
             </ul>
           )}
@@ -530,6 +621,11 @@ export default function DigitalOrders() {
               <table className="w-full text-left text-sm">
                 <thead className="bg-surface-2 text-[12px] font-medium text-muted uppercase">
                   <tr>
+                    {canUpdate && (
+                      <th className="w-8 px-3 py-2">
+                        <Checkbox checked={allOn} onChange={(v) => setSelected(v ? rows.map((r) => r.id) : [])} label="Tout sélectionner" />
+                      </th>
+                    )}
                     {['Commande', 'Client', 'Téléphone', 'Produits', 'Total', 'Paiement', 'Téléch.', ''].map((h, i) => (
                       <th key={i} className={cx('px-3 py-2 font-medium whitespace-nowrap', h === 'Total' && 'text-right')}>
                         {h}
@@ -539,12 +635,13 @@ export default function DigitalOrders() {
                 </thead>
                 <tbody>
                   {rows.map((o) => (
-                    <OrderRow key={o.id} order={o} storeName={store?.name ?? ''} layout="table" />
+                    <OrderRow key={o.id} order={o} storeName={store?.name ?? ''} layout="table" {...sel(o)} />
                   ))}
                 </tbody>
               </table>
             </div>
           )}
+          {canUpdate && selected.length > 0 && <BulkBar rows={rows.filter((r) => selected.includes(r.id))} onDone={() => setSelected([])} />}
           {pages > 1 && (
             <nav className="mt-4 flex items-center justify-center gap-3" aria-label="Pagination">
               <Button size="sm" disabled={page <= 1} onClick={() => set({ page: String(page - 1) })} aria-label="Page précédente">

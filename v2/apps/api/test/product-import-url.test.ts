@@ -226,7 +226,7 @@ describe('import par URL : routes', () => {
   })
 })
 
-describe('rédaction IA : description PAS / AIDA et images', () => {
+describe('rédaction IA : description PASA / AIDA et images', () => {
   const FLAT = '<p>Fini le téléphone qui glisse \u{1F697}. Le ROBO-MOUNT tient sur les routes accidentées. Comment ça marche : fixez, ajustez, clipsez.</p><img src="https://cdn.exemple.com/desc-1.jpg" alt="Support"><p>« Testé sur la route de Parakou », Client vérifié</p><img src="https://cdn.exemple.com/desc-2.jpg?w=800&amp;h=600">'
 
   test('sans clé : config fermée et 404', async () => {
@@ -252,7 +252,7 @@ describe('rédaction IA : description PAS / AIDA et images', () => {
             type: 'tool_use',
             name: 'description',
             input: {
-              framework: 'PAS',
+              framework: 'PASA',
               reason: 'Le produit règle un problème précis — le téléphone qui tombe.',
               description: '<p>Votre téléphone glisse en pleine route ? \u{1F62B}</p><p>[[IMAGE_2]]</p><h3>La solution</h3><ul><li><strong>Tient bon</strong> — même sur les pistes</li></ul><script>alert(1)</script>',
             },
@@ -262,7 +262,7 @@ describe('rédaction IA : description PAS / AIDA et images', () => {
     })
     const r = await owner.post(`/api/stores/${storeId}/products/ai/rewrite-description`, { name: 'ROBO-MOUNT', description: FLAT, features: ['Ventouse'], price: 8900 })
     expect(r.status).toBe(200)
-    expect(r.body).toMatchObject({ framework: 'PAS', images: 2 })
+    expect(r.body).toMatchObject({ framework: 'PASA', images: 2 })
     expect(r.body.reason).not.toContain('—')
     const html: string = r.body.description
     expect(html).not.toMatch(/\p{Extended_Pictographic}/u)

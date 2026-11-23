@@ -167,6 +167,7 @@ export function SalesPageSection(p: SectionProps) {
           name={form.name}
           features={c.features}
           price={form.price}
+          type={form.type}
           onChange={(description) => p.set({ description })}
         />
         {errors.description && <p className="mt-1 text-[13px] text-red-600">{errors.description}</p>}

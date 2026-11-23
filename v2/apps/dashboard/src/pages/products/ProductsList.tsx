@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ConfirmDialog, useDialogState } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
-import { Badge, Button, ButtonLink, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Segmented, Switch } from '@/components/ui'
+import { Badge, Button, ButtonLink, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Switch } from '@/components/ui'
 import { useCan, useCurrentStore } from '@/hooks/auth'
 import { useDeleteProduct, useDuplicateProduct, useProducts, useToggleProductActive } from '@/hooks/resources'
 import { money, num } from '@/lib/format'
@@ -127,12 +127,11 @@ export default function ProductsList() {
   const del = useDeleteProduct()
   const confirmDelete = useDialogState<ProductListItem>()
   const [q, setQ] = useState('')
-  const [type, setType] = useState<'all' | 'physical' | 'digital'>('all')
 
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase()
-    return (data ?? []).filter((p) => (type === 'all' || p.type === type) && (!s || p.name.toLowerCase().includes(s)))
-  }, [data, q, type])
+    return (data ?? []).filter((p) => !s || p.name.toLowerCase().includes(s))
+  }, [data, q])
 
   const onDuplicate = (p: ProductListItem) =>
     duplicate.mutate(p.id, {
@@ -162,21 +161,11 @@ export default function ProductsList() {
       />
 
       {data && data.length > 0 && (
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row">
-          <div className="relative flex-1">
+        <div className="mb-3">
+          <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-3 z-[1] size-4 -translate-y-1/2 text-subtle" />
             <Input type="search" placeholder="Rechercher un produit" value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" aria-label="Rechercher un produit" />
           </div>
-          <Segmented
-            label="Type"
-            value={type}
-            onChange={setType}
-            options={[
-              { value: 'all', label: 'Tous' },
-              { value: 'physical', label: 'Physiques' },
-              { value: 'digital', label: 'Digitaux' },
-            ]}
-          />
         </div>
       )}
 
@@ -220,7 +209,6 @@ export default function ProductsList() {
                       {p.name}
                     </Link>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <Badge tone={p.type === 'physical' ? 'blue' : 'violet'}>{p.type === 'physical' ? 'Physique' : 'Digital'}</Badge>
                       {!p.isActive && <Badge>Inactif</Badge>}
                       {p.pending > 0 && <Badge tone="amber">{p.pending} à traiter</Badge>}
                       <span className="text-[13px] md:hidden">

@@ -1,6 +1,6 @@
 /**
  * Description de vente par IA (kie.ai) :
- * - réécriture structurée selon PAS (problème, agitation, solution) ou AIDA (attention, intérêt, désir, action),
+ * - réécriture structurée selon PASA (problème, agitation, solution, action) ou AIDA (attention, intérêt, désir, action),
  *   le modèle choisit la méthode la plus adaptée au produit ;
  * - images de la description : repérées, replacées dans la nouvelle structure, et régénérables une par une
  *   (édition d'image à partir de l'originale, même produit, sans texte incrusté).
@@ -93,7 +93,7 @@ export function placeImages(html: string, images: DescriptionImage[]): string {
 // ─── Réécriture ──────────────────────────────────────────────────────────────
 
 const rewriteSchema = z.object({
-  framework: z.enum(['PAS', 'AIDA']),
+  framework: z.enum(['PASA', 'AIDA']),
   reason: z.string().max(400),
   description: z.string().min(40).max(30_000),
 })
@@ -106,7 +106,7 @@ const REWRITE_TOOL = {
     additionalProperties: false,
     required: ['framework', 'reason', 'description'],
     properties: {
-      framework: { type: 'string', enum: ['PAS', 'AIDA'], description: 'Méthode retenue.' },
+      framework: { type: 'string', enum: ['PASA', 'AIDA'], description: 'Méthode retenue.' },
       reason: { type: 'string', description: 'Une phrase courte qui explique au vendeur pourquoi cette méthode convient à ce produit.' },
       description: { type: 'string', description: 'Description en HTML simple (<h2>, <h3>, <p>, <ul><li>, <ol><li>, <strong>, <em>, <blockquote>), avec les repères [[IMAGE_n]] seuls dans leur propre <p>.' },
     },
@@ -133,28 +133,45 @@ export function buildRewritePrompt(input: RewriteInput, text: string, images: De
   ]
     .filter(Boolean)
     .join('\n')
-  return `Tu es rédacteur e-commerce pour des boutiques d'Afrique francophone. Les clients lisent sur mobile, arrivent de publicités Facebook ou TikTok et paient souvent à la livraison.
-
-Réécris la description du produit ${input.kind === 'digital' ? 'DIGITAL ' : ''}ci-dessous pour qu'elle soit ordonnée, aérée et convaincante.
-
-1. Choisis la méthode la plus adaptée :
-- PAS (Problème, Agitation, Solution) quand le produit règle une douleur ou une gêne précise (santé, sécurité, panne, inconfort, perte de temps).
-- AIDA (Attention, Intérêt, Désir, Action) quand le produit se vend par l'envie, le style, le plaisir ou la nouveauté.
-
-2. Structure :
-- Une accroche forte en ouverture, sans titre au-dessus.
-- Des sections avec un titre court en <h3> (PAS : le problème, ce que ça coûte au quotidien, la solution ; AIDA : l'accroche, ce que c'est, ce que ça change pour vous, comment commander).
+  const digital = input.kind === 'digital'
+  const intro = digital
+    ? `Tu es rédacteur de pages de vente pour des produits digitaux (formations, ebooks, coaching, modèles, logiciels) vendus en Afrique francophone. Les clients lisent sur mobile, arrivent de publicités Facebook ou TikTok et paient en ligne (Mobile Money, carte).`
+    : `Tu es rédacteur e-commerce pour des boutiques d'Afrique francophone. Les clients lisent sur mobile, arrivent de publicités Facebook ou TikTok et paient souvent à la livraison.`
+  const methods = digital
+    ? `- PASA (Problème, Agitation, Solution, Action) quand le produit règle un blocage précis (manque d'argent, de clients, de temps, échec répété, compétence qui manque).
+- AIDA (Attention, Intérêt, Désir, Action) quand le produit se vend par l'ambition, la transformation rêvée, la curiosité ou la nouveauté.`
+    : `- PASA (Problème, Agitation, Solution, Action) quand le produit règle une douleur ou une gêne précise (santé, sécurité, panne, inconfort, perte de temps).
+- AIDA (Attention, Intérêt, Désir, Action) quand le produit se vend par l'envie, le style, le plaisir ou la nouveauté.`
+  const structure = digital
+    ? `- Une accroche forte en ouverture, sans titre au-dessus.
+- Des sections avec un titre court en <h3> : selon la méthode, le problème ou le rêve, puis « Pour qui ? » (et pour qui ce n'est pas, si les données le disent), « Ce que vous allez apprendre » ou « Ce que vous obtenez » (résultats concrets, en liste à puces, chaque point commençant par le bénéfice en <strong>), « Le contenu » (modules, chapitres ou parties en liste numérotée <ol>, avec leur durée ou nombre de pages si indiqué), le format et l'accès (PDF, vidéos, accès à vie, groupe privé, certificat, mises à jour : seulement ce qui est écrit), les bonus s'il y en a, et l'auteur ou le formateur si les données le présentent.
+- Paragraphes de 1 à 3 phrases maximum.
+- Les témoignages présents dans les données en <blockquote>, mot pour mot, avec leur signature. N'en ajoute aucun.
+- Les questions et réponses présentes dans les données : une section « Questions fréquentes », chaque question en <strong> suivie de sa réponse.
+- S'il existe plusieurs formules, présente-les clairement (nom, prix, ce que chacune contient).
+- Termine par un appel à l'action clair (accès immédiat après paiement seulement si c'est indiqué dans les données ; garantie de remboursement seulement si elle est écrite).`
+    : `- Une accroche forte en ouverture, sans titre au-dessus.
+- Des sections avec un titre court en <h3> (PASA : le problème, ce que ça coûte au quotidien, la solution, puis l'action ; AIDA : l'accroche, ce que c'est, ce que ça change pour vous, comment commander).
 - Paragraphes de 1 à 3 phrases maximum. Les avantages en liste à puces, chacun commençant par le bénéfice en <strong>.
 - Le mode d'emploi en liste numérotée (<ol>) s'il existe dans les données.
 - Les témoignages présents dans les données en <blockquote>, mot pour mot, avec leur signature. N'en ajoute aucun.
 - Les questions et réponses présentes dans les données : une section « Questions fréquentes », chaque question en <strong> suivie de sa réponse.
-- Termine par un appel à l'action clair (commander, paiement à la livraison seulement si c'est indiqué dans les données).
+- Termine par un appel à l'action clair (commander, paiement à la livraison seulement si c'est indiqué dans les données).`
+  return `${intro}
+
+Réécris la description du produit ${digital ? 'DIGITAL ' : ''}ci-dessous pour qu'elle soit ordonnée, aérée et convaincante.
+
+1. Choisis la méthode la plus adaptée :
+${methods}
+
+2. Structure :
+${structure}
 
 3. Images : les repères [[IMAGE_1]], [[IMAGE_2]]… marquent les images de la description d'origine. Place CHAQUE repère une seule fois, seul dans son propre <p>, à l'endroit où l'image illustre le mieux le texte (après l'accroche, à côté des avantages, du mode d'emploi…). Ne crée aucun autre repère.
 
 Règles strictes :
 - Garde toutes les informations utiles des données (caractéristiques, livraison, contact, garanties écrites). N'invente AUCUNE caractéristique, chiffre, avis, garantie ou promesse.
-- Pas de promesse médicale ni de résultat garanti.
+- Pas de promesse médicale ni de résultat garanti (aucun revenu chiffré promis s'il n'est pas écrit dans les données).
 - Aucun emoji, aucun symbole décoratif.
 - Aucun tiret long ni moyen (— ou –) : virgules, deux-points ou parenthèses.
 - Vouvoiement, français simple et chaleureux.
@@ -174,7 +191,7 @@ interface KieResponse {
   stop_reason?: string
 }
 
-export async function rewriteDescription(input: RewriteInput): Promise<{ framework: 'PAS' | 'AIDA'; reason: string; description: string; images: number }> {
+export async function rewriteDescription(input: RewriteInput): Promise<{ framework: 'PASA' | 'AIDA'; reason: string; description: string; images: number }> {
   if (!env.KIE_API_KEY) throw new HttpError(404, 'Rédaction IA non configurée', 'ai_unavailable')
   const images = descriptionImages(input.description)
   const text = descriptionToText(input.description, images)
@@ -221,20 +238,25 @@ export const IMAGE_MODEL = () => env.KIE_IMAGE_MODEL ?? 'google/nano-banana-edit
 const tasks = new Map<string, { storeId: string; createdAt: number; url?: string }>()
 const TASK_TTL = 60 * 60_000
 
-export function imagePrompt(name: string, context?: string, instruction?: string) {
-  return [
-    `Recrée cette image pour la page de vente du produit « ${name.slice(0, 120)} ».`,
-    'Garde exactement le même produit : forme, couleurs, matières, proportions et détails identiques.',
-    'Photo e-commerce nette et professionnelle, lumière douce et naturelle, mise en scène réaliste et soignée, cadrage centré sur le produit.',
-    'Aucun texte, aucun chiffre, aucun logo de site, aucun filigrane, aucun emoji, aucune flèche ni bandeau publicitaire.',
-    context ? `Ce que l'image doit illustrer : ${context.slice(0, 300)}.` : null,
-    instruction ? `Consigne du vendeur : ${instruction.slice(0, 300)}.` : null,
-  ]
-    .filter(Boolean)
-    .join(' ')
+export function imagePrompt(name: string, context?: string, instruction?: string, kind: 'physical' | 'digital' = 'physical') {
+  const lines =
+    kind === 'digital'
+      ? [
+          `Recrée ce visuel pour la page de vente du produit digital « ${name.slice(0, 120)} » (formation, ebook ou programme en ligne).`,
+          'Rendu de maquette professionnelle et moderne : couverture d’ebook en 3D, écrans (téléphone, ordinateur, tablette) montrant le contenu, ou scène qui illustre le résultat promis, selon ce que montre l’image d’origine.',
+          'Garde les couleurs, l’ambiance et le titre du produit s’il apparaît, recopié à l’identique. Aucun autre texte, aucun logo de site, aucun filigrane, aucun emoji, aucun faux badge ni prix.',
+          'Lumière soignée, fond propre, image nette et haut de gamme.',
+        ]
+      : [
+          `Recrée cette image pour la page de vente du produit « ${name.slice(0, 120)} ».`,
+          'Garde exactement le même produit : forme, couleurs, matières, proportions et détails identiques.',
+          'Photo e-commerce nette et professionnelle, lumière douce et naturelle, mise en scène réaliste et soignée, cadrage centré sur le produit.',
+          'Aucun texte, aucun chiffre, aucun logo de site, aucun filigrane, aucun emoji, aucune flèche ni bandeau publicitaire.',
+        ]
+  return [...lines, context ? `Ce que l'image doit illustrer : ${context.slice(0, 300)}.` : null, instruction ? `Consigne du vendeur : ${instruction.slice(0, 300)}.` : null].filter(Boolean).join(' ')
 }
 
-export async function startImageRegeneration(storeId: string, input: { imageUrl: string; name: string; context?: string; instruction?: string }): Promise<string> {
+export async function startImageRegeneration(storeId: string, input: { imageUrl: string; name: string; context?: string; instruction?: string; kind?: 'physical' | 'digital' }): Promise<string> {
   if (!env.KIE_API_KEY) throw new HttpError(404, 'Génération d’images non configurée', 'ai_unavailable')
   let res: Response
   try {
@@ -243,7 +265,7 @@ export async function startImageRegeneration(storeId: string, input: { imageUrl:
       headers: { Authorization: `Bearer ${env.KIE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: IMAGE_MODEL(),
-        input: { prompt: imagePrompt(input.name, input.context, input.instruction), image_urls: [input.imageUrl], output_format: 'png', aspect_ratio: 'auto' },
+        input: { prompt: imagePrompt(input.name, input.context, input.instruction, input.kind), image_urls: [input.imageUrl], output_format: 'png', aspect_ratio: 'auto' },
       }),
       signal: AbortSignal.timeout(20_000),
     })

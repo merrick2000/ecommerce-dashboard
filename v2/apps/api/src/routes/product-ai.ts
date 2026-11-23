@@ -1,6 +1,6 @@
 /**
  * Rédaction IA d'un produit (sous /stores/:storeId/products/ai), utilisée par l'import par lien et par l'éditeur :
- * - réécriture structurée de la description (PAS ou AIDA) ;
+ * - réécriture structurée de la description (PASA ou AIDA) ;
  * - régénération d'une image de la description (tâche asynchrone : lancement puis suivi).
  * Coûteux : ouvert avec l'import par lien (super admin), et seulement si kie.ai est configuré.
  */
@@ -38,23 +38,25 @@ export const productAiRoutes = new Hono<AppEnv>()
         features: z.array(z.string().max(200)).max(30).default([]),
         price: z.coerce.number().min(0).nullable().optional(),
         goal: z.string().max(300).optional(),
+        /** Type du produit édité (à défaut, celui de la boutique). */
+        type: z.enum(['physical', 'digital']).optional(),
       }),
     ),
     async (c) => {
       const store = c.get('store')
-      const body = c.req.valid('json')
-      return c.json(await rewriteDescription({ ...body, price: body.price ?? null, currency: store.currency, kind: store.kind === 'digital' ? 'digital' : 'physical' }))
+      const { type, ...body } = c.req.valid('json')
+      return c.json(await rewriteDescription({ ...body, price: body.price ?? null, currency: store.currency, kind: type ?? (store.kind === 'digital' ? 'digital' : 'physical') }))
     },
   )
   .post(
     '/images/regenerate',
     rateLimit({ key: 'ai-image', limit: 20, windowSec: 600 }),
-    v('json', z.object({ imageUrl: z.string().url().max(2000), name: z.string().trim().max(160).default(''), context: z.string().max(400).optional(), instruction: z.string().max(300).optional() })),
+    v('json', z.object({ imageUrl: z.string().url().max(2000), name: z.string().trim().max(160).default(''), context: z.string().max(400).optional(), instruction: z.string().max(300).optional(), type: z.enum(['physical', 'digital']).optional() })),
     async (c) => {
-      const body = c.req.valid('json')
+      const { type, ...body } = c.req.valid('json')
       // Le fournisseur va lire cette adresse : jamais une adresse interne.
       await assertPublicUrl(body.imageUrl)
-      return c.json({ taskId: await startImageRegeneration(c.get('store').id, body) }, 202)
+      return c.json({ taskId: await startImageRegeneration(c.get('store').id, { ...body, kind: type ?? (c.get('store').kind === 'digital' ? 'digital' : 'physical') }) }, 202)
     },
   )
   .get('/images/regenerate/:taskId', async (c) => c.json(await imageRegenerationStatus(c.get('store').id, c.req.param('taskId').slice(0, 100))))

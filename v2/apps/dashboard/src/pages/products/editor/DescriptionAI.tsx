@@ -1,6 +1,6 @@
 /**
  * Assistant de description (import par lien et éditeur) :
- * - réécriture par l'IA selon PAS ou AIDA (méthode choisie selon le produit), texte ordonné et aéré ;
+ * - réécriture par l'IA selon PASA ou AIDA (méthode choisie selon le produit), texte ordonné et aéré ;
  * - images trouvées dans la description : garder, régénérer (même produit, photo propre, sans texte) ou retirer.
  * Tout se fait sur le HTML de la description ; le parent reste maître de la valeur.
  */
@@ -12,7 +12,7 @@ import { Badge, Button, cx, Input } from '@/components/ui'
 import { useStoreId } from '@/hooks/auth'
 import { api } from '@/lib/api'
 
-type Framework = 'PAS' | 'AIDA'
+type Framework = 'PASA' | 'AIDA'
 interface Rewrite {
   framework: Framework
   reason: string
@@ -21,7 +21,7 @@ interface Rewrite {
 }
 
 const FRAMEWORK: Record<Framework, string> = {
-  PAS: 'Problème, Agitation, Solution',
+  PASA: 'Problème, Agitation, Solution, Action',
   AIDA: 'Attention, Intérêt, Désir, Action',
 }
 
@@ -74,7 +74,8 @@ function contextOf(html: string, src: string): string {
 
 type ImageJob = { status: 'running' } | { status: 'failed'; error: string }
 
-export function DescriptionAI({ html, onChange, name, features = [], price = null, autoApply = false }: { html: string; onChange: (html: string) => void; name: string; features?: string[]; price?: number | null; autoApply?: boolean }) {
+export function DescriptionAI({ html, onChange, name, features = [], price = null, autoApply = false, type }: { html: string; onChange: (html: string) => void; name: string; features?: string[]; price?: number | null; autoApply?: boolean; type?: 'physical' | 'digital' }) {
+  const digital = type === 'digital'
   const storeId = useStoreId()
   const toast = useToast()
   const { data: config } = useQuery({ queryKey: ['product-ai-config', storeId], queryFn: () => api.get<{ rewrite: boolean; images: boolean }>(`/stores/${storeId}/products/ai/config`), staleTime: 5 * 60_000 })
@@ -102,7 +103,7 @@ export function DescriptionAI({ html, onChange, name, features = [], price = nul
   const rewrite = async () => {
     setWriting(true)
     try {
-      const r = await api.post<Rewrite>(`/stores/${storeId}/products/ai/rewrite-description`, { name, description: latest.current, features: features.filter(Boolean), price, goal: goal.trim() || undefined })
+      const r = await api.post<Rewrite>(`/stores/${storeId}/products/ai/rewrite-description`, { name, description: latest.current, features: features.filter(Boolean), price, goal: goal.trim() || undefined, type })
       if (!alive.current) return
       if (autoApply) use(r)
       else setProposal(r)
@@ -132,7 +133,7 @@ export function DescriptionAI({ html, onChange, name, features = [], price = nul
     const original = originals[src] ?? src
     setJobs((j) => ({ ...j, [src]: { status: 'running' } }))
     try {
-      const { taskId } = await api.post<{ taskId: string }>(`/stores/${storeId}/products/ai/images/regenerate`, { imageUrl: original, name, context: contextOf(latest.current, src) || undefined, instruction: instructions[src]?.trim() || undefined })
+      const { taskId } = await api.post<{ taskId: string }>(`/stores/${storeId}/products/ai/images/regenerate`, { imageUrl: original, name, context: contextOf(latest.current, src) || undefined, instruction: instructions[src]?.trim() || undefined, type })
       const deadline = Date.now() + 4 * 60_000
       while (alive.current && Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, 4000))
@@ -172,13 +173,13 @@ export function DescriptionAI({ html, onChange, name, features = [], price = nul
             <p className="flex items-center gap-1.5 text-sm font-semibold">
               <Wand2 className="size-4 text-accent" /> Réécrire avec l’IA
             </p>
-            <p className="mt-0.5 text-[13px] text-muted">Texte remis en ordre et aéré, selon la méthode la plus adaptée au produit : PAS (un problème à régler) ou AIDA (une envie à créer). Rien n’est inventé.</p>
+            <p className="mt-0.5 text-[13px] text-muted">{digital ? 'Page de vente remise en ordre : pour qui, ce que l’on obtient, le contenu, le format et l’accès, selon la méthode la plus adaptée : PASA (un blocage à lever) ou AIDA (une ambition à nourrir). Rien n’est inventé.' : 'Texte remis en ordre et aéré, selon la méthode la plus adaptée au produit : PASA (un problème à régler) ou AIDA (une envie à créer). Rien n’est inventé.'}</p>
           </div>
           <Button size="sm" variant={applied || proposal ? 'secondary' : 'primary'} onClick={rewrite} loading={writing} disabled={!canRewrite}>
             <Sparkles className="size-3.5" /> {applied || proposal ? 'Nouvelle version' : 'Réécrire'}
           </Button>
         </div>
-        <Input aria-label="Objectif de la réécriture" placeholder="Objectif (facultatif) : ex. cible les chauffeurs VTC, ton rassurant" value={goal} onChange={(e) => setGoal(e.target.value)} maxLength={300} wrapClass="mt-3" />
+        <Input aria-label="Objectif de la réécriture" placeholder={digital ? 'Objectif (facultatif) : ex. cible les débutants, ton motivant' : 'Objectif (facultatif) : ex. cible les chauffeurs VTC, ton rassurant'} value={goal} onChange={(e) => setGoal(e.target.value)} maxLength={300} wrapClass="mt-3" />
         {writing && (
           <p className="mt-3 flex items-center gap-2 text-[13px] text-muted">
             <Loader2 className="size-4 animate-spin" /> Rédaction en cours, jusqu’à une minute…
@@ -228,7 +229,7 @@ export function DescriptionAI({ html, onChange, name, features = [], price = nul
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <p className="text-sm font-semibold">Images de la description ({images.length})</p>
-              <p className="mt-0.5 text-[13px] text-muted">Gardez-les, ou régénérez celles qui portent du texte étranger, un logo ou une mauvaise qualité : même produit, photo propre, sans texte.</p>
+              <p className="mt-0.5 text-[13px] text-muted">{digital ? 'Gardez-les, ou régénérez-les en maquette soignée (couverture en 3D, écrans qui montrent le contenu), sans logo ni texte parasite.' : 'Gardez-les, ou régénérez celles qui portent du texte étranger, un logo ou une mauvaise qualité : même produit, photo propre, sans texte.'}</p>
             </div>
             {undo && (
               <Button
@@ -262,7 +263,7 @@ export function DescriptionAI({ html, onChange, name, features = [], price = nul
                       <p className="text-[12px] text-muted">Génération en cours, environ une minute…</p>
                     ) : (
                       <>
-                        <Input aria-label={`Consigne pour l’image ${i + 1}`} placeholder="Consigne (facultatif) : ex. posé sur un tableau de bord" value={instructions[img.src] ?? ''} onChange={(e) => setInstructions((x) => ({ ...x, [img.src]: e.target.value }))} maxLength={300} className="!h-8 !text-[13px]" />
+                        <Input aria-label={`Consigne pour l’image ${i + 1}`} placeholder={digital ? 'Consigne (facultatif) : ex. sur un téléphone et un ordinateur' : 'Consigne (facultatif) : ex. posé sur un tableau de bord'} value={instructions[img.src] ?? ''} onChange={(e) => setInstructions((x) => ({ ...x, [img.src]: e.target.value }))} maxLength={300} className="!h-8 !text-[13px]" />
                         {job?.status === 'failed' && <p className="text-[12px] text-red-600 dark:text-red-400">{job.error}</p>}
                         <div className="flex flex-wrap gap-1">
                           <Button size="sm" variant="ghost" onClick={() => regenerate(img.src)}>

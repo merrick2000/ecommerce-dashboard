@@ -324,7 +324,7 @@ function Review({ preview, onRestart }: { preview: Preview; onRestart: () => voi
           ) : (
             <p className="text-sm text-muted">Aucune description détectée. Vous pourrez l’écrire dans l’éditeur.</p>
           )}
-          <DescriptionAI html={description} onChange={setDescription} name={name} features={features} price={price} autoApply />
+          <DescriptionAI html={description} onChange={setDescription} name={name} features={features} price={price} type={store?.kind === 'digital' ? 'digital' : 'physical'} autoApply />
         </div>
       </Card>
 
