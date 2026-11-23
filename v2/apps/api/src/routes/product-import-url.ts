@@ -12,12 +12,13 @@ import { requirePermission } from '../lib/auth'
 import type { AppEnv } from '../lib/context'
 import { badRequest } from '../lib/errors'
 import { rateLimit } from '../lib/rate-limit'
-import { sanitizeHtml } from '../lib/sanitize'
 import { v } from '../lib/validate'
 import { logActivity } from '../services/activity'
 import { aiAvailable, suggestImprovements } from '../services/ai-suggest'
 import { createProduct } from '../services/product-write'
 import { importRemoteImage } from '../services/remote'
+import { descriptionImages } from '../services/ai-description'
+import { publicUrl } from '../services/storage'
 import { previewFromText, previewFromUrl, stripTags } from '../services/url-import'
 import { firecrawlAvailable } from '../services/page-fetch'
 import { resolveFeatures } from '../services/platform'
@@ -95,7 +96,6 @@ export const productImportUrlRoutes = new Hono<AppEnv>()
         kicker: noDash(s.kicker),
         headline: noDash(s.headline),
         tagline: noDash(s.tagline),
-        description: sanitizeHtml(noDash(s.description)),
         features: s.features.map(noDash).filter(Boolean),
         faqs: s.faqs.map((f) => ({ question: noDash(f.question), answer: noDash(f.answer) })).filter((f) => f.question && f.answer),
       })
@@ -126,11 +126,28 @@ export const productImportUrlRoutes = new Hono<AppEnv>()
       const images = stored.filter((x): x is string => !!x)
       const cover = images[0] ?? null
 
+      // Images de la description gardées depuis le site source : copiées chez nous (elles peuvent disparaître).
+      const ours = (publicUrl('x') ?? '').slice(0, -1)
+      let description = draft.description
+      const remote = descriptionImages(description).filter((i) => !ours || !i.src.startsWith(ours)).slice(0, 12)
+      for (let k = 0; k < remote.length; k += 3) {
+        await Promise.all(
+          remote.slice(k, k + 3).map(async ({ src }) => {
+            try {
+              const url = await importRemoteImage(store.id, src, 'gallery')
+              description = description.split(src).join(url).split(src.replace(/&/g, '&amp;')).join(url)
+            } catch {
+              warnings.push('Une image de la description n’a pas pu être copiée : elle reste chargée depuis le site source.')
+            }
+          }),
+        )
+      }
+
       const parsed = productInputSchema.safeParse({
         type: store.kind === 'digital' ? 'digital' : 'physical',
         name: noDash(draft.name),
         isActive: activate,
-        description: noDash(draft.description),
+        description: noDash(description),
         price: draft.price,
         compareAtPrice: draft.compareAtPrice != null && draft.compareAtPrice > draft.price ? draft.compareAtPrice : null,
         coverImage: cover,

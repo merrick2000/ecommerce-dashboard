@@ -16,6 +16,7 @@ import {
   type QuantityOffer,
 } from '@zuri/shared'
 import { CreditCard, ExternalLink, FileUp, Paperclip, Star, Trash2, Truck, Wallet } from 'lucide-react'
+import { DescriptionAI } from './DescriptionAI'
 import { lazy, Suspense, useRef, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import { useToast } from '@/components/Toast'
@@ -161,6 +162,13 @@ export function SalesPageSection(p: SectionProps) {
         <Suspense fallback={<Skeleton className="h-56 rounded-lg" />}>
           <RichText label="Description du produit" value={form.description} onChange={(description) => p.set({ description })} placeholder="Décrivez le produit, ses bénéfices…" />
         </Suspense>
+        <DescriptionAI
+          html={form.description ?? ''}
+          name={form.name}
+          features={c.features}
+          price={form.price}
+          onChange={(description) => p.set({ description })}
+        />
         {errors.description && <p className="mt-1 text-[13px] text-red-600">{errors.description}</p>}
       </Card>
 

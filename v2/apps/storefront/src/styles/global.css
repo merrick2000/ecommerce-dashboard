@@ -515,8 +515,20 @@ p {
   padding-left: 1.3em;
   margin: 0 0 1em;
 }
+.prose:where(:not(.custom-page *)) ul {
+  list-style: disc;
+}
+.prose:where(:not(.custom-page *)) ol {
+  list-style: decimal;
+}
 .prose:where(:not(.custom-page *)) li {
   margin: 0.25em 0;
+}
+.prose:where(:not(.custom-page *)) p {
+  margin: 0 0 0.9em;
+}
+.prose:where(:not(.custom-page *)) figure {
+  margin: 1em 0;
 }
 .prose:where(:not(.custom-page *)) img {
   height: auto;

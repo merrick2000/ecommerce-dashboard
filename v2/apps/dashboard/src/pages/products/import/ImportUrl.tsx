@@ -12,6 +12,7 @@ import { Badge, Button, Card, Checkbox, cx, Input, PageHeader, Switch, Textarea 
 import { useCurrentStore, useMe, useStoreId } from '@/hooks/auth'
 import { api, ApiError, errorMessage } from '@/lib/api'
 import { money } from '@/lib/format'
+import { DescriptionAI, PROSE } from '../editor/DescriptionAI'
 import { NumberField } from '../editor/fields'
 
 type Source = 'shopify' | 'jsonld' | 'microdata' | 'opengraph' | 'page' | 'ai'
@@ -55,7 +56,6 @@ interface Suggestions {
   kicker: string
   headline: string
   tagline: string
-  description: string
   features: string[]
   faqs: { question: string; answer: string }[]
 }
@@ -136,12 +136,11 @@ function Review({ preview, onRestart }: { preview: Preview; onRestart: () => voi
     if (field === 'kicker') setKicker(suggest.kicker)
     if (field === 'headline') setHeadline(suggest.headline)
     if (field === 'tagline') setTagline(suggest.tagline)
-    if (field === 'description') setDescription(suggest.description)
     if (field === 'features') setFeatures(suggest.features)
     if (field === 'faqs') setFaqs(suggest.faqs.map((f) => ({ ...f, selected: true })))
   }
   const applyAll = () => {
-    ;(['name', 'kicker', 'headline', 'tagline', 'description', 'features', 'faqs'] as const).forEach(apply)
+    ;(['name', 'kicker', 'headline', 'tagline', 'features', 'faqs'] as const).forEach(apply)
     toast.success('Suggestions appliquées')
   }
 
@@ -209,7 +208,7 @@ function Review({ preview, onRestart }: { preview: Preview; onRestart: () => voi
       </Card>
 
       {preview.aiAvailable && (
-        <Card title="Améliorer la fiche" description="Des propositions de nom, titre, accroche, description, points forts et FAQ. Rien n’est inventé : seules les informations de la page sont utilisées.">
+        <Card title="Améliorer la fiche" description="Des propositions de nom, titre, accroche, points forts et FAQ (la description se réécrit plus bas). Rien n’est inventé : seules les informations de la page sont utilisées.">
           <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-end sm:p-5">
             <Input label="Objectif" optional placeholder="Ex. cible les femmes de 25 à 40 ans, ton rassurant" value={goal} onChange={(e) => setGoal(e.target.value)} maxLength={300} wrapClass="flex-1" />
             <div className="flex gap-2">
@@ -317,17 +316,15 @@ function Review({ preview, onRestart }: { preview: Preview; onRestart: () => voi
       </Card>
       )}
 
-      <Card title="Description">
+      <Card title="Description" description={preview.aiAvailable ? 'Réécrite par l’IA pour être ordonnée et aérée. Vous pouvez revenir à l’original.' : undefined}>
         <div className="p-4 sm:p-5">
           {description ? (
             // HTML déjà nettoyé par le serveur (sanitize-html).
-            <div className="prose-sm max-h-80 overflow-y-auto rounded-lg border border-line bg-surface-2/40 p-3 text-sm [&_li]:ml-5 [&_li]:list-disc [&_p]:mb-2" dangerouslySetInnerHTML={{ __html: description }} />
+            <div className={cx(PROSE, 'max-h-[32rem] overflow-y-auto rounded-lg border border-line bg-surface-2/40')} dangerouslySetInnerHTML={{ __html: description }} />
           ) : (
             <p className="text-sm text-muted">Aucune description détectée. Vous pourrez l’écrire dans l’éditeur.</p>
           )}
-          <Suggestion field="description" label="description">
-            <div className="max-h-60 overflow-y-auto [&_li]:ml-5 [&_li]:list-disc [&_p]:mb-2" dangerouslySetInnerHTML={{ __html: suggest?.description ?? '' }} />
-          </Suggestion>
+          <DescriptionAI html={description} onChange={setDescription} name={name} features={features} price={price} autoApply />
         </div>
       </Card>
 

@@ -2,7 +2,7 @@ import Image from '@tiptap/extension-image'
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Bold, Heading2, Heading3, ImagePlus, Italic, Link2, List, ListOrdered, Loader2, Quote, Redo2, Undo2 } from 'lucide-react'
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useToast } from '@/components/Toast'
 import { cx } from '@/components/ui'
 import { useStoreId } from '@/hooks/auth'
@@ -110,7 +110,7 @@ function Toolbar({ editor }: { editor: Editor }) {
   )
 }
 
-/** Éditeur riche (HTML). La valeur initiale n'est lue qu'au montage. */
+/** Éditeur riche (HTML). Une valeur changée de l'extérieur (réécriture IA, image retirée) est reprise sans recréer l'éditeur. */
 export default function RichText({ value, onChange, placeholder, label }: { value: string; onChange: (html: string) => void; placeholder?: string; label: string }) {
   const editor = useEditor({
     extensions: [
@@ -124,6 +124,11 @@ export default function RichText({ value, onChange, placeholder, label }: { valu
     },
     onUpdate: ({ editor: e }) => onChange(e.isEmpty ? '' : e.getHTML()),
   })
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return
+    if (value === editor.getHTML() || (!value && editor.isEmpty)) return
+    editor.commands.setContent(value, { emitUpdate: false })
+  }, [value, editor])
   if (!editor) return null
   return (
     <div className="overflow-hidden rounded-lg border border-line-strong bg-surface focus-within:ring-2 focus-within:ring-accent/40">

@@ -28,6 +28,8 @@ const schema = z.object({
   /** Suggestions IA de l'import de produits (kie.ai, API compatible Messages). Absente : fonction masquée. */
   KIE_API_KEY: z.string().optional(),
   KIE_MODEL: z.string().optional(),
+  /** Modèle d'édition d'image kie.ai (régénération des images de description). */
+  KIE_IMAGE_MODEL: z.string().optional(),
   /** Firecrawl (rendu JavaScript + proxys anti-blocage) : secours de l'import de produit par lien. */
   FIRECRAWL_API_KEY: z.string().optional(),
   /** Payment Orchestrator (payment.zurisell.store) : compte de la plateforme (boutiques du super admin, webhook global). */

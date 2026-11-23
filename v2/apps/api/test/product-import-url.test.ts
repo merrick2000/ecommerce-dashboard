@@ -200,7 +200,7 @@ describe('import par URL : routes', () => {
           {
             type: 'tool_use',
             name: 'suggestions',
-            input: { name: 'Sac wax fait main', kicker: 'Mode — Femme', headline: 'Le sac qui fait tourner les têtes', tagline: 'Solide et coloré.', description: '<p>Un sac <strong>solide</strong>.</p><script>x</script>', features: ['Fait main'], faqs: [{ question: 'Lavable ?', answer: 'Oui.' }] },
+            input: { name: 'Sac wax fait main', kicker: 'Mode — Femme', headline: 'Le sac qui fait tourner les têtes', tagline: 'Solide et coloré.', features: ['Fait main'], faqs: [{ question: 'Lavable ?', answer: 'Oui.' }] },
           },
         ],
         stop_reason: 'tool_use',
@@ -209,7 +209,7 @@ describe('import par URL : routes', () => {
     const r = await owner.post(`/api/stores/${storeId}/products/import/url/improve`, { draft: DRAFT, goal: 'cible les femmes' })
     expect(r.status).toBe(200)
     expect(r.body.kicker).toBe('Mode, Femme')
-    expect(r.body.description).not.toContain('<script')
+    expect(r.body.description).toBeUndefined()
     expect(sent!).toMatchObject({ stream: false, tool_choice: { type: 'tool', name: 'suggestions' } })
     // Les données de la page sont isolées et signalées comme non fiables.
     const prompt = (sent!.messages as { content: string }[])[0]!.content
@@ -223,6 +223,95 @@ describe('import par URL : routes', () => {
     const r = await owner.post(`/api/stores/${storeId}/products/import/url/improve`, { draft: DRAFT })
     expect(r.status).toBe(502)
     expect(r.body.error).toContain('Crédits insuffisants')
+  })
+})
+
+describe('rédaction IA : description PAS / AIDA et images', () => {
+  const FLAT = '<p>Fini le téléphone qui glisse \u{1F697}. Le ROBO-MOUNT tient sur les routes accidentées. Comment ça marche : fixez, ajustez, clipsez.</p><img src="https://cdn.exemple.com/desc-1.jpg" alt="Support"><p>« Testé sur la route de Parakou », Client vérifié</p><img src="https://cdn.exemple.com/desc-2.jpg?w=800&amp;h=600">'
+
+  test('sans clé : config fermée et 404', async () => {
+    expect((await owner.get(`/api/stores/${storeId}/products/ai/config`)).body).toEqual({ rewrite: false, images: false })
+    expect((await owner.post(`/api/stores/${storeId}/products/ai/rewrite-description`, { name: 'X', description: FLAT })).status).toBe(404)
+  })
+
+  test('closer : refusé', async () => {
+    expect((await closer.post(`/api/stores/${storeId}/products/ai/rewrite-description`, { name: 'X', description: FLAT })).status).toBe(403)
+  })
+
+  test('réécriture : méthode choisie, images replacées, emojis et tirets retirés, HTML nettoyé', async () => {
+    ;(env as { KIE_API_KEY?: string }).KIE_API_KEY = 'cle-de-test'
+    let prompt = ''
+    mockFetch(async (url, init) => {
+      expect(url).toBe('https://api.kie.ai/claude/v1/messages')
+      const body = JSON.parse(String(init?.body))
+      expect(body.tool_choice).toEqual({ type: 'tool', name: 'description' })
+      prompt = body.messages[0].content
+      return Response.json({
+        content: [
+          {
+            type: 'tool_use',
+            name: 'description',
+            input: {
+              framework: 'PAS',
+              reason: 'Le produit règle un problème précis — le téléphone qui tombe.',
+              description: '<p>Votre téléphone glisse en pleine route ? \u{1F62B}</p><p>[[IMAGE_2]]</p><h3>La solution</h3><ul><li><strong>Tient bon</strong> — même sur les pistes</li></ul><script>alert(1)</script>',
+            },
+          },
+        ],
+      })
+    })
+    const r = await owner.post(`/api/stores/${storeId}/products/ai/rewrite-description`, { name: 'ROBO-MOUNT', description: FLAT, features: ['Ventouse'], price: 8900 })
+    expect(r.status).toBe(200)
+    expect(r.body).toMatchObject({ framework: 'PAS', images: 2 })
+    expect(r.body.reason).not.toContain('—')
+    const html: string = r.body.description
+    expect(html).not.toMatch(/\p{Extended_Pictographic}/u)
+    expect(html).not.toContain('<script')
+    expect(html).not.toContain('—')
+    // L'image placée par le modèle est à sa place, l'autre est ajoutée à la fin : aucune ne se perd.
+    expect(html.indexOf('desc-2.jpg')).toBeLessThan(html.indexOf('La solution'))
+    expect(html.indexOf('desc-1.jpg')).toBeGreaterThan(html.indexOf('La solution'))
+    // La page source est isolée, ses images remplacées par des repères.
+    expect(prompt).toContain('<page>')
+    expect(prompt).toContain('[[IMAGE_1]]')
+    expect(prompt).not.toContain('cdn.exemple.com')
+  })
+
+  test('régénération d’une image : lancement, suivi, image copiée chez nous une seule fois', async () => {
+    ;(env as { KIE_API_KEY?: string }).KIE_API_KEY = 'cle-de-test'
+    const { generatedImageStore } = await import('../src/services/ai-description')
+    const saved: string[] = []
+    const realSave = generatedImageStore.save
+    generatedImageStore.save = async (_s, url) => {
+      saved.push(url)
+      return 'https://stockage.zuri.test/img/nouvelle.webp'
+    }
+    let polls = 0
+    mockFetch(async (url, init) => {
+      if (url.endsWith('/jobs/createTask')) {
+        const body = JSON.parse(String(init?.body))
+        expect(body.model).toBe('google/nano-banana-edit')
+        expect(body.input.image_urls).toEqual([`${BASE}/img/desc.jpg`])
+        expect(body.input.prompt).toContain('Aucun texte')
+        return Response.json({ code: 200, msg: 'success', data: { taskId: 'tache-1' } })
+      }
+      polls++
+      return Response.json(polls === 1 ? { code: 200, data: { state: 'generating' } } : { code: 200, data: { state: 'success', resultJson: JSON.stringify({ resultUrls: ['https://tempfile.kie.test/out.png'] }) } })
+    })
+    try {
+      const start = await owner.post(`/api/stores/${storeId}/products/ai/images/regenerate`, { imageUrl: `${BASE}/img/desc.jpg`, name: 'ROBO-MOUNT' })
+      expect(start.status).toBe(202)
+      expect((await owner.get(`/api/stores/${storeId}/products/ai/images/regenerate/tache-1`)).body).toEqual({ status: 'pending' })
+      expect((await owner.get(`/api/stores/${storeId}/products/ai/images/regenerate/tache-1`)).body).toEqual({ status: 'done', url: 'https://stockage.zuri.test/img/nouvelle.webp' })
+      expect((await owner.get(`/api/stores/${storeId}/products/ai/images/regenerate/tache-1`)).body.status).toBe('done')
+      expect(saved).toEqual(['https://tempfile.kie.test/out.png'])
+      // Une tâche inconnue (ou d'une autre boutique) n'est pas lisible.
+      expect((await owner.get(`/api/stores/${storeId}/products/ai/images/regenerate/autre`)).status).toBe(404)
+      // Adresse interne refusée.
+      expect((await owner.post(`/api/stores/${storeId}/products/ai/images/regenerate`, { imageUrl: 'http://127.0.0.1/x.png', name: 'X' })).status).toBe(400)
+    } finally {
+      generatedImageStore.save = realSave
+    }
   })
 })
 
