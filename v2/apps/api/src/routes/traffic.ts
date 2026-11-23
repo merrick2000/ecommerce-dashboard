@@ -94,6 +94,71 @@ export const trafficRoute = new Hono<AppEnv>().get('/traffic', requirePermission
     order by e.session_id, e.created_at)`
   const orderChannel = channelOf(dsql`o.utm_source`, dsql`o.utm_medium`, dsql`o.referrer`)
 
+  /**
+   * Attribution des commandes web : on retrouve toutes les visites de l'acheteur (même visiteur ou même visite)
+   * dans les 30 jours avant la commande.
+   * - Premier clic : la toute première visite (ce qui a fait découvrir la boutique).
+   * - Dernier clic : la dernière visite qui n'est pas un accès direct (ce qui a déclenché l'achat).
+   * Sans visite retrouvée (bloqueur, ancienne commande), on garde la provenance enregistrée sur la commande.
+   */
+  type Attr = { channel: Channel; orders: number; revenue: number }
+  type AttrCamp = { source: string | null; campaign: string; orders: number; revenue: number }
+  const touch = dsql`(t.vid = o.vid or t.session_id = o.session_id) and t.created_at <= o.created_at and t.created_at >= o.created_at - interval '30 days'`
+  const attribution = db
+    .execute<{
+      first_channels: Attr[] | null
+      last_channels: Attr[] | null
+      first_campaigns: AttrCamp[] | null
+      last_campaigns: AttrCamp[] | null
+      journey: { orders: number; tracked: number; multi_visit: number; switched: number; avg_visits: number | null; avg_hours: number | null }
+    }>(dsql`
+      with o as materialized (
+        select o.id, o.total, (${paid}) as is_paid, o.created_at, o.session_id,
+               coalesce(o.visitor_id, (select e.visitor_id from page_events e where e.store_id = ${store.id} and e.session_id = o.session_id and e.visitor_id is not null limit 1)) as vid,
+               ${orderChannel} as own_channel, o.utm_source as own_source, o.utm_campaign as own_campaign
+        from orders o where ${ordIn(start, end)}
+      ),
+      t as materialized (
+        select distinct on (e.session_id) e.session_id, e.visitor_id as vid, e.created_at, e.utm_source, e.utm_campaign,
+               ${channelOf(dsql`e.utm_source`, dsql`e.utm_medium`, dsql`e.referrer`)} as channel
+        from page_events e
+        where e.store_id = ${store.id} and e.event_type = 'page_view'
+          and e.created_at >= ${iso(start)} - interval '30 days' and e.created_at < ${iso(end)}
+          and (e.visitor_id in (select vid from o where vid is not null) or e.session_id in (select session_id from o where session_id is not null))
+        order by e.session_id, e.created_at
+      ),
+      a as (
+        select o.*, f.channel as f_channel, f.utm_source as f_source, f.utm_campaign as f_campaign, f.created_at as f_at,
+               l.channel as l_channel, l.utm_source as l_source, l.utm_campaign as l_campaign,
+               (select count(*) from t where ${touch})::int as visits
+        from o
+        left join lateral (select * from t where ${touch} order by t.created_at limit 1) f on true
+        left join lateral (select * from t where ${touch} order by (t.channel <> 'direct') desc, t.created_at desc limit 1) l on true
+      ),
+      m as (
+        select a.*,
+               coalesce(f_channel, own_channel) as first_channel, coalesce(l_channel, own_channel) as last_channel,
+               case when f_channel is null then own_source else f_source end as first_source,
+               case when f_channel is null then own_campaign else f_campaign end as first_campaign,
+               case when l_channel is null then own_source else l_source end as last_source,
+               case when l_channel is null then own_campaign else l_campaign end as last_campaign
+        from a
+      )
+      select
+        (select json_agg(x) from (select first_channel as channel, count(*)::int as orders, coalesce(sum(total) filter (where is_paid), 0)::float as revenue from m group by 1) x) as first_channels,
+        (select json_agg(x) from (select last_channel as channel, count(*)::int as orders, coalesce(sum(total) filter (where is_paid), 0)::float as revenue from m group by 1) x) as last_channels,
+        (select json_agg(x) from (select first_source as source, first_campaign as campaign, count(*)::int as orders, coalesce(sum(total) filter (where is_paid), 0)::float as revenue from m where coalesce(first_campaign, '') <> '' group by 1, 2) x) as first_campaigns,
+        (select json_agg(x) from (select last_source as source, last_campaign as campaign, count(*)::int as orders, coalesce(sum(total) filter (where is_paid), 0)::float as revenue from m where coalesce(last_campaign, '') <> '' group by 1, 2) x) as last_campaigns,
+        (select json_build_object(
+           'orders', count(*),
+           'tracked', count(*) filter (where f_channel is not null),
+           'multi_visit', count(*) filter (where visits > 1),
+           'switched', count(*) filter (where f_channel is not null and first_channel <> last_channel),
+           'avg_visits', round(avg(visits) filter (where visits > 0), 1),
+           'avg_hours', round((avg(extract(epoch from created_at - f_at)) filter (where f_at is not null) / 3600)::numeric, 1)
+         ) from m) as journey`)
+    .then((r) => r[0]!)
+
   type Totals = { visitors: number; sessions: number; views: number; engaged: number }
   type OrderTotals = { orders: number; paid: number; revenue: number }
   const totals = (s: Date, e: Date) =>
@@ -108,7 +173,7 @@ export const trafficRoute = new Hono<AppEnv>().get('/traffic', requirePermission
   const orderTotals = (s: Date, e: Date) =>
     db.execute<OrderTotals>(dsql`select count(*)::int as orders, count(*) filter (where ${paid})::int as paid, coalesce(sum(o.total) filter (where ${paid}), 0)::float as revenue from orders o where ${ordIn(s, e)}`).then((r) => r[0]!)
 
-  const [cur, prev, curOrders, prevOrders, returning, daily, funnel, bySession, channelOrders, campaignOrders, productRows, hours, live] = await Promise.all([
+  const [cur, prev, curOrders, prevOrders, returning, daily, funnel, bySession, attr, productRows, hours, live] = await Promise.all([
     totals(start, end),
     totals(prevStart, start),
     orderTotals(start, end),
@@ -165,12 +230,7 @@ export const trafficRoute = new Hono<AppEnv>().get('/traffic', requirePermission
           (select json_agg(x order by x.visitors desc) from (
              select coalesce(nullif(s.country, ''), 'XX') as country, count(distinct s.vid)::int as visitors from s group by 1 order by 2 desc limit 15) x) as countries`)
       .then((r) => r[0]!),
-    db.execute<{ channel: Channel; orders: number; revenue: number }>(dsql`
-      select ${orderChannel} as channel, count(*)::int as orders, coalesce(sum(o.total) filter (where ${paid}), 0)::float as revenue
-      from orders o where ${ordIn(start, end)} group by 1`),
-    db.execute<{ source: string | null; campaign: string; orders: number; revenue: number }>(dsql`
-      select o.utm_source as source, o.utm_campaign as campaign, count(*)::int as orders, coalesce(sum(o.total) filter (where ${paid}), 0)::float as revenue
-      from orders o where ${ordIn(start, end)} and coalesce(o.utm_campaign, '') <> '' group by 1, 2`),
+    attribution,
     db.execute<{ id: string; name: string; visitors: number; views: number; started: number; orders: number; revenue: number }>(dsql`
       with ev as (
         select e.product_id as id,
@@ -213,21 +273,41 @@ export const trafficRoute = new Hono<AppEnv>().get('/traffic', requirePermission
   const referrers = bySession.referrers ?? []
   const devices = bySession.devices ?? []
   const countries = bySession.countries ?? []
-  const byChannel = new Map(channelOrders.map((r) => [r.channel, r]))
-  const channelRows = channels.map((r) => {
-    const o = byChannel.get(r.channel)
-    byChannel.delete(r.channel)
-    return { channel: r.channel, visitors: r.visitors, sessions: r.sessions, paidVisitors: r.paid_visitors, orders: o?.orders ?? 0, revenue: money(o?.revenue ?? 0), conversion: rate(o?.orders ?? 0, r.visitors) }
+  const pick = <T extends { orders: number; revenue: number }>(rows: T[] | null, key: (r: T) => string) => new Map((rows ?? []).map((r) => [key(r), r]))
+  const firstCh = pick(attr.first_channels, (r) => r.channel)
+  const lastCh = pick(attr.last_channels, (r) => r.channel)
+  const outcome = (f: { orders: number; revenue: number } | undefined, l: { orders: number; revenue: number } | undefined, visitors: number) => ({
+    // Par défaut : dernier clic (ce qui a déclenché l'achat). Le premier clic est donné à côté.
+    orders: l?.orders ?? 0,
+    revenue: money(l?.revenue ?? 0),
+    conversion: rate(l?.orders ?? 0, visitors),
+    first: { orders: f?.orders ?? 0, revenue: money(f?.revenue ?? 0), conversion: rate(f?.orders ?? 0, visitors) },
   })
-  // Canaux avec commandes mais sans visite suivie (bloqueur de pub, visite avant la période…).
-  for (const o of byChannel.values()) channelRows.push({ channel: o.channel, visitors: 0, sessions: 0, paidVisitors: 0, orders: o.orders, revenue: money(o.revenue), conversion: null })
+  const seen = new Set<string>()
+  const channelRows = channels.map((r) => {
+    seen.add(r.channel)
+    return { channel: r.channel, visitors: r.visitors, sessions: r.sessions, paidVisitors: r.paid_visitors, ...outcome(firstCh.get(r.channel), lastCh.get(r.channel), r.visitors) }
+  })
+  // Canaux avec commandes mais sans visite sur la période (visite le mois d'avant, bloqueur de pub…).
+  for (const ch of new Set([...firstCh.keys(), ...lastCh.keys()]))
+    if (!seen.has(ch)) channelRows.push({ channel: ch as Channel, visitors: 0, sessions: 0, paidVisitors: 0, ...outcome(firstCh.get(ch), lastCh.get(ch), 0), conversion: null })
 
   const campKey = (s: string | null, c: string) => `${(s ?? '').toLowerCase()}|${c}`
-  const campOrders = new Map(campaignOrders.map((r) => [campKey(r.source, r.campaign), r]))
+  const firstCamp = pick(attr.first_campaigns, (r) => campKey(r.source, r.campaign))
+  const lastCamp = pick(attr.last_campaigns, (r) => campKey(r.source, r.campaign))
   const campaignRows = campaigns.map((r) => {
-    const o = campOrders.get(campKey(r.source, r.campaign))
-    return { source: r.source, medium: r.medium, campaign: r.campaign, channel: r.channel, visitors: r.visitors, orders: o?.orders ?? 0, revenue: money(o?.revenue ?? 0), conversion: rate(o?.orders ?? 0, r.visitors) }
+    const k = campKey(r.source, r.campaign)
+    return { source: r.source, medium: r.medium, campaign: r.campaign, channel: r.channel, visitors: r.visitors, ...outcome(firstCamp.get(k), lastCamp.get(k), r.visitors) }
   })
+  const j = attr.journey
+  const journey = {
+    orders: j.orders,
+    tracked: j.tracked,
+    multiVisit: j.multi_visit,
+    switched: j.switched,
+    avgVisits: j.avg_visits != null ? Number(j.avg_visits) : null,
+    avgHours: j.avg_hours != null ? Number(j.avg_hours) : null,
+  }
 
   return c.json({
     range: { from: startDay, to: endDay },
@@ -237,6 +317,7 @@ export const trafficRoute = new Hono<AppEnv>().get('/traffic', requirePermission
     previous: { visitors: prev.visitors, sessions: prev.sessions, views: prev.views, orders: prevOrders.orders, revenue: money(prevOrders.revenue), conversion: rate(prevOrders.orders, prev.visitors) },
     daily,
     funnel: { visits: funnel.visits, scrolled: funnel.scrolled, clicked: funnel.clicked, started: funnel.started, ordered: curOrders.orders, paid: curOrders.paid },
+    attribution: journey,
     channels: channelRows,
     campaigns: campaignRows,
     referrers,

@@ -115,6 +115,7 @@ export function orderAttribution() {
     utmContent: a.utmContent,
     referrer: a.referrer,
     sessionId: sessionId(),
+    visitorId: visitorId(),
     fbp: cookie('_fbp')?.slice(0, 200),
     fbc: (cookie('_fbc') ?? a.fbc)?.slice(0, 200),
   }

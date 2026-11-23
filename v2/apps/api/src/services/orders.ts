@@ -244,6 +244,7 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
         utmContent: input.utmContent,
         referrer: input.referrer,
         sessionId: input.sessionId,
+        visitorId: input.visitorId,
         eventId: input.eventId ?? randomToken(16),
         trackingContext: { ip: ctx.ip, userAgent: ctx.userAgent, fbp: input.fbp, fbc: input.fbc },
         metadata:

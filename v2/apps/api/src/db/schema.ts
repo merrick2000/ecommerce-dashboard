@@ -570,6 +570,8 @@ export const orders = pgTable(
     utmContent: varchar('utm_content', { length: 255 }),
     referrer: varchar('referrer', { length: 2048 }),
     sessionId: varchar('session_id', { length: 64 }),
+    /** Visiteur persistant de la boutique : relie la commande à toutes ses visites (attribution premier / dernier clic). */
+    visitorId: varchar('visitor_id', { length: 64 }),
     /** Partagé pixel ↔ Conversions API. */
     eventId: varchar('event_id', { length: 64 }).notNull(),
     trackingContext: jsonb('tracking_context').$type<{ ip?: string; userAgent?: string; fbp?: string; fbc?: string }>(),
@@ -761,7 +763,13 @@ export const pageEvents = pgTable(
     metadata: jsonb('metadata').$type<Record<string, unknown>>(),
     createdAt: createdAt(),
   },
-  (t) => [index('page_events_store_created_idx').on(t.storeId, t.createdAt), index('page_events_store_type_idx').on(t.storeId, t.eventType, t.createdAt)],
+  (t) => [
+    index('page_events_store_created_idx').on(t.storeId, t.createdAt),
+    index('page_events_store_type_idx').on(t.storeId, t.eventType, t.createdAt),
+    // Parcours d'un acheteur : toutes ses visites (attribution premier / dernier clic).
+    index('page_events_store_visitor_idx').on(t.storeId, t.visitorId),
+    index('page_events_store_session_idx').on(t.storeId, t.sessionId),
+  ],
 )
 
 export type User = typeof users.$inferSelect

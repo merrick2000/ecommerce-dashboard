@@ -758,6 +758,7 @@ const attributionSchema = z.object({
   utmContent: z.string().max(255).optional(),
   referrer: z.string().max(2048).optional(),
   sessionId: z.string().max(64).optional(),
+  visitorId: z.string().max(64).optional(),
   fbp: z.string().max(200).optional(),
   fbc: z.string().max(200).optional(),
 })

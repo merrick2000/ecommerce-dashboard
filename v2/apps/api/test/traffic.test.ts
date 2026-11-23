@@ -66,6 +66,31 @@ describe('trafic', () => {
   })
 })
 
+describe('attribution premier / dernier clic', () => {
+  test('découvre par TikTok, revient par une pub Facebook, puis en direct : premier clic TikTok, dernier clic Facebook', async () => {
+    const ago = (h: number) => new Date(Date.now() - h * 3600_000)
+    await db.insert(pageEvents).values([
+      { storeId, productId, eventType: 'page_view', sessionId: 'sessD1-000', visitorId: 'visitorD-00', referrer: 'https://www.tiktok.com/', deviceType: 'mobile', createdAt: ago(5) },
+      { storeId, productId, eventType: 'page_view', sessionId: 'sessD2-000', visitorId: 'visitorD-00', utmSource: 'facebook', utmMedium: 'paid', utmCampaign: 'relance', deviceType: 'mobile', createdAt: ago(3) },
+      { storeId, productId, eventType: 'page_view', sessionId: 'sessD3-000', visitorId: 'visitorD-00', deviceType: 'mobile', createdAt: ago(1) },
+    ])
+    // La commande ne porte que la visite directe : seul le parcours retrouve TikTok et Facebook.
+    const o = await browser.post('/api/v1/orders', { storeSlug: 'trafic-shop', productId, customerName: 'Koffi', customerPhone: '+22962000000', customerEmail: 'koffi@test.dev', sessionId: 'sessD3-000', visitorId: 'visitorD-00' })
+    expect(o.status).toBe(201)
+    const t = (await owner.get(`/api/stores/${storeId}/stats/traffic`)).body
+    const ch = (k: string) => t.channels.find((c: any) => c.channel === k)
+    expect(ch('tiktok').first.orders).toBe(1)
+    expect(ch('tiktok').orders).toBe(0)
+    expect(ch('facebook').orders).toBe(2)
+    expect(ch('facebook').first.orders).toBe(1)
+    expect(ch('direct').orders).toBe(0)
+    const relance = t.campaigns.find((c: any) => c.campaign === 'relance')
+    expect(relance).toMatchObject({ orders: 1, first: { orders: 0 } })
+    expect(t.attribution).toMatchObject({ orders: 2, tracked: 2, multiVisit: 2, switched: 1 })
+    expect(t.attribution.avgHours).toBeGreaterThan(2)
+  })
+})
+
 describe('MCP, trafic', () => {
   test('get_traffic_stats', async () => {
     const key = (await owner.post('/api/api-keys', { name: 'IA trafic', storeId })).body.key as string
@@ -73,7 +98,7 @@ describe('MCP, trafic', () => {
     const res = await app.request('/api/mcp', { method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json', 'cf-connecting-ip': '10.9.9.7' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_traffic_stats', arguments: { period: 'today' } } }) })
     const b = (await res.json()) as any
     expect(b.result.isError).toBeFalsy()
-    expect(b.result.structuredContent.current.visitors).toBe(3)
+    expect(b.result.structuredContent.current.visitors).toBe(4)
     expect(b.result.structuredContent.channels.map((c: any) => c.channel)).toContain('facebook')
   })
 })

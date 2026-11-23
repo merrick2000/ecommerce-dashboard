@@ -17,6 +17,16 @@ import { day, isoDay, money, num, percent } from '@/lib/format'
 
 type Channel = 'facebook' | 'instagram' | 'tiktok' | 'whatsapp' | 'google' | 'youtube' | 'snapchat' | 'telegram' | 'x' | 'search' | 'email' | 'sms' | 'campaign' | 'referral' | 'direct'
 
+type Outcome = { orders: number; revenue: number | null; conversion: number | null }
+/** Dernier clic à la racine, premier clic dans `first`. */
+type Attributed = Outcome & { first: Outcome }
+type Model = 'last' | 'first'
+const MODEL_HINT: Record<Model, string> = {
+  last: 'Dernier clic : la commande revient à la dernière source (hors accès direct) avant l’achat. Ce qui a déclenché l’achat.',
+  first: 'Premier clic : la commande revient à la source de la toute première visite. Ce qui a fait découvrir ta boutique.',
+}
+const pickModel = <T extends Attributed>(r: T, m: Model): Outcome => (m === 'first' ? r.first : r)
+
 interface Traffic {
   range: { from: string; to: string }
   revenueVisible: boolean
@@ -38,8 +48,9 @@ interface Traffic {
   previous: { visitors: number; sessions: number; views: number; orders: number; revenue: number | null; conversion: number | null }
   daily: { day: string; visitors: number; views: number; orders: number }[]
   funnel: { visits: number; scrolled: number; clicked: number; started: number; ordered: number; paid: number }
-  channels: { channel: Channel; visitors: number; sessions: number; paidVisitors: number; orders: number; revenue: number | null; conversion: number | null }[]
-  campaigns: { source: string | null; medium: string | null; campaign: string; channel: Channel; visitors: number; orders: number; revenue: number | null; conversion: number | null }[]
+  attribution: { orders: number; tracked: number; multiVisit: number; switched: number; avgVisits: number | null; avgHours: number | null }
+  channels: ({ channel: Channel; visitors: number; sessions: number; paidVisitors: number } & Attributed)[]
+  campaigns: ({ source: string | null; medium: string | null; campaign: string; channel: Channel; visitors: number } & Attributed)[]
   referrers: { host: string; channel: Channel; visitors: number }[]
   devices: { device: string; visitors: number }[]
   countries: { country: string; visitors: number }[]
@@ -103,6 +114,7 @@ export default function Traffic() {
   const products = useProducts(canProducts)
   const [preset, setPreset] = useState<Preset>('30')
   const [productId, setProductId] = useState('')
+  const [model, setModel] = useState<Model>('last')
   const range = useMemo(() => {
     const to = new Date()
     const from = new Date()
@@ -185,17 +197,19 @@ export default function Traffic() {
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <Card title="Provenance" description="D’où viennent tes visiteurs et ce qu’ils achètent">
-              <ChannelList rows={t.channels} rv={rv} currency={currency} />
+            <Card title="Provenance" description="D’où viennent tes visiteurs et ce qu’ils achètent" actions={<ModelSwitch value={model} onChange={setModel} />}>
+              <p className="mb-4 text-[12.5px] text-muted">{MODEL_HINT[model]}</p>
+              <ChannelList rows={t.channels} rv={rv} currency={currency} model={model} />
             </Card>
             <Card title="Parcours" description="Ce que font les visiteurs, de l’arrivée à la commande">
               <Funnel f={t.funnel} digital={store?.kind === 'digital'} />
+              <Journey a={t.attribution} />
             </Card>
           </div>
 
           <div className="mt-4">
-            <Card title="Campagnes" description="Liens de pub suivis avec des paramètres UTM" actions={<Megaphone className="size-4 text-subtle" />}>
-              {t.campaigns.length ? <CampaignList rows={t.campaigns} rv={rv} currency={currency} /> : <UtmGuide inline />}
+            <Card title="Campagnes" description={t.campaigns.length ? `Liens de pub suivis avec des paramètres UTM · commandes au ${model === 'last' ? 'dernier' : 'premier'} clic` : 'Liens de pub suivis avec des paramètres UTM'} actions={t.campaigns.length ? <ModelSwitch value={model} onChange={setModel} /> : <Megaphone className="size-4 text-subtle" />}>
+              {t.campaigns.length ? <CampaignList rows={t.campaigns} rv={rv} currency={currency} model={model} /> : <UtmGuide inline />}
             </Card>
           </div>
 
@@ -302,20 +316,66 @@ function Dot({ color }: { color: string }) {
   return <span className="size-2.5 shrink-0 rounded-full" style={{ background: color }} aria-hidden />
 }
 
-/** Ligne secondaire : commandes, conversion, chiffre (si visible). */
-function Outcome({ orders, conversion, revenue, currency }: { orders: number; conversion: number | null; revenue: number | null; currency: string }) {
+/** Ligne secondaire : commandes, conversion, chiffre (si visible) selon le modèle, et l'écart avec l'autre modèle. */
+function OutcomeLine({ o, other, model, rv, currency }: { o: Outcome; other: Outcome; model: Model; rv: boolean; currency: string }) {
+  const diff = other.orders - o.orders
   return (
     <div className="tabular mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[12.5px] text-muted">
       <span>
-        <span className={cx(orders > 0 && 'font-medium text-fg')}>{num(orders)}</span> commande{orders > 1 ? 's' : ''}
+        <span className={cx(o.orders > 0 && 'font-medium text-fg')}>{num(o.orders)}</span> commande{o.orders > 1 ? 's' : ''}
       </span>
-      {conversion != null && <span>conversion {percent(conversion)}</span>}
-      {revenue != null && revenue > 0 && <span>{money(revenue, currency)} encaissés</span>}
+      {o.conversion != null && <span>conversion {percent(o.conversion)}</span>}
+      {rv && o.revenue != null && o.revenue > 0 && <span>{money(o.revenue, currency)} encaissés</span>}
+      {diff !== 0 && (
+        <span className="text-subtle">
+          {num(other.orders)} au {model === 'last' ? 'premier' : 'dernier'} clic
+        </span>
+      )}
     </div>
   )
 }
 
-function ChannelList({ rows, rv, currency }: { rows: Traffic['channels']; rv: boolean; currency: string }) {
+function ModelSwitch({ value, onChange }: { value: Model; onChange: (m: Model) => void }) {
+  return (
+    <Segmented
+      label="Attribution"
+      value={value}
+      onChange={onChange}
+      options={[
+        { value: 'last', label: 'Dernier clic' },
+        { value: 'first', label: 'Premier clic' },
+      ]}
+    />
+  )
+}
+
+/** Parcours d'achat : combien de visites et de temps avant d'acheter. */
+function Journey({ a }: { a: Traffic['attribution'] }) {
+  if (!a.tracked) return null
+  const hours = a.avgHours ?? 0
+  const delay = hours < 1 ? 'moins d’une heure' : hours < 48 ? `${Math.round(hours)} h` : `${Math.round(hours / 24)} jours`
+  return (
+    <div className="mt-5 rounded-lg bg-surface-2 p-3 text-[13px]">
+      <p className="font-medium">Avant d’acheter</p>
+      <ul className="mt-1.5 space-y-1 text-muted">
+        <li>
+          <span className="font-medium text-fg">{share(a.multiVisit, a.tracked)} %</span> des acheteurs sont venus plusieurs fois (en moyenne {String(a.avgVisits ?? 1).replace('.', ',')} visites)
+        </li>
+        <li>
+          <span className="font-medium text-fg">{delay}</span> en moyenne entre la première visite et la commande
+        </li>
+        {a.switched > 0 && (
+          <li>
+            <span className="font-medium text-fg">{num(a.switched)}</span> commande{a.switched > 1 ? 's' : ''} : découverte par une source, achat après une autre
+          </li>
+        )}
+      </ul>
+      {a.tracked < a.orders && <p className="mt-1.5 text-[12px] text-subtle">Parcours retrouvé pour {num(a.tracked)} commandes sur {num(a.orders)}.</p>}
+    </div>
+  )
+}
+
+function ChannelList({ rows, rv, currency, model }: { rows: Traffic['channels']; rv: boolean; currency: string; model: Model }) {
   if (!rows.length) return <p className="text-sm text-muted">Aucune donnée.</p>
   const max = Math.max(...rows.map((r) => r.visitors))
   const total = rows.reduce((a, r) => a + r.visitors, 0)
@@ -336,7 +396,7 @@ function ChannelList({ rows, rv, currency }: { rows: Traffic['channels']; rv: bo
               </span>
             </div>
             <Meter value={r.visitors} max={max} color={ch.color} />
-            <Outcome orders={r.orders} conversion={r.conversion} revenue={rv ? r.revenue : null} currency={currency} />
+            <OutcomeLine o={pickModel(r, model)} other={pickModel(r, model === 'last' ? 'first' : 'last')} model={model} rv={rv} currency={currency} />
           </li>
         )
       })}
@@ -378,7 +438,7 @@ function Funnel({ f, digital }: { f: Traffic['funnel']; digital: boolean }) {
   )
 }
 
-function CampaignList({ rows, rv, currency }: { rows: Traffic['campaigns']; rv: boolean; currency: string }) {
+function CampaignList({ rows, rv, currency, model }: { rows: Traffic['campaigns']; rv: boolean; currency: string; model: Model }) {
   const max = Math.max(...rows.map((r) => r.visitors))
   return (
     <ul className="grid gap-x-8 gap-y-3.5 md:grid-cols-2">
@@ -399,7 +459,7 @@ function CampaignList({ rows, rv, currency }: { rows: Traffic['campaigns']; rv: 
               <span className="tabular shrink-0">{num(r.visitors)} <span className="text-muted">visiteurs</span></span>
             </div>
             <Meter value={r.visitors} max={max} color={ch.color} />
-            <Outcome orders={r.orders} conversion={r.conversion} revenue={rv ? r.revenue : null} currency={currency} />
+            <OutcomeLine o={pickModel(r, model)} other={pickModel(r, model === 'last' ? 'first' : 'last')} model={model} rv={rv} currency={currency} />
           </li>
         )
       })}
