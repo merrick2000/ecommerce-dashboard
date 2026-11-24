@@ -15,7 +15,7 @@ async function account(c: Client, email: string, isPlatformAdmin: boolean) {
 
 async function storeWithData(c: Client, slug: string) {
   const s = (await c.post('/api/stores', { name: slug, slug, currency: 'XOF' })).body
-  const [p] = await db.insert(products).values({ storeId: s.id, type: 'physical', name: 'Produit', price: 5000, content: {}, payment: { method: 'cod' } as never }).returning()
+  const [p] = await db.insert(products).values({ storeId: s.id, type: 'physical', name: 'Produit', price: 5000, content: {}, payment: { method: 'cod' } } as never).returning()
   const [cu] = await db.insert(customers).values({ storeId: s.id, phone: '+22990000000' }).returning()
   await db.insert(orders).values({ storeId: s.id, orderNumber: `${slug}-1`, customerId: cu!.id, kind: 'physical', subtotal: 5000, total: 5000, currency: 'XOF', paymentMethod: 'cod', accessToken: crypto.randomUUID().replace(/-/g, ''), eventId: crypto.randomUUID() } as never)
   return { storeId: s.id as string, productId: p!.id }
