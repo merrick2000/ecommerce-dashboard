@@ -208,7 +208,7 @@ export default function OrderForm(p: OrderFormProps) {
     const el = document.getElementById('sf-promo')
     if (!el) return
     if (promo?.status === 'ok') {
-      el.textContent = `🎉 ${fmt(t.promoApplied, promo.code, promoLabel)}`
+      el.textContent = fmt(t.promoApplied, promo.code, promoLabel)
       el.hidden = false
     } else el.hidden = true
   }, [promo?.status, promoLabel])

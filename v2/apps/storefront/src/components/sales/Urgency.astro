@@ -23,7 +23,7 @@ const show = d.product.inStock && (cd || stock || viewers)
           ⏰ {cd.label || t.countdown} <span class="cd-time">--:--:--</span>
         </p>
       )}
-      {stock && <p class="urg">🔥 {t.inStockLow(stock)}</p>}
+      {stock && <p class="urg"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-0.15em"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3.3.3 1.6 1.4 2.8 2.5 2.8z"></path></svg> {t.inStockLow(stock)}</p>}
       {viewers && (
         <p class="urg" data-viewers={viewers}>
           <span class="dot" aria-hidden="true" />

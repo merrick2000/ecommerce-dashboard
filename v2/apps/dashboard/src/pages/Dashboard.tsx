@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ButtonLink, Card, cx, EmptyState, ErrorState, PageHeader, Segmented, Skeleton } from '@/components/ui'
 import { ReviewPrompt } from '@/components/ReviewPrompt'
+import { LaunchChecklist } from '@/components/LaunchChecklist'
 import { useCan, useCurrentStore } from '@/hooks/auth'
 import { usePaymentAccounts, useProducts, useStats, useZones } from '@/hooks/resources'
 import { salesPageUrl } from './products/ProductsList'
@@ -205,6 +206,7 @@ export default function Dashboard() {
         description={`Comparé aux ${preset} jours précédents`}
         actions={<Segmented label="Période" value={preset} onChange={setPreset} options={PRESETS.map((p) => ({ value: p.value, label: p.label }))} />}
       />
+      <LaunchChecklist />
       <ReviewPrompt />
     </>
   )
