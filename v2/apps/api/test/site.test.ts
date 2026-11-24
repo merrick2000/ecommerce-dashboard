@@ -210,3 +210,44 @@ describe('export des clients et réseaux sociaux', () => {
     expect(csv).toContain('Cotonou')
   })
 })
+
+describe('avis des vendeurs', () => {
+  test('posé après une vente, alerte si note basse, publication seulement avec accord et validation', async () => {
+    const seller = new Client()
+    await db.insert(users).values({ email: 'avis-vendeur@test.dev', name: 'Awa Koné', passwordHash: await Bun.password.hash('motdepasse-solide', { algorithm: 'argon2id' }) }).onConflictDoNothing()
+    await seller.post('/api/auth/login', { email: 'avis-vendeur@test.dev', password: 'motdepasse-solide' })
+    const s = (await seller.post('/api/stores', { name: 'Avis Shop', slug: 'avis-shop', currency: 'XOF' })).body.id
+    // Pas encore de vente : la question n'est pas posée.
+    expect((await seller.get('/api/reviews')).body.ask).toBe(false)
+    const p = await seller.post(`/api/stores/${s}/products`, { type: 'physical', name: 'Perruque', isActive: true, price: 15000 })
+    const o = await new Client().post('/api/v1/orders', { storeSlug: 'avis-shop', productId: p.body.id, customerName: 'Client', customerPhone: '+22997000009', city: 'Cotonou' })
+    const { orders: ordersTable } = await import('../src/db/schema')
+    await db.update(ordersTable).set({ fulfillmentStatus: 'delivered' }).where(eq(ordersTable.accessToken, o.body.order.token))
+    expect((await seller.get('/api/reviews')).body.ask).toBe(true)
+
+    const { enqueued } = await import('../src/jobs/queue')
+    const r = await seller.post('/api/reviews', { score: 10, comment: 'Mes commandes arrivent sur mon téléphone, mon équipe confirme tout de suite.', consent: true, publishRole: 'Perruques, Abidjan' })
+    expect(r.body.status).toBe('pending')
+    expect(enqueued.some((j) => j.name === 'admin.notify' && (j.data as { path: string }).path === '/admin/reviews')).toBe(true)
+    expect((await seller.get('/api/reviews')).body.ask).toBe(false)
+    // Rien de public avant validation.
+    expect((await new Client().get('/api/v1/platform/testimonials')).body).toEqual([])
+
+    const list = await admin.get('/api/admin/reviews?status=pending')
+    expect(list.body.data[0]).toMatchObject({ name: 'Awa Koné', score: 10, consent: true, publishName: 'Awa', storeUrl: 'https://avis-shop.zurisell.store' })
+    expect(list.body.nps).toBe(100)
+    await admin.patch(`/api/admin/reviews/${list.body.data[0].id}`, { status: 'approved' })
+    const pub = await new Client().get('/api/v1/platform/testimonials')
+    expect(pub.body[0]).toMatchObject({ name: 'Awa', role: 'Perruques, Abidjan', score: 10 })
+
+    // Note basse : alerte au super admin, jamais publiable.
+    const r2 = await seller.post('/api/reviews', { score: 4, comment: 'La livraison est compliquée à configurer.', consent: true })
+    expect(r2.body.status).toBe('private')
+    expect(enqueued.some((j) => j.name === 'admin.notify' && (j.data as { title: string }).title.startsWith('Avis à 4/10'))).toBe(true)
+    expect((await new Client().get('/api/v1/platform/testimonials')).body).toEqual([])
+    // Sans accord : impossible de publier.
+    const id = (await admin.get('/api/admin/reviews')).body.data.find((x: { name: string }) => x.name === 'Awa Koné').id
+    await seller.post('/api/reviews', { score: 9, comment: 'Très bon outil pour mon équipe de closers.', consent: false })
+    expect((await admin.patch(`/api/admin/reviews/${id}`, { status: 'approved' })).status).toBe(400)
+  })
+})

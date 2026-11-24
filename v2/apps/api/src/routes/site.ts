@@ -2,11 +2,11 @@
  * Routes publiques du site Zuri (sous /api/v1) : coordonnées de contact, formulaire de contact,
  * désinscription des emails d'accompagnement.
  */
-import { eq } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { db } from '../db/client'
-import { contactMessages, users } from '../db/schema'
+import { contactMessages, sellerReviews, users } from '../db/schema'
 import type { AppEnv } from '../lib/context'
 import { env } from '../lib/env'
 import { clientIp, rateLimit } from '../lib/rate-limit'
@@ -31,6 +31,17 @@ const page = (title: string, text: string) =>
 <main style="max-width:440px;background:#fff;border-radius:12px;padding:28px;text-align:center"><h1 style="font-size:20px;margin:0 0 8px">${escapeHtml(title)}</h1><p style="margin:0;color:#52525b;line-height:1.6">${text}</p></main></body></html>`
 
 export const siteRoutes = new Hono<AppEnv>()
+  /** Témoignages de vendeurs publiés (accord du vendeur et validation du super admin). */
+  .get('/platform/testimonials', async (c) => {
+    const rows = await db
+      .select({ name: sellerReviews.publishName, role: sellerReviews.publishRole, comment: sellerReviews.comment, score: sellerReviews.score, storeUrl: sellerReviews.storeUrl, date: sellerReviews.updatedAt })
+      .from(sellerReviews)
+      .where(eq(sellerReviews.status, 'approved'))
+      .orderBy(desc(sellerReviews.updatedAt))
+      .limit(24)
+    c.header('Cache-Control', 'public, max-age=300')
+    return c.json(rows)
+  })
   .get('/platform/contact', async (c) => {
     c.header('Cache-Control', 'public, max-age=300')
     return c.json(await contactInfo())

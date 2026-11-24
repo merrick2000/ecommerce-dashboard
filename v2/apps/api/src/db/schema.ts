@@ -882,3 +882,28 @@ export const onboardingEmails = pgTable(
   },
   (t) => [uniqueIndex('onboarding_emails_uq').on(t.userId, t.kind, t.step)],
 )
+
+/**
+ * Avis des vendeurs sur Zuri (note sur 10 et témoignage). Un par compte. Publiés sur le site seulement
+ * avec l'accord du vendeur et après validation du super admin.
+ */
+export const sellerReviews = pgTable('seller_reviews', {
+  id: id(),
+  userId: fk('user_id')
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  /** 0 à 10 ; null = question écartée sans répondre. */
+  score: smallint('score'),
+  comment: text('comment'),
+  /** Accord pour publier le témoignage sur zurisell.store. */
+  consent: boolean('consent').notNull().default(false),
+  publishName: varchar('publish_name', { length: 80 }),
+  /** Ex. « Boutique de perruques, Abidjan ». */
+  publishRole: varchar('publish_role', { length: 120 }),
+  storeUrl: varchar('store_url', { length: 300 }),
+  /** pending (à valider) | approved (publié) | rejected | private (pas de publication) | dismissed */
+  status: varchar('status', { length: 10 }).notNull().default('private'),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+})

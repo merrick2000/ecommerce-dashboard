@@ -8,7 +8,7 @@ import { Hono } from 'hono'
 import { createMiddleware } from 'hono/factory'
 import { z } from 'zod'
 import { db } from '../db/client'
-import { billingPayments, contactMessages, onboardingEmails, orders, paymentAccounts, sessions, storeMembers, stores, subscriptions, users } from '../db/schema'
+import { billingPayments, contactMessages, onboardingEmails, sellerReviews, orders, paymentAccounts, sessions, storeMembers, stores, subscriptions, users } from '../db/schema'
 import { contactInfo } from './site'
 import { requireAuth } from '../lib/auth'
 import type { AppEnv } from '../lib/context'
@@ -81,6 +81,7 @@ export const adminRoutes = new Hono<AppEnv>()
     const fc = Object.fromEntries(funnelRows.map((r) => [r.stage, r.n])) as Record<string, number>
     const signed = (fc.no_store ?? 0) + (fc.no_product ?? 0) + (fc.no_order ?? 0) + (fc.active ?? 0)
     const [msg] = await db.select({ n: dsql<number>`count(*)::int` }).from(contactMessages).where(eq(contactMessages.status, 'new'))
+    const [rev] = await db.select({ n: dsql<number>`count(*)::int` }).from(sellerReviews).where(eq(sellerReviews.status, 'pending'))
     const [ob] = await db.select({ n: dsql<number>`count(*)::int` }).from(onboardingEmails).where(dsql`${onboardingEmails.createdAt} > now() - interval '30 days'`)
     return c.json({
       users: { total: n(u?.total), today: n(u?.today), d7: n(u?.d7), d30: n(u?.d30), active7: n(u?.active7) },
@@ -95,6 +96,7 @@ export const adminRoutes = new Hono<AppEnv>()
       funnel: { signed, store: signed - (fc.no_store ?? 0), product: (fc.no_order ?? 0) + (fc.active ?? 0), order: fc.active ?? 0 },
       onboardingSent30: ob?.n ?? 0,
       newMessages: msg?.n ?? 0,
+      pendingReviews: rev?.n ?? 0,
     })
   })
   .get('/users', v('query', page), async (c) => {
@@ -262,6 +264,41 @@ export const adminRoutes = new Hono<AppEnv>()
     if (body.paymentsOnline !== undefined) await setSetting('payments.online', body.paymentsOnline)
     if (body.billingEnabled !== undefined) await setSetting('billing.enabled', body.billingEnabled)
     if (body.billingStoreId !== undefined) await setSetting('billing.account', body.billingStoreId ? { storeId: body.billingStoreId } : null)
+    return c.json({ ok: true })
+  })
+  /** Avis des vendeurs : notes, témoignages à valider avant publication sur le site. */
+  .get('/reviews', v('query', z.object({ status: z.enum(['pending', 'approved', 'rejected', 'private', 'all']).default('all') })), async (c) => {
+    const { status } = c.req.valid('query')
+    const rows = await db
+      .select({ review: sellerReviews, name: users.name, email: users.email })
+      .from(sellerReviews)
+      .innerJoin(users, eq(users.id, sellerReviews.userId))
+      .where(status === 'all' ? dsql`${sellerReviews.status} <> 'dismissed'` : eq(sellerReviews.status, status))
+      .orderBy(desc(sellerReviews.updatedAt))
+      .limit(200)
+    const [stats] = await db
+      .select({
+        answers: dsql<number>`count(*) filter (where ${sellerReviews.score} is not null)::int`,
+        promoters: dsql<number>`count(*) filter (where ${sellerReviews.score} >= 9)::int`,
+        detractors: dsql<number>`count(*) filter (where ${sellerReviews.score} <= 6)::int`,
+        pending: dsql<number>`count(*) filter (where ${sellerReviews.status} = 'pending')::int`,
+      })
+      .from(sellerReviews)
+    const answers = stats?.answers ?? 0
+    return c.json({
+      // Score de recommandation : % de promoteurs (9-10) moins % de détracteurs (0-6).
+      nps: answers ? Math.round(((stats!.promoters - stats!.detractors) / answers) * 100) : null,
+      answers,
+      pending: stats?.pending ?? 0,
+      data: rows.map((r) => ({ ...r.review, name: r.name, email: r.email })),
+    })
+  })
+  .patch('/reviews/:id', v('param', z.object({ id: z.coerce.number().int() })), v('json', z.object({ status: z.enum(['approved', 'rejected', 'pending']), publishName: z.string().trim().max(80).optional(), publishRole: z.string().trim().max(120).optional(), comment: z.string().trim().max(1000).optional() })), async (c) => {
+    const { status, ...edits } = c.req.valid('json')
+    const [r] = await db.select().from(sellerReviews).where(eq(sellerReviews.id, c.req.valid('param').id)).limit(1)
+    if (!r) throw new HttpError(404, 'Avis introuvable', 'not_found')
+    if (status === 'approved' && !r.consent) throw new HttpError(400, 'Ce vendeur n’a pas donné son accord pour publier.', 'no_consent')
+    await db.update(sellerReviews).set({ status, ...edits, updatedAt: new Date() }).where(eq(sellerReviews.id, r.id))
     return c.json({ ok: true })
   })
   /** Messages reçus par la page contact du site. */

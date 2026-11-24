@@ -6,6 +6,7 @@
  * Règles de rédaction : tutoiement, mots de la cible, aucun emoji, aucun tiret long ou moyen,
  * aucune statistique non sourcée, aucune affirmation négative non documentée sur un concurrent.
  */
+import Testimonials from '../components/marketing/Testimonials.astro'
 import MarketingLayout from '../components/marketing/MarketingLayout.astro'
 import Icon from '../components/marketing/Icon.astro'
 import MidCta from '../components/marketing/offer/MidCta.astro'
@@ -549,6 +550,8 @@ const jsonLd = [
   </section>
 
   <!-- ─── FAQ ─── -->
+  <Testimonials lang="fr" />
+
   <section class="mk-section" id="faq">
     <div class="mk-wrap mk-center">
       <span class="mk-eyebrow">Questions fréquentes</span>

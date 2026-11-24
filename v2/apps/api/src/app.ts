@@ -8,6 +8,7 @@ import { notificationRoutes, telegramWebhookRoutes } from './routes/notification
 import { paymentRoutes } from './routes/payments'
 import { publicRoutes } from './routes/public'
 import { siteRoutes } from './routes/site'
+import { reviewRoutes } from './routes/reviews'
 import { storeRoutes } from './routes/stores'
 import { adminRoutes } from './routes/admin'
 import { billingRoutes } from './routes/billing'
@@ -53,7 +54,7 @@ app.get('/api/health', async (c) => {
   return c.json({ ok: true })
 })
 
-const api = new Hono<AppEnv>().route('/auth', authRoutes).route('/stores', storeRoutes).route('/admin', adminRoutes).route('/billing', billingRoutes).route('/invitations', invitationRoutes).route('/notifications', notificationRoutes).route('/api-keys', apiKeyRoutes).route('/mcp', mcpRoutes).route('/v1', publicRoutes).route('/v1', siteRoutes).route('/v1', paymentRoutes).route('/v1', integrationRoutes).route('/v1', telegramWebhookRoutes)
+const api = new Hono<AppEnv>().route('/auth', authRoutes).route('/stores', storeRoutes).route('/admin', adminRoutes).route('/reviews', reviewRoutes).route('/billing', billingRoutes).route('/invitations', invitationRoutes).route('/notifications', notificationRoutes).route('/api-keys', apiKeyRoutes).route('/mcp', mcpRoutes).route('/v1', publicRoutes).route('/v1', siteRoutes).route('/v1', paymentRoutes).route('/v1', integrationRoutes).route('/v1', telegramWebhookRoutes)
 app.route('/api', api)
 
 app.notFound((c) => c.json({ error: 'Route introuvable', code: 'not_found' }, 404))

@@ -1,0 +1,56 @@
+---
+/**
+ * « Ils vendent avec Zuri » : témoignages réels de vendeurs (accord du vendeur, validés dans le super admin).
+ * Rien n'est affiché tant qu'aucun témoignage n'est publié : jamais de faux avis.
+ */
+import { apiGet } from '../../lib/api'
+import type { Lang } from '../../content/seo'
+
+interface Props {
+  lang: Lang
+}
+interface Item {
+  name: string | null
+  role: string | null
+  comment: string | null
+  score: number | null
+  storeUrl: string | null
+}
+const { lang } = Astro.props
+let items: Item[] = []
+try {
+  items = (await apiGet<Item[]>('/platform/testimonials', { timeoutMs: 2500 })).filter((i) => i.comment)
+} catch {
+  items = []
+}
+const T = { fr: { eyebrow: 'Témoignages', title: 'Ils vendent avec Zuri', visit: 'Voir la boutique' }, en: { eyebrow: 'Testimonials', title: 'They sell with Zuri', visit: 'Visit the store' } }[lang]
+---
+
+{
+  items.length > 0 && (
+    <section class="mk-section mk-section-alt" aria-label={T.title}>
+      <div class="mk-wrap">
+        <div class="mk-center">
+          <span class="mk-eyebrow">{T.eyebrow}</span>
+          <h2 class="mk-h2">{T.title}</h2>
+        </div>
+        <ul class="mk-testi">
+          {items.slice(0, 6).map((i) => (
+            <li>
+              <blockquote>« {i.comment} »</blockquote>
+              <p class="mk-testi-who">
+                <strong>{i.name}</strong>
+                {i.role && <span>{i.role}</span>}
+              </p>
+              {i.storeUrl && (
+                <a href={i.storeUrl} target="_blank" rel="noopener">
+                  {T.visit}
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  )
+}

@@ -15,6 +15,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-24',
     title: { fr: 'Suivi Meta pensé pour le paiement à la livraison, centre d’aide, emails dans la langue de la boutique', en: 'Meta tracking built for cash on delivery, help center, emails in the store language' },
     items: [
+      { fr: 'Avis des vendeurs : question posée après les premières ventes, témoignages publiés sur le site avec leur accord.', en: 'Seller reviews: asked after the first sales, testimonials published on the site with their consent.' },
       { fr: 'Choix du moment où l’achat est déclaré à Meta en paiement à la livraison : à la commande, à la confirmation ou à la livraison (prospect en attendant).', en: 'Choose when the purchase is reported to Meta for cash on delivery: at order, confirmation or delivery (Lead in the meantime).' },
       { fr: 'Export CSV de tous les clients, en plus des commandes.', en: 'CSV export of all customers, in addition to orders.' },
       { fr: 'Emails aux clients (commande, accès digital, suivi, relances) et au vendeur dans la langue de la boutique, français ou anglais ; langue du navigateur par défaut à la création.', en: 'Emails to customers (order, digital access, tracking, reminders) and to the seller in the store language, French or English; browser language by default at creation.' },

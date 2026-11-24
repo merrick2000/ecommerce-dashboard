@@ -5,6 +5,7 @@
  */
 import MarketingLayout from '../MarketingLayout.astro'
 import CtaBand from '../CtaBand.astro'
+import Testimonials from '../Testimonials.astro'
 import { COUNTRIES, PATHS, countryPath, t } from '../../../content/seo'
 import type { Lang } from '../../../content/seo'
 
@@ -153,5 +154,6 @@ const jsonLd = [
       <ul>{M.res.map((r) => <li><a href={r.href}>{r.label}</a></li>)}</ul>
     </section>
   </div>
+  <Testimonials lang={lang} />
   <CtaBand lang={lang} />
 </MarketingLayout>

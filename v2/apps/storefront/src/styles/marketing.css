@@ -4143,3 +4143,44 @@ svg {
 .mk-changelog-entry li {
   margin: 4px 0;
 }
+
+/* ─── Témoignages ─── */
+.mk-testi {
+  list-style: none;
+  padding: 0;
+  margin: 24px 0 0;
+  display: grid;
+  gap: 14px;
+}
+@media (min-width: 860px) {
+  .mk-testi {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.mk-testi li {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.mk-testi blockquote {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.mk-testi-who {
+  display: grid;
+  margin: 0;
+  font-size: 0.92rem;
+}
+.mk-testi-who span {
+  color: var(--muted);
+}
+.mk-testi a {
+  font-weight: 700;
+  color: var(--amber-ink);
+  font-size: 0.92rem;
+}

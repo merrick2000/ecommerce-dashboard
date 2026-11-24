@@ -134,6 +134,13 @@
       "when": 1795528201336,
       "tag": "0018_cod_purchase_on",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795529853419,
+      "tag": "0019_seller_reviews",
+      "breakpoints": true
     }
   ]
 }
