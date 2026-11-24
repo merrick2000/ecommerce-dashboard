@@ -127,6 +127,13 @@
       "when": 1795522483682,
       "tag": "0017_contact_onboarding",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795528201336,
+      "tag": "0018_cod_purchase_on",
+      "breakpoints": true
     }
   ]
 }

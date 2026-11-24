@@ -15,6 +15,7 @@ import { badRequest, HttpError, notFound } from '../lib/errors'
 import { clientIp, rateLimit } from '../lib/rate-limit'
 import { v } from '../lib/validate'
 import { answerFunnelOffer, createPublicOrder, normalizePhone } from '../services/orders'
+import { arrivalEvent } from '../jobs/handlers'
 import { poAccount } from '../services/po'
 import { storeOnlinePayments } from '../services/platform'
 import { displayPrice, evaluatePromoCode } from '../services/pricing'
@@ -221,9 +222,11 @@ export const publicRoutes = new Hono<AppEnv>()
       ip: clientIp((n) => c.req.header(n)),
       userAgent: c.req.header('user-agent')?.slice(0, 512),
     })
+    const [cod] = await db.select({ on: checkoutSettings.codPurchaseOn }).from(checkoutSettings).where(eq(checkoutSettings.storeId, order.storeId)).limit(1)
     return c.json(
       {
-        order: { token: order.accessToken, orderNumber: order.orderNumber, total: order.total, currency: order.currency, paymentMethod: order.paymentMethod, paymentStatus: order.paymentStatus, eventId: order.eventId },
+        // pixelEvent : Purchase, ou Lead en paiement à la livraison si l'achat n'est déclaré qu'à la confirmation ou à la livraison.
+        order: { token: order.accessToken, orderNumber: order.orderNumber, total: order.total, currency: order.currency, paymentMethod: order.paymentMethod, paymentStatus: order.paymentStatus, eventId: order.eventId, pixelEvent: arrivalEvent(order, cod?.on) },
         promoError,
       },
       201,
@@ -238,7 +241,7 @@ export const publicRoutes = new Hono<AppEnv>()
     const [order] = await db.select().from(orders).where(eq(orders.accessToken, c.req.valid('param').token)).limit(1)
     if (!order) throw notFound('Commande')
     const [store] = await db.select().from(stores).where(eq(stores.id, order.storeId)).limit(1)
-    const [cfg] = await db.select({ settings: checkoutSettings.settings, facebookPixelId: checkoutSettings.facebookPixelId, tiktokPixelId: checkoutSettings.tiktokPixelId }).from(checkoutSettings).where(eq(checkoutSettings.storeId, order.storeId)).limit(1)
+    const [cfg] = await db.select({ settings: checkoutSettings.settings, facebookPixelId: checkoutSettings.facebookPixelId, tiktokPixelId: checkoutSettings.tiktokPixelId, codPurchaseOn: checkoutSettings.codPurchaseOn }).from(checkoutSettings).where(eq(checkoutSettings.storeId, order.storeId)).limit(1)
     const items = await db.select({ productId: orderItems.productId, name: orderItems.name, variantName: orderItems.variantName, quantity: orderItems.quantity, total: orderItems.total, productType: orderItems.productType }).from(orderItems).where(eq(orderItems.orderId, order.id))
     c.header('Cache-Control', 'no-store')
     // Paiement en attente via Payment Orchestrator : la page commande propose de finaliser avec le widget.
@@ -258,6 +261,7 @@ export const publicRoutes = new Hono<AppEnv>()
       paymentStatus: order.paymentStatus,
       fulfillmentStatus: order.fulfillmentStatus,
       eventId: order.eventId,
+      pixelEvent: arrivalEvent(order, cfg?.codPurchaseOn),
       canDownload: order.kind !== 'physical' && order.paymentStatus === 'paid',
       // Thème + pixels : la page commande garde l'apparence de la boutique et peut déclarer l'achat une fois payé.
       primaryColor: cfg?.settings.primaryColor ?? DEFAULT_CHECKOUT.primaryColor,

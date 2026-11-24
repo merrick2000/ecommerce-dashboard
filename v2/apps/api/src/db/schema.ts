@@ -332,6 +332,12 @@ export const checkoutSettings = pgTable('checkout_settings', {
   facebookPixelId: varchar('facebook_pixel_id', { length: 30 }),
   facebookTestEventCode: varchar('facebook_test_event_code', { length: 40 }),
   tiktokPixelId: varchar('tiktok_pixel_id', { length: 40 }),
+  /**
+   * Paiement à la livraison : moment où l'achat est déclaré à Meta (pixel et API Conversions).
+   * created = dès la commande ; confirmed = quand l'équipe la confirme ; delivered = quand elle est livrée.
+   * Avant ce moment, la commande est déclarée comme un prospect (Lead) : les pubs apprennent des vraies ventes.
+   */
+  codPurchaseOn: varchar('cod_purchase_on', { length: 12 }).$type<'created' | 'confirmed' | 'delivered'>().notNull().default('created'),
   /** Chiffré (AES-256-GCM, voir lib/crypto.ts). */
   facebookAccessTokenEnc: text('facebook_access_token_enc'),
   updatedAt: updatedAt(),

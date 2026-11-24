@@ -76,6 +76,7 @@ const numItems = o?.items.reduce((s, i) => s + i.quantity, 0) ?? 1
             total={o.total}
             currency={o.currency}
             eventId={o.eventId}
+            pixelEvent={o.pixelEvent}
             numItems={numItems}
             paymentMethod={o.paymentMethod}
             paymentStatus={o.paymentStatus}

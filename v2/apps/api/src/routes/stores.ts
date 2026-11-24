@@ -111,6 +111,7 @@ const storeScoped = new Hono<AppEnv>()
         facebookPixelId: row?.facebookPixelId ?? null,
         facebookTestEventCode: row?.facebookTestEventCode ?? null,
         tiktokPixelId: row?.tiktokPixelId ?? null,
+        codPurchaseOn: row?.codPurchaseOn ?? 'created',
         hasFacebookAccessToken: Boolean(row?.facebookAccessTokenEnc),
       },
     })
@@ -129,6 +130,7 @@ const storeScoped = new Hono<AppEnv>()
       facebookPixelId: t.facebookPixelId,
       facebookTestEventCode: t.facebookTestEventCode,
       tiktokPixelId: t.tiktokPixelId,
+      ...(t.codPurchaseOn ? { codPurchaseOn: t.codPurchaseOn } : {}),
       // undefined = inchangé, null = supprimer, string = remplacer
       ...(t.facebookAccessToken !== undefined ? { facebookAccessTokenEnc: t.facebookAccessToken ? encrypt(t.facebookAccessToken) : null } : {}),
     }

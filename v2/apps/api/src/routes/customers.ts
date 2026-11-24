@@ -30,6 +30,25 @@ export const customerRoutes = new Hono<AppEnv>()
     ])
     return c.json({ data: rows, total, page, pageSize: 50 })
   })
+  /** Export CSV de tous les clients (périmètre du membre respecté) : vos données vous appartiennent. */
+  .get('/export.csv', requirePermission('customers.view', 'orders.export'), async (c) => {
+    const store = c.get('store')
+    const conds = [eq(customers.storeId, store.id)]
+    const scope = customerScope(c.get('access'))
+    if (scope) conds.push(scope)
+    const rows = await db.select().from(customers).where(and(...conds)).orderBy(desc(customers.updatedAt)).limit(50_000)
+    const esc = (v: unknown) => {
+      const s = v == null ? '' : String(v)
+      // Neutralise l'injection de formules dans Excel/Sheets.
+      const safe = /^[=+\-@]/.test(s) ? `'${s}` : s
+      return /[",;\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe
+    }
+    const header = ['Nom', 'Téléphone', 'Email', 'Ville', 'Adresse', 'Commandes', 'Livrées', 'Retournées', 'Total dépensé', 'Bloqué', 'Client depuis']
+    const lines = rows.map((r) => [r.name, r.phone, r.email, r.city, r.address, r.ordersCount, r.deliveredCount, r.returnedCount, r.totalSpent, r.isBlocked ? 'oui' : 'non', r.createdAt.toISOString().slice(0, 10)].map(esc).join(';'))
+    c.header('Content-Type', 'text/csv; charset=utf-8')
+    c.header('Content-Disposition', `attachment; filename="clients-${store.slug}.csv"`)
+    return c.body(`\ufeff${[header.join(';'), ...lines].join('\n')}`)
+  })
   .get('/:id', requirePermission('customers.view'), v('param', idParam), async (c) => {
     const { id } = c.req.valid('param')
     const [customer] = await db.select().from(customers).where(and(eq(customers.id, id), eq(customers.storeId, c.get('store').id), customerScope(c.get('access')))).limit(1)

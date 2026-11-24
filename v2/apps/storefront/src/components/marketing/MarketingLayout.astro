@@ -43,8 +43,8 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr'
 const otherPath = alternate[other] ?? PATHS.home[other]
 
 const T = {
-  fr: { how: 'Comment ça marche', features: 'Fonctionnalités', pricing: 'Tarifs', about: 'À propos', faq: 'Questions', login: 'Se connecter', signup: 'Créer ma boutique', skip: 'Aller au contenu', tagline: 'La boutique en ligne pensée pour le paiement à la livraison et le Mobile Money, en Afrique.', product: 'Produit', resources: 'Ressources', countries: 'Vendre par pays', guides: 'Guides', tools: 'Outils gratuits', cities: 'Vendre par ville', niches: 'Vendre par métier', best: 'Meilleurs outils', alternatives: 'Alternatives', compare: 'Comparatifs', account: 'Compte', popular: 'Guides populaires', bottom: 'Fait pour les vendeurs d’Afrique.', home: 'Accueil', langLabel: 'English', allCountries: 'Tous les pays', contact: 'Contact', waFloat: 'Une question ?', waMsg: 'Bonjour Zuri, j’ai une question : ' },
-  en: { how: 'How it works', features: 'Features', pricing: 'Pricing', about: 'About', faq: 'FAQ', login: 'Log in', signup: 'Create my store', skip: 'Skip to content', tagline: 'The online store built for cash on delivery and Mobile Money, in Africa.', product: 'Product', resources: 'Resources', countries: 'Sell by country', guides: 'Guides', tools: 'Free tools', cities: 'Sell by city', niches: 'Sell by category', best: 'Best tools', alternatives: 'Alternatives', compare: 'Comparisons', account: 'Account', popular: 'Popular guides', bottom: 'Built for sellers across Africa.', home: 'Home', langLabel: 'Français', allCountries: 'All countries', contact: 'Contact', waFloat: 'Questions?', waMsg: 'Hello Zuri, I have a question: ' },
+  fr: { how: 'Comment ça marche', features: 'Fonctionnalités', pricing: 'Tarifs', about: 'À propos', faq: 'Questions', login: 'Se connecter', signup: 'Créer ma boutique', skip: 'Aller au contenu', tagline: 'La boutique en ligne pensée pour le paiement à la livraison et le Mobile Money, en Afrique.', product: 'Produit', resources: 'Ressources', countries: 'Vendre par pays', guides: 'Guides', tools: 'Outils gratuits', cities: 'Vendre par ville', niches: 'Vendre par métier', best: 'Meilleurs outils', alternatives: 'Alternatives', compare: 'Comparatifs', account: 'Compte', popular: 'Guides populaires', bottom: 'Fait pour les vendeurs d’Afrique.', home: 'Accueil', langLabel: 'English', allCountries: 'Tous les pays', contact: 'Contact', help: 'Aide', featuresPage: 'Fonctionnalités', changelog: 'Nouveautés', waFloat: 'Une question ?', waMsg: 'Bonjour Zuri, j’ai une question : ' },
+  en: { how: 'How it works', features: 'Features', pricing: 'Pricing', about: 'About', faq: 'FAQ', login: 'Log in', signup: 'Create my store', skip: 'Skip to content', tagline: 'The online store built for cash on delivery and Mobile Money, in Africa.', product: 'Product', resources: 'Resources', countries: 'Sell by country', guides: 'Guides', tools: 'Free tools', cities: 'Sell by city', niches: 'Sell by category', best: 'Best tools', alternatives: 'Alternatives', compare: 'Comparisons', account: 'Account', popular: 'Popular guides', bottom: 'Built for sellers across Africa.', home: 'Home', langLabel: 'Français', allCountries: 'All countries', contact: 'Contact', help: 'Help', featuresPage: 'Features', changelog: 'Changelog', waFloat: 'Questions?', waMsg: 'Hello Zuri, I have a question: ' },
 }[lang]
 
 // Pied de page : liens internes vers les pages les plus utiles (maillage SEO).
@@ -72,11 +72,15 @@ const orgLd =
           '@type': 'Organization',
           '@id': 'https://zurisell.store/#organization',
           name: 'Zuri',
+          alternateName: ['Zuri (zurisell.store)', 'zurisell.store'],
           url: 'https://zurisell.store/',
           logo: 'https://zurisell.store/og/fr/hub/home.jpg',
           description: T.tagline,
           areaServed: 'Africa',
           knowsLanguage: ['fr', 'en'],
+          email: contact.email,
+          contactPoint: [{ '@type': 'ContactPoint', contactType: 'customer support', email: contact.email, ...(contact.whatsapp ? { telephone: contact.whatsapp } : {}), availableLanguage: ['French', 'English'], url: `https://zurisell.store${contactPath}` }],
+          ...(contact.socials?.length ? { sameAs: contact.socials } : {}),
         },
         { '@context': 'https://schema.org', '@type': 'WebSite', '@id': 'https://zurisell.store/#website', name: 'Zuri', url: 'https://zurisell.store/', inLanguage: ['fr', 'en'], publisher: { '@id': 'https://zurisell.store/#organization' } },
       ]
@@ -154,7 +158,8 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
           <a href={`${home === '/' ? '' : home}/#comment`}>{T.how}</a>
           <a href={PATHS.guides[lang]}>{T.guides}</a>
           <a href={PATHS.countries[lang]}>{T.countries}</a>
-          <a href={PATHS.tools[lang]}>{T.tools}</a>
+          <a href={PATHS.features[lang]}>{T.featuresPage}</a>
+          <a href={PATHS.help[lang]}>{T.help}</a>
           <a href={contactPath}>{T.contact}</a>
         </nav>
         <div class="mk-header-cta">
@@ -198,7 +203,9 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
         <nav aria-label={T.product}>
           <p class="mk-footer-title">{T.product}</p>
           <a href={`${home === '/' ? '' : home}/#comment`}>{T.how}</a>
-          <a href={`${home === '/' ? '' : home}/#fonctions`}>{T.features}</a>
+          <a href={PATHS.features[lang]}>{T.featuresPage}</a>
+          <a href={PATHS.help[lang]}>{T.help}</a>
+          <a href={PATHS.changelog[lang]}>{T.changelog}</a>
           <a href={lang === 'fr' ? '/tarifs' : '/en/pricing'}>{T.pricing}</a>
           <a href={lang === 'fr' ? '/a-propos' : '/en/about'}>{T.about}</a>
           <a href={contactPath}>{T.contact}</a>
@@ -227,7 +234,7 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
           {footerGuides.map((g) => <a href={guidePath(g.slug[lang], lang)}>{t(g.h1, lang)}</a>)}
         </nav>
       </div>
-      <div class="mk-wrap mk-footer-bottom">© {new Date().getFullYear()} Zuri. {T.bottom} <a href={`mailto:${contact.email}`}>{contact.email}</a></div>
+      <div class="mk-wrap mk-footer-bottom">© {new Date().getFullYear()} Zuri. {T.bottom} <a href={`mailto:${contact.email}`}>{contact.email}</a>{(contact.socials ?? []).map((u) => <> · <a href={u} rel="me noopener" target="_blank">{(() => { try { return new URL(u).hostname.replace(/^www\./, '').split('.')[0] } catch { return u } })()}</a></>)}</div>
     </footer>
     {
       contact.whatsapp && (

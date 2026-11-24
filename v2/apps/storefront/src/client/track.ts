@@ -214,12 +214,17 @@ export function pixel(fbEvent: string, ttEvent: string | null, extra: { value?: 
   }
 }
 
-/** Purchase une seule fois par commande (jetons mémorisés), même si la page est rechargée. */
-export function purchaseOnce(token: string, data: { value: number; currency: string; eventId: string | null; numItems?: number }): void {
+/**
+ * Achat (ou prospect) une seule fois par commande (jetons mémorisés), même si la page est rechargée.
+ * Lead : paiement à la livraison quand le vendeur ne déclare l'achat qu'à la confirmation ou à la livraison ;
+ * l'achat part alors du serveur (API Conversions) au bon moment.
+ */
+export function purchaseOnce(token: string, data: { value: number; currency: string; eventId: string | null; numItems?: number; event?: 'Purchase' | 'Lead' }): void {
   if (noTrack()) return
   const fired = getJSON<string[]>('sf_purchased') ?? []
   if (fired.includes(token)) return
-  pixel('Purchase', 'CompletePayment', { value: data.value, currency: data.currency, numItems: data.numItems }, data.eventId ?? undefined)
+  if (data.event === 'Lead') pixel('Lead', 'PlaceAnOrder', { value: data.value, currency: data.currency, numItems: data.numItems }, data.eventId ?? undefined)
+  else pixel('Purchase', 'CompletePayment', { value: data.value, currency: data.currency, numItems: data.numItems }, data.eventId ?? undefined)
   loadPixels()
   setJSON('sf_purchased', [...fired.slice(-49), token])
 }

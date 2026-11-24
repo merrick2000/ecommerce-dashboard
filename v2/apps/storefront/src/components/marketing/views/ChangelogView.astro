@@ -1,0 +1,55 @@
+---
+/** Nouveautés (FR /nouveautes, EN /en/changelog) : historique réel et daté des mises à jour de Zuri. */
+import MarketingLayout from '../MarketingLayout.astro'
+import CtaBand from '../CtaBand.astro'
+import { CHANGELOG } from '../../../content/seo/changelog'
+import { t } from '../../../content/seo'
+import type { Lang } from '../../../content/seo'
+
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const other: Lang = lang === 'fr' ? 'en' : 'fr'
+const path = { fr: '/nouveautes', en: '/en/changelog' }
+const M = {
+  fr: { title: 'Nouveautés de Zuri : mises à jour de la plateforme', description: 'L’historique daté des nouveautés de Zuri : suivi Meta pour le paiement à la livraison, vue en direct, produits digitaux, tunnel de vente, IA, export des données.', label: 'Nouveautés', h1: 'Nouveautés', sub: 'Zuri avance chaque semaine. Voici ce qui a changé, daté et vérifiable.' },
+  en: { title: 'Zuri changelog: platform updates', description: 'The dated history of Zuri updates: Meta tracking for cash on delivery, live view, digital products, sales funnel, AI, data export.', label: 'Changelog', h1: 'Changelog', sub: 'Zuri ships every week. Here is what changed, dated and verifiable.' },
+}[lang]
+const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    name: M.h1,
+    url: `https://zurisell.store${path[lang]}`,
+    blogPost: CHANGELOG.map((e) => ({ '@type': 'BlogPosting', headline: t(e.title, lang), datePublished: e.date, author: { '@type': 'Organization', name: 'Zuri' } })),
+  },
+]
+---
+
+<MarketingLayout title={M.title} description={M.description} canonicalPath={path[lang]} lang={lang} alternate={{ [lang]: path[lang], [other]: path[other] }} breadcrumbs={[{ label: M.label }]} jsonLd={jsonLd} ogImage={`/og/${lang}/hub/home.jpg`} ogImageAlt={M.h1}>
+  <section class="mk-page-hero">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">{M.label}</span>
+      <h1 class="mk-h1 mk-h1-page">{M.h1}</h1>
+      <p class="mk-hero-sub">{M.sub}</p>
+    </div>
+  </section>
+  <div class="mk-wrap mk-changelog">
+    {CHANGELOG.map((e) => (
+      <article class="mk-changelog-entry">
+        <time datetime={e.date}>{fmt(e.date)}</time>
+        <div>
+          <h2>{t(e.title, lang)}</h2>
+          <ul>
+            {e.items.map((i) => (
+              <li>{t(i, lang)}</li>
+            ))}
+          </ul>
+        </div>
+      </article>
+    ))}
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

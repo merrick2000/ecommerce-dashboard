@@ -18,9 +18,11 @@ export interface JobPayloads {
   'onboarding.run': Record<string, never>
   /** Alerte aux administrateurs de la plateforme. */
   'admin.notify': import('../services/admin-notify').AdminAlert
+  /** Paiement à la livraison : achat déclaré à Meta à la confirmation ou à la livraison (réglage du vendeur). */
+  'order.capi-purchase': { orderId: string; stage: 'confirmed' | 'delivered' }
 }
 export type JobName = keyof JobPayloads
-export const JOB_NAMES: JobName[] = ['order.paid', 'order.notify-new', 'order.customer-status', 'leads.remind', 'payments.reconcile', 'account.notify', 'notify.dispatch', 'onboarding.run', 'admin.notify']
+export const JOB_NAMES: JobName[] = ['order.paid', 'order.notify-new', 'order.customer-status', 'leads.remind', 'payments.reconcile', 'account.notify', 'notify.dispatch', 'onboarding.run', 'admin.notify', 'order.capi-purchase']
 
 let boss: PgBoss | null = null
 let starting: Promise<PgBoss> | null = null

@@ -88,7 +88,14 @@ async function todayStats(storeId: string, tz: string) {
   return { orders: Number(r?.n ?? 0), revenue: Number(r?.revenue ?? 0) }
 }
 
-async function capiPurchase(o: Loaded) {
+/**
+ * Événement déclaré à Meta pour une commande qui vient d'arriver : Purchase, sauf en paiement à la livraison
+ * quand le vendeur a choisi de ne déclarer l'achat qu'à la confirmation ou à la livraison (alors Lead).
+ */
+export const arrivalEvent = (o: { paymentMethod: string }, codPurchaseOn: string | null | undefined): 'Purchase' | 'Lead' =>
+  o.paymentMethod === 'cod' && codPurchaseOn && codPurchaseOn !== 'created' ? 'Lead' : 'Purchase'
+
+async function capiPurchase(o: Loaded, eventName: 'Purchase' | 'Lead' = 'Purchase', eventTime: Date = o.order.createdAt) {
   const pixelId = o.cfg?.facebookPixelId
   const tokenEnc = o.cfg?.facebookAccessTokenEnc
   if (!pixelId || !tokenEnc) return
@@ -96,9 +103,9 @@ async function capiPurchase(o: Loaded) {
     pixelId,
     accessToken: decrypt(tokenEnc),
     testEventCode: o.cfg?.facebookTestEventCode,
-    eventName: 'Purchase',
+    eventName,
     eventId: o.order.eventId,
-    eventTime: o.order.createdAt,
+    eventTime,
     sourceUrl: o.items[0]?.productId ? storefrontUrl(o.store.slug, `/p/${o.items[0].productId}`) : undefined,
     value: o.order.total,
     currency: o.order.currency,
@@ -179,7 +186,7 @@ export async function handleOrderNotifyNew({ orderId }: { orderId: string }) {
   if (!claimed) return
   const o = await loadOrder(orderId)
   if (!o) return
-  const tasks: Promise<unknown>[] = [notifyTeam(o, 'order.new'), capiPurchase(o)]
+  const tasks: Promise<unknown>[] = [notifyTeam(o, 'order.new'), capiPurchase(o, arrivalEvent(o.order, o.cfg?.codPurchaseOn))]
   if (o.order.customerEmail) {
     const mail = await customerConfirmation(o)
     tasks.push(sendEmail(o.order.customerEmail, mail.subject, mail.html, customerMailOpts(o)))
@@ -295,4 +302,26 @@ export async function handleCustomerStatus({ orderId, status }: { orderId: strin
   if (!o?.order.customerEmail || o.order.kind === 'digital') return
   const mail = customerStatusEmail({ ...(await emailOrder(o)), status, courier: o.order.courier, trackingNumber: o.order.trackingNumber })
   await sendEmail(o.order.customerEmail, mail.subject, mail.html, customerMailOpts(o))
+}
+
+/**
+ * Paiement à la livraison : l'achat est déclaré à Meta au moment choisi par le vendeur (confirmation ou livraison),
+ * une seule fois par commande, avec l'identifiant de la commande (déduplication avec le pixel).
+ */
+export async function handleCapiPurchase({ orderId, stage }: { orderId: string; stage: 'confirmed' | 'delivered' }) {
+  const o = await loadOrder(orderId)
+  if (!o || o.order.paymentMethod !== 'cod' || o.cfg?.codPurchaseOn !== stage) return
+  const [claimed] = await db
+    .update(orders)
+    .set({ metadata: dsql`coalesce(${orders.metadata}, '{}'::jsonb) || '{"capiPurchase": true}'::jsonb` })
+    .where(and(eq(orders.id, orderId), dsql`coalesce((${orders.metadata}->>'capiPurchase')::boolean, false) = false`))
+    .returning({ id: orders.id })
+  if (!claimed) return
+  try {
+    await capiPurchase(o, 'Purchase', new Date())
+  } catch (e) {
+    // Échec réseau : on libère pour que la tâche soit retentée.
+    await db.update(orders).set({ metadata: dsql`coalesce(${orders.metadata}, '{}'::jsonb) - 'capiPurchase'` }).where(eq(orders.id, orderId))
+    throw e
+  }
 }

@@ -31,7 +31,7 @@ describe('page contact', () => {
     await account('site-admin@test.dev', { admin: true })
     await admin.post('/api/auth/login', { email: 'site-admin@test.dev', password: 'motdepasse-solide' })
     const info = await visitor.get('/api/v1/platform/contact')
-    expect(info.body).toEqual({ email: 'contact@zurisell.store', whatsapp: null })
+    expect(info.body).toEqual({ email: 'contact@zurisell.store', whatsapp: null, socials: [] })
 
     const r = await visitor.post('/api/v1/contact', { name: 'Koffi', email: 'Koffi@Test.dev', message: 'Bonjour, je veux vendre des perruques à Lomé.', page: '/contact', lang: 'fr' })
     expect(r.status).toBe(201)
@@ -44,7 +44,7 @@ describe('page contact', () => {
 
   test('super admin : réglages de contact, liste des messages, traité', async () => {
     expect((await admin.put('/api/admin/settings', { contactEmail: 'hello@zurisell.store', contactWhatsapp: '+229 01 40 18 81 35' })).status).toBe(200)
-    expect((await visitor.get('/api/v1/platform/contact')).body).toEqual({ email: 'hello@zurisell.store', whatsapp: '+2290140188135' })
+    expect((await visitor.get('/api/v1/platform/contact')).body).toEqual({ email: 'hello@zurisell.store', whatsapp: '+2290140188135', socials: [] })
     expect((await admin.put('/api/admin/settings', { contactWhatsapp: 'abc' })).status).toBe(422)
 
     const list = await admin.get('/api/admin/messages')
@@ -185,5 +185,28 @@ describe('langue et alertes du super admin', () => {
     expect(customerOrderEmail(base).subject).toBe('Commande ZR-1 bien reçue · Tracee Shop')
     expect(customerDigitalEmail({ ...base, lang: 'en', digital: true, cod: false, accessUrl: 'https://x/a' }).subject).toBe('Your access is ready · Wig')
     expect(abandonedCartEmail({ step: 1, storeName: 'Tracee Shop', name: 'Amina', product: 'Wig', url: 'https://x', lang: 'en' }).subject).toBe('Did you forget something?')
+  })
+})
+
+describe('export des clients et réseaux sociaux', () => {
+  test('réseaux sociaux enregistrés par le super admin, lien invalide refusé', async () => {
+    expect((await admin.put('/api/admin/settings', { socialLinks: ['https://www.facebook.com/zurisell', 'https://www.linkedin.com/company/zurisell'] })).status).toBe(200)
+    expect((await new Client().get('/api/v1/platform/contact')).body.socials).toEqual(['https://www.facebook.com/zurisell', 'https://www.linkedin.com/company/zurisell'])
+    expect((await admin.put('/api/admin/settings', { socialLinks: ['pas un lien'] })).status).toBe(422)
+  })
+
+  test('export CSV des clients : en-têtes, données, injection de formule neutralisée', async () => {
+    const owner = new Client()
+    await db.insert(users).values({ email: 'csv-clients@test.dev', name: 'Csv', passwordHash: await Bun.password.hash('motdepasse-solide', { algorithm: 'argon2id' }) }).onConflictDoNothing()
+    await owner.post('/api/auth/login', { email: 'csv-clients@test.dev', password: 'motdepasse-solide' })
+    const s = (await owner.post('/api/stores', { name: 'Csv Clients', slug: 'csv-clients', currency: 'XOF' })).body.id
+    const p = await owner.post(`/api/stores/${s}/products`, { type: 'physical', name: 'Sac', isActive: true, price: 8000 })
+    await new Client().post('/api/v1/orders', { storeSlug: 'csv-clients', productId: p.body.id, customerName: '=HYPERLINK("x")', customerPhone: '+22997000001', city: 'Cotonou' })
+    const r = await owner.req('GET', `/api/stores/${s}/customers/export.csv`)
+    expect(r.status).toBe(200)
+    const csv = String(r.body)
+    expect(csv).toContain('Nom;Téléphone;Email;Ville')
+    expect(csv).toContain("'=HYPERLINK")
+    expect(csv).toContain('Cotonou')
   })
 })

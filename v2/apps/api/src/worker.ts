@@ -3,7 +3,7 @@
  * Une seule planification cron, même avec plusieurs instances (pg-boss verrouille).
  */
 import { getBoss, type JobPayloads } from './jobs/queue'
-import { handleAccountNotify, handleLeadsNotifySellers, handleLeadsRemind, handleCustomerStatus, handleOrderNotifyNew, handleOrderPaid } from './jobs/handlers'
+import { handleAccountNotify, handleCapiPurchase, handleLeadsNotifySellers, handleLeadsRemind, handleCustomerStatus, handleOrderNotifyNew, handleOrderPaid } from './jobs/handlers'
 import { reconcilePendingPayments } from './payments/service'
 import { dispatchNotification } from './services/notifications'
 import { runOnboarding } from './services/onboarding'
@@ -22,6 +22,7 @@ await boss.work('leads.remind', async () => {
 })
 
 await boss.work('payments.reconcile', async () => reconcilePendingPayments())
+await boss.work<JobPayloads['order.capi-purchase']>('order.capi-purchase', async ([job]) => job && handleCapiPurchase(job.data))
 await boss.work<JobPayloads['admin.notify']>('admin.notify', async ([job]) => job && notifyPlatformAdmins(job.data))
 await boss.work('onboarding.run', async () => {
   const n = await runOnboarding()

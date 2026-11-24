@@ -1,0 +1,60 @@
+---
+/** Sommaire du centre d'aide (FR /aide, EN /en/help). */
+import MarketingLayout from '../MarketingLayout.astro'
+import CtaBand from '../CtaBand.astro'
+import { HELP, HELP_TOPICS } from '../../../content/seo/help'
+import { helpPath, t } from '../../../content/seo'
+import type { Lang } from '../../../content/seo'
+
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const other: Lang = lang === 'fr' ? 'en' : 'fr'
+const path = { fr: '/aide', en: '/en/help' }
+const M = {
+  fr: { title: 'Centre d’aide Zuri : réponses sur la boutique, les paiements et le suivi', description: 'Toutes les réponses sur Zuri : créer sa boutique, domaine, variantes, paiement à la livraison, Mobile Money et retraits, produits digitaux, pixel et API Conversions, export des données.', label: 'Aide', h1: 'Centre d’aide', sub: 'Des réponses précises, vérifiables dans le produit, pour choisir et utiliser Zuri.' },
+  en: { title: 'Zuri help center: answers on stores, payments and tracking', description: 'All answers about Zuri: create a store, domain, variants, cash on delivery, Mobile Money and payouts, digital products, pixel and Conversions API, data export.', label: 'Help', h1: 'Help center', sub: 'Precise answers, verifiable in the product, to choose and use Zuri.' },
+}[lang]
+const topics = Object.keys(HELP_TOPICS) as (keyof typeof HELP_TOPICS)[]
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: HELP.map((a) => ({ '@type': 'Question', name: t(a.title, lang), acceptedAnswer: { '@type': 'Answer', text: t(a.answer, lang) } })),
+  },
+]
+---
+
+<MarketingLayout title={M.title} description={M.description} canonicalPath={path[lang]} lang={lang} alternate={{ [lang]: path[lang], [other]: path[other] }} breadcrumbs={[{ label: M.label }]} jsonLd={jsonLd} ogImage={`/og/${lang}/hub/home.jpg`} ogImageAlt={M.h1}>
+  <section class="mk-page-hero">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">{M.label}</span>
+      <h1 class="mk-h1 mk-h1-page">{M.h1}</h1>
+      <p class="mk-hero-sub">{M.sub}</p>
+    </div>
+  </section>
+  <div class="mk-wrap mk-help">
+    {
+      topics.map((tp) => {
+        const list = HELP.filter((a) => a.topic === tp)
+        return list.length ? (
+          <section class="mk-block">
+            <h2 class="mk-h2-sm">{t(HELP_TOPICS[tp], lang)}</h2>
+            <ul class="mk-help-list">
+              {list.map((a) => (
+                <li>
+                  <a href={helpPath(a.slug[lang], lang)}>
+                    <strong>{t(a.title, lang)}</strong>
+                    <span>{t(a.answer, lang)}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null
+      })
+    }
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

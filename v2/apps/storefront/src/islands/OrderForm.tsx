@@ -57,7 +57,7 @@ type Errors = Partial<Record<Field, string>>
 type Buyer = { name?: string; phone?: string; dial?: string; email?: string; address?: string; cityKey?: string; city?: string }
 type Promo = { code: string; status: 'checking' | 'ok' | 'bad'; discount: number; subtotal: number; reason?: string }
 /** Offre en cours du tunnel : index de l'upsell, et s'il s'agit de son offre de repli. */
-type OfferStage = { kind: 'offer'; token: string; orderNumber: string; total: number; eventId: string | null; method: string; idx: number; down: boolean; added: number }
+type OfferStage = { kind: 'offer'; token: string; orderNumber: string; total: number; eventId: string | null; pixelEvent?: 'Purchase' | 'Lead'; method: string; idx: number; down: boolean; added: number }
 type Stage = { kind: 'form' } | { kind: 'done'; orderNumber: string; token: string } | { kind: 'pay'; token: string; total: number } | { kind: 'lead' } | { kind: 'redirect' } | OfferStage
 
 const ISSUE_FIELD: Record<string, Field> = { customerName: 'name', customerPhone: 'phone', customerEmail: 'email', city: 'city', address: 'address', variantId: 'variant', note: 'note' }
@@ -283,7 +283,7 @@ export default function OrderForm(p: OrderFormProps) {
     // Tunnel : offres juste après la commande (COD : ajoutées à la livraison ; en ligne : avant le paiement).
     const upsells = p.funnel?.upsells ?? []
     if (upsells.length && o.paymentStatus !== 'paid' && (o.paymentMethod === 'cod' || (p.method === 'native' && o.paymentMethod !== 'external'))) {
-      setStage({ kind: 'offer', token: o.token, orderNumber: o.orderNumber, total: o.total, eventId: o.eventId, method: o.paymentMethod, idx: 0, down: false, added: 0 })
+      setStage({ kind: 'offer', token: o.token, orderNumber: o.orderNumber, total: o.total, eventId: o.eventId, pixelEvent: o.pixelEvent, method: o.paymentMethod, idx: 0, down: false, added: 0 })
       busyRef.current = false
       setBusy(false)
       requestAnimationFrame(() => rootRef.current?.scrollIntoView({ block: 'start' }))
@@ -291,7 +291,7 @@ export default function OrderForm(p: OrderFormProps) {
     }
 
     if (o.paymentMethod === 'cod') {
-      purchaseOnce(o.token, { value: o.total, currency: o.currency, eventId: o.eventId, numItems: quantity })
+      purchaseOnce(o.token, { value: o.total, currency: o.currency, eventId: o.eventId, numItems: quantity, event: o.pixelEvent })
       setStage({ kind: 'done', orderNumber: o.orderNumber, token: o.token })
       requestAnimationFrame(() => rootRef.current?.scrollIntoView({ block: 'start' }))
       return
@@ -322,7 +322,7 @@ export default function OrderForm(p: OrderFormProps) {
   /** Fin du tunnel : COD → remerciement (pixel d'achat avec le total final) ; en ligne → paiement du total. */
   const finishFunnel = (st: OfferStage, finalTotal: number) => {
     if (st.method === 'cod') {
-      purchaseOnce(st.token, { value: finalTotal, currency: p.currency, eventId: st.eventId, numItems: quantity })
+      purchaseOnce(st.token, { value: finalTotal, currency: p.currency, eventId: st.eventId, numItems: quantity, event: st.pixelEvent })
       setStage({ kind: 'done', orderNumber: st.orderNumber, token: st.token })
     } else {
       setStage({ kind: 'pay', token: st.token, total: finalTotal })

@@ -459,6 +459,9 @@ export async function transitionFulfillment(
     return { becamePaid }
   })
   if (result.becamePaid) await enqueue('order.paid', { orderId })
+  // Paiement à la livraison : achat déclaré à Meta à la confirmation ou à la livraison si le vendeur l'a choisi
+  // (la tâche vérifie le réglage, l'envoi n'a lieu qu'une fois).
+  if (to === 'confirmed' || to === 'delivered') await enqueue('order.capi-purchase', { orderId, stage: to }, { singletonKey: `order.capi-purchase:${orderId}:${to}` })
   // Email de suivi au client : commande confirmée, colis en route.
   if (to === 'confirmed' || to === 'shipped') await enqueue('order.customer-status', { orderId, status: to }, { singletonKey: `order.customer-status:${orderId}:${to}` })
   // Commande annulée avant paiement : la session Payment Orchestrator ne doit plus être payable.

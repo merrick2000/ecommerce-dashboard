@@ -3974,3 +3974,172 @@ svg {
   font-weight: 700;
   cursor: pointer;
 }
+
+/* ─── Centre d'aide ─── */
+.mk-help {
+  margin-bottom: 48px;
+}
+.mk-help-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+@media (min-width: 860px) {
+  .mk-help-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.mk-help-list a {
+  display: grid;
+  gap: 6px;
+  height: 100%;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.mk-help-list a:hover {
+  border-color: var(--amber);
+}
+.mk-help-list span {
+  color: var(--muted);
+  font-size: 0.93rem;
+  line-height: 1.5;
+}
+.mk-help-article {
+  margin-bottom: 48px;
+}
+.mk-help-answer {
+  margin: 8px 0 24px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--amber-soft);
+  border-left: 4px solid var(--amber);
+}
+.mk-help-answer p {
+  margin: 0;
+}
+.mk-help-answer .mk-help-answer-label {
+  font-weight: 800;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--amber-ink);
+  margin-bottom: 6px;
+}
+.mk-help-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.mk-help-updated {
+  font-size: 0.85rem;
+  color: var(--subtle);
+}
+
+/* ─── Fonctionnalités ─── */
+.mk-feat-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+@media (min-width: 900px) {
+  .mk-feat-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.mk-feat-stats div {
+  padding: 18px;
+  border-radius: 16px;
+  background: var(--ink);
+  color: #fafaf9;
+}
+.mk-feat-stats dt {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--amber);
+}
+.mk-feat-stats dd {
+  margin: 4px 0 0;
+  font-size: 0.92rem;
+  color: #d6d3d1;
+}
+.mk-feat-grid {
+  display: grid;
+  gap: 14px;
+  margin: 8px 0 56px;
+}
+@media (min-width: 760px) {
+  .mk-feat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1100px) {
+  .mk-feat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.mk-feat-card {
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.mk-feat-card h2 {
+  font-size: 1.15rem;
+  margin: 0 0 10px;
+}
+.mk-feat-card ul {
+  margin: 0 0 12px;
+  padding-left: 1.1em;
+  color: var(--muted);
+}
+.mk-feat-card li {
+  margin: 4px 0;
+}
+.mk-feat-card a {
+  font-weight: 700;
+  color: var(--amber-ink);
+}
+
+/* ─── Nouveautés ─── */
+.mk-changelog {
+  display: grid;
+  gap: 18px;
+  margin: 8px auto 56px;
+}
+.mk-changelog-entry {
+  display: grid;
+  gap: 8px;
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+@media (min-width: 760px) {
+  .mk-changelog-entry {
+    grid-template-columns: 180px 1fr;
+    gap: 20px;
+  }
+}
+.mk-changelog-entry time {
+  font-weight: 800;
+  color: var(--amber-ink);
+}
+.mk-changelog-entry h2 {
+  font-size: 1.15rem;
+  margin: 0 0 8px;
+}
+.mk-changelog-entry ul {
+  margin: 0;
+  padding-left: 1.1em;
+  color: var(--muted);
+}
+.mk-changelog-entry li {
+  margin: 4px 0;
+}

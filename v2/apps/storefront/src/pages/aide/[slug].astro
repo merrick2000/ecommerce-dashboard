@@ -1,0 +1,9 @@
+---
+import HelpArticle from '../../components/marketing/views/HelpArticle.astro'
+import { HELP } from '../../content/seo/help'
+export const prerender = false
+const a = HELP.find((x) => x.slug.fr === Astro.params.slug)
+if (!a) return Astro.rewrite('/404')
+---
+
+<HelpArticle lang="fr" article={a} />

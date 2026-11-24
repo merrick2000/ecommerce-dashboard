@@ -4,12 +4,13 @@ import { env } from 'cloudflare:workers'
 import { ALTERNATIVES, COMPARISONS, COUNTRIES, GUIDES, PATHS, alternativePath, comparisonPath, countryPath, guidePath } from '../content/seo'
 import { TOOLS } from '../content/seo/tools'
 import { BEST_PAGES, CITIES, NICHES, bestPath, cityPath, nichePath, toolPath } from '../content/seo'
-import { COMBOS, comboPath } from '../content/seo'
+import { COMBOS, comboPath, helpPath } from '../content/seo'
+import { HELP } from '../content/seo/help'
 
 export const prerender = false
 
 /** Date de dernière mise à jour des contenus (à changer quand les contenus évoluent). */
-const LASTMOD = '2026-11-20T00:00:00.000Z'
+const LASTMOD = '2026-11-24T00:00:00.000Z'
 
 type Entry = { path: string; changefreq: 'daily' | 'weekly' | 'monthly'; priority: string }
 
@@ -24,6 +25,10 @@ export const GET: APIRoute = () => {
     ...both('/tarifs', '/en/pricing', 'weekly', '0.9'),
     ...both('/a-propos', '/en/about', 'monthly', '0.6'),
     ...both('/contact', '/en/contact', 'monthly', '0.5'),
+    ...both('/fonctionnalites', '/en/features', 'weekly', '0.8'),
+    ...both('/aide', '/en/help', 'weekly', '0.7'),
+    ...both('/nouveautes', '/en/changelog', 'weekly', '0.6'),
+    ...HELP.flatMap((h) => both(helpPath(h.slug.fr, 'fr'), helpPath(h.slug.en, 'en'), 'monthly', '0.6')),
     ...both(PATHS.guides.fr, PATHS.guides.en, 'weekly', '0.9'),
     ...both(PATHS.tools.fr, PATHS.tools.en, 'weekly', '0.9'),
     ...both(PATHS.countries.fr, PATHS.countries.en, 'weekly', '0.8'),

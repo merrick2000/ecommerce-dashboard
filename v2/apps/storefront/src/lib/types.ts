@@ -117,12 +117,13 @@ export interface PublicOrder {
   paymentStatus: PaymentStatus
   fulfillmentStatus: FulfillmentStatus
   eventId: string | null
+  pixelEvent?: 'Purchase' | 'Lead'
   canDownload: boolean
   createdAt: string
 }
 
 export interface CreatedOrder {
-  order: { token: string; orderNumber: string; total: number; currency: string; paymentMethod: PaymentMethod; paymentStatus: PaymentStatus; eventId: string | null }
+  order: { token: string; orderNumber: string; total: number; currency: string; paymentMethod: PaymentMethod; paymentStatus: PaymentStatus; eventId: string | null; pixelEvent?: 'Purchase' | 'Lead' }
   promoError: string | null
 }
 

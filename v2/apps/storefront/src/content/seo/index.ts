@@ -21,7 +21,13 @@ export const PATHS = {
   cities: { fr: '/villes', en: '/en/cities' },
   niches: { fr: '/vendre', en: '/en/sell' },
   best: { fr: '/meilleur', en: '/en/best' },
+  help: { fr: '/aide', en: '/en/help' },
+  features: { fr: '/fonctionnalites', en: '/en/features' },
+  changelog: { fr: '/nouveautes', en: '/en/changelog' },
 } as const
+
+/** Article du centre d'aide. */
+export const helpPath = (slug: string, lang: Lang) => (lang === 'fr' ? `/aide/${slug}` : `/en/help/${slug}`)
 
 /**
  * Adresses alignées sur les titres (requêtes) : chaque contenu garde sa clé interne (slug des données,

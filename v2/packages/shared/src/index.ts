@@ -278,7 +278,7 @@ export const RESERVED_SLUGS = [
   'tarifs', 'prix', 'pricing', 'fonctionnalites', 'features', 'alternatives', 'alternative', 'comparatif', 'comparatifs', 'compare', 'vs',
   'guides', 'guide', 'ressources', 'pays', 'outils', 'modeles', 'exemples', 'metiers', 'cas', 'temoignages', 'partenaires', 'affiliation',
   'cgu', 'cgv', 'confidentialite', 'mentions-legales', 'legal', 'contact', 'a-propos', 'about', 'presse', 'carrieres', 'sitemap', 'robots',
-  'en', 'fr', 'countries', 'privacy', 'terms', 'tools', 'img', 'og', 'images', 'villes', 'ville', 'cities', 'vendre', 'sell', 'bonus', 'offre', 'meilleur', 'meilleure', 'meilleurs', 'best', 'abonnement', 'billing',
+  'nouveautes', 'changelog', 'en', 'fr', 'countries', 'privacy', 'terms', 'tools', 'img', 'og', 'images', 'villes', 'ville', 'cities', 'vendre', 'sell', 'bonus', 'offre', 'meilleur', 'meilleure', 'meilleurs', 'best', 'abonnement', 'billing',
 ]
 const slug = z
   .string()
@@ -642,6 +642,8 @@ export const trackingSettingsSchema = z.object({
   facebookPixelId: z.string().regex(/^\d{5,20}$/).nullable().default(null),
   facebookTestEventCode: z.string().max(40).nullable().default(null),
   tiktokPixelId: z.string().max(40).nullable().default(null),
+  /** Paiement à la livraison : achat déclaré à Meta à la création, à la confirmation ou à la livraison. */
+  codPurchaseOn: z.enum(['created', 'confirmed', 'delivered']).optional(),
   /** Jamais renvoyé en clair : seul `hasFacebookAccessToken` sort de l'API. */
   facebookAccessToken: z.string().max(500).nullable().optional(),
 })

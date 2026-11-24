@@ -7,9 +7,11 @@ import { apiGet } from './api'
 export interface ContactInfo {
   email: string
   whatsapp: string | null
+  /** Comptes officiels (réseaux sociaux, annuaires), réglés dans le super admin. */
+  socials: string[]
 }
 
-const FALLBACK: ContactInfo = { email: 'contact@zurisell.store', whatsapp: null }
+const FALLBACK: ContactInfo = { email: 'contact@zurisell.store', whatsapp: null, socials: [] }
 let cache: { at: number; value: ContactInfo } | null = null
 
 export async function contactInfo(): Promise<ContactInfo> {

@@ -1,0 +1,71 @@
+---
+/** Article du centre d'aide : réponse courte en tête (reprise par les moteurs et les assistants), détails, questions. */
+import MarketingLayout from '../MarketingLayout.astro'
+import Blocks from '../Blocks.astro'
+import FaqList from '../FaqList.astro'
+import CtaBand from '../CtaBand.astro'
+import { HELP, HELP_TOPICS, type HelpArticle } from '../../../content/seo/help'
+import { helpPath, t } from '../../../content/seo'
+import type { Lang } from '../../../content/seo'
+
+interface Props {
+  lang: Lang
+  article: HelpArticle
+}
+const { lang, article: a } = Astro.props
+const other: Lang = lang === 'fr' ? 'en' : 'fr'
+const hub = { fr: '/aide', en: '/en/help' }
+const related = HELP.filter((x) => x !== a && x.topic === a.topic).concat(HELP.filter((x) => x !== a && x.topic !== a.topic)).slice(0, 4)
+const L = { fr: { label: 'Aide', short: 'En bref', more: 'À lire aussi', updated: 'Mis à jour le 24 novembre 2026' }, en: { label: 'Help', short: 'In short', more: 'Read also', updated: 'Updated on 24 November 2026' } }[lang]
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'TechArticle',
+    headline: t(a.title, lang),
+    description: t(a.description, lang),
+    inLanguage: lang,
+    dateModified: '2026-11-24',
+    author: { '@type': 'Organization', name: 'Zuri', url: 'https://zurisell.store' },
+    about: { '@type': 'SoftwareApplication', name: 'Zuri', applicationCategory: 'BusinessApplication', url: 'https://zurisell.store' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [{ q: a.title, a: a.answer }, ...a.faqs.map((f) => ({ q: f.q, a: f.a }))].map((f) => ({ '@type': 'Question', name: t(f.q, lang), acceptedAnswer: { '@type': 'Answer', text: t(f.a, lang) } })),
+  },
+]
+---
+
+<MarketingLayout title={`${t(a.title, lang)} | Zuri`} description={t(a.description, lang)} canonicalPath={helpPath(a.slug[lang], lang)} lang={lang} alternate={{ [lang]: helpPath(a.slug[lang], lang), [other]: helpPath(a.slug[other], other) }} breadcrumbs={[{ label: L.label, href: hub[lang] }, { label: t(a.title, lang) }]} jsonLd={jsonLd} ogImage={`/og/${lang}/hub/home.jpg`} ogImageAlt={t(a.title, lang)}>
+  <section class="mk-page-hero">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">{t(HELP_TOPICS[a.topic], lang)}</span>
+      <h1 class="mk-h1 mk-h1-page">{t(a.title, lang)}</h1>
+      <p class="mk-hero-sub">{t(a.description, lang)}</p>
+    </div>
+  </section>
+  <div class="mk-wrap mk-prose mk-help-article">
+    <div class="mk-help-answer">
+      <p class="mk-help-answer-label">{L.short}</p>
+      <p>{t(a.answer, lang)}</p>
+    </div>
+    <Blocks blocks={a.blocks} lang={lang} />
+    {a.links?.length ? <p class="mk-help-links">{a.links.map((l) => <a class="mk-btn mk-btn-sm" href={l.href}>{t(l.label, lang)}</a>)}</p> : null}
+    <FaqList faqs={a.faqs} lang={lang} />
+    <p class="mk-help-updated">{L.updated}</p>
+    <section class="mk-block">
+      <h2 class="mk-h2-sm">{L.more}</h2>
+      <ul class="mk-help-list">
+        {related.map((r) => (
+          <li>
+            <a href={helpPath(r.slug[lang], lang)}>
+              <strong>{t(r.title, lang)}</strong>
+              <span>{t(r.description, lang)}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

@@ -21,8 +21,8 @@ import { getSetting } from '../services/platform'
 export const DEFAULT_CONTACT_EMAIL = 'contact@zurisell.store'
 
 export async function contactInfo() {
-  const [email, whatsapp] = await Promise.all([getSetting<string | null>('contact.email', null), getSetting<string | null>('contact.whatsapp', null)])
-  return { email: email || DEFAULT_CONTACT_EMAIL, whatsapp: whatsapp || null }
+  const [email, whatsapp, socials] = await Promise.all([getSetting<string | null>('contact.email', null), getSetting<string | null>('contact.whatsapp', null), getSetting<string[] | null>('social.links', null)])
+  return { email: email || DEFAULT_CONTACT_EMAIL, whatsapp: whatsapp || null, socials: socials ?? [] }
 }
 
 const page = (title: string, text: string) =>

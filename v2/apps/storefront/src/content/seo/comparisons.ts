@@ -24,9 +24,109 @@ const SRC = {
   maketou: { label: "Maketou, page d'accueil et FAQ", url: "https://www.maketou.com/" },
   selarFees: { label: "Selar Help Center, frais de transaction en naira", url: "https://help.selar.com/portal/en/kb/articles/how-to-pass-transaction-fees-to-your-customers-from-your-selar-dashboard" },
   selarTrustpilot: { label: "Trustpilot, avis sur selar.co", url: "https://www.trustpilot.com/review/selar.co" },
+  shopxHome: { label: "ShopX, page d'accueil et FAQ (novembre 2026)", url: "https://shopx.bj/" },
+  shopxFeatures: { label: "ShopX, page Fonctionnalités", url: "https://shopx.bj/features" },
+  shopxIntegrations: { label: "ShopX, page Intégrations (FedaPay, livraison)", url: "https://shopx.bj/integrations" },
+  bumpaHome: { label: "Bumpa, page d'accueil et FAQ (novembre 2026)", url: "https://www.getbumpa.com/" },
+  bumpaPricing: { label: "Bumpa, page Pricing", url: "https://www.getbumpa.com/pricing" },
+  zuriPricing: { label: "Zuri, page Tarifs", url: "https://zurisell.store/tarifs" },
+  zuriFeatures: { label: "Zuri, page Fonctionnalités et centre d'aide", url: "https://zurisell.store/fonctionnalites" },
 } as const
 
 export const COMPARISONS: ComparisonPage[] = [
+  // ------------------------------------------------------------ SHOPX VS ZURI
+  {
+    slug: "shopx-vs-zuri",
+    a: "ShopX",
+    b: "Zuri",
+    title: {
+      fr: "ShopX ou Zuri en 2026 : quelle boutique pour vendre au Bénin ? | Zuri",
+      en: "ShopX vs Zuri in 2026: which store to sell in Benin? | Zuri",
+    },
+    description: {
+      fr: "ShopX ou Zuri pour vendre au Bénin et en Afrique de l'Ouest ? Commissions, Mobile Money, paiement à la livraison, domaine, pixel Meta et IA comparés avec les pages officielles.",
+      en: "ShopX or Zuri to sell in Benin and West Africa? Fees, Mobile Money, cash on delivery, domain, Meta pixel and AI compared with official pages.",
+    },
+    h1: {
+      fr: "ShopX ou Zuri : laquelle choisir pour vendre au Bénin ?",
+      en: "ShopX vs Zuri: which one to sell in Benin?",
+    },
+    intro: {
+      fr: "ShopX est une plateforme béninoise (Ola Solutions, Cotonou) qui permet de créer sa boutique et d'encaisser par FedaPay. Zuri est la plateforme qui publie cette page : nous le disons clairement, et nous ne citons que ce que chaque site affiche en novembre 2026, avec les liens. Les deux visent les vendeurs d'Afrique de l'Ouest, avec des choix différents.",
+      en: "ShopX is a Beninese platform (Ola Solutions, Cotonou) to create a store and collect payments through FedaPay. Zuri is the platform publishing this page: we say it plainly, and we only cite what each site shows in November 2026, with links. Both target West African sellers, with different choices.",
+    },
+    compare: [
+      [{ fr: "Origine", en: "Origin" }, { fr: "Bénin (Cotonou)", en: "Benin (Cotonou)" }, { fr: "Afrique francophone et anglophone", en: "French and English speaking Africa" }],
+      [{ fr: "Créer la boutique", en: "Create the store" }, { fr: "Gratuit", en: "Free" }, { fr: "Gratuit pendant le lancement, puis dès 4 900 FCFA/mois", en: "Free during launch, then from 4,900 CFA/month" }],
+      [{ fr: "Commission sur les ventes en ligne", en: "Fee on online sales" }, { fr: "4 % sur les ventes que ShopX encaisse", en: "4% on sales ShopX collects" }, { fr: "0 %", en: "0%" }],
+      [{ fr: "Mobile Money", en: "Mobile Money" }, { fr: "Via FedaPay (MTN MoMo, Moov, Celtiis, Coris, BMO au Bénin ; 6 pays)", en: "Through FedaPay (MTN MoMo, Moov, Celtiis, Coris, BMO in Benin; 6 countries)" }, { fr: "Via vos comptes FedaPay, FeexPay, PayDunya ou pawaPay", en: "Through your FedaPay, FeexPay, PayDunya or pawaPay accounts" }],
+      [{ fr: "Carte bancaire", en: "Bank card" }, { fr: "« Pas encore disponible »", en: "“Not yet available”" }, { fr: "Selon le prestataire connecté", en: "Depending on the connected provider" }],
+      [{ fr: "Paiement à la livraison", en: "Cash on delivery" }, { fr: "Oui ; avec le coursier ShopX, acompte pour la course à la commande", en: "Yes; with the ShopX courier, a deposit for the ride at order time" }, { fr: "Oui, avec zones, frais et confirmation par closers", en: "Yes, with zones, fees and confirmation by closers" }],
+      [{ fr: "Domaine personnalisé", en: "Custom domain" }, { fr: "Non (votre-nom.shop.shopx.bj)", en: "No (your-name.shop.shopx.bj)" }, { fr: "Oui, par CNAME", en: "Yes, by CNAME" }],
+      [{ fr: "Pixel Meta, API Conversions", en: "Meta pixel, Conversions API" }, { fr: "Non mentionnés", en: "Not mentioned" }, { fr: "Oui, avec achat déclaré à la commande, confirmation ou livraison", en: "Yes, with purchase reported at order, confirmation or delivery" }],
+      [{ fr: "IA", en: "AI" }, { fr: "Fiche depuis une photo, studio photo, réponses aux commentaires Facebook", en: "Product from a photo, photo studio, Facebook comment replies" }, { fr: "Import depuis un lien, rédaction PASA ou AIDA, images régénérées, serveur MCP", en: "Import from a link, PASA or AIDA copywriting, regenerated images, MCP server" }],
+      [{ fr: "Autres", en: "Other" }, { fr: "Messenger, points de fidélité, caisse Facto", en: "Messenger, loyalty points, Facto point of sale" }, { fr: "Produits digitaux, tunnel (upsell), export CSV, vue en direct", en: "Digital products, funnel (upsell), CSV export, live view" }],
+    ],
+    blocks: [
+      { type: "h2", text: { fr: "Deux modèles de prix", en: "Two pricing models" } },
+      { type: "p", text: { fr: "ShopX est gratuit à la création et se rémunère par une commission : 4 % sur les ventes qu'il encaisse pour vous, rien sur celles que vous encaissez vous-même, et 8 % annoncés sur les ventes de sa future place de marché OlaShop. Zuri fonctionne par abonnement en FCFA (gratuit pendant le lancement) et ne prend aucune commission : l'argent va directement sur votre compte de paiement, avec retrait le jour même ou sous 24 heures selon le statut du compte et la formule.", en: "ShopX is free to create and earns a commission: 4% on sales it collects for you, nothing on those you collect yourself, and 8% announced on sales from its upcoming OlaShop marketplace. Zuri works by subscription in CFA francs (free during launch) and takes no commission: money goes straight to your payment account, with payout the same day or within 24 hours depending on account status and plan." } },
+      { type: "h2", text: { fr: "Livraison", en: "Delivery" } },
+      { type: "p", text: { fr: "ShopX propose son propre coursier dans les villes du Bénin qu'il dessert : il encaisse à la remise du colis, et un acompte couvrant la course est demandé à la commande. Zuri ne fournit pas de livreurs : il gère vos zones, vos frais, la confirmation par votre équipe et le suivi jusqu'à l'encaissement, avec vos propres livreurs, dans plusieurs pays.", en: "ShopX offers its own courier in the Benin cities it serves: it collects at handover, and a deposit covering the ride is required at order time. Zuri does not provide couriers: it manages your zones, fees, confirmation by your team and tracking until cash is collected, with your own couriers, in several countries." } },
+      { type: "h2", text: { fr: "Publicité", en: "Advertising" } },
+      { type: "p", text: { fr: "Si vous vendez avec des pubs Facebook ou TikTok, le suivi compte beaucoup. Les pages de ShopX ne mentionnent ni pixel ni API Conversions (seulement Messenger et les commentaires de votre page). Zuri envoie les événements au pixel et à l'API Conversions sans doublons, et vous laisse déclarer l'achat seulement à la confirmation ou à la livraison, pour que Meta apprenne des vraies ventes.", en: "If you sell with Facebook or TikTok ads, tracking matters a lot. ShopX pages mention neither a pixel nor the Conversions API (only Messenger and your page comments). Zuri sends events to the pixel and Conversions API without duplicates, and lets you report the purchase only at confirmation or delivery, so Meta learns from real sales." } },
+    ],
+    verdict: {
+      fr: "ShopX convient bien à un commerçant béninois qui veut démarrer sans abonnement, vendre aussi en boutique physique (caisse Facto) et profiter d'un coursier intégré à Cotonou, en acceptant 4 % sur les ventes encaissées en ligne. Zuri convient mieux si vous vendez avec de la publicité, en paiement à la livraison avec une équipe de confirmation, dans plusieurs pays, avec votre domaine et sans commission sur vos ventes.",
+      en: "ShopX suits a Beninese merchant who wants to start with no subscription, also sell in a physical shop (Facto point of sale) and use a built in courier in Cotonou, accepting 4% on sales collected online. Zuri fits better if you sell with ads, with cash on delivery and a confirmation team, in several countries, with your own domain and no commission on your sales.",
+    },
+    faqs: [
+      { q: { fr: "ShopX prend-il une commission ?", en: "Does ShopX take a commission?" }, a: { fr: "Oui, selon sa FAQ : 4 % sur les ventes qu'il encaisse pour vous, rien sur celles que vous encaissez vous-même.", en: "Yes, per its FAQ: 4% on sales it collects for you, nothing on those you collect yourself." } },
+      { q: { fr: "Peut-on utiliser son propre domaine avec ShopX ?", en: "Can you use your own domain with ShopX?" }, a: { fr: "Sa FAQ indique une adresse du type votre-nom.shop.shopx.bj. Zuri accepte un domaine personnalisé.", en: "Its FAQ shows an address like your-name.shop.shopx.bj. Zuri accepts a custom domain." } },
+      { q: { fr: "Lequel est le moins cher ?", en: "Which one is cheaper?" }, a: { fr: "Pour de petits volumes, ShopX (aucun abonnement). Dès que les ventes en ligne grossissent, 4 % pèse plus qu'un abonnement fixe Zuri sans commission.", en: "For small volumes, ShopX (no subscription). As online sales grow, 4% weighs more than a fixed Zuri subscription with no commission." } },
+    ],
+    sources: [SRC.shopxHome, SRC.shopxFeatures, SRC.shopxIntegrations, SRC.zuriPricing, SRC.zuriFeatures],
+  },
+  // ------------------------------------------------------------ BUMPA VS ZURI
+  {
+    slug: "bumpa-vs-zuri",
+    a: "Bumpa",
+    b: "Zuri",
+    title: {
+      fr: "Bumpa ou Zuri en 2026 : quelle plateforme pour vendre en Afrique ? | Zuri",
+      en: "Bumpa vs Zuri in 2026: which platform to sell in Africa? | Zuri",
+    },
+    description: {
+      fr: "Bumpa ou Zuri ? Prix, devises, Mobile Money, paiement à la livraison, langue et suivi publicitaire comparés avec les pages officielles.",
+      en: "Bumpa or Zuri? Prices, currencies, Mobile Money, cash on delivery, language and ad tracking compared with official pages.",
+    },
+    h1: { fr: "Bumpa ou Zuri : laquelle choisir ?", en: "Bumpa vs Zuri: which one to choose?" },
+    intro: {
+      fr: "Bumpa est une application de gestion commerciale nigériane (site, stock, commandes, caisse). Zuri est la plateforme qui publie cette page : nous ne citons que ce que chaque site affiche en novembre 2026, avec les liens. Bumpa est pensé pour le Nigeria, Zuri pour la vente en paiement à la livraison et en Mobile Money en Afrique francophone et anglophone.",
+      en: "Bumpa is a Nigerian business management app (website, inventory, orders, point of sale). Zuri is the platform publishing this page: we only cite what each site shows in November 2026, with links. Bumpa is built for Nigeria, Zuri for cash on delivery and Mobile Money sales across French and English speaking Africa.",
+    },
+    compare: [
+      [{ fr: "Marché", en: "Market" }, { fr: "Nigeria (prix en naira, domaine .com.ng)", en: "Nigeria (naira prices, .com.ng domain)" }, { fr: "Afrique francophone et anglophone, diaspora", en: "French and English speaking Africa, diaspora" }],
+      [{ fr: "Prix", en: "Price" }, { fr: "Starter 5 000 ₦/mois, Pro 10 000 ₦/mois (facturés au trimestre), essai 14 jours", en: "Starter ₦5,000/month, Pro ₦10,000/month (billed quarterly), 14 day trial" }, { fr: "Gratuit pendant le lancement, puis 4 900 à 24 900 FCFA/mois", en: "Free during launch, then 4,900 to 24,900 CFA/month" }],
+      [{ fr: "Mobile Money", en: "Mobile Money" }, { fr: "Non mentionné", en: "Not mentioned" }, { fr: "Oui (FedaPay, FeexPay, PayDunya, pawaPay)", en: "Yes (FedaPay, FeexPay, PayDunya, pawaPay)" }],
+      [{ fr: "Paiement à la livraison", en: "Cash on delivery" }, { fr: "Non mentionné", en: "Not mentioned" }, { fr: "Oui, avec closers et zones de livraison", en: "Yes, with closers and delivery zones" }],
+      [{ fr: "Langue", en: "Language" }, { fr: "Anglais", en: "English" }, { fr: "Français et anglais", en: "French and English" }],
+      [{ fr: "Pixels publicitaires", en: "Ad pixels" }, { fr: "Meta, TikTok, Snapchat", en: "Meta, TikTok, Snapchat" }, { fr: "Meta (pixel et API Conversions), TikTok", en: "Meta (pixel and Conversions API), TikTok" }],
+      [{ fr: "Export", en: "Export" }, { fr: "CSV (produits, commandes, clients, dépenses…)", en: "CSV (products, orders, customers, expenses…)" }, { fr: "CSV (commandes, clients)", en: "CSV (orders, customers)" }],
+      [{ fr: "Points forts propres", en: "Own strengths" }, { fr: "Stock, caisse Bumpa Terminal, codes-barres", en: "Inventory, Bumpa Terminal POS, barcodes" }, { fr: "Pages de vente de 20 Ko, produits digitaux, IA, tunnel d'upsell", en: "20 KB sales pages, digital products, AI, upsell funnel" }],
+    ],
+    blocks: [
+      { type: "p", text: { fr: "Bumpa est un outil complet pour un commerçant nigérian qui gère un stock, une boutique physique et un site, payé en naira ou en dollars. Ses pages ne mentionnent ni Mobile Money, ni paiement à la livraison, ni français. Zuri est pensé pour la vente par publicité avec paiement à la livraison ou Mobile Money, la confirmation par une équipe de closers, et les produits digitaux livrés automatiquement.", en: "Bumpa is a complete tool for a Nigerian merchant managing inventory, a physical shop and a website, paid in naira or dollars. Its pages mention neither Mobile Money, nor cash on delivery, nor French. Zuri is built for ad driven sales with cash on delivery or Mobile Money, confirmation by a closer team, and automatically delivered digital products." } },
+    ],
+    verdict: {
+      fr: "Bumpa est un bon choix au Nigeria pour gérer stock, caisse et site en naira. Zuri est plus adapté en Afrique francophone, au Kenya, au Ghana ou ailleurs, pour vendre en paiement à la livraison ou en Mobile Money, avec la publicité et une équipe de confirmation, en français ou en anglais.",
+      en: "Bumpa is a good choice in Nigeria to manage inventory, point of sale and website in naira. Zuri fits better in French speaking Africa, Kenya, Ghana or elsewhere, to sell with cash on delivery or Mobile Money, with ads and a confirmation team, in French or English.",
+    },
+    faqs: [
+      { q: { fr: "Bumpa fonctionne-t-il en Afrique francophone ?", en: "Does Bumpa work in French speaking Africa?" }, a: { fr: "Ses pages ne mentionnent ni le français ni le franc CFA : les prix sont en naira et le domaine offert est en .com.ng.", en: "Its pages mention neither French nor the CFA franc: prices are in naira and the offered domain is .com.ng." } },
+      { q: { fr: "Lequel gère le paiement à la livraison ?", en: "Which one handles cash on delivery?" }, a: { fr: "Zuri, avec formulaire court, zones de livraison et confirmation par closers. Les pages de Bumpa ne le mentionnent pas.", en: "Zuri, with a short form, delivery zones and confirmation by closers. Bumpa pages do not mention it." } },
+    ],
+    sources: [SRC.bumpaHome, SRC.bumpaPricing, SRC.zuriPricing, SRC.zuriFeatures],
+  },
   // ------------------------------------------------- SHOPIFY VS WOOCOMMERCE
   {
     slug: "shopify-vs-woocommerce",

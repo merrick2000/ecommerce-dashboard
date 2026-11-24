@@ -1,13 +1,15 @@
-import { ChevronLeft, ChevronRight, Search, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, Users, Download } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Badge, Button, EmptyState, ErrorState, Input, ListSkeleton, PageHeader } from '@/components/ui'
-import { useCurrency } from '@/hooks/auth'
+import { Badge, Button, buttonClass, EmptyState, ErrorState, Input, ListSkeleton, PageHeader } from '@/components/ui'
+import { useCan, useCurrency, useStoreId } from '@/hooks/auth'
 import { useCustomers } from '@/hooks/resources'
 import { useDebounced } from '@/hooks/useDebounced'
 import { money, num, prettyPhone } from '@/lib/format'
 
 export default function CustomersList() {
+  const storeId = useStoreId()
+  const canExport = useCan('orders.export')
   const currency = useCurrency()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -18,7 +20,17 @@ export default function CustomersList() {
 
   return (
     <>
-      <PageHeader title="Clients" description="Un client = un numéro de téléphone." />
+      <PageHeader
+        title="Clients"
+        description="Un client = un numéro de téléphone."
+        actions={
+          canExport ? (
+            <a href={`/api/stores/${storeId}/customers/export.csv`} className={buttonClass('secondary', 'md')} download>
+              <Download className="size-4" /> <span className="hidden sm:inline">Exporter CSV</span>
+            </a>
+          ) : undefined
+        }
+      />
       <div className="relative mb-3">
         <Search className="pointer-events-none absolute top-1/2 left-3 z-[1] size-4 -translate-y-1/2 text-subtle" />
         <Input

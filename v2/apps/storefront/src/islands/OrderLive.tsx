@@ -20,6 +20,7 @@ export interface OrderLiveProps {
   total: number
   currency: string
   eventId: string | null
+  pixelEvent?: 'Purchase' | 'Lead'
   numItems: number
   paymentMethod: string
   paymentStatus: string
@@ -48,7 +49,7 @@ export default function OrderLive(p: OrderLiveProps) {
     const saved = getJSON<{ fb: string | null; tt: string | null; productId: string; name: string; storeId: string }>(`sf_o_${p.token}`)
     if (isSale && saved && (saved.fb || saved.tt)) {
       setTrackConfig({ storeId: saved.storeId, productId: saved.productId, fb: saved.fb, tt: saved.tt, name: saved.name, value: p.total, currency: p.currency })
-      purchaseOnce(p.token, { value: p.total, currency: p.currency, eventId: p.eventId, numItems: p.numItems })
+      purchaseOnce(p.token, { value: p.total, currency: p.currency, eventId: p.eventId, numItems: p.numItems, event: p.pixelEvent })
     }
   }, [])
 

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useToast } from '@/components/Toast'
-import { Badge, Button, Card, ErrorState, Input, Select, Skeleton, Switch } from '@/components/ui'
+import { Badge, Button, Card, ErrorState, Input, Select, Skeleton, Switch, Textarea } from '@/components/ui'
 import { api } from '@/lib/api'
 import { fdate, fmt } from './shared'
 
@@ -10,7 +10,7 @@ interface PlatformSettings {
   billingEnabled: boolean
   billingAccount: { storeId?: string } | null
   urlImport: boolean
-  contact: { email: string; whatsapp: string | null }
+  contact: { email: string; whatsapp: string | null; socials: string[] }
   firecrawl: { configured: boolean; source: 'admin' | 'env' | null; hint: string | null }
   po: { configured: boolean; source: 'admin' | 'env' | null; hint: string | null; livemode: boolean | null; webhookSecretSet: boolean; webhookUrl: string }
   myStores: { id: string; name: string; accounts: { provider: string; enabled: boolean; mode: string }[] }[]
@@ -197,19 +197,30 @@ function PoPlatform({ po, onSave }: { po: PlatformSettings['po']; onSave: (body:
   )
 }
 
-function ContactSettings({ contact, onSave, saving }: { contact: PlatformSettings['contact']; onSave: (body: { contactEmail: string | null; contactWhatsapp: string | null }) => void; saving: boolean }) {
+function ContactSettings({ contact, onSave, saving }: { contact: PlatformSettings['contact']; onSave: (body: { contactEmail: string | null; contactWhatsapp: string | null; socialLinks: string[] }) => void; saving: boolean }) {
   const [email, setEmail] = useState(contact.email)
   const [whatsapp, setWhatsapp] = useState(contact.whatsapp ?? '')
+  const [socials, setSocials] = useState((contact.socials ?? []).join('\n'))
   return (
     <form
-      className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+      className="grid gap-3 sm:grid-cols-2 sm:items-end"
       onSubmit={(e) => {
         e.preventDefault()
-        onSave({ contactEmail: email.trim() || null, contactWhatsapp: whatsapp.trim() || null })
+        onSave({ contactEmail: email.trim() || null, contactWhatsapp: whatsapp.trim() || null, socialLinks: socials.split(/\s+/).map((x) => x.trim()).filter(Boolean) })
       }}
     >
       <Input label="Email de contact" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="contact@zurisell.store" />
       <Input label="WhatsApp" optional inputMode="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="+229 01 23 45 67" />
+      <Textarea
+        label="Réseaux sociaux et fiches"
+        optional
+        rows={3}
+        wrapClass="sm:col-span-2"
+        value={socials}
+        onChange={(e) => setSocials(e.target.value)}
+        placeholder={'https://www.facebook.com/zurisell\nhttps://www.linkedin.com/company/zurisell\nhttps://www.producthunt.com/products/zuri'}
+        hint="Un lien par ligne. Affichés en pied de page et donnés aux moteurs et aux IA comme comptes officiels de Zuri."
+      />
       <Button type="submit" variant="primary" loading={saving}>
         Enregistrer
       </Button>

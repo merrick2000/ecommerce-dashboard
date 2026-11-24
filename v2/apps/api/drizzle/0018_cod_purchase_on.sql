@@ -1,0 +1,1 @@
+ALTER TABLE "checkout_settings" ADD COLUMN "cod_purchase_on" varchar(12) DEFAULT 'created' NOT NULL;

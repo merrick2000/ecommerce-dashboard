@@ -50,6 +50,7 @@ export interface CheckoutSettingsResponse {
     facebookTestEventCode: string | null
     tiktokPixelId: string | null
     hasFacebookAccessToken: boolean
+    codPurchaseOn: 'created' | 'confirmed' | 'delivered'
   }
 }
 

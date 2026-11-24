@@ -1,0 +1,134 @@
+---
+/**
+ * Page Fonctionnalités (FR /fonctionnalites, EN /en/features) : tout ce que fait Zuri, chiffres mesurés en tête,
+ * chaque fonction reliée à sa réponse détaillée dans le centre d'aide. Données structurées SoftwareApplication.
+ */
+import { env } from 'cloudflare:workers'
+import { PLANS } from '@zuri/shared'
+import MarketingLayout from '../MarketingLayout.astro'
+import CtaBand from '../CtaBand.astro'
+import { COUNTRIES, helpPath, t } from '../../../content/seo'
+import { HELP } from '../../../content/seo/help'
+import type { L10n, Lang } from '../../../content/seo'
+
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const other: Lang = lang === 'fr' ? 'en' : 'fr'
+const path = { fr: '/fonctionnalites', en: '/en/features' }
+const appOrigin = import.meta.env.DEV ? 'http://localhost:5173' : (env.APP_ORIGIN ?? `https://app.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
+const countries = COUNTRIES.filter((c) => c.region !== 'diaspora').length
+const help = (fr: string) => {
+  const a = HELP.find((h) => h.slug.fr === fr)!
+  return helpPath(a.slug[lang], lang)
+}
+const M = {
+  fr: { title: 'Fonctionnalités de Zuri : boutique en ligne pour le paiement à la livraison et le Mobile Money', description: `Tout ce que fait Zuri : des pages de vente qui s’ouvrent vite même en 3G, le paiement à la livraison avec votre équipe, le Mobile Money sans commission avec votre argent le jour même ou sous 24 h, les ebooks et formations livrés tout seuls, vos pubs reliées à vos vraies ventes, l’IA. ${countries} pays.`, label: 'Fonctionnalités', h1: 'Tout ce que fait Zuri', sub: 'La boutique en ligne pensée pour vendre en Afrique : rapide sur téléphone, paiement à la livraison et Mobile Money, sans commission sur vos ventes.', facts: 'Zuri en chiffres', more: 'Détails', start: 'Créer ma boutique gratuitement' },
+  en: { title: 'Zuri features: online store for cash on delivery and Mobile Money', description: `Everything Zuri does: sales pages that open fast even on 3G, cash on delivery with your team, commission free Mobile Money with your money the same day or within 24 h, ebooks and courses delivered on their own, ads linked to your real sales, AI. ${countries} countries.`, label: 'Features', h1: 'Everything Zuri does', sub: 'The online store built to sell in Africa: fast on phones, cash on delivery and Mobile Money, no commission on your sales.', facts: 'Zuri in numbers', more: 'Details', start: 'Create my store for free' },
+}[lang]
+
+const stats: [string, L10n][] = [
+  ['3G', { fr: 'Vos pages s’ouvrent vite même sur un petit téléphone en 3G : le client voit votre produit avant de partir', en: 'Your pages open fast even on a small phone on 3G: customers see your product before they leave' }],
+  ['0 %', { fr: 'de commission : chaque franc vendu est pour vous', en: 'commission: every franc you sell is yours' }],
+  ['24 h', { fr: 'au plus pour avoir votre argent Mobile Money, souvent le jour même', en: 'at most to get your Mobile Money, often the same day' }],
+  ['1 min', { fr: 'pour mettre un produit en vente : collez le lien d’un produit, tout est repris', en: 'to put a product on sale: paste a product link, everything is filled in' }],
+  [`${countries}`, { fr: 'pays d’Afrique, en français et en anglais', en: 'African countries, in French and English' }],
+  ['IA', { fr: 'qui écrit vos textes de vente et répond à vos questions sur vos ventes', en: 'that writes your sales copy and answers your questions about your sales' }],
+]
+
+const groups: { title: L10n; help: string; items: L10n[] }[] = [
+  { title: { fr: 'Une belle page qui vend', en: 'A beautiful page that sells' }, help: 'pages-de-vente-rapides', items: [
+    { fr: 'Votre page de vente prête en quelques minutes, à vos couleurs', en: 'Your sales page ready in minutes, in your colours' },
+    { fr: 'Promos, prix barré, compte à rebours, « plus que 3 en stock »', en: 'Promos, crossed out price, countdown, “only 3 left”' },
+    { fr: 'Offres « 2 achetés, le 3e moins cher » et packs de produits', en: '“Buy 2, get the 3rd cheaper” offers and product bundles' },
+    { fr: 'Bouton WhatsApp, vidéo, avis clients, questions fréquentes', en: 'WhatsApp button, video, customer reviews, FAQ' },
+  ] },
+  { title: { fr: 'Paiement à la livraison', en: 'Cash on delivery' }, help: 'paiement-a-la-livraison-et-closers', items: [
+    { fr: 'Le client commande en 30 secondes, sans payer d’avance', en: 'Customers order in 30 seconds, without paying upfront' },
+    { fr: 'Chaque commande sonne sur votre téléphone', en: 'Every order rings on your phone' },
+    { fr: 'Votre équipe appelle et confirme, vous suivez qui fait quoi', en: 'Your team calls and confirms, you see who does what' },
+    { fr: 'Vous savez ce qui est livré, retourné et vraiment encaissé', en: 'You know what is delivered, returned and actually cashed' },
+  ] },
+  { title: { fr: 'Mobile Money', en: 'Mobile Money' }, help: 'mobile-money-et-retraits', items: [
+    { fr: 'Orange Money, MTN MoMo, Moov, Wave, M-Pesa… selon le pays', en: 'Orange Money, MTN MoMo, Moov, Wave, M-Pesa… depending on the country' },
+    { fr: 'L’argent arrive sur votre compte, pas chez Zuri', en: 'The money lands in your account, not Zuri’s' },
+    { fr: 'Retrait le jour même ou sous 24 h', en: 'Withdraw the same day or within 24 h' },
+    { fr: 'Un paiement échoue ? Vous relancez le client en un clic', en: 'A payment fails? Follow up with the customer in one click' },
+  ] },
+  { title: { fr: 'Ebooks et formations', en: 'Ebooks and courses' }, help: 'vendre-des-produits-digitaux', items: [
+    { fr: 'Le client paie et reçoit son produit tout de suite, sans vous', en: 'The customer pays and gets the product right away, without you' },
+    { fr: 'Il peut le retélécharger quand il veut', en: 'They can download it again anytime' },
+    { fr: 'Les clients qui n’ont pas fini de payer sont relancés tout seuls', en: 'Customers who did not finish paying are followed up automatically' },
+    { fr: 'Vous traitez des dizaines de ventes en un clic', en: 'You handle dozens of sales in one click' },
+  ] },
+  { title: { fr: 'Publicités Facebook et TikTok', en: 'Facebook and TikTok ads' }, help: 'pixel-facebook-api-conversions-tiktok', items: [
+    { fr: 'Vos pubs sont reliées à vos vraies ventes', en: 'Your ads are linked to your real sales' },
+    { fr: 'Facebook apprend des commandes vraiment livrées, pas des fausses', en: 'Facebook learns from orders really delivered, not fake ones' },
+    { fr: 'Vous voyez quelle pub vend et laquelle fait perdre de l’argent', en: 'You see which ad sells and which one loses money' },
+    { fr: 'Votre vrai bénéfice, une fois pub et livraison payées', en: 'Your real profit, once ads and delivery are paid' },
+  ] },
+  { title: { fr: 'L’IA qui travaille pour vous', en: 'AI working for you' }, help: 'import-par-lien-et-ia', items: [
+    { fr: 'Collez le lien d’un produit (AliExpress, Shopify, Jumia…) : il est importé', en: 'Paste a product link (AliExpress, Shopify, Jumia…): it is imported' },
+    { fr: 'L’IA écrit un texte qui donne envie d’acheter', en: 'The AI writes copy that makes people want to buy' },
+    { fr: 'Elle refait les photos moches de la description', en: 'It redoes the ugly photos in the description' },
+    { fr: 'Vos clients et commandes s’exportent dans Excel', en: 'Your customers and orders export to Excel' },
+  ] },
+]
+
+const offers = (['free', 'starter', 'pro', 'business'] as const).map((id) => ({ '@type': 'Offer', name: PLANS[id].name, price: PLANS[id].priceXof, priceCurrency: 'XOF', category: 'subscription' }))
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Zuri',
+    alternateName: 'Zuri (zurisell.store)',
+    url: 'https://zurisell.store',
+    applicationCategory: 'BusinessApplication',
+    applicationSubCategory: lang === 'fr' ? 'Boutique en ligne, e-commerce' : 'Online store, ecommerce',
+    operatingSystem: 'Web, Android, iOS',
+    inLanguage: ['fr', 'en'],
+    description: `${M.description}`,
+    featureList: groups.flatMap((g) => g.items.map((i) => t(i, lang))),
+    offers,
+  },
+]
+---
+
+<MarketingLayout title={M.title} description={M.description} canonicalPath={path[lang]} lang={lang} alternate={{ [lang]: path[lang], [other]: path[other] }} breadcrumbs={[{ label: M.label }]} jsonLd={jsonLd} ogImage={`/og/${lang}/hub/home.jpg`} ogImageAlt={M.h1}>
+  <section class="mk-page-hero">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">{M.label}</span>
+      <h1 class="mk-h1 mk-h1-page">{M.h1}</h1>
+      <p class="mk-hero-sub">{M.sub}</p>
+      <p><a class="mk-btn mk-btn-amber" href={`${appOrigin}/register`}>{M.start}</a></p>
+    </div>
+  </section>
+  <div class="mk-wrap">
+    <section class="mk-block">
+      <h2 class="mk-h2-sm">{M.facts}</h2>
+      <dl class="mk-feat-stats">
+        {stats.map(([n, label]) => (
+          <div>
+            <dt>{n}</dt>
+            <dd>{t(label, lang)}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+    <div class="mk-feat-grid">
+      {groups.map((g) => (
+        <section class="mk-feat-card">
+          <h2>{t(g.title, lang)}</h2>
+          <ul>
+            {g.items.map((i) => (
+              <li>{t(i, lang)}</li>
+            ))}
+          </ul>
+          <a href={help(g.help)}>{M.more}</a>
+        </section>
+      ))}
+    </div>
+  </div>
+  <CtaBand lang={lang} />
+</MarketingLayout>

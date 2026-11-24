@@ -11,7 +11,7 @@ import type { CheckoutSettingsResponse } from '@/lib/types'
 function Form({ tracking, canEdit }: { tracking: CheckoutSettingsResponse['tracking']; canEdit: boolean }) {
   const save = useSaveTracking()
   const toast = useToast()
-  const initial = { facebookPixelId: tracking.facebookPixelId ?? '', facebookTestEventCode: tracking.facebookTestEventCode ?? '', tiktokPixelId: tracking.tiktokPixelId ?? '', token: '' }
+  const initial = { facebookPixelId: tracking.facebookPixelId ?? '', facebookTestEventCode: tracking.facebookTestEventCode ?? '', tiktokPixelId: tracking.tiktokPixelId ?? '', token: '', codPurchaseOn: tracking.codPurchaseOn ?? 'created' }
   const [f, setF] = useState(initial)
   const [clearToken, setClearToken] = useState(false)
   const dirty = JSON.stringify(f) !== JSON.stringify(initial) || clearToken
@@ -23,6 +23,7 @@ function Form({ tracking, canEdit }: { tracking: CheckoutSettingsResponse['track
       facebookPixelId: strOrNull(f.facebookPixelId),
       facebookTestEventCode: strOrNull(f.facebookTestEventCode),
       tiktokPixelId: strOrNull(f.tiktokPixelId),
+      codPurchaseOn: f.codPurchaseOn,
     }
     // Absent = inchangé ; null = supprimer ; valeur = remplacer.
     if (clearToken) payload.facebookAccessToken = null
@@ -81,6 +82,24 @@ function Form({ tracking, canEdit }: { tracking: CheckoutSettingsResponse['track
               )}
             </div>
           </div>
+        </Card>
+        <Card title="Paiement à la livraison : quand déclarer l’achat à Meta ?" description="Les pubs apprennent des achats que vous déclarez. En paiement à la livraison, beaucoup de commandes ne sont jamais livrées : déclarer l’achat plus tard apprend à Meta à trouver des clients qui paient vraiment. Avant ce moment, la commande est déclarée comme prospect (Lead).">
+          <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Moment de l’achat déclaré à Meta">
+            {(
+              [
+                ['created', 'À la commande', 'Le plus de signaux, le plus vite. Comptabilise aussi les commandes qui ne seront pas livrées.'],
+                ['confirmed', 'À la confirmation', 'Quand votre équipe confirme la commande par téléphone. Bon équilibre (recommandé).'],
+                ['delivered', 'À la livraison', 'Seulement les ventes encaissées. Le signal le plus juste, mais plus tardif.'],
+              ] as const
+            ).map(([value, label, text]) => (
+              <label key={value} className={`cursor-pointer rounded-lg border p-3 text-sm transition-colors ${f.codPurchaseOn === value ? 'border-accent bg-accent/5 ring-1 ring-accent' : 'border-line hover:bg-surface-2'}`}>
+                <input type="radio" name="codPurchaseOn" value={value} checked={f.codPurchaseOn === value} onChange={() => setF({ ...f, codPurchaseOn: value })} className="sr-only" />
+                <span className="block font-semibold">{label}</span>
+                <span className="mt-1 block text-[13px] text-muted">{text}</span>
+              </label>
+            ))}
+          </div>
+          <p className="mt-3 text-[13px] text-muted">L’achat différé part de nos serveurs par l’API Conversions : renseignez le jeton d’accès ci-dessus. Les paiements en ligne restent déclarés dès qu’ils sont payés.</p>
         </Card>
         <Card title="TikTok">
           <Input label="ID du pixel TikTok" value={f.tiktokPixelId} onChange={(e) => setF({ ...f, tiktokPixelId: e.target.value })} error={errors.tiktokPixelId} />
