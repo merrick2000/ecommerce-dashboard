@@ -564,6 +564,18 @@ function combineBrowser(fp: ImportDraft, html: ImportDraft | null): ImportDraft 
   }
 }
 
+/**
+ * Contenu trop maigre pour une vraie page de vente : description absente, très courte ou tronquée (« … »),
+ * ou produit digital sans aucun point fort ni question. Les données structurées (JSON-LD) ne donnent souvent
+ * qu'un résumé : on lit alors la page complète.
+ */
+export function thinContent(d: ImportDraft, kind: 'physical' | 'digital' = 'physical'): boolean {
+  const text = stripTags(d.description)
+  if (text.length < 400) return true
+  if (/(\.\.\.|…)\s*$/.test(text)) return true
+  return kind === 'digital' && !d.features.length && !d.faqs.length && text.length < 1200
+}
+
 const completeness = (d: ImportDraft) => (d.name ? 1 : 0) + (d.price != null ? 1 : 0) + (d.images.length ? 1 : 0)
 
 /** Texte lisible d'une page HTML (pour l'IA quand Firecrawl n'a pas fourni de markdown). */
@@ -589,7 +601,9 @@ function mergeAi(base: ImportDraft | null, ai: AiExtraction, structured = false)
     base = { ...base, name: ai.name ? '' : base.name, price: ai.price != null ? null : base.price, currency: ai.price != null ? null : base.currency, description: ai.description ? '' : base.description }
   }
   const d: ImportDraft = base ?? { type: 'physical', name: '', description: '', price: null, compareAtPrice: null, currency: null, variantLabel: null, variants: [], images: [], video: null, features: [], faqs: [], testimonials: [], brand: null }
-  const description = d.description && stripTags(d.description).length > 80 ? d.description : sanitizeHtml(ai.description)
+  // Description : celle de l'IA dès que la nôtre est maigre (résumé tronqué des données structurées) et que la sienne est plus riche.
+  const aiDesc = sanitizeHtml(ai.description)
+  const description = d.description && !thinContent(d) ? d.description : stripTags(aiDesc).length > stripTags(d.description).length ? aiDesc : d.description
   return {
     ...d,
     name: d.name || clean(ai.name, 160),
@@ -601,7 +615,8 @@ function mergeAi(base: ImportDraft | null, ai: AiExtraction, structured = false)
     features: d.features.length ? d.features : ai.features.map((f) => clean(f, 200)).filter(Boolean),
     variantLabel: d.variantLabel ?? (ai.variants.length ? (ai.variantLabel ?? 'Option') : null),
     variants: d.variants.length ? d.variants : ai.variants.map((v) => ({ name: clean(v.name, 80), price: v.price, available: true, sku: null })).filter((v) => v.name),
-    images: dedupe([...ai.imageUrls, ...d.images]).slice(0, 20),
+    // Données structurées : leurs photos restent en tête (couverture), celles de l'IA complètent.
+    images: dedupe(structured ? [...d.images, ...ai.imageUrls] : [...ai.imageUrls, ...d.images]).slice(0, 20),
     faqs: d.faqs.length ? d.faqs : ai.faqs,
   }
 }
@@ -637,6 +652,8 @@ export async function previewFromUrl(rawUrl: string, storeCurrency: string, kind
     if (!best || completeness(r.draft) > completeness(best.r.draft)) best = { r, page }
   }
   const done = () => best && completeness(best.r.draft) === 3
+  // Nom, prix et photos trouvés mais contenu maigre : on continue pour récupérer la page entière.
+  const needsContent = () => !!best && thinContent(best.r.draft, kind)
 
   // 1. Lecture directe.
   try {
@@ -664,7 +681,7 @@ export async function previewFromUrl(rawUrl: string, storeCurrency: string, kind
 
   // 2. Firecrawl : vrai navigateur, JavaScript exécuté, proxys anti-blocage.
   const browser = await firecrawlAvailable()
-  if (!done() && browser) {
+  if ((!done() || needsContent()) && browser) {
     try {
       const page = await fetchWithFirecrawl(rawUrl)
       const blocked = softBlocked(rawUrl, page)
@@ -689,7 +706,7 @@ export async function previewFromUrl(rawUrl: string, storeCurrency: string, kind
   const current = best as { r: Omit<UrlPreview, 'domain'>; page: FetchedPage | null } | null
   // L'IA lit de préférence la page rendue par le navigateur distant : prix et contenus affichés en JavaScript y figurent.
   const page = renderedPage?.markdown ? renderedPage : (current?.page ?? lastPage)
-  if (!done() && aiAvailable() && page && (page.markdown || page.html) && !(page.status >= 400 && !page.markdown)) {
+  if ((!done() || needsContent()) && aiAvailable() && page && (page.markdown || page.html) && !(page.status >= 400 && !page.markdown)) {
     try {
       const text = page.markdown ?? htmlToText(page.html)
       if (text.length > 40) {

@@ -15,7 +15,15 @@ export class ApiError extends Error {
   issues: FieldIssue[]
 
   constructor(status: number, body: Partial<ApiErrorBody> | null) {
-    super(body?.error ?? (status === 0 ? 'Connexion impossible. Vérifiez votre réseau.' : `Erreur ${status}`))
+    super(
+      body?.error ??
+        (status === 0
+          ? 'Connexion impossible. Vérifiez votre réseau.'
+          : // Réponse du serveur d'hébergement (redémarrage, mise à jour) plutôt que de l'API elle-même.
+            status === 502 || status === 503 || status === 504
+            ? 'Le serveur redémarre ou est momentanément indisponible. Réessayez dans un instant.'
+            : `Erreur ${status}`),
+    )
     this.status = status
     this.code = body?.code
     this.issues = Array.isArray(body?.issues) ? (body.issues as FieldIssue[]).filter((i) => typeof i?.path === 'string') : []
@@ -76,8 +84,8 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   const isForm = typeof FormData !== 'undefined' && opts.body instanceof FormData
   let res: Response
   // Limite de 35 s : au-delà, message clair au lieu d'un bouton qui tourne sans fin.
-  // Imports de produits (images distantes, IA) : jusqu'à 2 min ; le reste : 35 s.
-  const { signal, timedOut } = withTimeout(opts.signal, path.includes('/products/import/') ? 175_000 : 35_000)
+  // Imports de produits et rédaction IA (images distantes, IA) : jusqu'à 3 min ; le reste : 35 s.
+  const { signal, timedOut } = withTimeout(opts.signal, path.includes('/products/import/') || path.includes('/products/ai/') ? 175_000 : 35_000)
   try {
     res = await fetch(withQuery(`/api${path}`, opts.query), {
       method: opts.method ?? 'GET',

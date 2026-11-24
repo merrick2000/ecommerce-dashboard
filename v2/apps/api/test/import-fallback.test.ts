@@ -150,3 +150,15 @@ describe('import : produits digitaux', () => {
     expect(p.draft.features).toContain('Accès à vie')
   })
 })
+
+describe('contenu maigre : on lit la page complète', () => {
+  test('description tronquée ou trop courte détectée, page riche acceptée', async () => {
+    const { thinContent } = await import('../src/services/url-import')
+    const base = { type: 'digital' as const, name: 'Formation', price: 10000, compareAtPrice: null, currency: 'XOF', variantLabel: null, variants: [], images: [], video: null, features: [], faqs: [], testimonials: [], brand: null }
+    expect(thinContent({ ...base, description: '<p>Marre de vouloir gagner de l’argent en ligne ? Avec ...</p>' }, 'digital')).toBe(true)
+    expect(thinContent({ ...base, description: `<p>${'Une phrase complète sur la formation. '.repeat(20)}…</p>` }, 'physical')).toBe(true)
+    const rich = `<p>${'Module détaillé avec ses leçons et ses exercices pratiques. '.repeat(30)}</p>`
+    expect(thinContent({ ...base, description: rich, features: ['11 modules'] }, 'digital')).toBe(false)
+    expect(thinContent({ ...base, description: rich }, 'physical')).toBe(false)
+  })
+})
