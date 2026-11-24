@@ -4186,8 +4186,15 @@ svg {
 }
 
 /* Offre sur les formules (Black Friday) : ancien prix barré et mention sous le prix. */
+.mk-plan-price:has(.mk-plan-old) {
+  flex-wrap: wrap;
+  row-gap: 0;
+}
 .mk-plan-old {
-  margin-right: 0.4rem;
+  display: block;
+  flex-basis: 100%;
+  white-space: nowrap;
+  margin-bottom: 0.1rem;
   color: var(--mk-muted, #71717a);
   font-size: 1rem;
   font-weight: 500;

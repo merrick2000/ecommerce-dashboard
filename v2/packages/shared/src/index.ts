@@ -1041,7 +1041,7 @@ export const promoActive = (p: BillingPromo | null | undefined, now = Date.now()
   !!p && p.active && p.percent > 0 && new Date(p.endsAt).getTime() > now
 /** Prix après réduction, arrondi à 5 F. */
 export const promoPrice = (amount: number, p: BillingPromo | null | undefined, now = Date.now()) =>
-  promoActive(p, now) ? Math.max(5, Math.round((amount * (100 - p.percent)) / 100 / 5) * 5) : amount
+  amount > 0 && promoActive(p, now) ? Math.max(5, Math.round((amount * (100 - p.percent)) / 100 / 5) * 5) : amount
 
 /** Calendrier de lancement. */
 export const LAUNCH = {

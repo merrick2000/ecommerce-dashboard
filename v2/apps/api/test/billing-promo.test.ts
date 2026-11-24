@@ -15,6 +15,8 @@ describe('offre sur les formules', () => {
     expect(promoPrice(4900, { ...on, active: false })).toBe(4900)
     expect(promoPrice(4900, { ...on, endsAt: new Date(Date.now() - 1000).toISOString() })).toBe(4900)
     expect(promoActive(null)).toBe(false)
+    // Formule gratuite : jamais de prix créé par l'arrondi.
+    expect(promoPrice(0, on)).toBe(0)
   })
 
   test('réglée dans le super admin, visible sur le site, arrêtable', async () => {
