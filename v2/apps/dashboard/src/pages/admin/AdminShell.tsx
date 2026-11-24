@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, BarChart3, Mail, MessageSquareQuote, Settings, Shield, Store, Users } from 'lucide-react'
+import { ArrowLeft, BarChart3, Mail, Megaphone, MessageSquareQuote, Settings, Shield, Store, Users } from 'lucide-react'
 import { Navigate, NavLink, Outlet } from 'react-router'
 import { Logo } from '@/components/layout/Guards'
 import { cx } from '@/components/ui'
@@ -13,6 +13,7 @@ const NAV = [
   { to: '/admin/stores', label: 'Boutiques', icon: Store },
   { to: '/admin/messages', label: 'Messages', icon: Mail },
   { to: '/admin/reviews', label: 'Avis', icon: MessageSquareQuote },
+  { to: '/admin/announcements', label: 'Annonces', icon: Megaphone },
   { to: '/admin/settings', label: 'Réglages', icon: Settings },
 ]
 

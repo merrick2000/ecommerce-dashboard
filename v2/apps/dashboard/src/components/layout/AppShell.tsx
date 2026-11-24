@@ -2,6 +2,7 @@ import type { Permission } from '@zuri/shared'
 import { Activity, Bell, Bot, ChartLine, Check, ChevronsUpDown, Crown, LayoutDashboard, LogOut, Menu, Moon, Package, PanelLeftClose, PanelLeftOpen, PauseCircle, Plus, Receipt, Settings, Shield, ShoppingBag, Sun, Tag, Truck, UserPlus, Users, type LucideIcon, Gift } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Outlet, useLocation, useNavigate, useNavigation } from 'react-router'
+import { Announcements } from '@/components/Announcements'
 import { useCurrentStore, useLogout, usePermissions } from '@/hooks/auth'
 import { useOrders } from '@/hooks/resources'
 import { useOrderAlerts } from '@/hooks/orderAlerts'
@@ -284,6 +285,7 @@ export function AppShell() {
       </header>
 
       <main className="mx-auto w-full max-w-6xl px-4 pt-4 pb-28 sm:px-6 lg:px-8 lg:pt-8 lg:pb-12">
+        <Announcements />
         {store?.status === 'paused' && (
           <NavLink to={href('settings')} className="mb-4 flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
             <PauseCircle className="size-4 shrink-0" /> Ta boutique est en pause : personne ne peut commander. <span className="font-semibold underline">Rouvrir</span>

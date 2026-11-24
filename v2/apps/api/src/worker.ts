@@ -9,6 +9,7 @@ import { dispatchNotification } from './services/notifications'
 import { runOnboarding } from './services/onboarding'
 import { notifyPlatformAdmins } from './services/admin-notify'
 import { checkReferralReward } from './services/referrals'
+import { pushAnnouncement } from './services/announcements'
 
 const boss = await getBoss()
 
@@ -24,6 +25,7 @@ await boss.work('leads.remind', async () => {
 
 await boss.work('payments.reconcile', async () => reconcilePendingPayments())
 await boss.work<JobPayloads['order.capi-purchase']>('order.capi-purchase', async ([job]) => job && handleCapiPurchase(job.data))
+await boss.work<JobPayloads['announcement.push']>('announcement.push', async ([job]) => job && pushAnnouncement(job.data.id))
 await boss.work<JobPayloads['referral.check']>('referral.check', async ([job]) => job && checkReferralReward(job.data.storeId))
 await boss.work<JobPayloads['admin.notify']>('admin.notify', async ([job]) => job && notifyPlatformAdmins(job.data))
 await boss.work('onboarding.run', async () => {

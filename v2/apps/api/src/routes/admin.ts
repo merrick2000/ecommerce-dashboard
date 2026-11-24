@@ -8,8 +8,10 @@ import { Hono } from 'hono'
 import { createMiddleware } from 'hono/factory'
 import { z } from 'zod'
 import { db } from '../db/client'
-import { billingPayments, contactMessages, onboardingEmails, sellerReviews, orders, paymentAccounts, sessions, storeMembers, stores, subscriptions, users } from '../db/schema'
+import { announcementDismissals, announcements, billingPayments, contactMessages, onboardingEmails, sellerReviews, orders, paymentAccounts, sessions, storeMembers, stores, subscriptions, users } from '../db/schema'
 import { contactInfo } from './site'
+import { audienceSize } from '../services/announcements'
+import { enqueue } from '../jobs/queue'
 import { requireAuth } from '../lib/auth'
 import type { AppEnv } from '../lib/context'
 import { HttpError } from '../lib/errors'
@@ -40,6 +42,25 @@ function sourceLabel(s: Record<string, string | undefined> | null | undefined) {
   if (s.landing || s.from) return 'Direct'
   return 'Inconnue'
 }
+
+const audienceSchema = z.object({
+  stages: z.array(z.enum(['no_store', 'no_product', 'no_order', 'active'])).max(4).optional(),
+  langs: z.array(z.enum(['fr', 'en'])).max(2).optional(),
+  kinds: z.array(z.enum(['physical', 'digital'])).max(2).optional(),
+  countries: z.array(z.string().trim().toUpperCase().length(2)).max(60).optional(),
+})
+const announcementSchema = z.object({
+  title: z.string().trim().min(3, 'Titre trop court').max(120),
+  body: z.string().trim().min(5, 'Texte trop court').max(600),
+  ctaLabel: z.string().trim().max(40).nullable().optional(),
+  ctaUrl: z.string().trim().max(300).regex(/^(\/|https:\/\/)/, 'Lien : un chemin (/billing) ou une adresse https://').nullable().optional().or(z.literal('')),
+  tone: z.enum(['info', 'promo', 'warning']).default('info'),
+  audience: audienceSchema.default({}),
+  startsAt: z.coerce.date().optional(),
+  endsAt: z.coerce.date().nullable().optional(),
+  active: z.boolean().default(true),
+  push: z.boolean().default(false),
+})
 
 /** Étape du vendeur dans son démarrage : sans boutique, sans produit, sans vente, ou actif. */
 const STAGE = dsql<'no_store' | 'no_product' | 'no_order' | 'active'>`(case
@@ -270,6 +291,33 @@ export const adminRoutes = new Hono<AppEnv>()
     if (body.paymentsOnline !== undefined) await setSetting('payments.online', body.paymentsOnline)
     if (body.billingEnabled !== undefined) await setSetting('billing.enabled', body.billingEnabled)
     if (body.billingStoreId !== undefined) await setSetting('billing.account', body.billingStoreId ? { storeId: body.billingStoreId } : null)
+    return c.json({ ok: true })
+  })
+  /** Annonces aux vendeurs : bandeau du tableau de bord, notification en option, ciblage. */
+  .get('/announcements', async (c) => {
+    const rows = await db
+      .select({ a: announcements, dismissed: dsql<number>`(select count(*)::int from ${announcementDismissals} d where d.announcement_id = ${announcements.id})` })
+      .from(announcements)
+      .orderBy(desc(announcements.createdAt))
+      .limit(100)
+    return c.json(await Promise.all(rows.map(async (r) => ({ ...r.a, dismissed: r.dismissed, audienceSize: await audienceSize(r.a.audience) }))))
+  })
+  .post('/announcements/audience', v('json', z.object({ audience: audienceSchema })), async (c) => c.json({ size: await audienceSize(c.req.valid('json').audience) }))
+  .post('/announcements', v('json', announcementSchema), async (c) => {
+    const b = c.req.valid('json')
+    const [row] = await db.insert(announcements).values({ ...b, ctaLabel: b.ctaLabel || null, ctaUrl: b.ctaUrl || null }).returning()
+    if (row!.push && row!.active && row!.startsAt <= new Date()) await enqueue('announcement.push', { id: row!.id })
+    return c.json(row, 201)
+  })
+  .patch('/announcements/:id', v('param', z.object({ id: z.coerce.number().int() })), v('json', announcementSchema.partial()), async (c) => {
+    const b = c.req.valid('json')
+    const [row] = await db.update(announcements).set({ ...b, ...(b.ctaLabel !== undefined ? { ctaLabel: b.ctaLabel || null } : {}), ...(b.ctaUrl !== undefined ? { ctaUrl: b.ctaUrl || null } : {}) }).where(eq(announcements.id, c.req.valid('param').id)).returning()
+    if (!row) throw new HttpError(404, 'Annonce introuvable', 'not_found')
+    if (row.push && row.active && !row.pushedAt && row.startsAt <= new Date()) await enqueue('announcement.push', { id: row.id })
+    return c.json(row)
+  })
+  .delete('/announcements/:id', v('param', z.object({ id: z.coerce.number().int() })), async (c) => {
+    await db.delete(announcements).where(eq(announcements.id, c.req.valid('param').id))
     return c.json({ ok: true })
   })
   /** Avis des vendeurs : notes, témoignages à valider avant publication sur le site. */

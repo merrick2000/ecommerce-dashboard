@@ -919,3 +919,50 @@ export const sellerReviews = pgTable('seller_reviews', {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 })
+
+// ─── Annonces de la plateforme aux vendeurs ──────────────────────────────────
+
+export interface AnnouncementAudience {
+  /** Étape du vendeur : no_store, no_product, no_order, active. Vide = toutes. */
+  stages?: ('no_store' | 'no_product' | 'no_order' | 'active')[]
+  langs?: ('fr' | 'en')[]
+  kinds?: ('physical' | 'digital')[]
+  /** Codes pays ISO (pays du compte ou de sa boutique). */
+  countries?: string[]
+}
+
+/** Annonce publiée par le super admin : bandeau dans le tableau de bord, notification en option. */
+export const announcements = pgTable('announcements', {
+  id: id(),
+  title: varchar('title', { length: 120 }).notNull(),
+  body: varchar('body', { length: 600 }).notNull(),
+  ctaLabel: varchar('cta_label', { length: 40 }),
+  /** Chemin du tableau de bord (/billing, /referrals…) ou adresse complète. */
+  ctaUrl: varchar('cta_url', { length: 300 }),
+  /** info | promo | warning */
+  tone: varchar('tone', { length: 10 }).notNull().default('info'),
+  audience: jsonb('audience').$type<AnnouncementAudience>().notNull().default({}),
+  startsAt: ts('starts_at').notNull().defaultNow(),
+  endsAt: ts('ends_at'),
+  active: boolean('active').notNull().default(true),
+  push: boolean('push').notNull().default(false),
+  pushedAt: ts('pushed_at'),
+  pushedCount: integer('pushed_count'),
+  clicks: integer('clicks').notNull().default(0),
+  createdAt: createdAt(),
+})
+
+/** Annonce fermée par un vendeur : elle ne lui est plus montrée. */
+export const announcementDismissals = pgTable(
+  'announcement_dismissals',
+  {
+    announcementId: fk('announcement_id')
+      .notNull()
+      .references(() => announcements.id, { onDelete: 'cascade' }),
+    userId: fk('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.announcementId, t.userId] })],
+)
