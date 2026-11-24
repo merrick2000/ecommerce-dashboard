@@ -2,7 +2,7 @@ import { PLANS, priceFor, type EffectivePlan, type PlanDef } from '@zuri/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Check, Crown, Loader2, Smartphone } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { Dialog } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, cx, ErrorState, Input, Segmented, Select, Skeleton } from '@/components/ui'
@@ -221,6 +221,20 @@ export default function Billing() {
   const [months, setMonths] = useState<1 | 12>(1)
   const [picked, setPicked] = useState<PlanDef | null>(null)
   const { data, error, isPending, refetch } = useQuery({ queryKey: ['billing'], queryFn: () => api.get<BillingInfo>('/billing') })
+  // Lien d'une relance (?plan=starter&months=1) : la formule choisie s'ouvre directement au paiement.
+  const [params, setParams] = useSearchParams()
+  useEffect(() => {
+    const wanted = params.get('plan')
+    if (!wanted || !data?.canPay) return
+    const plan = data.plans.find((p) => p.id === wanted && p.id !== 'free')
+    if (plan) {
+      setMonths(params.get('months') === '12' ? 12 : 1)
+      setPicked(plan)
+    }
+    params.delete('plan')
+    params.delete('months')
+    setParams(params, { replace: true })
+  }, [data, params, setParams])
   const last = readLocal(LAST_STORE_KEY) ?? me?.stores[0]?.id
   const sum = data ? planSummary(data.plan) : null
 

@@ -104,7 +104,7 @@ export default function AdminUserDetail() {
             {data.nudges.map((n) => (
               <li key={`${n.kind}-${n.step}`} className="flex items-center justify-between gap-3 py-2">
                 <span>
-                  {NUDGE_LABEL[n.kind] ?? n.kind} <span className="text-muted">· relance {n.step}</span>
+                  {n.kind.startsWith('billing_') ? 'Terminer le paiement de l’abonnement' : (NUDGE_LABEL[n.kind] ?? n.kind)} <span className="text-muted">· relance {n.step}</span>
                 </span>
                 <span className="text-muted">{fdate(n.at, true)}</span>
               </li>

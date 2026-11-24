@@ -7,6 +7,7 @@ import { handleAccountNotify, handleCapiPurchase, handleLeadsNotifySellers, hand
 import { reconcilePendingPayments } from './payments/service'
 import { dispatchNotification } from './services/notifications'
 import { runOnboarding } from './services/onboarding'
+import { runBillingRecovery } from './services/billing-recovery'
 import { notifyPlatformAdmins } from './services/admin-notify'
 import { checkReferralReward } from './services/referrals'
 import { pushAnnouncement } from './services/announcements'
@@ -31,6 +32,8 @@ await boss.work<JobPayloads['admin.notify']>('admin.notify', async ([job]) => jo
 await boss.work('onboarding.run', async () => {
   const n = await runOnboarding()
   if (n) console.log(`[onboarding] ${n} email(s) envoyé(s)`)
+  const b = await runBillingRecovery()
+  if (b) console.log(`[abonnements] ${b} relance(s) de paiement abandonné`)
 })
 
 await boss.schedule('leads.remind', '*/5 * * * *')
