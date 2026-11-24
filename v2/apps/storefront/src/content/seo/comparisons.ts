@@ -64,7 +64,7 @@ export const COMPARISONS: ComparisonPage[] = [
       [{ fr: "Paiement à la livraison", en: "Cash on delivery" }, { fr: "Oui ; avec le coursier ShopX, acompte pour la course à la commande", en: "Yes; with the ShopX courier, a deposit for the ride at order time" }, { fr: "Oui, avec zones, frais et confirmation par closers", en: "Yes, with zones, fees and confirmation by closers" }],
       [{ fr: "Domaine personnalisé", en: "Custom domain" }, { fr: "Non (votre-nom.shop.shopx.bj)", en: "No (your-name.shop.shopx.bj)" }, { fr: "Oui, par CNAME", en: "Yes, by CNAME" }],
       [{ fr: "Pixel Meta, API Conversions", en: "Meta pixel, Conversions API" }, { fr: "Non mentionnés", en: "Not mentioned" }, { fr: "Oui, avec achat déclaré à la commande, confirmation ou livraison", en: "Yes, with purchase reported at order, confirmation or delivery" }],
-      [{ fr: "IA", en: "AI" }, { fr: "Fiche depuis une photo, studio photo, réponses aux commentaires Facebook", en: "Product from a photo, photo studio, Facebook comment replies" }, { fr: "Import depuis un lien, rédaction PASA ou AIDA, images régénérées, serveur MCP", en: "Import from a link, PASA or AIDA copywriting, regenerated images, MCP server" }],
+      [{ fr: "IA", en: "AI" }, { fr: "Fiche depuis une photo, studio photo, réponses aux commentaires Facebook", en: "Product from a photo, photo studio, Facebook comment replies" }, { fr: "Serveur MCP : piloter la boutique depuis ChatGPT ou Claude", en: "MCP server: run the store from ChatGPT or Claude" }],
       [{ fr: "Autres", en: "Other" }, { fr: "Messenger, points de fidélité, caisse Facto", en: "Messenger, loyalty points, Facto point of sale" }, { fr: "Produits digitaux, tunnel (upsell), export CSV, vue en direct", en: "Digital products, funnel (upsell), CSV export, live view" }],
     ],
     blocks: [
@@ -331,8 +331,8 @@ export const COMPARISONS: ComparisonPage[] = [
         type: "cta",
         title: { fr: "Une page de vente COD prête en quelques minutes", en: "A COD sales page ready in minutes" },
         text: {
-          fr: "Avec Zuri, colle le lien d'un produit, l'IA crée ta page, et tu reçois les commandes COD et Mobile Money en FCFA.",
-          en: "With Zuri, paste a product link, the AI builds your page, and you receive COD and Mobile Money orders in CFA francs.",
+          fr: "Avec Zuri, ta page de vente est prête en quelques minutes, et tu reçois les commandes COD et Mobile Money en FCFA.",
+          en: "With Zuri, your sales page is ready in minutes, and you receive COD and Mobile Money orders in CFA francs.",
         },
       },
     ],
@@ -559,8 +559,8 @@ export const COMPARISONS: ComparisonPage[] = [
         type: "cta",
         title: { fr: "Ni serveur, ni éditeur compliqué", en: "No server, no complex editor" },
         text: {
-          fr: "Zuri crée ta page de vente COD à partir d'un lien produit, avec Mobile Money et closers inclus.",
-          en: "Zuri builds your COD sales page from a product link, with Mobile Money and closers included.",
+          fr: "Zuri crée ta page de vente COD en quelques minutes, avec Mobile Money et closers inclus.",
+          en: "Zuri builds your COD sales page in minutes, with Mobile Money and closers included.",
         },
       },
     ],
@@ -897,8 +897,8 @@ export const COMPARISONS: ComparisonPage[] = [
         type: "cta",
         title: { fr: "Et si tu voulais le Mobile Money aussi ?", en: "What if you want Mobile Money too?" },
         text: {
-          fr: "Zuri crée ta page COD par IA, se connecte à FeexPay, FedaPay, PayDunya et PawaPay, et reste gratuit pendant le lancement.",
-          en: "Zuri builds your COD page with AI, connects to FeexPay, FedaPay, PayDunya and PawaPay, and stays free during launch.",
+          fr: "Zuri crée ta page COD en quelques minutes, se connecte à FeexPay, FedaPay, PayDunya et PawaPay, et reste gratuit pendant le lancement.",
+          en: "Zuri builds your COD page in minutes, connects to FeexPay, FedaPay, PayDunya and PawaPay, and stays free during launch.",
         },
       },
     ],

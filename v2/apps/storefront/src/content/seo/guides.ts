@@ -1342,8 +1342,8 @@ const localDropshipping: GuidePage = {
       ['Jour 5 : lance un petit test en pub et en organique, confirme chaque commande dans l’heure.', 'Day 5: launch a small ad and organic test, confirm every order within the hour.'],
     ], true),
     p(
-      'Astuce de gain de temps : l’import produit par URL avec IA de Zuri crée une fiche produit à partir d’un lien existant, que tu adaptes ensuite avec tes propres photos et ton prix.',
-      'Time saver: Zuri’s AI product import by URL creates a product page from an existing link, which you then adapt with your own photos and price.',
+      'Astuce de gain de temps : sur Zuri, une fiche produit se crée en quelques minutes avec tes propres photos et ton prix ; le formulaire de commande et les zones de livraison sont ajoutés pour toi.',
+      'Time saver: on Zuri a product page takes a few minutes, with your own photos and price; the order form and delivery zones are added for you.',
     ),
     h2('Bien présenter un produit que d’autres vendent aussi', 'Presenting a product others also sell'),
     p(
@@ -1380,8 +1380,8 @@ const localDropshipping: GuidePage = {
     cta(
       'Lance ta boutique de dropshipping local',
       'Launch your local dropshipping store',
-      'Page de vente légère, import produit par URL, formulaire COD, zones de livraison par ville, closers et suivi des encaissements : tout est sur Zuri, sans commission.',
-      'Lightweight sales pages, product import by URL, COD form, per city delivery zones, closers and cash tracking: it is all on Zuri, with no commission.',
+      'Page de vente légère, formulaire COD, zones de livraison par ville, closers et suivi des encaissements : tout est sur Zuri, sans commission.',
+      'Lightweight sales pages, COD form, per city delivery zones, closers and cash tracking: it is all on Zuri, with no commission.',
     ),
   ],
   faqs: [
@@ -1492,8 +1492,8 @@ const winningProduct: GuidePage = {
       ['Des clients livrés recommandent ou envoient des amis.', 'Delivered customers order again or refer friends.'],
     ]),
     p(
-      'Pour aller vite, l’import produit par URL avec IA de Zuri crée la fiche produit à partir d’un lien, et tu peux lancer plusieurs produits ou plusieurs boutiques pour tester en parallèle, sans commission sur tes ventes.',
-      'To move fast, Zuri’s AI product import by URL builds the product page from a link, and you can launch several products or several stores to test in parallel, with no commission on sales.',
+      'Pour aller vite, tu peux lancer plusieurs produits ou plusieurs boutiques pour tester en parallèle, sans commission sur tes ventes.',
+      'To move fast, you can launch several products or several stores to test in parallel, with no commission on sales.',
     ),
     h2('Exemples de familles de produits à explorer', 'Product families worth exploring'),
     p(
@@ -1540,8 +1540,8 @@ const winningProduct: GuidePage = {
     cta(
       'Teste ton prochain produit gagnant sur Zuri',
       'Test your next winning product on Zuri',
-      'Import par URL avec IA, page de vente légère, packs, pixel Facebook et TikTok, taux de confirmation et de livraison par produit. Gratuit pendant le lancement.',
-      'AI import by URL, lightweight sales page, bundles, Facebook and TikTok pixels, confirmation and delivery rates per product. Free during launch.',
+      'Page de vente légère, packs, pixel Facebook et TikTok, taux de confirmation et de livraison par produit. Gratuit pendant le lancement.',
+      'Lightweight sales page, bundles, Facebook and TikTok pixels, confirmation and delivery rates per product. Free during launch.',
     ),
   ],
   faqs: [

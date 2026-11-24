@@ -683,8 +683,8 @@ const pageAfrica: BestPage = {
     faq(
       'Peut-on changer de plateforme plus tard ?',
       'Can I switch platforms later?',
-      'Oui. Garde tes photos, tes textes et ta liste de clients hors de la plateforme. Sur Zuri, l’import de produit par IA à partir d’un lien t’aide à recréer tes pages rapidement.',
-      'Yes. Keep your photos, copy and customer list outside the platform. On Zuri, AI product import from a link helps you rebuild your pages quickly.',
+      'Oui. Garde tes photos, tes textes et ta liste de clients hors de la plateforme. Sur Zuri, l’import par fichier CSV (l’export produits de Shopify est reconnu) t’aide à recréer ton catalogue rapidement.',
+      'Yes. Keep your photos, copy and customer list outside the platform. On Zuri, CSV import (Shopify’s product export is recognised) helps you rebuild your catalog quickly.',
     ),
   ],
   sources: [S.zuri, S.shopifyPricing, S.shopifyPaymentsCountries, S.shopifyManual, S.easySell, S.almanac, S.youcanPricing, S.easyafrik, S.selika, S.wooPricing, S.wixPlans],
@@ -727,8 +727,8 @@ const pageShopifyAlt: BestPage = {
       score: 8.7,
       pros: [
         l(
-          'Import de produit par IA à partir d’un lien, pratique pour recréer tes pages Shopify.',
-          'AI product import from a link, handy to rebuild your Shopify pages.',
+          'Import du catalogue par fichier CSV, pratique pour reprendre tes produits Shopify.',
+          'CSV catalog import, handy to bring over your Shopify products.',
         ),
       ],
     }),
@@ -1615,7 +1615,7 @@ const pageDropship: BestPage = {
   ),
   criteria: [
     l('COD et confirmation des commandes (closers, statuts).', 'COD and order confirmation (closers, statuses).'),
-    l('Import de produits rapide (lien, IA, AliExpress).', 'Fast product import (link, AI, AliExpress).'),
+    l('Import du catalogue par fichier CSV (export Shopify reconnu).', 'Catalog import by CSV file (Shopify export recognised).'),
     l('Outils de test de produits : pages courtes, packs, pixels.', 'Product testing tools: short pages, bundles, pixels.'),
     l('Coût total par mois en monnaie locale.', 'Total monthly cost in local terms.'),
     l('Adapté à la livraison en Afrique (zones, délais).', 'Fit with delivery in Africa (zones, lead times).'),
@@ -1629,8 +1629,8 @@ const pageDropship: BestPage = {
       score: 8.6,
       pros: [
         l(
-          'Import de produit par IA à partir d’un lien : ta page est prête en quelques minutes.',
-          'AI product import from a link: your page is ready in minutes.',
+          'Une page de vente prête en quelques minutes, sans rien de technique à apprendre.',
+          'A sales page ready in minutes, with nothing technical to learn.',
         ),
       ],
     }),
@@ -1751,8 +1751,8 @@ const pageDropship: BestPage = {
     faq(
       'DSers marche-t-il avec Zuri ?',
       'Does DSers work with Zuri?',
-      'Non, la page tarifs de DSers met en avant Shopify. Sur Zuri, tu importes ton produit par IA à partir de son lien, puis tu gères ton stock et tes fournisseurs toi-même.',
-      'No, the DSers pricing page highlights Shopify. On Zuri, you import a product with AI from its link, then manage your stock and suppliers yourself.',
+      'Non, la page tarifs de DSers met en avant Shopify. Sur Zuri, tu crées ta page produit en quelques minutes, puis tu gères ton stock et tes fournisseurs toi-même.',
+      'No, the DSers pricing page highlights Shopify. On Zuri, you create your product page in a few minutes, then manage your stock and suppliers yourself.',
     ),
     faq(
       'Combien faut-il pour commencer le dropshipping COD ?',

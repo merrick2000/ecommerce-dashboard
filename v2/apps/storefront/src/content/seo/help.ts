@@ -49,7 +49,7 @@ export const HELP: HelpArticle[] = [
         items: [
           { fr: 'Inscription par email ou avec Google, sans carte bancaire.', en: 'Sign up with email or Google, no credit card.' },
           { fr: 'Boutique : nom, adresse (votre-nom.zurisell.store), pays, devise (FCFA, naira, cedi, shilling, dirham, euro, dollar…), langue de la boutique (français ou anglais, celle de votre navigateur par défaut) et type : physique ou digital.', en: 'Store: name, address (your-name.zurisell.store), country, currency (CFA franc, naira, cedi, shilling, dirham, euro, dollar…), store language (French or English, your browser language by default) and type: physical or digital.' },
-          { fr: 'Premier produit : photos, prix, description. Ou importez-le depuis un lien : le nom, le prix, les photos et la description sont repris, et l’IA remet le texte en ordre.', en: 'First product: photos, price, description. Or import it from a link: name, price, photos and description are filled in, and the AI organises the text.' },
+          { fr: 'Premier produit : photos, prix, description.', en: 'First product: photos, price, description.' },
           { fr: 'Produit physique : ajoutez vos zones de livraison (villes, frais, délai). Produit digital : ajoutez le fichier ou le lien livré après paiement.', en: 'Physical product: add your delivery zones (cities, fee, delivery time). Digital product: add the file or link delivered after payment.' },
           { fr: 'Partagez le lien de la page de vente en statut WhatsApp, dans vos pubs Facebook ou TikTok, ou dans votre bio.', en: 'Share the sales page link in your WhatsApp status, Facebook or TikTok ads, or your bio.' },
         ],
@@ -124,26 +124,7 @@ export const HELP: HelpArticle[] = [
         { fr: 'Prix d’achat (coût) : sert à calculer votre bénéfice réel, jamais visible des clients.', en: 'Cost price: used to compute your real profit, never shown to customers.' },
       ] },
     ],
-    faqs: [{ q: { fr: 'Puis-je importer mon catalogue ?', en: 'Can I import my catalog?' }, a: { fr: 'Oui : par fichier CSV (l’export produits de Shopify est reconnu), ou produit par produit depuis un lien.', en: 'Yes: by CSV file (Shopify’s product export is recognised), or product by product from a link.' } }],
-  },
-  {
-    slug: { fr: 'import-par-lien-et-ia', en: 'import-from-link-and-ai' },
-    topic: 'sell',
-    title: { fr: 'Importer un produit depuis un lien, et la rédaction IA', en: 'Import a product from a link, and AI copywriting' },
-    description: { fr: 'Collez un lien Shopify, AliExpress, Amazon, Jumia, Chariow ou Selar : Zuri reprend le produit, l’IA réécrit la description en PASA ou AIDA et peut régénérer les images.', en: 'Paste a Shopify, AliExpress, Amazon, Jumia, Chariow or Selar link: Zuri picks up the product, the AI rewrites the description with PASA or AIDA and can regenerate images.' },
-    answer: {
-      fr: 'Collez le lien d’une page produit : Zuri reprend le nom, le prix, les photos, les variantes, la vidéo, les questions et la description complète (en moins d’une minute, même pour les sites protégés), puis l’IA réécrit la description selon la méthode PASA ou AIDA et propose de régénérer les images de la description.',
-      en: 'Paste a product page link: Zuri picks up the name, price, photos, variants, video, questions and full description (in under a minute, even for protected sites), then the AI rewrites the description with the PASA or AIDA method and offers to regenerate the description images.',
-    },
-    blocks: [
-      { type: 'h2', text: { fr: 'Sites pris en charge', en: 'Supported sites' } },
-      { type: 'p', text: { fr: 'Boutiques Shopify et WooCommerce, AliExpress, Jumia, Amazon, et produits digitaux sur Selar, Chariow, Gumroad ou Systeme.io. Si un site bloque toute lecture, collez simplement le texte de la page : l’IA remplit la fiche.', en: 'Shopify and WooCommerce stores, AliExpress, Jumia, Amazon, and digital products on Selar, Chariow, Gumroad or Systeme.io. If a site blocks all reading, just paste the page text: the AI fills in the product.' } },
-      { type: 'h2', text: { fr: 'Rédaction PASA ou AIDA', en: 'PASA or AIDA copywriting' } },
-      { type: 'p', text: { fr: 'L’IA choisit la méthode la plus adaptée : PASA (Problème, Agitation, Solution, Action) pour un produit qui règle une gêne, AIDA (Attention, Intérêt, Désir, Action) pour un produit qui se vend par l’envie. Le texte est découpé en sections, avec avantages en liste, mode d’emploi en étapes, témoignages et questions repris mot pour mot, sans emoji et sans rien inventer. Pour un produit digital : pour qui, ce qu’on apprend, les modules, le format, l’accès et les bonus.', en: 'The AI picks the best method: PASA (Problem, Agitation, Solution, Action) for a product that solves a pain, AIDA (Attention, Interest, Desire, Action) for a product sold on desire. The text is split into sections, with benefits as a list, how to use as steps, testimonials and questions kept word for word, no emoji and nothing invented. For a digital product: who it is for, what you learn, the modules, format, access and bonuses.' } },
-      { type: 'h2', text: { fr: 'Images de la description', en: 'Description images' } },
-      { type: 'p', text: { fr: 'Chaque image trouvée dans la description peut être gardée, retirée ou régénérée : même produit, photo propre, sans texte étranger ni logo (maquette de couverture ou d’écrans pour un produit digital).', en: 'Each image found in the description can be kept, removed or regenerated: same product, clean photo, no foreign text or logo (cover or screen mockup for a digital product).' } },
-    ],
-    faqs: [{ q: { fr: 'Combien de temps prend un import ?', en: 'How long does an import take?' }, a: { fr: 'Quelques secondes pour une page lisible, environ une minute pour un site protégé ou rendu en JavaScript ; la réécriture IA prend ensuite 20 à 60 secondes.', en: 'A few seconds for a readable page, about a minute for a protected or JavaScript rendered site; the AI rewrite then takes 20 to 60 seconds.' } }],
+    faqs: [{ q: { fr: 'Puis-je importer mon catalogue ?', en: 'Can I import my catalog?' }, a: { fr: 'Oui : par fichier CSV (l’export produits de Shopify est reconnu).', en: 'Yes: by CSV file (Shopify’s product export is recognised).' } }],
   },
   {
     slug: { fr: 'paiement-a-la-livraison-et-closers', en: 'cash-on-delivery-and-closers' },

@@ -249,8 +249,8 @@ export const ALTERNATIVES: AlternativePage[] = [
         en: "In WooCommerce, go to Products then Export to download your catalog as a CSV.",
       },
       {
-        fr: "Importe ce fichier dans Zuri avec l'import CSV, ou colle l'URL d'une page produit pour que l'IA la recrée.",
-        en: "Import that file into Zuri with the CSV import, or paste a product page URL so the AI rebuilds it.",
+        fr: "Importe ce fichier dans Zuri avec l'import CSV : tes produits sont repris d'un coup.",
+        en: "Import that file into Zuri with the CSV import: your products come over in one go.",
       },
       {
         fr: "Configure tes zones de livraison, ton formulaire COD et tes closers.",
@@ -759,7 +759,7 @@ export const ALTERNATIVES: AlternativePage[] = [
     compare: [
       [{ fr: "Prix", en: "Price" }, { fr: "8 900 à 34 900 FCFA/mois", en: "8,900 to 34,900 CFA francs/month" }, { fr: "Gratuit pendant le lancement", en: "Free during launch" }],
       [{ fr: "Essai", en: "Trial" }, { fr: "7 jours", en: "7 days" }, { fr: "Pas besoin, gratuit au lancement", en: "Not needed, free at launch" }],
-      [{ fr: "Création de page par IA", en: "AI page creation" }, { fr: "Oui, quota selon forfait", en: "Yes, quota by plan" }, { fr: "Oui, import par URL", en: "Yes, import by URL" }],
+      [{ fr: "Création de page par IA", en: "AI page creation" }, { fr: "Oui, quota selon forfait", en: "Yes, quota by plan" }, { fr: "Page de vente prête en quelques minutes", en: "Sales page ready in minutes" }],
       [{ fr: "Mobile Money", en: "Mobile Money" }, { fr: "Non mentionné sur la page d'accueil", en: "Not mentioned on the home page" }, { fr: "FeexPay, FedaPay, PayDunya, PawaPay", en: "FeexPay, FedaPay, PayDunya, PawaPay" }],
       [{ fr: "Outils d'urgence", en: "Urgency tools" }, { fr: "Oui", en: "Yes" }, { fr: "Oui, avec popup des ventes réelles", en: "Yes, with real sales popup" }],
       [{ fr: "Closers avec attribution automatique", en: "Closers with automatic assignment" }, { fr: "Membres d'équipe (3 à illimité)", en: "Team members (3 to unlimited)" }, { fr: "Inclus, attribution automatique", en: "Included, automatic assignment" }],
@@ -901,7 +901,6 @@ export const ALTERNATIVES: AlternativePage[] = [
       [{ fr: "Mobile Money", en: "Mobile Money" }, { fr: "Prestataire non précisé sur la page", en: "Provider not named on the page" }, { fr: "FeexPay, FedaPay, PayDunya, PawaPay", en: "FeexPay, FedaPay, PayDunya, PawaPay" }],
       [{ fr: "Compte à rebours, popup des ventes, packs", en: "Countdown, sales popup, bundles" }, { fr: "Non présentés", en: "Not presented" }, { fr: "Inclus", en: "Included" }],
       [{ fr: "Pixel Facebook, API Conversions, TikTok", en: "Facebook pixel, Conversions API, TikTok" }, { fr: "Non présentés", en: "Not presented" }, { fr: "Inclus", en: "Included" }],
-      [{ fr: "Import par URL avec IA", en: "AI import by URL" }, { fr: "Non présenté", en: "Not presented" }, { fr: "Inclus", en: "Included" }],
       [{ fr: "Domaine personnalisé", en: "Custom domain" }, { fr: "Oui, en Pro", en: "Yes, on Pro" }, { fr: "Bientôt", en: "Coming soon" }],
     ],
     stillGoodFor: {
@@ -1170,7 +1169,7 @@ export const ALTERNATIVES: AlternativePage[] = [
       [{ fr: "Mobile Money Afrique de l'Ouest", en: "West Africa Mobile Money" }, { fr: "Non cité sur la page tarifs", en: "Not named on the pricing page" }, { fr: "FeexPay, FedaPay, PayDunya, PawaPay", en: "FeexPay, FedaPay, PayDunya, PawaPay" }],
       [{ fr: "Anti fausses commandes", en: "Fake order protection" }, { fr: "Bannir les faux clients", en: "Ban fake customers" }, { fr: "Confirmation par closers et statuts", en: "Closer confirmation and statuses" }],
       [{ fr: "Sociétés de livraison", en: "Shipping companies" }, { fr: "API transporteurs", en: "Carrier API" }, { fr: "Zones et frais de livraison", en: "Delivery zones and fees" }],
-      [{ fr: "Landing page avec IA", en: "AI landing page" }, { fr: "Forfait Pro", en: "Pro plan" }, { fr: "Import par URL avec IA, inclus", en: "AI import by URL, included" }],
+      [{ fr: "Landing page avec IA", en: "AI landing page" }, { fr: "Forfait Pro", en: "Pro plan" }, { fr: "Page de vente simple, incluse", en: "Simple sales page, included" }],
       [{ fr: "Closers avec attribution automatique", en: "Closers with automatic assignment" }, { fr: "Non présenté", en: "Not presented" }, { fr: "Inclus", en: "Included" }],
       [{ fr: "Domaine personnalisé", en: "Custom domain" }, { fr: "Oui", en: "Yes" }, { fr: "Bientôt", en: "Coming soon" }],
     ],

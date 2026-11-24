@@ -37,7 +37,6 @@ const M = {
     orders: (n: number | null) => (n === null ? 'Commandes illimitées' : `${fmt(n)} commandes par mois`),
     members: (n: number | null) => (n === null ? 'Équipe illimitée' : n === 1 ? '1 utilisateur' : `${n} membres d’équipe (closers)`),
     online: 'Paiement en ligne Mobile Money et carte',
-    ai: 'Import de produits par lien avec l’IA',
     team: 'Équipe de closers et répartition des commandes',
     always: ['0 % de commission sur les ventes', 'Paiement à la livraison', 'Pixel Facebook, API Conversions, TikTok'],
     freeNote: (d: string) => `Disponible jusqu’au ${d}.`,
@@ -77,7 +76,6 @@ const M = {
     orders: (n: number | null) => (n === null ? 'Unlimited orders' : `${fmt(n).replace(/ /g, ',')} orders a month`),
     members: (n: number | null) => (n === null ? 'Unlimited team' : n === 1 ? '1 user' : `${n} team members (closers)`),
     online: 'Online payments: Mobile Money and card',
-    ai: 'AI product import from a link',
     team: 'Closer team and order assignment',
     always: ['0% commission on sales', 'Cash on delivery', 'Facebook pixel, Conversions API, TikTok'],
     freeNote: (d: string) => `Available until ${d}.`,
@@ -153,7 +151,6 @@ const jsonLd = [
               {M.always.map((x) => <li>{x}</li>)}
               {p.features.team && <li>{M.team}</li>}
               {p.features.onlinePayments && <li>{M.online}</li>}
-              {p.features.aiImport && <li>{M.ai}</li>}
             </ul>
             <a class={p.highlight ? 'mk-btn mk-btn-amber' : 'mk-btn-ghost'} href={`${signup}?plan=${p.id}`}>{M.cta}</a>
           </div>

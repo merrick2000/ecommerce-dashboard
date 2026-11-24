@@ -39,7 +39,7 @@ Faits clés :
 - Produits digitaux : fichier ou lien livré automatiquement par email après paiement, page d'accès et retéléchargement, relance des paniers abandonnés et des paiements refusés, ventes traitées en lot.
 - Suivi publicitaire : pixel Facebook, API Conversions de Meta et pixel TikTok, sans doublons ; en paiement à la livraison, achat déclaré à Meta à la commande, à la confirmation ou à la livraison (au choix du vendeur), prospect (Lead) en attendant.
 - Données : export CSV des commandes et des clients ; domaine personnalisé par CNAME ; variantes, stock, packs ; prix dans 11 devises.
-- IA : import d'un produit depuis un lien (Shopify, WooCommerce, AliExpress, Amazon, Jumia, Chariow, Selar, Gumroad, Systeme.io), réécriture de la description en PASA ou AIDA, régénération des images ; serveur MCP (46 outils) pour piloter la boutique depuis ChatGPT ou Claude.
+- Assistants IA : serveur MCP (46 outils) pour piloter la boutique depuis ChatGPT ou Claude.
 - Support : WhatsApp, email et formulaire sur ${u('/contact')}.
 - Tableau de bord : https://app.zurisell.store
 - Inscription : https://app.zurisell.store/register

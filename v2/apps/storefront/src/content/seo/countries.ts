@@ -89,8 +89,8 @@ export const COUNTRIES: CountryPage[] = [
       {
         q: { fr: 'Comment vendre en ligne en Côte d’Ivoire ?', en: 'How do I sell online in Côte d’Ivoire?' },
         a: {
-          fr: 'Crée ta boutique sur Zuri, ajoute ton produit (tu peux l’importer par URL avec l’IA), règle tes zones de livraison à Abidjan et dans les villes de l’intérieur, puis lance une pub Facebook ou TikTok vers ta page de vente. Les commandes arrivent en paiement à la livraison, ton équipe les confirme, et tu suis tout jusqu’à la livraison.',
-          en: 'Create your Zuri store, add your product (you can import it from a URL with AI), set delivery zones in Abidjan and inland cities, then run a Facebook or TikTok ad to your sales page. Orders come in as cash on delivery, your team confirms them, and you track everything until delivery.',
+          fr: 'Crée ta boutique sur Zuri, ajoute ton produit, règle tes zones de livraison à Abidjan et dans les villes de l’intérieur, puis lance une pub Facebook ou TikTok vers ta page de vente. Les commandes arrivent en paiement à la livraison, ton équipe les confirme, et tu suis tout jusqu’à la livraison.',
+          en: 'Create your Zuri store, add your product, set delivery zones in Abidjan and inland cities, then run a Facebook or TikTok ad to your sales page. Orders come in as cash on delivery, your team confirms them, and you track everything until delivery.',
         },
       },
       {
@@ -744,8 +744,8 @@ export const COUNTRIES: CountryPage[] = [
       {
         q: { fr: 'Comment vendre en ligne au Burkina Faso ?', en: 'How do I sell online in Burkina Faso?' },
         a: {
-          fr: 'Crée ta boutique sur Zuri, ajoute ton produit (tu peux l’importer depuis un lien), active le formulaire de paiement à la livraison et définis tes frais pour Ouaga et Bobo. Lance ensuite une pub Facebook ou TikTok vers ta page de vente et confirme chaque commande par téléphone avant d’envoyer le livreur.',
-          en: 'Create your store on Zuri, add your product (you can import it from a link), turn on the cash on delivery form and set your fees for Ouaga and Bobo. Then run a Facebook or TikTok ad to your sales page and confirm every order by phone before sending the rider.',
+          fr: 'Crée ta boutique sur Zuri, ajoute ton produit, active le formulaire de paiement à la livraison et définis tes frais pour Ouaga et Bobo. Lance ensuite une pub Facebook ou TikTok vers ta page de vente et confirme chaque commande par téléphone avant d’envoyer le livreur.',
+          en: 'Create your store on Zuri, add your product, turn on the cash on delivery form and set your fees for Ouaga and Bobo. Then run a Facebook or TikTok ad to your sales page and confirm every order by phone before sending the rider.',
         },
       },
       {
@@ -1050,8 +1050,8 @@ export const COUNTRIES: CountryPage[] = [
       {
         q: { fr: 'Comment faire du dropshipping en Guinée ?', en: 'How does dropshipping work in Guinea?' },
         a: {
-          fr: 'Travaille avec un fournisseur à Conakry qui garde le stock et prépare les colis. Toi, tu gères la pub et la confirmation. Avec Zuri, tu peux importer la fiche produit depuis un lien et suivre les retours pour savoir si le fournisseur est fiable.',
-          en: 'Work with a Conakry supplier who holds stock and packs parcels. You handle ads and confirmation. With Zuri you can import the product page from a link and track returns to see whether the supplier is reliable.',
+          fr: 'Travaille avec un fournisseur à Conakry qui garde le stock et prépare les colis. Toi, tu gères la pub et la confirmation. Avec Zuri, tu suis les retours pour savoir si le fournisseur est fiable.',
+          en: 'Work with a Conakry supplier who holds stock and packs parcels. You handle ads and confirmation. With Zuri you track returns to see whether the supplier is reliable.',
         },
       },
       {
@@ -2522,8 +2522,8 @@ export const COUNTRIES: CountryPage[] = [
         en: 'Offer quantity deals (“buy 2, get the 3rd half price”) and a countdown during Ramadan or Black Friday. Average order value goes up, and delivery costs weigh less.',
       },
       {
-        fr: 'Pour le dropshipping local, importe tes fiches produit par URL avec l’IA de Zuri, puis réécris le texte à ta façon avec des photos réelles. Les clients marocains repèrent vite les visuels copiés.',
-        en: 'For local dropshipping, import product pages by URL with Zuri’s AI, then rewrite the text in your own words with real photos. Moroccan customers quickly spot copied visuals.',
+        fr: 'Pour le dropshipping local, écris tes fiches produit à ta façon, avec des photos réelles de ton stock. Les clients marocains repèrent vite les visuels copiés.',
+        en: 'For local dropshipping, write your product pages in your own words, with real photos of your stock. Moroccan customers quickly spot copied visuals.',
       },
       {
         fr: 'Note la raison de chaque colis retourné. Si une ville revient souvent, augmente le frais de livraison ou demande une confirmation par message WhatsApp en plus de l’appel.',
@@ -3196,8 +3196,8 @@ export const COUNTRIES: CountryPage[] = [
       {
         q: { fr: 'Comment faire du dropshipping au Kenya ?', en: 'How does dropshipping work in Kenya?' },
         a: {
-          fr: 'Le plus fiable est le dropshipping local : un fournisseur à Nairobi garde le stock, tu vends en ligne et tu fais livrer en paiement à la livraison. L’import par URL avec IA de Zuri t’aide à créer la fiche produit en quelques minutes.',
-          en: 'The most reliable model is local dropshipping: a Nairobi supplier holds the stock, you sell online and deliver with pay on delivery. Zuri’s AI import from a product URL helps you build the product page in minutes.',
+          fr: 'Le plus fiable est le dropshipping local : un fournisseur à Nairobi garde le stock, tu vends en ligne et tu fais livrer en paiement à la livraison. Sur Zuri, la fiche produit et sa page de vente se créent en quelques minutes.',
+          en: 'The most reliable model is local dropshipping: a Nairobi supplier holds the stock, you sell online and deliver with pay on delivery. On Zuri, the product page and its sales page take a few minutes to create.',
         },
       },
       {
@@ -3570,8 +3570,8 @@ export const COUNTRIES: CountryPage[] = [
       {
         q: { fr: 'Comment faire du dropshipping en Gambie ?', en: 'How does dropshipping work in The Gambia?' },
         a: {
-          fr: 'Le plus simple est le dropshipping local : un fournisseur de Serekunda garde le stock, tu vends et tu fais livrer en paiement à la livraison. L’import de produit par URL de Zuri accélère la création de tes pages.',
-          en: 'The easiest model is local dropshipping: a supplier in Serekunda holds stock, you sell and deliver cash on delivery. Zuri’s product import from a URL speeds up building your pages.',
+          fr: 'Le plus simple est le dropshipping local : un fournisseur de Serekunda garde le stock, tu vends et tu fais livrer en paiement à la livraison. Sur Zuri, une page de vente se crée en quelques minutes.',
+          en: 'The easiest model is local dropshipping: a supplier in Serekunda holds stock, you sell and deliver cash on delivery. On Zuri, a sales page takes a few minutes to create.',
         },
       },
       {
@@ -3675,8 +3675,8 @@ export const COUNTRIES: CountryPage[] = [
       {
         q: { fr: 'Comment vendre en ligne en Ouganda ?', en: 'How do I sell online in Uganda?' },
         a: {
-          fr: 'Crée ta boutique sur Zuri, ajoute tes produits (même par URL avec l’IA), règle tes frais de livraison par ville, puis lance une pub Facebook ou TikTok. Les commandes arrivent en paiement à la livraison ou en Mobile Money, et tes closers les confirment par téléphone.',
-          en: 'Create your store on Zuri, add your products (you can even import them from a URL with AI), set delivery fees by city, then run Facebook or TikTok ads. Orders come in as cash on delivery or Mobile Money, and your closers confirm them by phone.',
+          fr: 'Crée ta boutique sur Zuri, ajoute tes produits, règle tes frais de livraison par ville, puis lance une pub Facebook ou TikTok. Les commandes arrivent en paiement à la livraison ou en Mobile Money, et tes closers les confirment par téléphone.',
+          en: 'Create your store on Zuri, add your products, set delivery fees by city, then run Facebook or TikTok ads. Orders come in as cash on delivery or Mobile Money, and your closers confirm them by phone.',
         },
       },
       {

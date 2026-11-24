@@ -100,15 +100,15 @@ export function onboardingEmail(kind: OnboardingKind, step: number, c: Ctx): { s
           : `<p>Votre boutique n’est toujours pas créée. Si quelque chose vous retient (paiement, livraison, fonctionnement), dites-le nous : on la configure avec vous.</p>`
     cta = { href: c.appUrl, label: en ? 'Create my store' : 'Créer ma boutique' }
   } else if (kind === 'no_product') {
-    subject = step === 1 ? (en ? `Add your first product to ${c.storeName ?? 'your store'}` : `Ajoutez votre premier produit à ${c.storeName ?? 'votre boutique'}`) : en ? 'Import a product from a link in 30 seconds' : 'Importez un produit depuis un lien en 30 secondes'
+    subject = step === 1 ? (en ? `Add your first product to ${c.storeName ?? 'your store'}` : `Ajoutez votre premier produit à ${c.storeName ?? 'votre boutique'}`) : en ? 'Your store is still empty: we can help' : 'Votre boutique est encore vide : on vous aide'
     body =
       step === 1
         ? en
           ? `<p><strong>${store}</strong> is created. Next step: your first product, with its sales page ready to share.</p>${list(['Photos, price and a short description are enough.', 'Choose cash on delivery, online payment, or both.', 'Your page is ready to share on WhatsApp, Facebook or TikTok.'])}`
           : `<p><strong>${store}</strong> est créée. Prochaine étape : votre premier produit, avec sa page de vente prête à partager.</p>${list(['Des photos, un prix et une courte description suffisent.', 'Choisissez paiement à la livraison, en ligne, ou les deux.', 'Votre page est prête à partager sur WhatsApp, Facebook ou TikTok.'])}`
         : en
-          ? `<p>Your store is still empty. Quick tip: if your product is already online (Shopify, AliExpress, another site), you can import it from its link. Name, price, photos and description are filled in for you, and the AI organises the text.</p>`
-          : `<p>Votre boutique est encore vide. Astuce : si votre produit est déjà en ligne (Shopify, AliExpress, un autre site), importez-le depuis son lien. Nom, prix, photos et description sont repris, et l’IA remet le texte en ordre.</p>`
+          ? `<p>Your store is still empty. A few photos, a price and two lines of description are enough to get your sales page. Coming from Shopify? Your products come over with the product export file. Stuck on something? Reply to this email and we will add your first product with you.</p>`
+          : `<p>Votre boutique est encore vide. Quelques photos, un prix et deux lignes de description suffisent pour avoir votre page de vente. Vous venez de Shopify ? Vos produits se reprennent avec le fichier d’export. Vous bloquez quelque part ? Répondez à cet email, on ajoute votre premier produit avec vous.</p>`
     cta = { href: c.appUrl, label: en ? 'Add a product' : 'Ajouter un produit' }
   } else {
     subject = step === 1 ? (en ? 'Your page is ready: 3 ways to get your first order' : 'Votre page est prête : 3 façons d’avoir votre première commande') : en ? 'No order yet? Let’s look at it together' : 'Pas encore de commande ? Regardons ensemble'

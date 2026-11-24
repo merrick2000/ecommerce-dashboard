@@ -76,7 +76,7 @@ const features = [
   { ico: 'target', title: 'Pixel Facebook et API Conversions', text: 'Plus le pixel TikTok. Chaque vraie commande remonte, ta pub apprend sur les bons acheteurs.' },
   { ico: 'users', title: 'Équipe de closers', text: 'Closers, gestionnaire des commandes, gestionnaire de la boutique. Accès produit par produit, chiffre caché si tu veux.' },
   { ico: 'bell', title: 'Le son de l’argent', text: 'Notification sur ton téléphone et ton ordinateur à chaque vente, avec un son d’encaissement doux. Aussi sur Telegram.' },
-  { ico: 'zap', title: 'Ta boutique avec l’IA', text: 'Colle le lien d’un produit : nom, prix, variantes, photos et vidéo sont récupérés, et l’IA réécrit la fiche pour ta cible.' },
+  { ico: 'zap', title: 'Ta page prête en 2 minutes', text: 'Photos, prix, description : ta page de vente est prête à partager sur WhatsApp, Facebook et TikTok. Rien de technique.' },
   { ico: 'form', title: 'Formulaire de commande sur mesure', text: 'Les champs que tu veux, dans l’ordre que tu veux, avec l’aperçu exact de ce que voit ton client.' },
   { ico: 'truck', title: 'Zones et frais de livraison', text: 'Un tarif par ville ou par quartier, livraison offerte dès un montant, délai affiché au client.' },
   { ico: 'chart', title: 'Statistiques qui comptent', text: 'Commandes, confirmées, livrées, retournées, encaissé : par jour, par produit, par closer.' },
@@ -100,8 +100,8 @@ const faqs = [
   { q: 'Comment intégrer Mobile Money à mon site ?', a: 'Avec Zuri, tu connectes ton compte FeexPay, FedaPay, PayDunya ou PawaPay depuis tes paramètres, et tes clients paient par Orange Money, MTN MoMo, Moov Money ou Wave selon leur pays. Pas une ligne de code.' },
   { q: 'Zuri garde-t-il mon argent ?', a: 'Jamais. Les paiements Mobile Money arrivent directement sur ton propre compte FeexPay, FedaPay, PayDunya ou PawaPay, et l’argent du paiement à la livraison, c’est toi ou ton livreur qui l’encaissez. Zuri ne prend aucune commission et ne retient aucun paiement.' },
   { q: 'Comment faire du dropshipping en Côte d’Ivoire, au Sénégal ou au Cameroun ?', a: 'Trouve un fournisseur local ou un service de livraison, crée ta page produit sur Zuri, lance ta pub Facebook ou TikTok, et tes closers confirment chaque commande avant l’envoi. Le client paie à la livraison : tu vends sans stock et sans avance de fonds.' },
-  { q: 'Puis-je créer ma boutique avec l’IA ?', a: 'Oui. Colle le lien d’un produit (Shopify, WooCommerce et la plupart des boutiques) : Zuri récupère le nom, le prix, les variantes, les photos et la vidéo, puis l’IA te propose un titre, une accroche, une description, des points forts et une FAQ. Tu gardes ce que tu veux.' },
-  { q: 'Je vends déjà sur Shopify, YouCan ou un autre outil. Je dois tout refaire ?', a: 'Non. Importe ton catalogue avec un fichier CSV (l’export produits de Shopify est accepté), ou colle le lien de chaque produit.' },
+  { q: 'Faut-il savoir coder ou être doué en informatique ?', a: 'Non. Tu ajoutes tes photos, ton prix et ta description, Zuri construit la page de vente avec le formulaire de commande. Si tu bloques, on te répond sur WhatsApp.' },
+  { q: 'Je vends déjà sur Shopify, YouCan ou un autre outil. Je dois tout refaire ?', a: 'Non. Importe ton catalogue avec un fichier CSV (l’export produits de Shopify est accepté).' },
   { q: 'Comment fonctionnent les closers ?', a: 'Tu invites ton équipe par email. Le premier closer qui agit sur une commande libre la prend, les autres le voient et ne l’appellent pas. Tu peux aussi attribuer une commande. Chaque membre ne voit que les produits que tu lui confies.' },
   { q: 'Ma page va vraiment charger vite ?', a: 'Oui. Une page de vente Zuri pèse environ 23 Ko de JavaScript, mesuré sur une vraie boutique, contre 632 Ko pour la page mobile médiane du web (HTTP Archive 2025). Elle est pensée d’abord pour le téléphone et les connexions lentes.' },
   { q: 'Mon pixel Facebook fonctionne avec les commandes à la livraison ?', a: 'Oui. Zuri envoie chaque commande au pixel et à l’API Conversions de Facebook, ainsi qu’au pixel TikTok, pour que tes publicités apprennent sur de vrais acheteurs.' },
@@ -536,7 +536,7 @@ const jsonLd = [
           <li>Équipe de closers et suivi des livraisons</li>
           <li>Paiement à la livraison et Mobile Money</li>
           <li>Pixel Facebook, API Conversions et TikTok</li>
-          <li>Import par lien avec l’IA, import Shopify</li>
+          <li>Import du catalogue Shopify (fichier CSV)</li>
           <li>Plusieurs boutiques</li>
         </ul>
         <a class="mk-btn mk-btn-amber" href={signup}>Créer ma boutique gratuitement</a>

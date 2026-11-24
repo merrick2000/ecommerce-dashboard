@@ -65,7 +65,6 @@ function PlanCard({ plan, current, months, onPick, canPay }: { plan: PlanDef; cu
         <li className="flex gap-2"><Check className="size-4 shrink-0 text-emerald-600" /> {plan.limits.ordersPerMonth === null ? 'Commandes illimitées' : `${new Intl.NumberFormat('fr-FR').format(plan.limits.ordersPerMonth)} commandes par mois`}</li>
         <li className="flex gap-2"><Check className="size-4 shrink-0 text-emerald-600" /> {plan.limits.members === null ? 'Équipe illimitée' : plan.limits.members === 1 ? 'Toi seul' : `${plan.limits.members} membres d’équipe`}</li>
         <li className={cx('flex gap-2', !plan.features.onlinePayments && 'text-muted line-through')}><Check className="size-4 shrink-0 text-emerald-600" /> Mobile Money sur ta boutique</li>
-        <li className={cx('flex gap-2', !plan.features.aiImport && 'text-muted line-through')}><Check className="size-4 shrink-0 text-emerald-600" /> Import de produits avec l’IA</li>
         <li className="flex gap-2"><Check className="size-4 shrink-0 text-emerald-600" /> Paiement à la livraison, pixel et API Conversions, 0 % de commission</li>
       </ul>
       {plan.priceXof > 0 && (

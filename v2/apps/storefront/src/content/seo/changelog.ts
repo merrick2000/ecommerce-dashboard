@@ -29,9 +29,8 @@ export const CHANGELOG: ChangelogEntry[] = [
       { fr: 'Choix du moment où l’achat est déclaré à Meta en paiement à la livraison : à la commande, à la confirmation ou à la livraison (prospect en attendant).', en: 'Choose when the purchase is reported to Meta for cash on delivery: at order, confirmation or delivery (Lead in the meantime).' },
       { fr: 'Export CSV de tous les clients, en plus des commandes.', en: 'CSV export of all customers, in addition to orders.' },
       { fr: 'Emails aux clients (commande, accès digital, suivi, relances) et au vendeur dans la langue de la boutique, français ou anglais ; langue du navigateur par défaut à la création.', en: 'Emails to customers (order, digital access, tracking, reminders) and to the seller in the store language, French or English; browser language by default at creation.' },
-      { fr: 'Import par lien : contenu complet de la page lu même quand le résumé du site est tronqué (modules, bonus, garantie).', en: 'Link import: full page content read even when the site’s summary is truncated (modules, bonuses, guarantee).' },
       { fr: 'Page contact avec WhatsApp, emails d’accompagnement des nouveaux vendeurs, emails lisibles sur téléphone.', en: 'Contact page with WhatsApp, onboarding emails for new sellers, emails readable on phones.' },
-      { fr: 'Rédaction IA en PASA ou AIDA adaptée aux produits digitaux, éditeur de texte enrichi (couleurs, surlignage, alignement, menu sur la sélection), ventes digitales traitées en lot.', en: 'PASA or AIDA AI copywriting adapted to digital products, richer text editor (colours, highlight, alignment, selection menu), digital sales processed in bulk.' },
+      { fr: 'Éditeur de texte enrichi (couleurs, surlignage, alignement, menu sur la sélection), ventes digitales traitées en lot.', en: 'Richer text editor (colours, highlight, alignment, selection menu), digital sales processed in bulk.' },
     ],
   },
   {
@@ -41,7 +40,6 @@ export const CHANGELOG: ChangelogEntry[] = [
       { fr: 'Vue en direct : globe 3D des visiteurs et des commandes en temps réel, étape de chaque visiteur (page, formulaire, paiement).', en: 'Live view: 3D globe of visitors and orders in real time, each visitor’s stage (page, form, payment).' },
       { fr: 'Page Trafic : visiteurs, provenance, campagnes publicitaires, parcours, appareils, pays et heures de visite.', en: 'Traffic page: visitors, sources, ad campaigns, journey, devices, countries and visit hours.' },
       { fr: 'Attribution des commandes au premier et au dernier clic.', en: 'First click and last click order attribution.' },
-      { fr: 'Description réécrite par l’IA et images de description à garder ou régénérer.', en: 'AI rewritten description and description images to keep or regenerate.' },
     ],
   },
   {
@@ -56,11 +54,10 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     date: '2026-11-20',
-    title: { fr: 'Bénéfice réel, serveur MCP, import par lien fiable', en: 'Real profit, MCP server, reliable link import' },
+    title: { fr: 'Bénéfice réel, serveur MCP, alertes pour l’équipe', en: 'Real profit, MCP server, team alerts' },
     items: [
       { fr: 'Bénéfice réel : prix d’achat, coûts de livraison et de retour, dépenses, marge par produit et par période.', en: 'Real profit: cost price, delivery and return costs, expenses, margin per product and period.' },
       { fr: 'Serveur MCP et clés d’API : 46 outils pour piloter la boutique depuis ChatGPT, Claude ou un autre assistant.', en: 'MCP server and API keys: 46 tools to run the store from ChatGPT, Claude or another assistant.' },
-      { fr: 'Import par lien avec navigateur distant pour les sites protégés (AliExpress, Amazon…).', en: 'Link import with a remote browser for protected sites (AliExpress, Amazon…).' },
       { fr: 'Notifications sur le téléphone pour toute l’équipe.', en: 'Phone notifications for the whole team.' },
     ],
   },

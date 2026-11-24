@@ -45,7 +45,7 @@ export function LaunchChecklist() {
     store: { title: 'Créer la boutique', text: 'C’est fait, votre boutique est en ligne.' },
     product: {
       title: data.kind === 'digital' ? 'Ajouter votre produit et son fichier' : 'Ajouter votre premier produit',
-      text: data.kind === 'digital' ? 'Le fichier ou le lien est envoyé tout seul au client après paiement.' : 'Photos, prix et description. Ou collez le lien d’un produit : tout est repris.',
+      text: data.kind === 'digital' ? 'Le fichier ou le lien est envoyé tout seul au client après paiement.' : 'Photos, prix et description : votre page de vente est prête.',
       action: (
         <Link to={`${base}/products/new`} className={buttonClass('primary', 'sm')}>
           Ajouter un produit

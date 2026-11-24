@@ -32,7 +32,7 @@ const stats: [string, L10n][] = [
   ['3G', { fr: 'Vos pages s’ouvrent vite même sur un petit téléphone en 3G : le client voit votre produit avant de partir', en: 'Your pages open fast even on a small phone on 3G: customers see your product before they leave' }],
   ['0 %', { fr: 'de commission : chaque franc vendu est pour vous', en: 'commission: every franc you sell is yours' }],
   ['24 h', { fr: 'au plus pour avoir votre argent Mobile Money, souvent le jour même', en: 'at most to get your Mobile Money, often the same day' }],
-  ['1 min', { fr: 'pour mettre un produit en vente : collez le lien d’un produit, tout est repris', en: 'to put a product on sale: paste a product link, everything is filled in' }],
+  ['2 min', { fr: 'pour créer votre boutique et mettre un produit en vente', en: 'to create your store and put a product on sale' }],
   [`${countries}`, { fr: 'pays d’Afrique, en français et en anglais', en: 'African countries, in French and English' }],
   ['IA', { fr: 'qui écrit vos textes de vente et répond à vos questions sur vos ventes', en: 'that writes your sales copy and answers your questions about your sales' }],
 ]
@@ -68,10 +68,9 @@ const groups: { title: L10n; help: string; items: L10n[] }[] = [
     { fr: 'Vous voyez quelle pub vend et laquelle fait perdre de l’argent', en: 'You see which ad sells and which one loses money' },
     { fr: 'Votre vrai bénéfice, une fois pub et livraison payées', en: 'Your real profit, once ads and delivery are paid' },
   ] },
-  { title: { fr: 'L’IA qui travaille pour vous', en: 'AI working for you' }, help: 'import-par-lien-et-ia', items: [
-    { fr: 'Collez le lien d’un produit (AliExpress, Shopify, Jumia…) : il est importé', en: 'Paste a product link (AliExpress, Shopify, Jumia…): it is imported' },
-    { fr: 'L’IA écrit un texte qui donne envie d’acheter', en: 'The AI writes copy that makes people want to buy' },
-    { fr: 'Elle refait les photos moches de la description', en: 'It redoes the ugly photos in the description' },
+  { title: { fr: 'Vos produits et vos données', en: 'Your products and your data' }, help: 'exporter-commandes-et-clients', items: [
+    { fr: 'Vous venez de Shopify ? Vos produits se reprennent avec un simple fichier', en: 'Coming from Shopify? Your products come over with a simple file' },
+    { fr: 'Variantes (taille, couleur), stock et packs gérés pour vous', en: 'Variants (size, colour), stock and bundles handled for you' },
     { fr: 'Vos clients et commandes s’exportent dans Excel', en: 'Your customers and orders export to Excel' },
   ] },
 ]
