@@ -2,6 +2,7 @@
  * Coordonnées de contact de Zuri (réglées dans le super admin), gardées 5 minutes en mémoire :
  * le bouton WhatsApp des pages marketing ne coûte pas un appel à l'API par page vue.
  */
+import type { BillingPromo } from '@zuri/shared'
 import { apiGet } from './api'
 
 export interface ContactInfo {
@@ -9,6 +10,8 @@ export interface ContactInfo {
   whatsapp: string | null
   /** Comptes officiels (réseaux sociaux, annuaires), réglés dans le super admin. */
   socials: string[]
+  /** Offre en cours sur les formules (Black Friday), null sinon. */
+  promo?: BillingPromo | null
 }
 
 const FALLBACK: ContactInfo = { email: 'contact@zurisell.store', whatsapp: null, socials: [] }

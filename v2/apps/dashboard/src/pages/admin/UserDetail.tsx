@@ -36,6 +36,7 @@ export default function AdminUserDetail() {
   const patch = useMutation({ mutationFn: (body: unknown) => api.patch(`/admin/users/${userId}`, body) })
   const offer = useMutation({ mutationFn: () => api.post(`/admin/users/${userId}/subscription`, { plan, months: Number(months) }) })
   const revoke = useMutation({ mutationFn: () => api.del(`/admin/users/${userId}/subscription`) })
+  const retry = useMutation({ mutationFn: () => api.post<{ email: string; plan: string; amount: number }>(`/admin/users/${userId}/billing-retry`) })
   const storeStatus = useMutation({ mutationFn: (v: { id: string; status: string }) => api.post(`/admin/stores/${v.id}/status`, { status: v.status }) })
 
   if (error && !data) return <ErrorState error={error} onRetry={() => void refetch()} />
@@ -122,6 +123,14 @@ export default function AdminUserDetail() {
           <Button variant="primary" loading={offer.isPending} onClick={() => offer.mutate(undefined, { onSuccess: () => done('Formule offerte'), onError: (e) => toast.error(e) })}>
             Offrir
           </Button>
+          {data.payments.some((p) => p.status !== 'paid') && (
+            <Button
+              loading={retry.isPending}
+              onClick={() => retry.mutate(undefined, { onSuccess: (r) => toast.success(`Relance envoyée à ${r.email} : ${r.plan} à ${fmt(r.amount)} F`), onError: (e) => toast.error(e) })}
+            >
+              Relancer pour son abonnement
+            </Button>
+          )}
           {data.subscription && (
             <Button variant="danger" loading={revoke.isPending} onClick={() => revoke.mutate(undefined, { onSuccess: () => done('Abonnement retiré'), onError: (e) => toast.error(e) })}>
               Retirer l’abonnement

@@ -1,9 +1,12 @@
 /** Annonces de Zuri (publiées depuis le super admin) : bandeau en haut du tableau de bord, fermable. */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Info, Megaphone, X } from 'lucide-react'
+import type { BillingPromo } from '@zuri/shared'
+import { AlertTriangle, Info, Megaphone, Tag, X } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { buttonClass, cx } from '@/components/ui'
 import { api } from '@/lib/api'
+import { readLocal, writeLocal } from '@/lib/storage'
 
 interface Announcement {
   id: number
@@ -20,7 +23,54 @@ const TONE = {
   warning: { box: 'border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40', icon: AlertTriangle, color: 'text-amber-700 dark:text-amber-300' },
 }
 
+/** Offre en cours sur les formules (Black Friday) : bandeau pour ceux qui peuvent payer, fermable. */
+function PromoBanner() {
+  const { data } = useQuery({ queryKey: ['billing'], queryFn: () => api.get<{ canPay: boolean; promo?: BillingPromo | null; plan: { reason: string } }>('/billing'), staleTime: 5 * 60_000 })
+  const promo = data?.promo
+  const key = promo ? `zuri:promo-hidden:${promo.label}:${promo.endsAt}` : ''
+  const [hidden, setHidden] = useState(() => (key ? readLocal(key) === '1' : false))
+  if (!promo || !data?.canPay || data.plan.reason === 'subscription' || hidden || (key && readLocal(key) === '1')) return null
+  const end = new Date(promo.endsAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'UTC' })
+  return (
+    <div className="mb-4 flex items-start gap-3 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3" role="status">
+      <Tag className="mt-0.5 size-5 shrink-0 text-accent" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold">
+          {promo.label} : -{promo.percent} % sur toutes les formules jusqu’au {end}
+        </p>
+        <p className="mt-0.5 text-sm text-muted">Choisis ta formule maintenant à prix réduit. Elle démarre après l’offre de lancement gratuite : tu ne perds aucun jour.</p>
+        <div className="mt-2">
+          <Link to="/billing" className={buttonClass('primary', 'sm')}>
+            Voir les formules
+          </Link>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          writeLocal(key, '1')
+          setHidden(true)
+        }}
+        className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-fg"
+        aria-label="Fermer"
+        title="Fermer"
+      >
+        <X className="size-4" />
+      </button>
+    </div>
+  )
+}
+
 export function Announcements() {
+  return (
+    <>
+      <PromoBanner />
+      <PlatformAnnouncements />
+    </>
+  )
+}
+
+function PlatformAnnouncements() {
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['announcements'], queryFn: () => api.get<Announcement[]>('/announcements'), staleTime: 5 * 60_000 })
   const act = useMutation({

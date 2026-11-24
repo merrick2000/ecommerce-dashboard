@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import { promoPrice } from '@zuri/shared'
+import { billingPromo } from '../src/services/billing'
 import { createHmac } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { app } from '../src/app'
@@ -218,11 +220,13 @@ describe('Payment Orchestrator : abonnements et ouverture réservée', () => {
     expect(r.body).toMatchObject({ status: 'po' })
     const create = calls.find((c) => c.method === 'POST' && c.path === '/checkout/sessions' && c.body.client_reference === `bill_${r.body.id}`)!
     expect(create.headers['idempotency-key']).toBe(`billing_${r.body.id}`)
-    expect(create.body.amount).toBe(9900)
+    // Offre en cours (Black Friday par défaut) appliquée par le serveur ; prix plein une fois l'offre terminée.
+    const expected = promoPrice(9900, await billingPromo())
+    expect(create.body.amount).toBe(expected)
 
     // Paiement confirmé : webhook signé avec le secret de la plateforme, la session est relue côté serveur.
     sessions[r.body.sessionId] = { ...sessions[r.body.sessionId], status: 'complete', payment_status: 'paid', transaction: { id: 'tx_bill', status: 'succeeded' } }
-    const body = event('payment.succeeded', { id: 'tx_bill', status: 'succeeded', amount: 9900, currency: 'XOF', client_reference: `bill_${r.body.id}`, checkout_session: r.body.sessionId })
+    const body = event('payment.succeeded', { id: 'tx_bill', status: 'succeeded', amount: expected, currency: 'XOF', client_reference: `bill_${r.body.id}`, checkout_session: r.body.sessionId })
     expect((await hook('/api/v1/webhooks/payment-orchestrator', body, sign(body, 'whsec_autre'))).status).toBe(400)
     expect((await hook('/api/v1/webhooks/payment-orchestrator', body, sign(body))).status).toBe(200)
     const status = await admin.get(`/api/billing/payments/${r.body.id}`)

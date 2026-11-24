@@ -13,6 +13,8 @@ import { contactInfo } from './site'
 import { audienceSize } from '../services/announcements'
 import { resetAccount, resetPreview } from '../services/account-reset'
 import { aiAvailable } from '../services/ai-suggest'
+import { sendBillingRetry } from '../services/billing-recovery'
+import { DEFAULT_PROMO, type BillingPromo } from '@zuri/shared'
 import { enqueue } from '../jobs/queue'
 import { requireAuth } from '../lib/auth'
 import type { AppEnv } from '../lib/context'
@@ -200,6 +202,8 @@ export const adminRoutes = new Hono<AppEnv>()
     const end = await extendSubscription(c.req.valid('param').id, plan as PlanId, months, 'offered', note ?? 'Offert par l’administration')
     return c.json({ currentPeriodEnd: end })
   })
+  /** Relance à la main : « vous avez essayé de payer, c'est réglé, réessayez » (avec l'offre en cours). */
+  .post('/users/:id/billing-retry', v('param', z.object({ id: z.coerce.number().int() })), async (c) => c.json(await sendBillingRetry(c.req.valid('param').id)))
   .delete('/users/:id/subscription', v('param', z.object({ id: z.coerce.number().int() })), async (c) => {
     await db.delete(subscriptions).where(eq(subscriptions.userId, c.req.valid('param').id))
     return c.json({ ok: true })
@@ -267,6 +271,7 @@ export const adminRoutes = new Hono<AppEnv>()
         }
       })(),
       ai: { configured: aiAvailable() },
+      billingPromo: await getSetting<BillingPromo>('billing.promo', DEFAULT_PROMO),
       firecrawl: await (async () => {
         const stored = await getSetting<string | null>('firecrawl.key', null)
         const key = stored ? decrypt(stored) : (env.FIRECRAWL_API_KEY ?? null)
@@ -275,10 +280,11 @@ export const adminRoutes = new Hono<AppEnv>()
       myStores: myStores.map((s) => ({ ...s, accounts: accounts.filter((a) => a.storeId === s.id && ['fedapay', 'feexpay', 'pawapay'].includes(a.provider)) })),
     })
   })
-  .put('/settings', v('json', z.object({ paymentsOnline: z.boolean().optional(), billingEnabled: z.boolean().optional(), billingStoreId: z.string().max(40).nullable().optional(), urlImport: z.boolean().optional(), cartEnabled: z.boolean().optional(), poSecretKey: z.string().trim().regex(/^sk_(test|live)_[A-Za-z0-9_-]{8,200}$/, 'Clé secrète invalide (sk_test_… ou sk_live_…)').nullable().optional(), poWebhookSecret: z.string().trim().regex(/^whsec_[A-Za-z0-9_-]{8,200}$/, 'Secret de webhook invalide (whsec_…)').nullable().optional(), firecrawlKey: z.string().trim().regex(/^fc-[A-Za-z0-9]{16,80}$/, 'Clé Firecrawl invalide (fc-…)').nullable().optional(), contactEmail: z.string().trim().toLowerCase().email('Email invalide').max(255).nullable().optional(), contactWhatsapp: z.string().trim().regex(/^\+?[0-9 ]{8,20}$/, 'Numéro WhatsApp invalide (ex. +229 01 23 45 67)').nullable().optional(), socialLinks: z.array(z.string().trim().url('Lien invalide (https://…)').max(300)).max(10).optional() })), async (c) => {
+  .put('/settings', v('json', z.object({ billingPromo: z.object({ active: z.boolean(), label: z.string().trim().min(2).max(40), percent: z.number().int().min(5, 'Réduction : 5 % minimum').max(90, 'Réduction : 90 % maximum'), endsAt: z.string().datetime({ offset: true, message: 'Date de fin invalide' }) }).optional(), paymentsOnline: z.boolean().optional(), billingEnabled: z.boolean().optional(), billingStoreId: z.string().max(40).nullable().optional(), urlImport: z.boolean().optional(), cartEnabled: z.boolean().optional(), poSecretKey: z.string().trim().regex(/^sk_(test|live)_[A-Za-z0-9_-]{8,200}$/, 'Clé secrète invalide (sk_test_… ou sk_live_…)').nullable().optional(), poWebhookSecret: z.string().trim().regex(/^whsec_[A-Za-z0-9_-]{8,200}$/, 'Secret de webhook invalide (whsec_…)').nullable().optional(), firecrawlKey: z.string().trim().regex(/^fc-[A-Za-z0-9]{16,80}$/, 'Clé Firecrawl invalide (fc-…)').nullable().optional(), contactEmail: z.string().trim().toLowerCase().email('Email invalide').max(255).nullable().optional(), contactWhatsapp: z.string().trim().regex(/^\+?[0-9 ]{8,20}$/, 'Numéro WhatsApp invalide (ex. +229 01 23 45 67)').nullable().optional(), socialLinks: z.array(z.string().trim().url('Lien invalide (https://…)').max(300)).max(10).optional() })), async (c) => {
     const body = c.req.valid('json')
     if (body.urlImport !== undefined) await setSetting('import.url', body.urlImport)
     if (body.cartEnabled !== undefined) await setSetting('cart.enabled', body.cartEnabled)
+    if (body.billingPromo !== undefined) await setSetting('billing.promo', body.billingPromo)
     if (body.contactEmail !== undefined) await setSetting('contact.email', body.contactEmail || null)
     if (body.socialLinks !== undefined) await setSetting('social.links', body.socialLinks.length ? body.socialLinks : null)
     if (body.contactWhatsapp !== undefined) await setSetting('contact.whatsapp', body.contactWhatsapp ? `+${body.contactWhatsapp.replace(/\D/g, '')}` : null)

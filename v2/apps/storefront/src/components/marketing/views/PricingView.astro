@@ -5,7 +5,8 @@ import FaqList from '../FaqList.astro'
 import CtaBand from '../CtaBand.astro'
 import LaunchOffer from '../offer/LaunchOffer.astro'
 import { env } from 'cloudflare:workers'
-import { PLANS, LAUNCH } from '@zuri/shared'
+import { PLANS, LAUNCH, promoActive, promoPrice } from '@zuri/shared'
+import { contactInfo } from '../../../lib/contact'
 import { PATHS, toolPath } from '../../../content/seo'
 import type { Faq, Lang } from '../../../content/seo'
 
@@ -17,6 +18,8 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr'
 const path = { fr: '/tarifs', en: '/en/pricing' }
 const appOrigin = import.meta.env.DEV ? 'http://localhost:5173' : (env.APP_ORIGIN ?? `https://app.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
 const signup = `${appOrigin}/register`
+const promoRaw = (await contactInfo()).promo
+const promo = promoActive(promoRaw) ? promoRaw : null
 const fmt = (n: number) => n.toLocaleString('fr-FR').replace(/ | /g, ' ')
 const dateFmt = (iso: string) => new Date(iso).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 
@@ -139,10 +142,12 @@ const jsonLd = [
             {p.highlight && <span class="mk-plan-badge">{M.popular}</span>}
             <h2 class="mk-plan-name">{name(p.id, p.name)}</h2>
             <div class="mk-plan-price">
-              <b>{fmt(p.priceXof)} F</b>
+              {promo && p.priceXof > 0 && <s class="mk-plan-old">{fmt(p.priceXof)} F</s>}
+              <b>{fmt(promoPrice(p.priceXof, promo))} F</b>
               <span>{M.month}</span>
             </div>
-            <p class="mk-plan-note">{p.priceXof > 0 ? M.year(fmt(p.priceXof * 10)) : M.freeNote(dateFmt(LAUNCH.freePlanUntil))}</p>
+            <p class="mk-plan-note">{p.priceXof > 0 ? M.year(fmt(promoPrice(p.priceXof * 10, promo))) : M.freeNote(dateFmt(LAUNCH.freePlanUntil))}</p>
+            {promo && p.priceXof > 0 && <p class="mk-plan-promo">{lang === 'fr' ? `${promo.label} : -${promo.percent} % jusqu’au ${dateFmt(promo.endsAt)}` : `${promo.label}: -${promo.percent}% until ${dateFmt(promo.endsAt)}`}</p>}
             <ul>
               <li>{M.stores(p.limits.stores)}</li>
               <li>{M.products(p.limits.products)}</li>

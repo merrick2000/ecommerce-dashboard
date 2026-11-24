@@ -1,6 +1,6 @@
-import { PLANS, priceFor, type EffectivePlan, type PlanDef } from '@zuri/shared'
+import { PLANS, priceFor, promoPrice, type BillingPromo, type EffectivePlan, type PlanDef } from '@zuri/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Check, Crown, Loader2, Smartphone } from 'lucide-react'
+import { ArrowLeft, Check, Crown, Loader2, Smartphone, Tag } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Dialog } from '@/components/Dialog'
@@ -22,6 +22,8 @@ interface BillingInfo {
   /** Payment Orchestrator (widget) si le compte de la plateforme est configuré. */
   gateway?: { kind: 'orchestrator'; widgetMode: 'auto' | 'modal' | 'redirect'; locale: string | null; widgetUrl: string; test: boolean } | { kind: 'direct' }
   payments: { id: number; plan: string; months: number; amount: number; status: string; provider: string; createdAt: string; paidAt: string | null }[]
+  /** Offre en cours (Black Friday…), déjà appliquée par le serveur au moment du paiement. */
+  promo?: BillingPromo | null
 }
 
 const fcfa = (n: number) => `${new Intl.NumberFormat('fr-FR').format(n)} F`
@@ -45,8 +47,9 @@ export function planSummary(p: EffectivePlan) {
   }
 }
 
-function PlanCard({ plan, current, months, onPick, canPay }: { plan: PlanDef; current: boolean; months: 1 | 12; onPick: () => void; canPay: boolean }) {
-  const price = priceFor(plan.id, months)
+function PlanCard({ plan, current, months, onPick, canPay, promo }: { plan: PlanDef; current: boolean; months: 1 | 12; onPick: () => void; canPay: boolean; promo?: BillingPromo | null }) {
+  const full = priceFor(plan.id, months)
+  const price = promoPrice(full, promo)
   return (
     <div className={cx('flex flex-col rounded-xl border bg-surface p-5', plan.highlight ? 'border-accent ring-1 ring-accent' : 'border-line')}>
       <div className="flex items-center justify-between">
@@ -55,6 +58,7 @@ function PlanCard({ plan, current, months, onPick, canPay }: { plan: PlanDef; cu
         {current && <Badge tone="green">Actuelle</Badge>}
       </div>
       <p className="mt-3">
+        {plan.priceXof > 0 && price < full && <span className="tabular mr-2 text-base text-muted line-through">{fcfa(full)}</span>}
         <span className="tabular text-3xl font-bold">{plan.priceXof ? fcfa(price) : '0 F'}</span>
         <span className="text-sm text-muted"> {plan.priceXof ? (months === 12 ? '/ an' : '/ mois') : ''}</span>
       </p>
@@ -129,7 +133,7 @@ function Checkout({ info, plan, months, onClose }: { info: BillingInfo; plan: Pl
     <Dialog
       open
       onClose={onClose}
-      title={`Formule ${plan.name} · ${fcfa(priceFor(plan.id, months))}`}
+      title={`Formule ${plan.name} · ${fcfa(promoPrice(priceFor(plan.id, months), info.promo))}`}
       size="sm"
       footer={
         !pending && (
@@ -269,6 +273,17 @@ export default function Billing() {
                 </div>
               </div>
             </Card>
+            {data.promo && (
+              <div className="mt-6 flex items-start gap-3 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3">
+                <Tag className="mt-0.5 size-5 shrink-0 text-accent" />
+                <div className="text-sm">
+                  <p className="font-semibold">
+                    {data.promo.label} : -{data.promo.percent} % sur toutes les formules jusqu’au {date(data.promo.endsAt)}
+                  </p>
+                  <p className="text-muted">Le prix réduit est appliqué au paiement. Ta période payée commence après l’offre de lancement gratuite : tu ne perds aucun jour.</p>
+                </div>
+              </div>
+            )}
             <div className="mt-8 mb-4 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Les formules</h2>
               <Segmented label="Durée" value={String(months)} onChange={(v) => setMonths(Number(v) as 1 | 12)} options={[{ value: '1', label: 'Mensuel' }, { value: '12', label: 'Annuel (2 mois offerts)' }]} />
@@ -276,7 +291,7 @@ export default function Billing() {
             {!data.canPay && <p className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">Le paiement des formules ouvre très bientôt. Tu seras prévenu par email avant la fin de ton offre.</p>}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {data.plans.map((p) => (
-                <PlanCard key={p.id} plan={p} months={months} current={data.plan.reason === 'subscription' && data.plan.plan === p.id} canPay={data.canPay} onPick={() => setPicked(p)} />
+                <PlanCard key={p.id} plan={p} months={months} current={data.plan.reason === 'subscription' && data.plan.plan === p.id} canPay={data.canPay} promo={data.promo} onPick={() => setPicked(p)} />
               ))}
             </div>
             {data.payments.length > 0 && (

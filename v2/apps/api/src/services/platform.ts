@@ -10,7 +10,7 @@ import { db } from '../db/client'
 import { platformSettings, storeMembers, stores, subscriptions, users, type User } from '../db/schema'
 import { HttpError } from '../lib/errors'
 
-export type SettingKey = 'payments.online' | 'billing.enabled' | 'billing.account' | 'import.url' | 'firecrawl.key' | 'po.platform' | 'contact.email' | 'contact.whatsapp' | 'social.links' | 'cart.enabled'
+export type SettingKey = 'payments.online' | 'billing.enabled' | 'billing.account' | 'import.url' | 'firecrawl.key' | 'po.platform' | 'contact.email' | 'contact.whatsapp' | 'social.links' | 'cart.enabled' | 'billing.promo'
 
 export async function getSetting<T>(key: SettingKey, fallback: T): Promise<T> {
   const [row] = await db.select({ value: platformSettings.value }).from(platformSettings).where(eq(platformSettings.key, key)).limit(1)

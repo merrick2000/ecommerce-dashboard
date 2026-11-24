@@ -32,7 +32,7 @@ describe('page contact', () => {
     await account('site-admin@test.dev', { admin: true })
     await admin.post('/api/auth/login', { email: 'site-admin@test.dev', password: 'motdepasse-solide' })
     const info = await visitor.get('/api/v1/platform/contact')
-    expect(info.body).toEqual({ email: 'contact@zurisell.store', whatsapp: null, socials: [] })
+    expect(info.body).toMatchObject({ email: 'contact@zurisell.store', whatsapp: null, socials: [] })
 
     const r = await visitor.post('/api/v1/contact', { name: 'Koffi', email: 'Koffi@Test.dev', message: 'Bonjour, je veux vendre des perruques à Lomé.', page: '/contact', lang: 'fr' })
     expect(r.status).toBe(201)
@@ -45,7 +45,7 @@ describe('page contact', () => {
 
   test('super admin : réglages de contact, liste des messages, traité', async () => {
     expect((await admin.put('/api/admin/settings', { contactEmail: 'hello@zurisell.store', contactWhatsapp: '+229 01 40 18 81 35' })).status).toBe(200)
-    expect((await visitor.get('/api/v1/platform/contact')).body).toEqual({ email: 'hello@zurisell.store', whatsapp: '+2290140188135', socials: [] })
+    expect((await visitor.get('/api/v1/platform/contact')).body).toMatchObject({ email: 'hello@zurisell.store', whatsapp: '+2290140188135', socials: [] })
     expect((await admin.put('/api/admin/settings', { contactWhatsapp: 'abc' })).status).toBe(422)
 
     const list = await admin.get('/api/admin/messages')

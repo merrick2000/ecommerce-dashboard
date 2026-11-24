@@ -1,7 +1,9 @@
 ---
 /** Bandeau d'offre de lancement en haut des pages marketing. */
 import Countdown from './Countdown.astro'
-import { OFFER, offerActive } from '../../../content/seo/offer'
+import { promoActive } from '@zuri/shared'
+import { OFFER, OFFER_DEADLINE, offerActive } from '../../../content/seo/offer'
+import { contactInfo } from '../../../lib/contact'
 import type { Lang } from '../../../content/seo'
 interface Props {
   lang: Lang
@@ -9,15 +11,27 @@ interface Props {
 }
 const { lang, href } = Astro.props
 const o = OFFER[lang]
+// Black Friday (réglé dans le super admin) : prioritaire sur le message de l'offre de lancement.
+const promo = (await contactInfo()).promo
+const bf = promoActive(promo) ? promo : null
+const bfEnd = bf ? new Date(bf.endsAt).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' }) : ''
+const sameDeadline = bf ? Math.abs(Date.parse(bf.endsAt) - Date.parse(OFFER_DEADLINE)) < 864e5 : true
+const text = bf
+  ? lang === 'fr'
+    ? `${bf.label} : -${bf.percent} % sur toutes les formules jusqu’au ${bfEnd}${offerActive() ? ', et tout reste gratuit jusque-là' : ''}.`
+    : `${bf.label}: -${bf.percent}% on every plan until ${bfEnd}${offerActive() ? ', and everything stays free until then' : ''}.`
+  : o.short
 ---
 
 {
-  offerActive() && (
+  (bf || offerActive()) && (
     <a class="mk-promo" href={href}>
-      <span class="mk-promo-text">{o.short}</span>
-      <span class="mk-promo-cd">
-        {o.left} <Countdown lang={lang} />
-      </span>
+      <span class="mk-promo-text">{text}</span>
+      {offerActive() && sameDeadline && (
+        <span class="mk-promo-cd">
+          {o.left} <Countdown lang={lang} />
+        </span>
+      )}
       <span class="mk-promo-cta">{o.cta}</span>
     </a>
   )

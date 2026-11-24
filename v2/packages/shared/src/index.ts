@@ -1025,6 +1025,24 @@ export const PLANS: Record<PlanId, PlanDef> = {
 export const BILLING_MONTHS = [1, 12] as const
 export const priceFor = (plan: PlanId, months: number) => (months >= 12 ? PLANS[plan].priceXof * 10 : PLANS[plan].priceXof * months)
 
+/** Promotion sur les formules (ex. Black Friday), réglée dans le super admin. */
+export interface BillingPromo {
+  active: boolean
+  /** Nom affiché : « Black Friday ». */
+  label: string
+  /** Réduction en %, de 5 à 90. */
+  percent: number
+  /** Fin de l'offre (ISO). */
+  endsAt: string
+}
+/** Offre par défaut : Black Friday, -30 % jusqu'au Cyber Monday (même date que la fin de l'offre de lancement). */
+export const DEFAULT_PROMO: BillingPromo = { active: true, label: 'Black Friday', percent: 30, endsAt: '2026-11-30T23:59:59Z' }
+export const promoActive = (p: BillingPromo | null | undefined, now = Date.now()): p is BillingPromo =>
+  !!p && p.active && p.percent > 0 && new Date(p.endsAt).getTime() > now
+/** Prix après réduction, arrondi à 5 F. */
+export const promoPrice = (amount: number, p: BillingPromo | null | undefined, now = Date.now()) =>
+  promoActive(p, now) ? Math.max(5, Math.round((amount * (100 - p.percent)) / 100 / 5) * 5) : amount
+
 /** Calendrier de lancement. */
 export const LAUNCH = {
   /** Jusqu'à cette date : tout est gratuit et illimité pour tout le monde. */

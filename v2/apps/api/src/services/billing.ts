@@ -3,7 +3,7 @@
  * configuré, sinon sur les comptes de la boutique choisie par le super admin (FedaPay, FeexPay, pawaPay).
  * La formule n'est prolongée qu'après confirmation serveur (montant exact), une seule fois.
  */
-import { BILLING_MONTHS, PLANS, priceFor, type PlanId } from '@zuri/shared'
+import { BILLING_MONTHS, DEFAULT_PROMO, LAUNCH, PLANS, priceFor, promoActive, promoPrice, type BillingPromo, type PlanId } from '@zuri/shared'
 import { and, desc, eq, gte } from 'drizzle-orm'
 import { db } from '../db/client'
 import { billingPayments, paymentAccounts, subscriptions, type User } from '../db/schema'
@@ -43,7 +43,7 @@ type PoSessionLite = { id: string; url: string; status: string; payment_status: 
 /** Abonnement payé via Payment Orchestrator : une session par paiement, référence « bill_<id> ». */
 async function startPoBilling(user: User, input: { plan: Exclude<PlanId, 'free'>; months: 1 | 12 }) {
   const acc = (await platformPo())!
-  const amount = priceFor(input.plan, input.months)
+  const amount = promoPrice(priceFor(input.plan, input.months), await billingPromo())
   const [bp] = await db.insert(billingPayments).values({ userId: user.id, plan: input.plan, months: input.months, amount, currency: 'XOF', provider: 'orchestrator' }).returning()
   const app = env.APP_URL.replace(/\/$/, '')
   try {
@@ -84,7 +84,7 @@ export async function startBillingPayment(user: User, input: { plan: Exclude<Pla
   const route = (ROUTING[country]?.[network] ?? []) as PaymentProvider[]
   const accounts = (await loadAccounts(storeId)).filter((a) => BILLING_PROVIDERS.includes(a.provider) && route.includes(a.provider))
   if (!accounts.length) throw badRequest('Ce réseau n’est pas disponible pour le paiement de l’abonnement', 'network_unavailable')
-  const amount = priceFor(input.plan, input.months)
+  const amount = promoPrice(priceFor(input.plan, input.months), await billingPromo())
   const errors: string[] = []
   for (const account of accounts) {
     const [bp] = await db.insert(billingPayments).values({ userId: user.id, plan: input.plan, months: input.months, amount, currency: 'XOF', provider: account.provider, phone }).returning()
@@ -170,9 +170,18 @@ export async function refreshBillingByRef(provider: PaymentProvider, ref: string
 }
 
 /** Prolonge (ou crée) l'abonnement : la nouvelle période commence à la fin de la période en cours si elle n'est pas finie. */
+/** Promotion en cours sur les formules (Black Friday par défaut), ou null si aucune n'est active. */
+export async function billingPromo(): Promise<BillingPromo | null> {
+  const p = await getSetting<BillingPromo>('billing.promo', DEFAULT_PROMO)
+  return promoActive(p) ? p : null
+}
+
 export async function extendSubscription(userId: number, plan: PlanId, months: number, source: 'paid' | 'offered', note?: string) {
   const [cur] = await db.select().from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1)
-  const start = cur && cur.currentPeriodEnd > new Date() && cur.plan === plan ? cur.currentPeriodEnd : new Date()
+  let start = cur && cur.currentPeriodEnd > new Date() && cur.plan === plan ? cur.currentPeriodEnd : new Date()
+  // Payé pendant l'offre de lancement (tout gratuit) : la période payée commence à la fin de l'offre, rien n'est perdu.
+  const launchEnd = new Date(LAUNCH.unlimitedUntil)
+  if (source === 'paid' && launchEnd > start) start = launchEnd
   const end = new Date(start)
   end.setMonth(end.getMonth() + months)
   await db

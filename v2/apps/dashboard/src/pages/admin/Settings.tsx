@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { BillingPromo } from '@zuri/shared'
 import { useState } from 'react'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, ErrorState, Input, Select, Skeleton, Switch, Textarea } from '@/components/ui'
@@ -15,6 +16,7 @@ interface PlatformSettings {
   cartEnv: boolean
   contact: { email: string; whatsapp: string | null; socials: string[] }
   ai: { configured: boolean }
+  billingPromo: BillingPromo
   firecrawl: { configured: boolean; source: 'admin' | 'env' | null; hint: string | null }
   po: { configured: boolean; source: 'admin' | 'env' | null; hint: string | null; livemode: boolean | null; webhookSecretSet: boolean; webhookUrl: string }
   myStores: { id: string; name: string; accounts: { provider: string; enabled: boolean; mode: string }[] }[]
@@ -38,6 +40,9 @@ export default function AdminSettings() {
       </Card>
       <Card title="Payment Orchestrator de la plateforme" description="Ton compte payment.zurisell.store : il encaisse les abonnements Zuri et les ventes de tes propres boutiques. Jamais celles des autres vendeurs (ils connectent leur propre compte).">
         <PoPlatform po={data.po} onSave={(body, msg) => put(body, msg)} />
+      </Card>
+      <Card title="Offre sur les formules" description="Réduction appliquée au paiement des abonnements, affichée sur la page Abonnement, le tableau de bord des vendeurs, le site (tarifs et bandeau) et les emails de relance.">
+        <PromoForm promo={data.billingPromo} billingOpen={data.billingEnabled} onSave={(billingPromo, msg) => put({ billingPromo }, msg)} />
       </Card>
       <Card title="Ouverture des paiements" description="Tant que c’est désactivé, seules tes boutiques (et les comptes que tu autorises dans leur fiche) encaissent en ligne. Les autres vendeurs restent en paiement à la livraison.">
         <div className="space-y-3">
@@ -304,5 +309,39 @@ function ContactSettings({ contact, onSave, saving }: { contact: PlatformSetting
         Enregistrer
       </Button>
     </form>
+  )
+}
+
+function PromoForm({ promo, billingOpen, onSave }: { promo: BillingPromo; billingOpen: boolean; onSave: (p: BillingPromo, msg: string) => void }) {
+  const [label, setLabel] = useState(promo.label)
+  const [percent, setPercent] = useState(String(promo.percent))
+  const [end, setEnd] = useState(promo.endsAt.slice(0, 10))
+  const live = promo.active && new Date(promo.endsAt).getTime() > Date.now()
+  const body = (active: boolean): BillingPromo => ({ active, label: label.trim() || 'Black Friday', percent: Number(percent) || 0, endsAt: new Date(`${end}T23:59:59Z`).toISOString() })
+  return (
+    <div className="space-y-3">
+      <p className="flex flex-wrap items-center gap-2 text-sm">
+        {live ? <Badge tone="green">en cours</Badge> : <Badge tone="neutral">{promo.active ? 'terminée' : 'arrêtée'}</Badge>}
+        <span>
+          {promo.label} : -{promo.percent} % jusqu’au {fdate(promo.endsAt)}
+        </span>
+        {live && !billingOpen && <Badge tone="amber">paiement des abonnements fermé : seuls les comptes autorisés la voient</Badge>}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Input label="Nom de l’offre" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={40} />
+        <Input label="Réduction (%)" type="number" min={5} max={90} value={percent} onChange={(e) => setPercent(e.target.value)} />
+        <Input label="Jusqu’au (inclus)" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="primary" onClick={() => onSave(body(true), 'Offre enregistrée et active')}>
+          Enregistrer et activer
+        </Button>
+        {promo.active && (
+          <Button variant="ghost" onClick={() => onSave(body(false), 'Offre arrêtée')}>
+            Arrêter l’offre
+          </Button>
+        )}
+      </div>
+    </div>
   )
 }

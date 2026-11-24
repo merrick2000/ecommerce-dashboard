@@ -23,7 +23,8 @@ export const DEFAULT_CONTACT_EMAIL = 'contact@zurisell.store'
 
 export async function contactInfo() {
   const [email, whatsapp, socials] = await Promise.all([getSetting<string | null>('contact.email', null), getSetting<string | null>('contact.whatsapp', null), getSetting<string[] | null>('social.links', null)])
-  return { email: email || DEFAULT_CONTACT_EMAIL, whatsapp: whatsapp || null, socials: socials ?? [] }
+  const { billingPromo } = await import('../services/billing')
+  return { email: email || DEFAULT_CONTACT_EMAIL, whatsapp: whatsapp || null, socials: socials ?? [], promo: await billingPromo() }
 }
 
 const page = (title: string, text: string) =>

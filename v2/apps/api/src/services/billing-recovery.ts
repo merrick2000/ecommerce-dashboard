@@ -5,10 +5,10 @@
  * en journée seulement, désinscription respectée.
  * Une tentative qui n'a même pas pu démarrer (erreur de configuration côté Zuri) ne déclenche aucune relance.
  */
-import { LAUNCH, PLANS, type PlanId } from '@zuri/shared'
-import { sql as dsql } from 'drizzle-orm'
+import { LAUNCH, PLANS, priceFor, promoPrice, type PlanId } from '@zuri/shared'
+import { desc, eq, sql as dsql } from 'drizzle-orm'
 import { db } from '../db/client'
-import { onboardingEmails } from '../db/schema'
+import { billingPayments, onboardingEmails, users } from '../db/schema'
 import { env } from '../lib/env'
 import { escapeHtml } from '../lib/sanitize'
 import { button, layout, small } from './emails'
@@ -50,7 +50,7 @@ export function dueBillingStep(createdAt: Date, sentSteps: number[], now = Date.
   return null
 }
 
-function billingReminder(step: number, c: { lang: 'fr' | 'en'; name: string; plan: string; months: number; amount: number; link: string; whatsapp: string | null; unsubscribe: string }) {
+function billingReminder(step: number, c: { lang: 'fr' | 'en'; name: string; plan: string; months: number; amount: number; link: string; whatsapp: string | null; unsubscribe: string; promo?: { label: string; percent: number; endsAt: string; price: number } | null }) {
   const en = c.lang === 'en'
   const first = escapeHtml(c.name.split(/\s+/)[0] ?? '')
   const price = `${c.amount.toLocaleString('fr-FR')} FCFA`
@@ -81,9 +81,12 @@ function billingReminder(step: number, c: { lang: 'fr' | 'en'; name: string; pla
       : en
         ? `<p>Your <strong>Zuri ${c.plan}</strong> payment (${period}, ${price}) is still not completed.${launchSoon ? ` The free launch offer ends on ${endLabel}: choose your plan now to keep all your features without interruption.` : ''}</p><p>If it did not work with one number or network, try another one.</p>`
         : `<p>Le paiement de <strong>Zuri ${c.plan}</strong> (${period}, ${price}) n’est toujours pas terminé.${launchSoon ? ` L’offre de lancement gratuite se termine le ${endLabel} : choisissez votre formule maintenant pour garder toutes vos fonctions sans coupure.` : ''}</p><p>Si ça n’a pas marché avec un numéro ou un réseau, essayez-en un autre.</p>`
+  const offer = c.promo
+    ? `<p style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px 14px"><strong>${escapeHtml(c.promo.label)} : -${c.promo.percent} %${en ? ' until ' : ' jusqu’au '}${new Date(c.promo.endsAt).toLocaleDateString(en ? 'en-GB' : 'fr-FR', { day: 'numeric', month: 'long' })}.</strong><br>Zuri ${c.plan} : <s>${price}</s> <strong>${c.promo.price.toLocaleString('fr-FR')} FCFA</strong></p>`
+    : ''
   const html = layout(
     'Zuri',
-    `<p>${en ? 'Hi' : 'Bonjour'} ${first},</p>${body}${button(c.link, en ? 'Finish my payment' : 'Terminer mon paiement')}${help}${small(`${en ? 'No more emails like this?' : 'Ne plus recevoir ces emails ?'} <a href="${c.unsubscribe}">${en ? 'Unsubscribe' : 'Se désinscrire'}</a>`)}`,
+    `<p>${en ? 'Hi' : 'Bonjour'} ${first},</p>${body}${offer}${button(c.link, en ? 'Finish my payment' : 'Terminer mon paiement')}${help}${small(`${en ? 'No more emails like this?' : 'Ne plus recevoir ces emails ?'} <a href="${c.unsubscribe}">${en ? 'Unsubscribe' : 'Se désinscrire'}</a>`)}`,
     '#f59e0b',
     c.lang,
   )
@@ -109,6 +112,7 @@ export async function runBillingRecovery(now = new Date()): Promise<number> {
   const whatsapp = await getSetting<string | null>('contact.whatsapp', null)
   const replyTo = await getSetting<string | null>('contact.email', null)
   const app = env.APP_URL.replace(/\/$/, '')
+  const promo = await (await import('./billing')).billingPromo()
   let sent = 0
   for (const r of rows) {
     const step = dueBillingStep(new Date(r.created_at), r.sent_steps ?? [], now.getTime())
@@ -127,10 +131,59 @@ export async function runBillingRecovery(now = new Date()): Promise<number> {
       link,
       whatsapp,
       unsubscribe: unsubscribeUrl(r.user_id),
+      promo: promo ? { ...promo, price: promoPrice(priceFor(r.plan, r.months), promo) } : null,
     })
     await sendEmail(r.email, mail.subject, mail.html, { fromName: 'Zuri', ...(replyTo ? { replyTo } : {}) }).catch(() => undefined)
     await sendPushToUser(r.user_id, { title: mail.subject, body: mail.push, url: link, tag: `billing-${r.attempt_id}`, event: 'platform', sound: 'soft' }).catch(() => 0)
     sent++
   }
   return sent
+}
+
+/**
+ * Relance envoyée à la main depuis le super admin : le vendeur a essayé de payer et n'a pas pu
+ * (souci réglé depuis). Email + notification, avec l'offre en cours (Black Friday) si elle est active.
+ */
+export async function sendBillingRetry(userId: number): Promise<{ email: string; plan: string; months: number; amount: number }> {
+  const { billingPromo } = await import('./billing')
+  const [u] = await db.select().from(users).where(eq(users.id, userId)).limit(1)
+  if (!u) throw new Error('Compte introuvable')
+  const [last] = await db.select().from(billingPayments).where(eq(billingPayments.userId, userId)).orderBy(desc(billingPayments.createdAt)).limit(1)
+  const plan = (last?.plan && last.plan !== 'free' ? last.plan : 'starter') as Exclude<PlanId, 'free'>
+  const months = last?.months === 12 ? 12 : 1
+  const promo = await billingPromo()
+  const full = priceFor(plan, months)
+  const amount = promoPrice(full, promo)
+  const [store] = await db.execute<{ locale: string | null }>(dsql`select s.locale from stores s join store_members m on m.store_id = s.id and m.role = 'owner' where m.user_id = ${userId} order by s.created_at limit 1`)
+  const lang = langOf(u.signupSource, store?.locale)
+  const en = lang === 'en'
+  const name = PLANS[plan].name
+  const app = env.APP_URL.replace(/\/$/, '')
+  const link = `${app}/billing?plan=${plan}&months=${months}`
+  const whatsapp = await getSetting<string | null>('contact.whatsapp', null)
+  const replyTo = await getSetting<string | null>('contact.email', null)
+  const first = escapeHtml(u.name.split(/\s+/)[0] ?? '')
+  const fcfa = (n: number) => `${n.toLocaleString('fr-FR')} FCFA`
+  const period = months === 12 ? (en ? 'year' : 'an') : en ? 'month' : 'mois'
+  const end = promo ? new Date(promo.endsAt).toLocaleDateString(en ? 'en-GB' : 'fr-FR', { day: 'numeric', month: 'long' }) : ''
+  const offer = promo
+    ? en
+      ? `<p style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px 14px"><strong>${escapeHtml(promo.label)}: -${promo.percent}% until ${end}.</strong><br>Zuri ${name}: <s>${fcfa(full)}</s> <strong>${fcfa(amount)}</strong> per ${period}.</p>`
+      : `<p style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px 14px"><strong>${escapeHtml(promo.label)} : -${promo.percent} % jusqu’au ${end}.</strong><br>Zuri ${name} : <s>${fcfa(full)}</s> <strong>${fcfa(amount)}</strong> par ${period}.</p>`
+    : ''
+  const subject = promo
+    ? en
+      ? `Your Zuri payment works now, and ${promo.label} is on (-${promo.percent}%)`
+      : `Votre paiement Zuri fonctionne, et c’est le ${promo.label} (-${promo.percent} %)`
+    : en
+      ? 'Your Zuri payment works now'
+      : 'Votre paiement Zuri fonctionne maintenant'
+  const body = en
+    ? `<p>You tried to pay for your <strong>Zuri ${name}</strong> plan, but the payment could not go through. The problem was on our side, sorry: it is fixed.</p>${offer}<p>You can try again in one minute, with Mobile Money or card. Your paid period starts after the free launch offer: you lose nothing.</p>`
+    : `<p>Vous avez essayé de payer votre formule <strong>Zuri ${name}</strong>, mais le paiement n’a pas pu aboutir. Le souci venait de chez nous, désolé : c’est réglé.</p>${offer}<p>Vous pouvez réessayer en une minute, par Mobile Money ou carte. Votre période payée commence après l’offre de lancement gratuite : vous ne perdez rien.</p>`
+  const help = whatsapp ? (en ? `<p>A question? WhatsApp: ${escapeHtml(whatsapp)}.</p>` : `<p>Une question ? WhatsApp : ${escapeHtml(whatsapp)}.</p>`) : ''
+  const html = layout('Zuri', `<p>${en ? 'Hi' : 'Bonjour'} ${first},</p>${body}${button(link, en ? 'Pay my plan' : 'Payer ma formule')}${help}${small(en ? 'Sent because you started a payment on Zuri.' : 'Envoyé parce que vous avez commencé un paiement sur Zuri.')}`, '#f59e0b', lang)
+  await sendEmail(u.email, subject, html, { fromName: 'Zuri', ...(replyTo ? { replyTo } : {}) })
+  await sendPushToUser(userId, { title: subject, body: en ? 'The payment problem is fixed. Try again in one minute.' : 'Le souci de paiement est réglé. Réessayez en une minute.', url: link, tag: 'billing-retry', event: 'platform', sound: 'soft' }).catch(() => 0)
+  return { email: u.email, plan: name, months, amount }
 }
