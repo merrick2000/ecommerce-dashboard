@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, ErrorState, Input, Select, Skeleton, Switch, Textarea } from '@/components/ui'
 import { api } from '@/lib/api'
+import { LAST_STORE_KEY, writeLocal } from '@/lib/storage'
 import { fdate, fmt } from './shared'
 
 interface PlatformSettings {
@@ -98,7 +99,68 @@ export default function AdminSettings() {
           <p className="text-sm text-muted">Aucun paiement pour l’instant.</p>
         )}
       </Card>
+      <ResetAccount />
     </div>
+  )
+}
+
+interface ResetPreview {
+  stores: { id: string; name: string; slug: string }[]
+  products: number
+  orders: number
+  customers: number
+}
+
+/** Remise à zéro de mon compte : mes boutiques et tout leur contenu sont effacés, le compte reste. */
+function ResetAccount() {
+  const toast = useToast()
+  const qc = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [confirm, setConfirm] = useState('')
+  const preview = useQuery({ queryKey: ['admin', 'reset-preview'], queryFn: () => api.get<ResetPreview>('/admin/me/reset'), enabled: open })
+  const reset = useMutation({
+    mutationFn: () => api.post<{ stores: number; files: number }>('/admin/me/reset', { confirm }),
+    onSuccess: (r) => {
+      writeLocal(LAST_STORE_KEY, null)
+      qc.clear()
+      toast.success(`Compte remis à zéro : ${r.stores} boutique${r.stores > 1 ? 's' : ''} et ${r.files} fichier${r.files > 1 ? 's' : ''} effacés`)
+      window.location.assign('/')
+    },
+    onError: (e) => toast.error(e),
+  })
+  const p = preview.data
+  return (
+    <Card title="Remettre mon compte à zéro">
+      <div className="space-y-3 text-sm">
+        <p className="text-muted">
+          Efface <strong className="text-fg">toutes tes boutiques</strong> et tout ce qu’elles contiennent : produits, commandes, clients, stats, équipe, réglages, moyens de paiement, photos et fichiers. Ton compte, ton mot de passe, ton accès super admin, ton abonnement et ton code de parrainage sont gardés. Les comptes des autres vendeurs ne sont pas touchés.
+        </p>
+        {!open ? (
+          <Button variant="secondary" className="text-red-600 dark:text-red-400" onClick={() => setOpen(true)}>
+            Remettre à zéro…
+          </Button>
+        ) : !p ? (
+          <Skeleton className="h-16 rounded-lg" />
+        ) : !p.stores.length ? (
+          <p>Aucune boutique à effacer : ton compte est déjà vide.</p>
+        ) : (
+          <div className="space-y-3 rounded-lg border border-red-300 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/30">
+            <p>
+              Seront effacés définitivement : <strong>{p.stores.map((s) => s.name).join(', ')}</strong>, soit {fmt(p.products)} produit{p.products > 1 ? 's' : ''}, {fmt(p.orders)} commande{p.orders > 1 ? 's' : ''} et {fmt(p.customers)} client{p.customers > 1 ? 's' : ''}. Impossible de revenir en arrière.
+            </p>
+            <Input label="Tape EFFACER pour confirmer" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" />
+            <div className="flex flex-wrap gap-2">
+              <Button variant="danger" loading={reset.isPending} disabled={confirm !== 'EFFACER'} onClick={() => reset.mutate()}>
+                Tout effacer
+              </Button>
+              <Button variant="ghost" onClick={() => (setOpen(false), setConfirm(''))}>
+                Annuler
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
   )
 }
 

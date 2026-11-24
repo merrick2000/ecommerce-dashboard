@@ -43,3 +43,24 @@ export function publicUrl(key: string | null | undefined): string | null {
 export function signedUrl(key: string, expiresIn = 1800): string {
   return s3(privateBucket()).presign(key, { expiresIn, method: 'GET' })
 }
+
+/** Supprime tous les fichiers dont la clé commence par ce préfixe, dans les deux buckets. Renvoie le nombre de fichiers effacés. */
+export async function deletePrefix(prefix: string): Promise<number> {
+  if (!env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY) return 0
+  let deleted = 0
+  for (const bucket of new Set([publicBucket(), privateBucket()].filter((b): b is string => !!b))) {
+    const client = s3(bucket)
+    let token: string | undefined
+    for (let page = 0; page < 200; page++) {
+      const res = await client.list({ prefix, maxKeys: 1000, ...(token ? { continuationToken: token } : {}) })
+      const keys = (res.contents ?? []).map((o) => o.key).filter((k): k is string => !!k && k.startsWith(prefix))
+      for (const key of keys) {
+        await client.delete(key)
+        deleted++
+      }
+      if (!res.isTruncated || !res.nextContinuationToken) break
+      token = res.nextContinuationToken
+    }
+  }
+  return deleted
+}

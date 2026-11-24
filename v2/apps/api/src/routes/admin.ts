@@ -11,6 +11,7 @@ import { db } from '../db/client'
 import { announcementDismissals, announcements, billingPayments, contactMessages, onboardingEmails, sellerReviews, orders, paymentAccounts, sessions, storeMembers, stores, subscriptions, users } from '../db/schema'
 import { contactInfo } from './site'
 import { audienceSize } from '../services/announcements'
+import { resetAccount, resetPreview } from '../services/account-reset'
 import { enqueue } from '../jobs/queue'
 import { requireAuth } from '../lib/auth'
 import type { AppEnv } from '../lib/context'
@@ -293,6 +294,9 @@ export const adminRoutes = new Hono<AppEnv>()
     if (body.billingStoreId !== undefined) await setSetting('billing.account', body.billingStoreId ? { storeId: body.billingStoreId } : null)
     return c.json({ ok: true })
   })
+  /** Remise à zéro de MON compte (super admin connecté) : boutiques, contenu et fichiers effacés, compte gardé. */
+  .get('/me/reset', async (c) => c.json(await resetPreview(c.get('user').id)))
+  .post('/me/reset', v('json', z.object({ confirm: z.literal('EFFACER', { message: 'Tapez EFFACER pour confirmer' }) })), async (c) => c.json(await resetAccount(c.get('user').id)))
   /** Annonces aux vendeurs : bandeau du tableau de bord, notification en option, ciblage. */
   .get('/announcements', async (c) => {
     const rows = await db
