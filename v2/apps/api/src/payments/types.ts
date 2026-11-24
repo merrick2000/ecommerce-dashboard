@@ -14,6 +14,8 @@ export interface PaymentRequest {
   customerEmail: string | null
   /** Où renvoyer le client après un paiement hébergé (page commande du storefront). */
   returnUrl: string
+  /** Où renvoyer le client qui abandonne le paiement (page de vente du produit), si le prestataire le distingue. */
+  cancelUrl?: string
   /** URL de webhook propre au compte de la boutique. */
   webhookUrl: string
   /** Identifiants produit chez les plateformes hébergées (Chariow/Maketou). */

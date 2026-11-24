@@ -105,6 +105,7 @@ function buildRequest(order: Order, storeSlug: string, input: { country: string;
     customerName: order.customerName,
     customerEmail: order.customerEmail,
     returnUrl: `${env.STOREFRONT_URL.replace(/\/$/, '')}/${storeSlug}/order/${order.accessToken}`,
+    cancelUrl: product ? `${env.STOREFRONT_URL.replace(/\/$/, '')}/${storeSlug}/p/${product.id}#commander` : undefined,
     webhookUrl: webhookUrl(account.provider, account.webhookToken),
     chariowProductId: integration?.platform === 'chariow' ? integration.productId : null,
     maketouProductId: integration?.platform === 'maketou' ? integration.productId : null,

@@ -130,6 +130,8 @@ async function loadOrderByToken(token: string) {
 }
 
 const orderPageUrl = (storeSlug: string, token: string) => `${env.STOREFRONT_URL.replace(/\/$/, '')}/${storeSlug}/order/${token}`
+/** Page de vente (formulaire de commande) du produit : là où revient un client qui abandonne le paiement. */
+const checkoutPageUrl = (storeSlug: string, productId: string) => `${env.STOREFRONT_URL.replace(/\/$/, '')}/${storeSlug}/p/${productId}#commander`
 
 /**
  * Crée (ou réutilise) la session de paiement d'une commande. Le montant vient de la commande en base.
@@ -161,7 +163,8 @@ export async function createPoSession(token: string): Promise<{ paid: true } | {
     }
   }
 
-  const items = await db.select({ name: orderItems.name, quantity: orderItems.quantity }).from(orderItems).where(eq(orderItems.orderId, order.id))
+  const items = await db.select({ name: orderItems.name, quantity: orderItems.quantity, productId: orderItems.productId, role: orderItems.role }).from(orderItems).where(eq(orderItems.orderId, order.id))
+  const mainProduct = items.find((i) => i.role === 'main' && i.productId)?.productId ?? items.find((i) => i.productId)?.productId ?? null
   const seq = order.poSessionSeq + 1
   const s = acc.settings
   const allowed = s.allowedCountries
@@ -184,7 +187,8 @@ export async function createPoSession(token: string): Promise<{ paid: true } | {
           phone: order.customerPhone ? order.customerPhone.replace(/\D/g, '').slice(0, 20) : undefined,
         },
         success_url: `${orderPageUrl(store.slug, order.accessToken)}?session={SESSION_ID}`,
-        cancel_url: orderPageUrl(store.slug, order.accessToken),
+        // Paiement abandonné : retour sur la page de vente du produit, pas sur la commande en attente.
+        cancel_url: mainProduct ? checkoutPageUrl(store.slug, mainProduct) : orderPageUrl(store.slug, order.accessToken),
         ...(s.locale ? { locale: s.locale } : {}),
         ...(allowed.length ? { allowed_countries: allowed } : {}),
         ...(s.allowedOperators.length ? { allowed_operators: s.allowedOperators } : {}),

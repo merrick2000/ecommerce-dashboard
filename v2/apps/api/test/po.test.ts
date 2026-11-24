@@ -103,6 +103,8 @@ describe('Payment Orchestrator', () => {
     expect(create.headers['idempotency-key']).toBe(`order_${o.id}`)
     expect(create.body).toMatchObject({ amount: 5000, currency: 'XOF', client_reference: o.id, allowed_countries: ['BJ', 'CI'], default_country: 'BJ', locale: 'fr' })
     expect(create.body.success_url).toContain(`/po-shop/order/${o.accessToken}?session={SESSION_ID}`)
+    // Paiement abandonné : retour sur la page de vente du produit (formulaire), pas sur la commande en attente.
+    expect(create.body.cancel_url).toMatch(/\/po-shop\/p\/prd_[A-Za-z0-9]+#commander$/)
     const [saved] = await db.select().from(orders).where(eq(orders.id, o.id))
     expect(saved!.poSessionId).toBe(r.body.sessionId)
     calls = []

@@ -30,7 +30,7 @@ export class PayDunya implements PaymentProviderClient {
         invoice: { items: { item_0: { name: `Commande ${req.orderNumber}`, quantity: 1, unit_price: amount, total_price: amount } }, total_amount: amount, description: `Commande ${req.orderNumber}` },
         store: { name: 'Zuri' },
         custom_data: { order_id: String(req.orderId) },
-        actions: { callback_url: req.webhookUrl, return_url: req.returnUrl, cancel_url: req.returnUrl },
+        actions: { callback_url: req.webhookUrl, return_url: req.returnUrl, cancel_url: req.cancelUrl ?? req.returnUrl },
       }),
     })
     if (!inv.ok || inv.data?.response_code !== '00' || !inv.data?.token) return { status: 'failed', error: inv.data?.response_text ?? `PayDunya HTTP ${inv.status}`, raw: inv.data }
