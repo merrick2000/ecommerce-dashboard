@@ -318,7 +318,7 @@ export const adminRoutes = new Hono<AppEnv>()
     const emails = [...new Set(data.map((m) => m.email))]
     const accounts = emails.length ? await db.select({ id: users.id, email: users.email }).from(users).where(inArray(users.email, emails)) : []
     const byEmail = new Map(accounts.map((a) => [a.email, a.id]))
-    return c.json({ total, page: q.page, pageSize: q.pageSize, counts: counts ?? { new: 0, done: 0 }, data: data.map(({ ip: _ip, ...m }) => ({ ...m, userId: byEmail.get(m.email) ?? null })) })
+    return c.json({ total, page: q.page, pageSize: q.pageSize, counts: counts ?? { new: 0, done: 0 }, mailboxUrl: env.GENTLEMAIL_URL ?? null, data: data.map(({ ip: _ip, ...m }) => ({ ...m, userId: byEmail.get(m.email) ?? null })) })
   })
   .patch('/messages/:id', v('param', z.object({ id: z.coerce.number().int() })), v('json', z.object({ status: z.enum(['new', 'done']) })), async (c) => {
     const { status } = c.req.valid('json')

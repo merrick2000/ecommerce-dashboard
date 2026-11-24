@@ -18,6 +18,7 @@ interface Message {
   page: string | null
   lang: string | null
   status: 'new' | 'done'
+  source: 'form' | 'email'
   handledAt: string | null
   createdAt: string
   userId: number | null
@@ -31,7 +32,7 @@ export default function AdminMessages() {
   const q = useDebounced(search.trim(), 300)
   const { data, error, isPending, refetch } = useQuery({
     queryKey: ['admin', 'messages', status, q],
-    queryFn: () => api.get<{ total: number; counts: { new: number; done: number }; data: Message[] }>('/admin/messages', { status, q: q || undefined }),
+    queryFn: () => api.get<{ total: number; counts: { new: number; done: number }; mailboxUrl: string | null; data: Message[] }>('/admin/messages', { status, q: q || undefined }),
     placeholderData: keepPreviousData,
   })
   const mark = useMutation({
@@ -48,7 +49,7 @@ export default function AdminMessages() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold">Messages</h1>
-        <p className="text-sm text-muted">Envoyés depuis la page contact du site. Chacun arrive aussi par email.</p>
+        <p className="text-sm text-muted">Envoyés depuis la page contact du site, ou reçus sur contact@zurisell.store.</p>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Segmented
@@ -83,6 +84,7 @@ export default function AdminMessages() {
                     <p className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold">{m.name}</span>
                       {m.status === 'new' ? <Badge tone="amber">À traiter</Badge> : <Badge tone="green">Traité</Badge>}
+                      <Badge tone="neutral">{m.source === 'email' ? 'Email reçu' : 'Formulaire'}</Badge>
                       {m.lang === 'en' && <Badge tone="neutral">Anglais</Badge>}
                       {m.userId && (
                         <Link to={`/admin/users/${m.userId}`} className="text-[13px] font-medium text-accent hover:underline">
@@ -102,6 +104,11 @@ export default function AdminMessages() {
                   <a className={buttonClass('secondary', 'sm')} href={`mailto:${m.email}?subject=${encodeURIComponent('Re: votre message à Zuri')}`}>
                     <Mail className="size-3.5" /> Répondre par email
                   </a>
+                  {m.source === 'email' && data.mailboxUrl && (
+                    <a className={buttonClass('secondary', 'sm')} href={data.mailboxUrl} target="_blank" rel="noopener">
+                      <Mail className="size-3.5" /> Ouvrir la boîte mail
+                    </a>
+                  )}
                   {wa && (
                     <a className={buttonClass('secondary', 'sm')} href={wa} target="_blank" rel="noopener">
                       <MessageCircle className="size-3.5" /> WhatsApp

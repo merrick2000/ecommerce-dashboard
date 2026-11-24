@@ -5,6 +5,7 @@ import { contactMessages, onboardingEmails, products, storeMembers, stores, user
 import { dueStep, langOf, onboardingEmail, runOnboarding, unsubscribeUrl } from '../src/services/onboarding'
 import { welcomeEmail } from '../src/services/emails'
 import { Client } from './helpers'
+import { app } from '../src/app'
 
 /** Site Zuri : page contact, emails d'accompagnement des vendeurs, désinscription, super admin. */
 const admin = new Client()
@@ -249,5 +250,35 @@ describe('avis des vendeurs', () => {
     const id = (await admin.get('/api/admin/reviews')).body.data.find((x: { name: string }) => x.name === 'Awa Koné').id
     await seller.post('/api/reviews', { score: 9, comment: 'Très bon outil pour mon équipe de closers.', consent: false })
     expect((await admin.patch(`/api/admin/reviews/${id}`, { status: 'approved' })).status).toBe(400)
+  })
+})
+
+describe('emails reçus via GentleMail', () => {
+  test('signature vérifiée, message dans Messages une seule fois, nos envois ignorés', async () => {
+    const { env } = await import('../src/lib/env')
+    const { createHmac } = await import('node:crypto')
+    const send = (payload: unknown, opts: { secret?: string; ts?: number } = {}) => {
+      const raw = JSON.stringify(payload)
+      const ts = String(opts.ts ?? Math.floor(Date.now() / 1000))
+      const sig = createHmac('sha256', opts.secret ?? 'whsec_test').update(`${ts}.${raw}`).digest('hex')
+      return app.request('/api/v1/webhooks/gentlemail', { method: 'POST', headers: { 'content-type': 'application/json', 'x-gentlemail-timestamp': ts, 'x-gentlemail-signature': `v1=${sig}`, 'x-gentlemail-event': 'message.received' }, body: raw })
+    }
+    const mail = (id: string, from: string) => ({ id: `dl_${id}`, event: 'message.received', created_at: new Date().toISOString(), data: { id, mailbox: { id: 'mb_1', address: 'contact@zurisell.store' }, from: { name: 'Moussa Diop', address: from }, to: [], subject: 'Question sur les tarifs', text: 'Bonjour, la formule Pro inclut-elle 3 boutiques ?' } })
+    expect((await send(mail('m1', 'moussa@test.dev'))).status).toBe(404)
+    ;(env as { GENTLEMAIL_WEBHOOK_SECRET?: string }).GENTLEMAIL_WEBHOOK_SECRET = 'whsec_test'
+    try {
+      expect((await send(mail('m1', 'moussa@test.dev'), { secret: 'mauvais' })).status).toBe(401)
+      expect((await send(mail('m1', 'moussa@test.dev'), { ts: Math.floor(Date.now() / 1000) - 3600 })).status).toBe(401)
+      expect((await send(mail('m1', 'moussa@test.dev'))).status).toBe(200)
+      expect((await send(mail('m1', 'moussa@test.dev'))).status).toBe(200)
+      const own = (env.MAIL_FROM.match(/<([^>]+)>/)?.[1] ?? env.MAIL_FROM).trim()
+      await send(mail('m2', own))
+      const rows = await db.select().from(contactMessages).where(eq(contactMessages.source, 'email'))
+      expect(rows).toHaveLength(1)
+      expect(rows[0]).toMatchObject({ name: 'Moussa Diop', email: 'moussa@test.dev', page: 'email : contact@zurisell.store', status: 'new' })
+      expect(rows[0]!.message).toContain('Objet : Question sur les tarifs')
+    } finally {
+      delete (env as { GENTLEMAIL_WEBHOOK_SECRET?: string }).GENTLEMAIL_WEBHOOK_SECRET
+    }
   })
 })

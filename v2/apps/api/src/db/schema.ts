@@ -861,6 +861,10 @@ export const contactMessages = pgTable(
     page: varchar('page', { length: 200 }),
     lang: varchar('lang', { length: 2 }),
     ip: varchar('ip', { length: 64 }),
+    /** form (page contact) | email (reçu sur une boîte GentleMail, ex. contact@zurisell.store). */
+    source: varchar('source', { length: 10 }).notNull().default('form'),
+    /** Identifiant du message chez GentleMail : un email n'est enregistré qu'une fois. */
+    externalId: varchar('external_id', { length: 80 }).unique(),
     /** new | done */
     status: varchar('status', { length: 10 }).notNull().default('new'),
     handledAt: ts('handled_at'),
