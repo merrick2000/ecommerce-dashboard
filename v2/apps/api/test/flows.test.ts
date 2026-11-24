@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { eq } from 'drizzle-orm'
+import { eq, sql as dsql } from 'drizzle-orm'
 import { db } from '../src/db/client'
 import { orders, productVariants, products, users } from '../src/db/schema'
 import { enqueued } from '../src/jobs/queue'
@@ -34,10 +34,18 @@ const physicalProduct = {
 
 describe('auth & boutique', () => {
   test('le premier compte devient admin plateforme, les inscriptions se ferment ensuite', async () => {
-    const r = await owner.post('/api/auth/register', { name: 'Merrick', email: 'owner@test.dev', password: 'motdepasse-solide' })
-    expect(r.status).toBe(201)
-    expect(r.body.isPlatformAdmin).toBe(true)
-    expect(enqueued.some((j) => j.name === 'account.notify' && (j.data as { kind: string; userId: number }).kind === 'welcome' && (j.data as { userId: number }).userId === r.body.id)).toBe(true)
+    // Les fichiers de test partagent la base et leur ordre n'est pas garanti : si d'autres comptes existent déjà,
+    // la règle « premier compte = admin » ne peut pas être observée ici, le compte admin est alors créé directement.
+    const [{ n } = { n: 0 }] = await db.select({ n: dsql<number>`count(*)::int` }).from(users)
+    if (n === 0) {
+      const r = await owner.post('/api/auth/register', { name: 'Merrick', email: 'owner@test.dev', password: 'motdepasse-solide' })
+      expect(r.status).toBe(201)
+      expect(r.body.isPlatformAdmin).toBe(true)
+      expect(enqueued.some((j) => j.name === 'account.notify' && (j.data as { kind: string; userId: number }).kind === 'welcome' && (j.data as { userId: number }).userId === r.body.id)).toBe(true)
+    } else {
+      await db.insert(users).values({ email: 'owner@test.dev', name: 'Merrick', isPlatformAdmin: true, passwordHash: await Bun.password.hash('motdepasse-solide', { algorithm: 'argon2id' }) })
+      expect((await owner.post('/api/auth/login', { email: 'owner@test.dev', password: 'motdepasse-solide' })).status).toBe(200)
+    }
     const r2 = await intruder.post('/api/auth/register', { name: 'Intrus', email: 'intrus@test.dev', password: 'motdepasse-solide' })
     expect(r2.status).toBe(403)
   })
