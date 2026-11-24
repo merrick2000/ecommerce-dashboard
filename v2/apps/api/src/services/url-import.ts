@@ -409,6 +409,54 @@ const dedupe = (list: string[]) => {
 }
 
 /** Analyse une page déjà téléchargée (testable sans réseau, sauf l'appel Shopify optionnel). */
+const BLOCK_TAGS = new Set(['div', 'section', 'article', 'main'])
+
+/**
+ * Description résumée par le site (« … » à la fin, ex. boutiques Chariow) : on retrouve dans la page le bloc
+ * qui commence par ce texte et on reprend son contenu complet. Rien si aucun bloc sûr n'est trouvé.
+ */
+export function fullDescriptionBlock(html: string, summary: string): string | null {
+  const words = decodeEntities(summary).replace(/[.…]+\s*$/, '').match(/[\p{L}\p{N}’']{3,}/gu) ?? []
+  if (words.length < 4) return null
+  const body = html.replace(/<(script|style|noscript|template|svg)\b[\s\S]*?<\/\1>/gi, (m) => ' '.repeat(m.length))
+  // Les mots du début du résumé, séparés par n'importe quoi (balises, espaces, entités).
+  const anchor = new RegExp(words.slice(0, 5).map((w) => w.replace(/[’']/g, "(?:’|'|&#0?39;|&rsquo;)")).join('[\\s\\S]{1,80}?'), 'u')
+  const m = anchor.exec(body)
+  if (!m) return null
+  const textLen = (s: string) => stripTags(s).replace(/\s+/g, ' ').trim().length
+  const target = Math.max(400, textLen(summary) * 1.5)
+  // Remonte les blocs qui contiennent l'ancre, du plus proche au plus large.
+  const opens: { tag: string; at: number; end: number }[] = []
+  const re = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi
+  let t: RegExpExecArray | null
+  while ((t = re.exec(body)) && t.index < m.index) {
+    const tag = t[1]!.toLowerCase()
+    if (!BLOCK_TAGS.has(tag) || t[0].endsWith('/>')) continue
+    if (t[0][1] === '/') {
+      for (let i = opens.length - 1; i >= 0; i--) if (opens[i]!.tag === tag) { opens.splice(i, 1); break }
+    } else opens.push({ tag, at: t.index, end: t.index + t[0].length })
+  }
+  for (let i = opens.length - 1; i >= 0 && i >= opens.length - 6; i--) {
+    const o = opens[i]!
+    const close = new RegExp(`<(/?)${o.tag}\\b[^>]*>`, 'gi')
+    close.lastIndex = o.end
+    let depth = 1
+    let c: RegExpExecArray | null
+    while ((c = close.exec(body))) {
+      depth += c[1] ? -1 : c[0].endsWith('/>') ? 0 : 1
+      if (depth === 0) break
+    }
+    if (!c) return null
+    const inner = body.slice(o.end, c.index)
+    const len = textLen(inner)
+    // Le bloc doit commencer par le résumé (pas toute la page) et être nettement plus long que lui.
+    const startsHere = textLen(body.slice(o.end, m.index)) < 40
+    if (!startsHere || len > 40_000) return null
+    if (len >= target) return inner
+  }
+  return null
+}
+
 export async function extractProduct(html: string, pageUrl: string, opts: { allowShopifyFetch?: boolean } = {}): Promise<Omit<UrlPreview, 'domain'>> {
   const url = new URL(pageUrl)
   const scan = await scanHtml(html, pageUrl)
@@ -457,7 +505,14 @@ export async function extractProduct(html: string, pageUrl: string, opts: { allo
   }
   images = images.slice(0, 20)
 
-  const rawDescription = pick('description') ?? ''
+  let rawDescription = pick('description') ?? ''
+  if (/(\.\.\.|…)\s*$/.test(stripTags(rawDescription).trim())) {
+    const full = fullDescriptionBlock(html, stripTags(rawDescription))
+    if (full) {
+      rawDescription = full
+      detected.push('page')
+    }
+  }
   const descriptionHtml = /<[a-z][\s\S]*>/i.test(rawDescription) ? rawDescription : rawDescription.split(/\n{2,}/).map((p) => `<p>${p.replace(/</g, '&lt;')}</p>`).join('')
   const description = sanitizeHtml(descriptionHtml)
 
@@ -549,9 +604,11 @@ function combineBrowser(fp: ImportDraft, html: ImportDraft | null): ImportDraft 
   return {
     ...fp,
     name: fp.name || html.name,
-    price: fp.price ?? html.price,
-    currency: fp.price != null ? fp.currency : html.currency,
-    compareAtPrice: fp.compareAtPrice ?? html.compareAtPrice,
+    // Le prix des données de la page (avec sa devise) fait foi : le navigateur distant peut afficher
+    // le prix converti dans la devise de son pays (ex. 16 € au lieu de 10 484 F CFA).
+    ...(html.price != null && html.currency
+      ? { price: html.price, currency: html.currency, compareAtPrice: html.compareAtPrice }
+      : { price: fp.price ?? html.price, currency: fp.price != null ? fp.currency : html.currency, compareAtPrice: fp.compareAtPrice ?? html.compareAtPrice }),
     variants: fp.variants.length ? fp.variants : html.variants,
     variantLabel: fp.variants.length ? fp.variantLabel : html.variantLabel,
     description: richer,
