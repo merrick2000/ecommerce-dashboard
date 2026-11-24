@@ -65,9 +65,10 @@ async function startPoBilling(user: User, input: { plan: Exclude<PlanId, 'free'>
     await db.update(billingPayments).set({ providerRef: s.id }).where(eq(billingPayments.id, bp!.id))
     return { id: bp!.id, status: 'po' as const, sessionId: s.id, url: s.url, mode: 'auto' as const, locale: 'fr' as const }
   } catch (e) {
-    await db.update(billingPayments).set({ status: 'failed' }).where(eq(billingPayments.id, bp!.id))
+    const reason = e instanceof PoError ? `Payment Orchestrator ${e.status} ${e.code} : ${e.message}` : e instanceof Error ? e.message : 'Erreur inconnue'
+    await db.update(billingPayments).set({ status: 'failed', error: reason.slice(0, 300) }).where(eq(billingPayments.id, bp!.id))
     console.warn('[billing po]', e instanceof PoError ? `${e.status} ${e.code} ${e.message}` : e)
-    throw new HttpError(502, 'Le paiement n’a pas pu être préparé. Réessaie dans un instant.', 'payment_failed')
+    throw new HttpError(502, `Le paiement n’a pas pu être préparé. Réessaie dans un instant.${user.isPlatformAdmin ? ` (Détail pour le super admin : ${reason})` : ''}`, 'payment_failed')
   }
 }
 
@@ -109,7 +110,7 @@ export async function startBillingPayment(user: User, input: { plan: Exclude<Pla
       return { id: bp!.id, status: 'processing' as const, message: 'Valide le paiement sur ton téléphone' }
     } catch (e) {
       errors.push(`${account.provider}: ${e instanceof Error ? e.message : 'erreur'}`)
-      await db.update(billingPayments).set({ status: 'failed' }).where(eq(billingPayments.id, bp!.id))
+      await db.update(billingPayments).set({ status: 'failed', error: errors.at(-1)!.slice(0, 300) }).where(eq(billingPayments.id, bp!.id))
     }
   }
   console.warn('[billing] échec', errors)
@@ -132,7 +133,7 @@ export async function refreshBillingPayment(id: number, userId?: number) {
       return 'pending'
     }
     if (s.status === 'expired' && s.payment_status !== 'paid') {
-      await db.update(billingPayments).set({ status: 'failed' }).where(eq(billingPayments.id, bp.id))
+      await db.update(billingPayments).set({ status: 'failed', error: 'Session expirée sans paiement (page de paiement fermée ou abandonnée)' }).where(eq(billingPayments.id, bp.id))
       return 'failed'
     }
     if (s.payment_status !== 'paid') return 'pending'

@@ -24,7 +24,7 @@ export default function AdminSettings() {
   const qc = useQueryClient()
   const toast = useToast()
   const { data, error, isPending, refetch } = useQuery({ queryKey: ['admin', 'settings'], queryFn: () => api.get<PlatformSettings>('/admin/settings') })
-  const payments = useQuery({ queryKey: ['admin', 'billing-payments'], queryFn: () => api.get<{ id: number; email: string; plan: string; months: number; amount: number; status: string; provider: string; createdAt: string }[]>('/admin/billing-payments') })
+  const payments = useQuery({ queryKey: ['admin', 'billing-payments'], queryFn: () => api.get<{ id: number; email: string; plan: string; months: number; amount: number; status: string; provider: string; error?: string | null; createdAt: string }[]>('/admin/billing-payments') })
   const save = useMutation({ mutationFn: (body: unknown) => api.put('/admin/settings', body) })
   const put = (body: unknown, msg: string) => save.mutate(body, { onSuccess: () => (toast.success(msg), void qc.invalidateQueries({ queryKey: ['admin', 'settings'] })), onError: (e) => toast.error(e) })
   if (error && !data) return <ErrorState error={error} onRetry={() => void refetch()} />
@@ -96,7 +96,8 @@ export default function AdminSettings() {
                 </span>
                 <span className="tabular">{fmt(p.amount)} F</span>
                 <span className="text-muted">{fdate(p.createdAt, true)}</span>
-                <Badge tone={p.status === 'paid' ? 'green' : p.status === 'failed' ? 'red' : 'neutral'}>{p.status}</Badge>
+                <Badge tone={p.status === 'paid' ? 'green' : p.status === 'failed' ? 'red' : 'neutral'}>{p.status === 'paid' ? 'payé' : p.status === 'failed' ? 'échoué' : 'en attente'}</Badge>
+                {p.status === 'failed' && p.error && <span className="w-full text-[12px] text-red-700 dark:text-red-300">{p.error}</span>}
               </li>
             ))}
           </ul>

@@ -11,7 +11,7 @@ import { ago, fdate, fmt, NUDGE_LABEL, PlanBadge, StageBadge, StatusBadge, type 
 interface Detail {
   user: { id: number; email: string; name: string; phone: string | null; country: string | null; isPlatformAdmin: boolean; createdAt: string; lastLoginAt: string | null; disabledAt: string | null; features: Record<string, boolean> | null; signupSource: Record<string, string> | null; googleSub: string | null }
   stores: { id: string; name: string; slug: string; status: string; role: string; createdAt: string }[]
-  payments: { id: number; plan: string; months: number; amount: number; status: string; provider: string; createdAt: string }[]
+  payments: { id: number; plan: string; months: number; amount: number; status: string; provider: string; error?: string | null; createdAt: string }[]
   subscription: { plan: PlanId; currentPeriodEnd: string; source: string; note: string | null } | null
   plan: EffectivePlan
   stage: Stage
@@ -180,7 +180,8 @@ export default function AdminUserDetail() {
                 </span>
                 <span className="tabular">{fmt(p.amount)} F</span>
                 <span className="text-muted">{fdate(p.createdAt, true)}</span>
-                <Badge tone={p.status === 'paid' ? 'green' : p.status === 'failed' ? 'red' : 'neutral'}>{p.status}</Badge>
+                <Badge tone={p.status === 'paid' ? 'green' : p.status === 'failed' ? 'red' : 'neutral'}>{p.status === 'paid' ? 'payé' : p.status === 'failed' ? 'échoué' : 'en attente'}</Badge>
+                {p.status === 'failed' && p.error && <span className="w-full text-[12px] text-red-700 dark:text-red-300">{p.error}</span>}
               </li>
             ))}
           </ul>

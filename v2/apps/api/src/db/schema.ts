@@ -846,6 +846,8 @@ export const billingPayments = pgTable(
     /** pending | paid | failed */
     status: varchar('status', { length: 10 }).notNull().default('pending'),
     phone: varchar('phone', { length: 30 }),
+    /** Raison de l'échec (message du prestataire), visible dans le super admin. */
+    error: varchar('error', { length: 300 }),
     paidAt: ts('paid_at'),
     createdAt: createdAt(),
   },
