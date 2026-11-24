@@ -108,13 +108,15 @@ describe('import : fiche produit Firecrawl', () => {
     const p = await previewFromUrl(PAGE, 'XOF')
     expect(p.detected[0]).toBe('browser')
     expect(p.draft.name).toBe('Montre homme acier')
-    expect(p.draft.price).toBe(3.79)
-    expect(p.draft.compareAtPrice).toBe(9.99)
-    expect(p.draft.currency).toBe('EUR')
+    // Converti au taux fixe euro / franc CFA (655,957), arrondi à 5 F.
+    expect(p.draft.price).toBe(2485)
+    expect(p.draft.compareAtPrice).toBe(6555)
+    expect(p.draft.currency).toBe('XOF')
     expect(p.draft.variants.map((v) => v.name)).toEqual(['Noir', 'Or'])
     expect(p.draft.images).toEqual(['https://ae.example.com/noir.jpg', 'https://ae.example.com/or.jpg'])
     expect(p.draft.description).toContain('<p>Mouvement quartz.</p>')
-    expect(p.warnings.join(' ')).toMatch(/3,79\s€ = 2\s485 FCFA/)
+    expect(p.warnings.join(' ')).toMatch(/Prix converti : 3,79 EUR = 2\s485 XOF/)
+    expect(p.warnings.join(' ')).not.toMatch(/approximatif/)
   })
 
   test('noms de places de marché nettoyés', async () => {

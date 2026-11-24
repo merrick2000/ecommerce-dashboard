@@ -621,6 +621,55 @@ function mergeAi(base: ImportDraft | null, ai: AiExtraction, structured = false)
   }
 }
 
+const fxCache = new Map<string, { rates: Record<string, number>; at: number }>()
+
+/** Taux de change du jour (source publique sans clé, gardé 12 h). L'euro vers le franc CFA est fixe : 655,957. */
+async function fxRate(from: string, to: string): Promise<{ rate: number; exact: boolean } | null> {
+  if (from === to) return { rate: 1, exact: true }
+  const cfa = (c: string) => c === 'XOF' || c === 'XAF'
+  if (from === 'EUR' && cfa(to)) return { rate: 655.957, exact: true }
+  if (cfa(from) && to === 'EUR') return { rate: 1 / 655.957, exact: true }
+  if (cfa(from) && cfa(to)) return { rate: 1, exact: true }
+  if (process.env.NODE_ENV === 'test') return null
+  const hit = fxCache.get(from)
+  let rates = hit && Date.now() - hit.at < 12 * 3600_000 ? hit.rates : null
+  if (!rates) {
+    try {
+      const r = await fetch(`https://open.er-api.com/v6/latest/${encodeURIComponent(from)}`, { signal: AbortSignal.timeout(5000) })
+      const j = (await r.json()) as { result?: string; rates?: Record<string, number> }
+      if (j.result !== 'success' || !j.rates) return null
+      rates = j.rates
+      fxCache.set(from, { rates, at: Date.now() })
+    } catch {
+      return null
+    }
+  }
+  const rate = rates[to]
+  return rate && Number.isFinite(rate) ? { rate, exact: false } : null
+}
+
+/**
+ * Prix repris dans une autre devise que celle de la boutique (ex. 16 $ sur une boutique en FCFA) :
+ * converti dans la devise de la boutique, avec un message pour vérifier. Sans taux disponible, rien ne change
+ * et l'avertissement habituel invite à corriger le prix.
+ */
+async function convertDraftCurrency(draft: ImportDraft, warnings: string[], storeCurrency: string) {
+  const from = draft.currency?.toUpperCase()
+  if (!from || from === storeCurrency || draft.price == null) return
+  const fx = await fxRate(from, storeCurrency)
+  if (!fx) return
+  const noDecimals = ['XOF', 'XAF', 'NGN', 'GHS', 'KES', 'UGX', 'TZS', 'RWF', 'GNF', 'CDF', 'MAD', 'BIF'].includes(storeCurrency)
+  const conv = (v: number | null) => (v == null ? null : noDecimals ? Math.max(5, Math.round((v * fx.rate) / 5) * 5) : Math.round(v * fx.rate * 100) / 100)
+  const before = draft.price
+  draft.price = conv(draft.price)
+  draft.compareAtPrice = conv(draft.compareAtPrice)
+  draft.variants = draft.variants.map((x) => ({ ...x, price: conv(x.price) }))
+  draft.currency = storeCurrency
+  warnings.push(
+    `Prix converti : ${before.toLocaleString('fr-FR')} ${from} = ${(draft.price ?? 0).toLocaleString('fr-FR')} ${storeCurrency}${fx.exact ? '' : ' (taux du jour, approximatif)'}. Vérifiez-le avant d’importer${draft.type === 'physical' ? ' : pour un produit acheté chez un fournisseur, ajoutez votre marge et la livraison' : ''}.`,
+  )
+}
+
 function finishWarnings(draft: ImportDraft, warnings: string[], storeCurrency: string) {
   const out = warnings.filter((w) => !/introuvable|Aucune image|peu structurée/.test(w))
   if (!draft.name) out.push('Nom du produit introuvable : à saisir.')
@@ -737,7 +786,9 @@ export async function previewFromUrl(rawUrl: string, storeCurrency: string, kind
   const draft = { ...final.r.draft, type: kind }
   if (kind === 'digital') Object.assign(draft, { variants: [], variantLabel: null })
   if (draft.compareAtPrice != null && draft.price != null && draft.compareAtPrice <= draft.price) draft.compareAtPrice = null
-  return { ...final.r, draft, warnings: finishWarnings(draft, final.r.warnings, storeCurrency), domain: url.hostname.replace(/^www\./, '') }
+  const notes = [...final.r.warnings]
+  await convertDraftCurrency(draft, notes, storeCurrency)
+  return { ...final.r, draft, warnings: finishWarnings(draft, notes, storeCurrency), domain: url.hostname.replace(/^www\./, '') }
 }
 
 /** Secours ultime : le vendeur colle le texte de la page (et éventuellement des liens d'images) ; l'IA remplit la fiche. */
@@ -748,5 +799,7 @@ export async function previewFromText(text: string, storeCurrency: string, sourc
   const draft = { ...mergeAi(null, ai), type: kind }
   if (kind === 'digital') Object.assign(draft, { variants: [], variantLabel: null })
   const domain = sourceUrl ? new URL(sourceUrl).hostname.replace(/^www\./, '') : 'texte collé'
-  return { sourceUrl: sourceUrl ?? '', domain, detected: ['ai'], warnings: finishWarnings(draft, [], storeCurrency), draft, fetchedVia: 'text' }
+  const notes: string[] = []
+  await convertDraftCurrency(draft, notes, storeCurrency)
+  return { sourceUrl: sourceUrl ?? '', domain, detected: ['ai'], warnings: finishWarnings(draft, notes, storeCurrency), draft, fetchedVia: 'text' }
 }
