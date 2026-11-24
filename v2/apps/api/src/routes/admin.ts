@@ -36,6 +36,7 @@ function sourceLabel(s: Record<string, string | undefined> | null | undefined) {
   if (s.utmSource) return `${s.utmSource}${s.utmMedium ? ` / ${s.utmMedium}` : ''}`
   if (s.referrer) return s.referrer.replace(/^www\./, '')
   if (s.method === 'invite') return 'Invitation d’équipe'
+  if (s.ref) return 'Parrainage'
   if (s.landing || s.from) return 'Direct'
   return 'Inconnue'
 }
@@ -154,8 +155,10 @@ export const adminRoutes = new Hono<AppEnv>()
     const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.userId, id)).limit(1)
     const nudges = await db.select({ kind: onboardingEmails.kind, step: onboardingEmails.step, at: onboardingEmails.createdAt }).from(onboardingEmails).where(eq(onboardingEmails.userId, id)).orderBy(desc(onboardingEmails.createdAt))
     const [{ stage } = { stage: 'no_store' as const }] = await db.select({ stage: STAGE }).from(users).where(eq(users.id, id))
+    const [parent] = x.referredBy ? await db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, x.referredBy)).limit(1) : []
+    const [{ referred } = { referred: 0 }] = await db.select({ referred: dsql<number>`count(*)::int` }).from(users).where(eq(users.referredBy, id))
     const { passwordHash, ...safe } = x
-    return c.json({ user: safe, stores: ownStores, payments, subscription: sub ?? null, plan: effectivePlan({ createdAt: x.createdAt, subscription: sub ?? null }), stage, nudges })
+    return c.json({ user: safe, stores: ownStores, payments, subscription: sub ?? null, plan: effectivePlan({ createdAt: x.createdAt, subscription: sub ?? null }), stage, nudges, referral: { parent: parent ?? null, referred } })
   })
   .patch('/users/:id', v('param', z.object({ id: z.coerce.number().int() })), v('json', z.object({ disabled: z.boolean().optional(), features: z.record(z.string(), z.boolean()).optional() })), async (c) => {
     const id = c.req.valid('param').id

@@ -12,6 +12,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-11-25',
+    title: { fr: 'Parrainage, liste de démarrage, panier en test', en: 'Referrals, launch checklist, cart in testing' },
+    items: [
+      { fr: 'Parrainage : un lien personnel par vendeur, un mois Pro offert au parrain et au filleul dès la première vente du filleul.', en: 'Referrals: a personal link per seller, one free Pro month for both when the referred seller makes a first sale.' },
+      { fr: 'Liste de démarrage dans le tableau de bord : produit, livraison ou paiement, alertes, partage, première commande.', en: 'Launch checklist in the dashboard: product, delivery or payment, alerts, sharing, first order.' },
+      { fr: 'Catégories de produits et filtres sur la page d’accueil des boutiques.', en: 'Product categories and filters on store home pages.' },
+      { fr: 'Paiement abandonné : retour direct sur la page de vente du produit.', en: 'Abandoned payment: straight back to the product sales page.' },
+    ],
+  },
+  {
     date: '2026-11-24',
     title: { fr: 'Suivi Meta pensé pour le paiement à la livraison, centre d’aide, emails dans la langue de la boutique', en: 'Meta tracking built for cash on delivery, help center, emails in the store language' },
     items: [

@@ -1,6 +1,6 @@
 import { registerSchema } from '@zuri/shared'
 import { Lock } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
 import { Button, ButtonLink, Input } from '@/components/ui'
 import { useMe, useRegister } from '@/hooks/auth'
@@ -15,6 +15,13 @@ export default function Register() {
   const register = useRegister()
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '' })
   const [errors, setErrors] = useState<Errors>({})
+  // Lien de parrainage (…/register?ref=CODE) : code gardé en cookie, lu par l'API à l'inscription (email ou Google).
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get('ref')?.trim().toUpperCase()
+    if (!ref || !/^[A-Z0-9]{4,12}$/.test(ref)) return
+    const domain = location.hostname.endsWith('zurisell.store') ? ';domain=.zurisell.store' : ''
+    document.cookie = `zuri_ref=${ref}${domain};path=/;max-age=7776000;samesite=lax${location.protocol === 'https:' ? ';secure' : ''}`
+  }, [])
 
   if (me) return <Navigate to="/" replace />
 

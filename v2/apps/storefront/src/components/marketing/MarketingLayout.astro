@@ -141,6 +141,13 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
           document.cookie = 'zuri_src=' + encodeURIComponent(JSON.stringify(src)) + ';domain=.zurisell.store;path=/;max-age=7776000;samesite=lax;secure'
         }
       } catch (e) {}
+      /* Parrainage : zurisell.store/?ref=CODE garde le code (90 jours) pour l'inscription sur app.zurisell.store. */
+      try {
+        var ref = (new URLSearchParams(location.search).get('ref') || '').trim().toUpperCase()
+        if (/^[A-Z0-9]{4,12}$/.test(ref) && location.hostname.endsWith('zurisell.store') && !document.cookie.includes('zuri_ref=')) {
+          document.cookie = 'zuri_ref=' + ref + ';domain=.zurisell.store;path=/;max-age=7776000;samesite=lax;secure'
+        }
+      } catch (e) {}
     </script>
   </head>
   <body>

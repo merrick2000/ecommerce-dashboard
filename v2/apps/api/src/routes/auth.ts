@@ -15,6 +15,7 @@ import { enqueue } from '../jobs/queue'
 import { loginContext, recordLogin, sendPasswordReset } from '../services/account'
 import { acceptInvitation, previewInvitation } from '../services/team'
 import { planForUser, readSignupSource, resolveFeatures } from '../services/platform'
+import { linkReferral } from '../services/referrals'
 
 /** Inscription ouverte à tous ? (lu à chaque appel). « false » : seul le premier compte, outil perso. */
 const registrationOpen = () => env.REGISTRATION_OPEN !== 'false'
@@ -83,6 +84,7 @@ export const authRoutes = new Hono<AppEnv>()
     if (!user) throw new Error('Création du compte échouée')
     await createSession(c, user.id)
     await recordLogin(c, user, 'password', { isNewAccount: true })
+    await linkReferral(user)
     await enqueue('account.notify', { userId: user.id, kind: 'welcome' })
     return c.json(await loadMe(user), 201)
   })

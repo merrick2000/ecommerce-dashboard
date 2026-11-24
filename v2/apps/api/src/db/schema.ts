@@ -84,10 +84,16 @@ export const users = pgTable('users', {
   features: jsonb('features').$type<Record<string, boolean>>(),
   /** Ne veut plus recevoir les emails d'accompagnement (relances de démarrage). Les emails de compte partent toujours. */
   emailOptOutAt: ts('email_opt_out_at'),
+  /** Code de parrainage du compte (lien zurisell.store/?ref=CODE), créé à la première visite de la page Parrainage. */
+  referralCode: varchar('referral_code', { length: 12 }).unique(),
+  /** Parrain : compte dont le lien a amené cette inscription. */
+  referredBy: bigint('referred_by', { mode: 'number' }),
+  /** Récompense de parrainage versée (première vente de ce compte filleul). */
+  referralRewardedAt: ts('referral_rewarded_at'),
   lastLoginAt: ts('last_login_at'),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-})
+}, (t) => [index('users_referred_by_idx').on(t.referredBy)])
 
 export const sessions = pgTable(
   'sessions',

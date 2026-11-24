@@ -22,6 +22,7 @@ export const router = createBrowserRouter([
           { index: true, element: <HomeRedirect /> },
           { path: 'onboarding', lazy: page(() => import('@/pages/Onboarding')) },
           { path: 'billing', lazy: page(() => import('@/pages/billing/Billing')) },
+          { path: 'referrals', lazy: page(() => import('@/pages/Referrals')) },
           {
             path: 'admin',
             lazy: page(() => import('@/pages/admin/AdminShell')),

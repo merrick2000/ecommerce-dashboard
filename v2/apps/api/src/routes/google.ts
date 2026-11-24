@@ -8,6 +8,7 @@
  */
 import { createHash } from 'node:crypto'
 import { readSignupSource } from '../services/platform'
+import { linkReferral } from '../services/referrals'
 import { eq, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
@@ -158,6 +159,7 @@ export const googleRoutes = new Hono<AppEnv>()
         .returning()
     }
     if (!user) return c.redirect(back('', 'google_failed'))
+    if (isNewAccount) await linkReferral(user)
     await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id))
     await createSession(c, user.id)
     await recordLogin(c, user, 'google', { isNewAccount })

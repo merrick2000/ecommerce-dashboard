@@ -109,6 +109,9 @@ export function readSignupSource(c: Context, method: SignupSource['method'], fro
     /* cookie illisible : ignoré */
   }
   if (from) out.from = from.slice(0, 200)
+  // Parrainage : code posé par le lien d'un vendeur (cookie partagé entre zurisell.store et app.zurisell.store).
+  const ref = (getCookie(c, 'zuri_ref') ?? '').trim().toUpperCase()
+  if (/^[A-Z0-9]{4,12}$/.test(ref)) out.ref = ref
   // Langue préférée du navigateur : la première citée entre français et anglais.
   const accept = (c.req.header('accept-language') ?? '').toLowerCase()
   const fr = accept.search(/\bfr\b/)

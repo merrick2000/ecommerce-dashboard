@@ -402,7 +402,11 @@ export async function markOrderPaid(orderId: string, info: { provider?: string |
     await convertLeads(tx, order)
     return order
   })
-  if (changed) await enqueue('order.paid', { orderId })
+  if (changed) {
+    await enqueue('order.paid', { orderId })
+    // Parrainage : la première vente d'un filleul récompense le filleul et son parrain.
+    await enqueue('referral.check', { storeId: changed.storeId }, { singletonKey: `referral.check:${changed.storeId}` })
+  }
   return changed !== null
 }
 
@@ -497,6 +501,7 @@ export async function transitionFulfillment(
     return { becamePaid }
   })
   if (result.becamePaid) await enqueue('order.paid', { orderId })
+  if (to === 'delivered') await enqueue('referral.check', { storeId: store.id }, { singletonKey: `referral.check:${store.id}` })
   // Paiement à la livraison : achat déclaré à Meta à la confirmation ou à la livraison si le vendeur l'a choisi
   // (la tâche vérifie le réglage, l'envoi n'a lieu qu'une fois).
   if (to === 'confirmed' || to === 'delivered') await enqueue('order.capi-purchase', { orderId, stage: to }, { singletonKey: `order.capi-purchase:${orderId}:${to}` })

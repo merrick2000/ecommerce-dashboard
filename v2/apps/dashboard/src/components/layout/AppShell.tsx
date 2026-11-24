@@ -1,5 +1,5 @@
 import type { Permission } from '@zuri/shared'
-import { Activity, Bell, Bot, ChartLine, Check, ChevronsUpDown, Crown, LayoutDashboard, LogOut, Menu, Moon, Package, PanelLeftClose, PanelLeftOpen, PauseCircle, Plus, Receipt, Settings, Shield, ShoppingBag, Sun, Tag, Truck, UserPlus, Users, type LucideIcon } from 'lucide-react'
+import { Activity, Bell, Bot, ChartLine, Check, ChevronsUpDown, Crown, LayoutDashboard, LogOut, Menu, Moon, Package, PanelLeftClose, PanelLeftOpen, PauseCircle, Plus, Receipt, Settings, Shield, ShoppingBag, Sun, Tag, Truck, UserPlus, Users, type LucideIcon, Gift } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Outlet, useLocation, useNavigate, useNavigation } from 'react-router'
 import { useCurrentStore, useLogout, usePermissions } from '@/hooks/auth'
@@ -244,6 +244,10 @@ export function AppShell() {
             <Crown className="size-[18px] shrink-0" aria-hidden />
             {collapsed ? <span className="sr-only">Abonnement</span> : 'Abonnement'}
           </NavLink>
+          <NavLink to="/referrals" title={collapsed ? 'Parrainage' : undefined} className={cx('flex items-center gap-3 rounded-lg py-2 text-sm font-medium text-muted hover:bg-surface-2 hover:text-fg', collapsed ? 'justify-center' : 'px-3')}>
+            <Gift className="size-[18px] shrink-0" aria-hidden />
+            {collapsed ? <span className="sr-only">Parrainage</span> : 'Parrainage'}
+          </NavLink>
           {me?.isPlatformAdmin && (
             <NavLink to="/admin" title={collapsed ? 'Super admin' : undefined} className={cx('flex items-center gap-3 rounded-lg py-2 text-sm font-medium text-muted hover:bg-surface-2 hover:text-fg', collapsed ? 'justify-center' : 'px-3')}>
               <Shield className="size-[18px] shrink-0" aria-hidden />
@@ -330,6 +334,10 @@ export function AppShell() {
           <NavLink to="/billing" className="flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-medium hover:bg-surface-2">
             <Crown className="size-5 text-muted" aria-hidden />
             Abonnement
+          </NavLink>
+          <NavLink to="/referrals" className="flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-medium hover:bg-surface-2">
+            <Gift className="size-5 text-muted" aria-hidden />
+            Parrainage
           </NavLink>
           {me?.isPlatformAdmin && (
             <NavLink to="/admin" className="flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-medium hover:bg-surface-2">

@@ -16,6 +16,7 @@ interface Detail {
   plan: EffectivePlan
   stage: Stage
   nudges: { kind: string; step: number; at: string }[]
+  referral: { parent: { id: number; name: string } | null; referred: number }
 }
 
 const SOURCE_LABEL: Record<string, string> = { utmSource: 'utm_source', utmMedium: 'utm_medium', utmCampaign: 'utm_campaign', referrer: 'Site d’origine', landing: 'Première page vue', from: 'Clic depuis', firstSeen: 'Première visite', method: 'Méthode' }
@@ -52,6 +53,12 @@ export default function AdminUserDetail() {
         <h1 className="text-2xl font-bold">{u.name}</h1>
         <PlanBadge plan={data.plan} />
         <StageBadge stage={data.stage} />
+        {data.referral.parent && (
+          <Link to={`/admin/users/${data.referral.parent.id}`} className="text-sm text-muted hover:text-fg">
+            Parrainé par <span className="font-medium underline">{data.referral.parent.name}</span>
+          </Link>
+        )}
+        {data.referral.referred > 0 && <Badge tone="green">{data.referral.referred} filleul{data.referral.referred > 1 ? 's' : ''}</Badge>}
         {u.isPlatformAdmin && <Badge tone="violet">Admin</Badge>}
         {u.disabledAt && <Badge tone="red">Suspendu</Badge>}
       </div>

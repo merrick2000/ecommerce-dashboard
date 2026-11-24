@@ -992,6 +992,8 @@ export interface SignupSource {
   method?: 'password' | 'google' | 'invite'
   /** Langue du navigateur à l'inscription (en-tête Accept-Language). */
   lang?: 'fr' | 'en'
+  /** Code de parrainage (lien d'un vendeur). */
+  ref?: string
 }
 export const signupSourceInputSchema = z
   .object({ from: z.string().max(200).optional() })
