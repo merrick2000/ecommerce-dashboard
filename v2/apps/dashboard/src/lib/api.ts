@@ -15,7 +15,10 @@ export class ApiError extends Error {
   issues: FieldIssue[]
 
   constructor(status: number, body: Partial<ApiErrorBody> | null) {
+    // Erreur de saisie : le message précis du premier champ en cause plutôt que « Données invalides ».
+    const firstIssue = body?.code === 'validation' && Array.isArray(body?.issues) ? (body.issues as FieldIssue[]).find((i) => typeof i?.message === 'string')?.message : undefined
     super(
+      firstIssue ??
       body?.error ??
         (status === 0
           ? 'Connexion impossible. Vérifiez votre réseau.'

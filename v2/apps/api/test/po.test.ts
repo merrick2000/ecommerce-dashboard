@@ -203,6 +203,8 @@ describe('Payment Orchestrator : abonnements et ouverture réservée', () => {
     await db.insert(users).values({ email: 'po-admin@test.dev', name: 'Admin', isPlatformAdmin: true, passwordHash: await Bun.password.hash('motdepasse-solide', { algorithm: 'argon2id' }) }).onConflictDoNothing()
     await admin.post('/api/auth/login', { email: 'po-admin@test.dev', password: 'motdepasse-solide' })
     expect((await admin.put('/api/admin/settings', { poSecretKey: 'sk_live_mauvais_mode_ok', poWebhookSecret: 'pas_un_secret' })).status).toBe(422)
+    // Clés réelles du Payment Orchestrator : base64url, avec tirets possibles.
+    expect((await admin.put('/api/admin/settings', { poSecretKey: 'sk_live_Ab-3xY_9-kLmN0pQ', poWebhookSecret: 'whsec_Zx-9_Kq-2mPl8' })).status).toBe(200)
     expect((await admin.put('/api/admin/settings', { poSecretKey: 'sk_test_platform_key', poWebhookSecret: WHSEC })).status).toBe(200)
     const settings = await admin.get('/api/admin/settings')
     expect(settings.body.po).toMatchObject({ configured: true, source: 'admin', livemode: false, webhookSecretSet: true })
