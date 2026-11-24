@@ -5,6 +5,7 @@ import { useState, type FormEvent } from 'react'
 import { useToast } from '@/components/Toast'
 import { Button, Card, cx, ErrorState, Field, Input, Segmented, Select, Skeleton, Switch, TagInput } from '@/components/ui'
 import { useCheckoutSettings, usePromoCodes, useSaveCheckoutSettings } from '@/hooks/resources'
+import { useMe } from '@/hooks/auth'
 import { serverErrors, validate, type Errors } from '@/lib/form'
 import { CTA_STYLE_LABEL, PAGE_BLOCK_LABEL, TEMPLATE_LABEL } from '@/lib/labels'
 import { SaveBar } from '@/components/SaveBar'
@@ -63,12 +64,14 @@ function LayoutSketch({ kind, titleAbove }: { kind: CheckoutSettings['desktopLay
 /** Complète la mise en page avec les blocs absents (nouveaux blocs ajoutés au produit). */
 function normalize(s: CheckoutSettings): CheckoutSettings {
   const present = new Set(s.pageLayout.map((b) => b.block))
-  return { ...s, desktopLayout: s.desktopLayout ?? 'form_side', titlePosition: s.titlePosition ?? 'beside', stickyCta: { ...STICKY_CTA_DEFAULTS, ...s.stickyCta }, pageLayout: [...s.pageLayout, ...PAGE_BLOCKS.filter((b) => !present.has(b)).map((block) => ({ block, visible: false }))] }
+  return { ...s, cart: s.cart ?? { enabled: false }, desktopLayout: s.desktopLayout ?? 'form_side', titlePosition: s.titlePosition ?? 'beside', stickyCta: { ...STICKY_CTA_DEFAULTS, ...s.stickyCta }, pageLayout: [...s.pageLayout, ...PAGE_BLOCKS.filter((b) => !present.has(b)).map((block) => ({ block, visible: false }))] }
 }
 
 function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolean }) {
   const save = useSaveCheckoutSettings()
   const promos = usePromoCodes().list
+  // Panier en observation : visible seulement pour les comptes ouverts par le super admin.
+  const cartAllowed = !!useMe().data?.features.cart
   const toast = useToast()
   const [s, setS] = useState(() => normalize(initial))
   const [base, setBase] = useState(() => JSON.stringify(normalize(initial)))
@@ -139,6 +142,9 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
           </div>
         </Card>
 
+        {cartAllowed && <Card title="Panier" description="Le client peut ajouter plusieurs produits de votre boutique et passer une seule commande. Les produits doivent se payer de la même façon (tous à la livraison, ou tous en ligne).">
+          <Switch checked={s.cart.enabled} onChange={(enabled) => set({ cart: { enabled } })} label="Activer le panier" description={s.cart.enabled ? 'Un bouton « Ajouter au panier » apparaît sur vos pages et sur la page d’accueil de la boutique.' : 'Désactivé : chaque commande concerne un seul produit, comme aujourd’hui.'} />
+        </Card>}
         <Card title="Apparence">
           <div className="grid gap-4 sm:grid-cols-2">
             <Select label="Modèle" value={s.template} onChange={(e) => set({ template: e.target.value as CheckoutSettings['template'] })} options={TEMPLATES.map((t) => ({ value: t, label: TEMPLATE_LABEL[t] ?? t }))} />

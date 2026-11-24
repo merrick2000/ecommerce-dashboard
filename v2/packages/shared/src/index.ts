@@ -568,6 +568,8 @@ export const productInputSchema = z.object({
   /** Tunnel de vente : order bump, upsells / downsells, page de remerciement. */
   funnel: funnelSchema.nullable().default(null),
   externalProductId: z.string().max(100).nullable().default(null),
+  /** Catégorie libre (ex. « Perruques »), sert à classer le catalogue de la boutique. */
+  category: z.string().trim().max(60).nullable().default(null),
   // physique
   sku: z.string().max(60).nullable().default(null),
   trackInventory: z.boolean().default(false),
@@ -695,6 +697,8 @@ export const checkoutSettingsSchema = z.object({
     .default({}),
   /** Bouton d'achat collant qui suit le défilement (page de vente). */
   stickyCta: stickyCtaSchema.default(STICKY_CTA_DEFAULTS),
+  /** Panier : le client ajoute plusieurs produits et passe une seule commande. */
+  cart: z.object({ enabled: z.boolean().default(false) }).default({ enabled: false }),
   salesPopup: z
     .object({
       enabled: z.boolean().default(false),
@@ -788,6 +792,11 @@ export const publicOrderCreateSchema = z
     eventId: z.string().max(64).optional(),
     /** Case « order bump » cochée par le client. */
     bump: z.boolean().optional(),
+    /** Panier : autres produits de la même boutique ajoutés à la même commande. */
+    extraItems: z
+      .array(z.object({ productId: productIdSchema, variantId: z.coerce.number().int().positive().nullable().optional(), quantity: z.coerce.number().int().min(1).max(50).default(1) }))
+      .max(20)
+      .optional(),
   })
   .merge(attributionSchema)
 export type PublicOrderCreate = z.infer<typeof publicOrderCreateSchema>
@@ -881,7 +890,7 @@ export interface Me {
   name: string
   isPlatformAdmin: boolean
   /** Options du compte (paiements en ligne, abonnement…) : déjà résolues avec les réglages globaux. */
-  features: { onlinePayments: boolean; billing: boolean; urlImport: boolean }
+  features: { onlinePayments: boolean; billing: boolean; urlImport: boolean; cart: boolean }
   plan: EffectivePlan
   stores: { id: string; name: string; slug: string; role: StoreRole; currency: Currency; permissions: Permission[]; productIds: string[] | null; status: StoreStatus; kind: ProductType }[]
 }

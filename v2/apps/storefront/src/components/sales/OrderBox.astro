@@ -60,6 +60,8 @@ const m = (n: number) => money(n, price.currency, store.locale)
         storeName={store.name}
         funnel={d.funnel ?? null}
         gateway={d.paymentGateway ?? { kind: 'direct' }}
+        cartEnabled={Boolean(checkout.cart?.enabled)}
+        ct={T.cart}
       />
     ) : (
       <div class="notice warn soldout">

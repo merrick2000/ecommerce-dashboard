@@ -6,6 +6,7 @@ import Block from '../../../components/sales/Block.astro'
 import OrderBox from '../../../components/sales/OrderBox.astro'
 import PausedNotice from '../../../components/sales/PausedNotice.astro'
 import CustomPage from '../../../components/sales/CustomPage.astro'
+import CartDrawer from '../../../islands/CartDrawer'
 import { ApiError, apiGet } from '../../../lib/api'
 import { excerpt, jsonForScript, waLink } from '../../../lib/content'
 import { money } from '../../../lib/format'
@@ -120,6 +121,7 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebo
     )
   }
 
+  {checkout.cart?.enabled && <CartDrawer client:idle storeId={store.id} slug={store.slug} locale={store.locale} productBase={storeUrl(Astro.locals, '/p/')} t={T.cart} />}
   <Footer store={store} />
 
   {

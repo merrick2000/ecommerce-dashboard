@@ -63,6 +63,7 @@ export const productRoutes = new Hono<AppEnv>()
         type: product.type,
         paymentMethod: product.payment.method,
         name: product.name,
+        category: product.category,
         isActive: product.isActive,
         thumbnail: publicUrl(product.thumbnail ?? product.coverImage),
         stock: product.stock,

@@ -66,6 +66,7 @@ export interface ProductListItem {
   type: ProductType
   paymentMethod: 'native' | 'integration' | 'cod'
   name: string
+  category: string | null
   isActive: boolean
   thumbnail: string | null
   stock: number | null
@@ -112,6 +113,7 @@ export interface Product {
   payment: ProductInput['payment']
   delivery: { type: 'file'; filePath: string | null } | { type: 'external_url'; url: string } | null
   externalProductId: string | null
+  category: string | null
   sku: string | null
   trackInventory: boolean
   stock: number | null

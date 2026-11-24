@@ -23,7 +23,7 @@ import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, cx, Field, Input, Segmented, Select, Skeleton, Switch, Textarea } from '@/components/ui'
 import { DragHandle, draggingClass, useSortable } from '@/components/Sortable'
 import { useCan, useCurrentStore } from '@/hooks/auth'
-import { uploadFile, useCheckoutSettings, usePaymentAccounts } from '@/hooks/resources'
+import { uploadFile, useCheckoutSettings, usePaymentAccounts, useProducts } from '@/hooks/resources'
 import { normalizeForm, OrderFormBuilder } from '@/pages/settings/OrderFormBuilder'
 import { errorMessage } from '@/lib/api'
 import type { Errors } from '@/lib/form'
@@ -58,6 +58,7 @@ export function GeneralSection(p: SectionProps) {
       <Card title="Informations">
         <div className="space-y-4">
           <Input label="Nom du produit" value={form.name} onChange={(e) => set({ name: e.target.value })} error={errors.name} placeholder="Ex. Montre connectée X1" />
+          <CategoryField value={form.category ?? ''} onChange={(category) => set({ category: category.trim() || null })} error={errors.category} />
           <Switch checked={form.isActive} onChange={(v) => set({ isActive: v })} label="Produit en vente" description="Inactif, la page de vente n’accepte pas de commande." />
         </div>
       </Card>
@@ -704,5 +705,21 @@ export function OrderFormSection(p: SectionProps) {
         />
       )}
     </div>
+  )
+}
+
+/** Catégorie du produit : texte libre, avec les catégories déjà utilisées dans la boutique en suggestion. */
+function CategoryField({ value, onChange, error }: { value: string; onChange: (v: string) => void; error?: string }) {
+  const { data } = useProducts()
+  const used = [...new Set((data ?? []).map((p) => p.category).filter((c): c is string => !!c))].sort((a, b) => a.localeCompare(b, 'fr'))
+  return (
+    <>
+      <Input label="Catégorie" optional list="product-categories" value={value} onChange={(e) => onChange(e.target.value)} maxLength={60} error={error} placeholder="Ex. Perruques, Accessoires" hint="Sert à ranger vos produits sur la page d’accueil de la boutique." />
+      <datalist id="product-categories">
+        {used.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
+    </>
   )
 }

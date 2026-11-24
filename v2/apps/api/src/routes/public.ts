@@ -17,7 +17,7 @@ import { v } from '../lib/validate'
 import { answerFunnelOffer, createPublicOrder, normalizePhone } from '../services/orders'
 import { arrivalEvent } from '../jobs/handlers'
 import { poAccount } from '../services/po'
-import { storeOnlinePayments } from '../services/platform'
+import { storeCartAllowed, storeOnlinePayments } from '../services/platform'
 import { displayPrice, evaluatePromoCode } from '../services/pricing'
 import { publicUrl, signedUrl } from '../services/storage'
 import { DEFAULT_CHECKOUT, withCheckoutDefaults } from './stores'
@@ -133,13 +133,56 @@ export const publicRoutes = new Hono<AppEnv>()
     const store = await storeBySlug(c.req.param('slug'))
     const rows = await db.select().from(products).where(and(eq(products.storeId, store.id), eq(products.isActive, true))).orderBy(desc(products.createdAt))
     const [cfg] = await db.select({ settings: checkoutSettings.settings }).from(checkoutSettings).where(eq(checkoutSettings.storeId, store.id)).limit(1)
+    // Produits à variantes : on passe par leur page pour choisir (taille, couleur…) avant d'ajouter au panier.
+    const withVariants = rows.length
+      ? new Set((await db.select({ id: productVariants.productId }).from(productVariants).where(and(inArray(productVariants.productId, rows.map((r) => r.id)), eq(productVariants.isActive, true)))).map((v) => v.id))
+      : new Set<string>()
     c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
     return c.json({
       store: publicStore(store),
       primaryColor: cfg?.settings.primaryColor ?? DEFAULT_CHECKOUT.primaryColor,
-      products: rows.map((p) => ({ id: p.id, type: p.type, name: p.name, thumbnail: publicUrl(p.thumbnail ?? p.coverImage), price: displayPrice(p, store.currency) })),
+      cartEnabled: Boolean(cfg?.settings.cart?.enabled) && (await storeCartAllowed(store.id)),
+      products: rows.map((p) => ({ id: p.id, type: p.type, name: p.name, category: p.category, hasVariants: withVariants.has(p.id), paymentMethod: p.payment.method, thumbnail: publicUrl(p.thumbnail ?? p.coverImage), price: displayPrice(p, store.currency) })),
     })
   })
+  /** Panier : lignes recalculées avec les prix et la disponibilité réels (le navigateur ne garde que les identifiants). */
+  .post(
+    '/cart/lines',
+    rateLimit({ key: 'cart', limit: 60, windowSec: 300 }),
+    v('json', z.object({ storeSlug: z.string().max(60), items: z.array(z.object({ productId: productIdSchema, variantId: z.coerce.number().int().positive().nullable().optional(), quantity: z.coerce.number().int().min(1).max(50).default(1) })).max(20) })),
+    async (c) => {
+      const { storeSlug, items } = c.req.valid('json')
+      const store = await storeBySlug(storeSlug)
+      const ids = [...new Set(items.map((i) => i.productId))]
+      const rows = ids.length ? await db.select().from(products).where(and(inArray(products.id, ids), eq(products.storeId, store.id))) : []
+      const vids = items.map((i) => i.variantId).filter((x): x is number => !!x)
+      const vrows = vids.length ? await db.select().from(productVariants).where(inArray(productVariants.id, vids)) : []
+      return c.json(
+        items.map((i) => {
+          const p = rows.find((r) => r.id === i.productId)
+          const v = i.variantId ? vrows.find((x) => x.id === i.variantId && x.productId === i.productId) : undefined
+          const available = Boolean(p?.isActive && (!i.variantId || v?.isActive))
+          if (!p) return { productId: i.productId, variantId: i.variantId ?? null, available: false }
+          const price = displayPrice(p, store.currency, v ?? null)
+          const quantity = p.type === 'physical' ? i.quantity : 1
+          return {
+            productId: p.id,
+            variantId: v?.id ?? null,
+            name: p.name,
+            variantName: v?.name ?? null,
+            image: publicUrl(p.thumbnail ?? p.coverImage),
+            type: p.type,
+            paymentMethod: p.payment.method,
+            unitPrice: price.effective,
+            quantity,
+            total: Math.round(price.effective * quantity * 100) / 100,
+            currency: price.currency,
+            available,
+          }
+        }),
+      )
+    },
+  )
   /** Tout ce qu'il faut pour afficher une page de vente. */
   .get('/checkout/:slug/:productId', v('param', z.object({ slug: z.string(), productId: z.string().max(40) })), async (c) => {
     const { slug, productId } = c.req.valid('param')
@@ -200,7 +243,8 @@ export const publicRoutes = new Hono<AppEnv>()
       /** Tunnel : order bump et offres après commande, avec les infos produit nécessaires à l'affichage. */
       funnel,
       zones,
-      checkout: withCheckoutDefaults(cfg?.settings),
+      // Panier en observation : masqué tant qu'il n'est pas ouvert pour le propriétaire de la boutique.
+      checkout: { ...withCheckoutDefaults(cfg?.settings), cart: { enabled: Boolean(cfg?.settings.cart?.enabled) && (await storeCartAllowed(store.id)) } },
       /** Formulaire effectif : celui du produit s'il est personnalisé, sinon celui de la boutique. */
       orderForm: parseOrderForm(product.content.orderForm ?? cfg?.settings.form),
       tracking: { facebookPixelId: cfg?.facebookPixelId ?? null, tiktokPixelId: cfg?.tiktokPixelId ?? null },

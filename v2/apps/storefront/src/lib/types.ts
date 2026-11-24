@@ -99,7 +99,8 @@ export interface CheckoutData {
 export interface CatalogData {
   store: PublicStore
   primaryColor: string
-  products: { id: string; type: ProductType; name: string; thumbnail: string | null; price: DisplayPrice }[]
+  cartEnabled?: boolean
+  products: { id: string; type: ProductType; name: string; category?: string | null; hasVariants?: boolean; paymentMethod?: 'cod' | 'native' | 'integration'; thumbnail: string | null; price: DisplayPrice }[]
 }
 
 export interface PublicOrder {

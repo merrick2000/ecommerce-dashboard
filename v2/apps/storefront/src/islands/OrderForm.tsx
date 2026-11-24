@@ -10,7 +10,8 @@ import { DIAL, dialFor, flag, fullPhone, validEmail } from '../client/phone'
 import { getJSON, setJSON } from '../client/storage'
 import { initiateCheckout, noTrack, orderAttribution, purchaseOnce, track } from '../client/track'
 import { money, roundMoney } from '../lib/format'
-import type { FormStrings, PayStrings } from '../lib/i18n'
+import type { CartStrings, FormStrings, PayStrings } from '../lib/i18n'
+import { addToCart, clearCart, readCart, removeFromCart, type CartLine } from '../client/cart'
 import type { CreatedOrder, DisplayPrice, PaymentGateway, PaymentResponse, PublicFunnel, PublicOffer, Variant, Zone } from '../lib/types'
 import PoPayStep from './PoPayStep'
 import PaymentStep from './PaymentStep'
@@ -49,6 +50,9 @@ export interface OrderFormProps {
   funnel?: PublicFunnel | null
   /** Paiement en ligne : Payment Orchestrator (widget) ou direct. */
   gateway?: PaymentGateway
+  /** Panier activé par le vendeur : bouton « Ajouter au panier », autres produits ajoutés à la commande. */
+  cartEnabled?: boolean
+  ct?: CartStrings
 }
 
 /** Champs intégrés, « form » (erreur générale) ou clé d'un champ personnalisé (« cf_xxxx »). */
@@ -111,12 +115,50 @@ export default function OrderForm(p: OrderFormProps) {
   const subtotal = offer ? roundMoney(offer.price, p.currency) : roundMoney(unitPrice * quantity, p.currency)
   const discount = promo?.status === 'ok' ? Math.min(promo.discount, subtotal) : 0
   const zone = picked?.zone ?? null
-  const shipping = zone ? (zone.freeAbove != null && subtotal - discount >= zone.freeAbove ? 0 : zone.fee) : 0
   // Order bump : case cochée = offre ajoutée au total (prix fixé par le vendeur, revérifié par l'API).
   const bumpOffer = p.funnel?.bump ?? null
   const [bumpOn, setBumpOn] = useState(false)
+  // ─── Panier : les autres produits du panier (même mode de paiement) partent dans la même commande ───
+  const [cartLines, setCartLines] = useState<CartLine[]>([])
+  const cartOn = Boolean(p.cartEnabled && !p.preview)
+  const loadCart = async () => {
+    const items = readCart(p.storeId)
+    if (!items.length) return setCartLines([])
+    const r = await api<CartLine[]>('/cart/lines', { body: { storeSlug: p.slug, items } })
+    setCartLines(r.ok && r.data ? r.data : [])
+  }
+  useEffect(() => {
+    if (!cartOn) return
+    // Arrivée depuis le panier : la ligne de ce produit fixe la variante et la quantité.
+    if (new URLSearchParams(location.search).get('panier')) {
+      const mine = readCart(p.storeId).find((i) => i.productId === p.productId)
+      if (mine) {
+        if (mine.variantId && p.variants.some((v) => v.id === mine.variantId)) setVariantId(mine.variantId)
+        if (physical && !p.offers.length) setQty(Math.max(1, Math.min(50, mine.quantity)))
+      }
+    }
+    void loadCart()
+    const onChange = () => void loadCart()
+    window.addEventListener('sf-cart', onChange)
+    return () => window.removeEventListener('sf-cart', onChange)
+  }, [])
+  const extras = cartOn
+    ? cartLines.filter((l) => l.available && l.type === p.type && l.paymentMethod === p.method && l.currency === p.currency && !(l.productId === p.productId && (l.variantId ?? null) === (variant?.id ?? null)))
+    : []
+  const extraAmount = roundMoney(extras.reduce((sum, l) => sum + (l.total ?? 0), 0), p.currency)
+  const [cartMsg, setCartMsg] = useState(false)
+  const addCurrentToCart = () => {
+    addToCart(p.storeId, { productId: p.productId, variantId: physical && variant ? variant.id : null, quantity: physical ? quantity : 1 })
+    window.dispatchEvent(new CustomEvent('sf-cart', { detail: { storeId: p.storeId, open: true } }))
+    setCartMsg(true)
+    setTimeout(() => setCartMsg(false), 2500)
+  }
+
+  // Livraison offerte au-delà d'un montant : calculée sur tout ce qui part dans la commande.
+  const freeBase = subtotal - discount + (extras.length ? extraAmount + (bumpOn && bumpOffer ? bumpOffer.price : 0) : 0)
+  const shipping = zone ? (zone.freeAbove != null && freeBase >= zone.freeAbove ? 0 : zone.fee) : 0
   const bumpAmount = bumpOn && bumpOffer ? bumpOffer.price : 0
-  const total = roundMoney(subtotal - discount + shipping + bumpAmount, p.currency)
+  const total = roundMoney(subtotal - discount + shipping + bumpAmount + extraAmount, p.currency)
   const leadMode = p.method === 'native' && !p.onlineEnabled
   const allSoldOut = !p.inStock || (p.variants.length > 0 && !firstInStock)
 
@@ -248,6 +290,7 @@ export default function OrderForm(p: OrderFormProps) {
       customFields: Object.keys(custom).length ? custom : undefined,
       promoCode: promo?.status === 'ok' ? promo.code : null,
       ...(bumpOn && bumpOffer ? { bump: true } : {}),
+      ...(extras.length ? { extraItems: extras.map((l) => ({ productId: l.productId, variantId: l.variantId, quantity: l.quantity ?? 1 })) } : {}),
       ...orderAttribution(),
     }
 
@@ -276,6 +319,13 @@ export default function OrderForm(p: OrderFormProps) {
 
     const o = r.data.order
     saveBuyer()
+    // Commande passée : le panier est vidé (les produits commandés séparément y restent).
+    if (cartOn && cartLines.length) {
+      const sent = new Set([`${p.productId}:${physical && variant ? variant.id : null}`, ...extras.map((l) => `${l.productId}:${l.variantId ?? null}`)])
+      const rest = readCart(p.storeId).filter((i) => !sent.has(`${i.productId}:${i.variantId ?? null}`))
+      if (!rest.length) clearCart(p.storeId)
+      else for (const i of readCart(p.storeId)) if (sent.has(`${i.productId}:${i.variantId ?? null}`)) removeFromCart(p.storeId, i.productId, i.variantId)
+    }
     track('order_created', { total: o.total, method: o.paymentMethod })
     // Pour la page commande (Purchase après paiement en ligne) : l'API ne renvoie pas les pixels avec la commande.
     setJSON(`sf_o_${o.token}`, { fb: p.fb, tt: p.tt, productId: p.productId, name: p.productName, storeId: p.storeId }, 'local')
@@ -476,6 +526,21 @@ export default function OrderForm(p: OrderFormProps) {
           </dt>
           <dd>{fmtMoney(subtotal)}</dd>
         </div>
+        {extras.map((l) => (
+          <div key={`${l.productId}-${l.variantId}`}>
+            <dt>
+              {l.name}
+              {l.variantName ? ` (${l.variantName})` : ''}
+              {physical && (l.quantity ?? 1) > 1 ? ` x${l.quantity}` : ''}{' '}
+              {stage.kind === 'form' && p.ct && (
+                <button type="button" class="cart-rm" onClick={() => removeFromCart(p.storeId, l.productId, l.variantId)}>
+                  {p.ct.remove}
+                </button>
+              )}
+            </dt>
+            <dd>{fmtMoney(l.total ?? 0)}</dd>
+          </div>
+        ))}
         {discount > 0 && (
           <div class="disc">
             <dt>
@@ -892,6 +957,18 @@ export default function OrderForm(p: OrderFormProps) {
         <button class={`btn btn-block btn-lg cta-${p.ctaStyle}`} disabled={busy} aria-busy={busy}>
           {submitLabel}
         </button>
+        {cartOn && p.ct && (
+          <>
+            <button type="button" class="btn btn-block btn-ghost cart-add" onClick={addCurrentToCart}>
+              {p.ct.add}
+            </button>
+            {cartMsg && (
+              <p class="cart-msg" role="status">
+                {p.ct.added}
+              </p>
+            )}
+          </>
+        )}
         {texts.reassurance.length > 0 && (
           <ul class="reassure">
             {texts.reassurance.map((r, i) => (

@@ -10,6 +10,8 @@ interface PlatformSettings {
   billingEnabled: boolean
   billingAccount: { storeId?: string } | null
   urlImport: boolean
+  cartEnabled: boolean
+  cartEnv: boolean
   contact: { email: string; whatsapp: string | null; socials: string[] }
   firecrawl: { configured: boolean; source: 'admin' | 'env' | null; hint: string | null }
   po: { configured: boolean; source: 'admin' | 'env' | null; hint: string | null; livemode: boolean | null; webhookSecretSet: boolean; webhookUrl: string }
@@ -46,6 +48,15 @@ export default function AdminSettings() {
           <Switch label="Import par lien ouvert à tous les vendeurs" checked={data.urlImport} onChange={(v) => put({ urlImport: v }, v ? 'Import par lien ouvert à tous' : 'Import par lien réservé')} />
           <FirecrawlKey firecrawl={data.firecrawl} onSave={(key, msg) => put({ firecrawlKey: key }, msg)} />
         </div>
+      </Card>
+      <Card title="Panier (en observation)" description="Plusieurs produits dans une seule commande, et catégories sur la page d’accueil des boutiques. Fermé : personne ne le voit, sauf toi et les comptes que tu ouvres dans leur fiche. Le vendeur doit ensuite l’activer dans ses réglages.">
+        <Switch
+          label="Panier ouvert à tous les vendeurs"
+          checked={data.cartEnabled || data.cartEnv}
+          disabled={data.cartEnv}
+          description={data.cartEnv ? 'Ouvert par la variable CART_ENABLED du serveur.' : undefined}
+          onChange={(v) => put({ cartEnabled: v }, v ? 'Panier ouvert à tous' : 'Panier réservé')}
+        />
       </Card>
       <Card title="Compte d’encaissement des abonnements" description="Les abonnements sont payés sur les comptes FedaPay, FeexPay ou pawaPay connectés à cette boutique (Paramètres, Paiements).">
         <Select

@@ -30,6 +30,8 @@ const schema = z.object({
   KIE_MODEL: z.string().optional(),
   /** Modèle d'édition d'image kie.ai (régénération des images de description). */
   KIE_IMAGE_MODEL: z.string().optional(),
+  /** « true » : panier ouvert à tous les vendeurs (sinon réglage du super admin ou option du compte). */
+  CART_ENABLED: z.string().optional(),
   /** Firecrawl (rendu JavaScript + proxys anti-blocage) : secours de l'import de produit par lien. */
   FIRECRAWL_API_KEY: z.string().optional(),
   /** Payment Orchestrator (payment.zurisell.store) : compte de la plateforme (boutiques du super admin, webhook global). */

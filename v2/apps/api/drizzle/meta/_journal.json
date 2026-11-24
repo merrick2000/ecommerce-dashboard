@@ -141,6 +141,13 @@
       "when": 1795529853419,
       "tag": "0019_seller_reviews",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795530578304,
+      "tag": "0020_product_category",
+      "breakpoints": true
     }
   ]
 }

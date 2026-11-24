@@ -161,6 +161,22 @@ const fr = {
   catalog: {
     products: 'Nos produits',
     empty: 'Aucun produit pour le moment.',
+    all: 'Tout',
+    choose: 'Choisir',
+  },
+  cart: {
+    add: 'Ajouter au panier',
+    added: 'Ajouté au panier',
+    title: 'Votre panier',
+    open: 'Voir le panier',
+    empty: 'Votre panier est vide.',
+    checkout: 'Commander',
+    remove: 'Retirer',
+    also: 'Aussi dans votre commande',
+    unavailable: 'Plus disponible',
+    total: 'Total des articles',
+    separate: 'Ce produit se commande séparément',
+    close: 'Fermer',
   },
   errors: {
     notFound: 'Page introuvable',
@@ -334,6 +350,22 @@ const en: Dict = {
   catalog: {
     products: 'Our products',
     empty: 'No products yet.',
+    all: 'All',
+    choose: 'Choose',
+  },
+  cart: {
+    add: 'Add to cart',
+    added: 'Added to cart',
+    title: 'Your cart',
+    open: 'View cart',
+    empty: 'Your cart is empty.',
+    checkout: 'Checkout',
+    remove: 'Remove',
+    also: 'Also in your order',
+    unavailable: 'No longer available',
+    total: 'Items total',
+    separate: 'This product is ordered separately',
+    close: 'Close',
   },
   errors: {
     notFound: 'Page not found',
@@ -351,5 +383,6 @@ export const toLocale = (l: string | null | undefined): Locale => (l === 'en' ? 
 export const dict = (l: string | null | undefined): Dict => (toLocale(l) === 'en' ? en : fr)
 
 export type FormStrings = Dict['form']
+export type CartStrings = Dict['cart']
 export type PayStrings = Dict['pay']
 export type OrderStrings = Dict['order']

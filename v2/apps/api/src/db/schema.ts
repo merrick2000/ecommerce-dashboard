@@ -400,6 +400,8 @@ export const products = pgTable(
     legacyId: integer('legacy_id'),
     /** Code produit Selar (webhook externe). */
     externalProductId: varchar('external_product_id', { length: 100 }),
+    /** Catégorie libre du catalogue (ex. « Perruques »). */
+    category: varchar('category', { length: 60 }),
     // Physique
     sku: varchar('sku', { length: 60 }),
     trackInventory: boolean('track_inventory').notNull().default(false),

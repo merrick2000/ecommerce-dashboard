@@ -225,6 +225,8 @@ export const adminRoutes = new Hono<AppEnv>()
       billingEnabled: await getSetting('billing.enabled', false),
       billingAccount: await getSetting<{ storeId?: string } | null>('billing.account', null),
       urlImport: await getSetting('import.url', false),
+      cartEnabled: await getSetting('cart.enabled', false),
+      cartEnv: env.CART_ENABLED === 'true',
       contact: await contactInfo(),
       po: await (async () => {
         const stored = decryptJson<{ secretKey?: string; webhookSecret?: string } | null>(await getSetting<string | null>('po.platform', null), null)
@@ -246,9 +248,10 @@ export const adminRoutes = new Hono<AppEnv>()
       myStores: myStores.map((s) => ({ ...s, accounts: accounts.filter((a) => a.storeId === s.id && ['fedapay', 'feexpay', 'pawapay'].includes(a.provider)) })),
     })
   })
-  .put('/settings', v('json', z.object({ paymentsOnline: z.boolean().optional(), billingEnabled: z.boolean().optional(), billingStoreId: z.string().max(40).nullable().optional(), urlImport: z.boolean().optional(), poSecretKey: z.string().trim().regex(/^sk_(test|live)_[A-Za-z0-9_]{8,200}$/, 'Clé secrète invalide (sk_test_… ou sk_live_…)').nullable().optional(), poWebhookSecret: z.string().trim().regex(/^whsec_[A-Za-z0-9_]{8,200}$/, 'Secret de webhook invalide (whsec_…)').nullable().optional(), firecrawlKey: z.string().trim().regex(/^fc-[A-Za-z0-9]{16,80}$/, 'Clé Firecrawl invalide (fc-…)').nullable().optional(), contactEmail: z.string().trim().toLowerCase().email('Email invalide').max(255).nullable().optional(), contactWhatsapp: z.string().trim().regex(/^\+?[0-9 ]{8,20}$/, 'Numéro WhatsApp invalide (ex. +229 01 23 45 67)').nullable().optional(), socialLinks: z.array(z.string().trim().url('Lien invalide (https://…)').max(300)).max(10).optional() })), async (c) => {
+  .put('/settings', v('json', z.object({ paymentsOnline: z.boolean().optional(), billingEnabled: z.boolean().optional(), billingStoreId: z.string().max(40).nullable().optional(), urlImport: z.boolean().optional(), cartEnabled: z.boolean().optional(), poSecretKey: z.string().trim().regex(/^sk_(test|live)_[A-Za-z0-9_]{8,200}$/, 'Clé secrète invalide (sk_test_… ou sk_live_…)').nullable().optional(), poWebhookSecret: z.string().trim().regex(/^whsec_[A-Za-z0-9_]{8,200}$/, 'Secret de webhook invalide (whsec_…)').nullable().optional(), firecrawlKey: z.string().trim().regex(/^fc-[A-Za-z0-9]{16,80}$/, 'Clé Firecrawl invalide (fc-…)').nullable().optional(), contactEmail: z.string().trim().toLowerCase().email('Email invalide').max(255).nullable().optional(), contactWhatsapp: z.string().trim().regex(/^\+?[0-9 ]{8,20}$/, 'Numéro WhatsApp invalide (ex. +229 01 23 45 67)').nullable().optional(), socialLinks: z.array(z.string().trim().url('Lien invalide (https://…)').max(300)).max(10).optional() })), async (c) => {
     const body = c.req.valid('json')
     if (body.urlImport !== undefined) await setSetting('import.url', body.urlImport)
+    if (body.cartEnabled !== undefined) await setSetting('cart.enabled', body.cartEnabled)
     if (body.contactEmail !== undefined) await setSetting('contact.email', body.contactEmail || null)
     if (body.socialLinks !== undefined) await setSetting('social.links', body.socialLinks.length ? body.socialLinks : null)
     if (body.contactWhatsapp !== undefined) await setSetting('contact.whatsapp', body.contactWhatsapp ? `+${body.contactWhatsapp.replace(/\D/g, '')}` : null)

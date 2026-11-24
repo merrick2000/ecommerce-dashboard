@@ -32,7 +32,7 @@ import { orderNumber, randomToken } from '../lib/crypto'
 import { badRequest, conflict, notFound } from '../lib/errors'
 import { ValidationError } from '../lib/validate'
 import { enqueue } from '../jobs/queue'
-import { quote, roundMoney } from './pricing'
+import { displayPrice, quote, roundMoney, shippingFee } from './pricing'
 
 /** Normalise un numéro pour en faire une clé client stable (+229 97 00 00 00 → +22997000000). */
 export function normalizePhone(phone: string): string {
@@ -202,6 +202,28 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
     }
     const bumpAmount = bump?.price ?? 0
 
+    // Panier : autres produits de la même boutique dans la même commande. Prix et stock relus ici, jamais ceux du navigateur.
+    const extras: { product: ProductRow; variant: VariantRow | null; quantity: number; unitPrice: number; total: number; line: Awaited<ReturnType<typeof reserveLine>> }[] = []
+    if (input.extraItems?.length && !(await (await import('./platform')).storeCartAllowed(store.id))) throw badRequest('Le panier n’est pas disponible pour cette boutique', 'cart_disabled')
+    for (const it of input.extraItems ?? []) {
+      if (it.productId === product.id && (it.variantId ?? null) === (variant?.id ?? null)) continue
+      const [p2] = await tx.select().from(products).where(and(eq(products.id, it.productId), eq(products.storeId, store.id))).for('update').limit(1)
+      if (!p2 || !p2.isActive) throw badRequest('Un produit du panier n’est plus disponible', 'cart_item_unavailable')
+      if (p2.type !== product.type) throw badRequest('Produits physiques et digitaux se commandent séparément', 'cart_mixed')
+      if (p2.payment.method !== product.payment.method) throw badRequest('Ces produits ne se paient pas de la même façon : commandez-les séparément', 'cart_payment_mismatch')
+      const v2 = it.variantId ? (await tx.select().from(productVariants).where(and(eq(productVariants.id, it.variantId), eq(productVariants.productId, p2.id))).for('update').limit(1))[0] : undefined
+      if (it.variantId && (!v2 || !v2.isActive)) throw badRequest('Une variante du panier est indisponible', 'cart_item_unavailable')
+      const unit = displayPrice(p2, store.currency, v2 ?? null)
+      if (unit.currency !== q.currency) throw badRequest('Produits dans des devises différentes : commandez-les séparément', 'cart_currency')
+      const quantity = isPhysical ? it.quantity : 1
+      const line = await reserveLine(tx, store.id, p2, v2 ?? null, quantity)
+      const unitPrice = roundMoney(unit.effective, q.currency)
+      extras.push({ product: p2, variant: v2 ?? null, quantity, unitPrice, total: roundMoney(unitPrice * quantity, q.currency), line })
+    }
+    const extraAmount = extras.reduce((sum, x) => sum + x.total, 0)
+    // Livraison offerte au-delà d'un montant : calculée sur tout le panier.
+    const shipping = extras.length && zone ? shippingFee(zone, q.subtotal - q.discount + extraAmount + bumpAmount) : q.shippingFee
+
     const phone = normalizePhone(input.customerPhone)
     const customer = await upsertCustomer(tx, store.id, {
       phone,
@@ -229,10 +251,10 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
         returnCost: isPhysical ? (zone?.returnCost ?? null) : null,
         customerNote: input.note ?? null,
         kind: product.type,
-        subtotal: roundMoney(q.subtotal + bumpAmount, q.currency),
+        subtotal: roundMoney(q.subtotal + bumpAmount + extraAmount, q.currency),
         discount: q.discount,
-        shippingFee: q.shippingFee,
-        total: roundMoney(q.total + bumpAmount, q.currency),
+        shippingFee: shipping,
+        total: roundMoney(q.total - q.shippingFee + shipping + bumpAmount + extraAmount, q.currency),
         currency: q.currency,
         paymentMethod,
         promoCodeId: q.discount > 0 && promo ? promo.id : null,
@@ -290,6 +312,22 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
       })
     }
 
+    for (const x of extras) {
+      await tx.insert(orderItems).values({
+        orderId: order.id,
+        productId: x.product.id,
+        variantId: x.variant?.id ?? null,
+        productType: x.product.type,
+        name: x.product.name,
+        variantName: x.variant?.name ?? null,
+        quantity: x.quantity,
+        unitPrice: x.unitPrice,
+        unitCost: x.line.unitCost,
+        bundle: x.line.bundle,
+        total: x.total,
+      })
+    }
+
     if (order.promoCodeId) {
       await tx.update(promoCodes).set({ usedCount: dsql`${promoCodes.usedCount} + 1` }).where(eq(promoCodes.id, order.promoCodeId))
     }
@@ -298,7 +336,7 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
       orderId: order.id,
       type: 'created',
       message: paymentMethod === 'cod' ? 'Commande reçue (paiement à la livraison)' : 'Commande créée',
-      data: { quantity: q.quantity, offerId: q.offerId, total: q.total },
+      data: { quantity: q.quantity, offerId: q.offerId, total: q.total, ...(extras.length ? { cartItems: extras.length + 1 } : {}) },
     })
 
     return { order, promoError: q.promoError, store }
