@@ -19,8 +19,10 @@ import { assertPublicUrl } from '../services/remote'
 export const productAiRoutes = new Hono<AppEnv>()
   .use(requirePermission('products.edit'))
   .get('/config', async (c) => {
-    const enabled = (await resolveFeatures(c.get('user'))).urlImport && aiAvailable()
-    return c.json({ rewrite: enabled, images: enabled })
+    const open = (await resolveFeatures(c.get('user'))).urlImport
+    const enabled = open && aiAvailable()
+    // Raison donnée seulement à ceux qui ont l'accès : un vendeur sans accès ne voit jamais rien.
+    return c.json({ rewrite: enabled, images: enabled, reason: enabled ? 'ok' : open ? 'no_key' : 'closed' })
   })
   .use(async (c, next) => {
     if (!(await resolveFeatures(c.get('user'))).urlImport) throw new HttpError(403, 'La rédaction IA n’est pas encore ouverte sur ton compte.', 'ai_disabled')

@@ -14,6 +14,7 @@ interface PlatformSettings {
   cartEnabled: boolean
   cartEnv: boolean
   contact: { email: string; whatsapp: string | null; socials: string[] }
+  ai: { configured: boolean }
   firecrawl: { configured: boolean; source: 'admin' | 'env' | null; hint: string | null }
   po: { configured: boolean; source: 'admin' | 'env' | null; hint: string | null; livemode: boolean | null; webhookSecretSet: boolean; webhookUrl: string }
   myStores: { id: string; name: string; accounts: { provider: string; enabled: boolean; mode: string }[] }[]
@@ -47,6 +48,10 @@ export default function AdminSettings() {
       <Card title="Import de produit par lien" description="Lecture des pages produit protégées (AliExpress, Amazon…) avec un navigateur distant Firecrawl, puis IA. Chaque import consomme des crédits Firecrawl : tant que c’est fermé, seuls toi et les comptes que tu autorises (fiche du compte) le voient.">
         <div className="space-y-4">
           <Switch label="Import par lien ouvert à tous les vendeurs" checked={data.urlImport} onChange={(v) => put({ urlImport: v }, v ? 'Import par lien ouvert à tous' : 'Import par lien réservé')} />
+          <p className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-medium">Rédaction et images IA (clé KIE)</span>
+            {data.ai.configured ? <Badge tone="green">configurée</Badge> : <Badge tone="amber">manquante : ajoutez KIE_API_KEY dans Dokploy</Badge>}
+          </p>
           <FirecrawlKey firecrawl={data.firecrawl} onSave={(key, msg) => put({ firecrawlKey: key }, msg)} />
         </div>
       </Card>

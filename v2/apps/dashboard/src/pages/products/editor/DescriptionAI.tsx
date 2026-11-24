@@ -78,7 +78,7 @@ export function DescriptionAI({ html, onChange, name, features = [], price = nul
   const digital = type === 'digital'
   const storeId = useStoreId()
   const toast = useToast()
-  const { data: config } = useQuery({ queryKey: ['product-ai-config', storeId], queryFn: () => api.get<{ rewrite: boolean; images: boolean }>(`/stores/${storeId}/products/ai/config`), staleTime: 5 * 60_000 })
+  const { data: config } = useQuery({ queryKey: ['product-ai-config', storeId], queryFn: () => api.get<{ rewrite: boolean; images: boolean; reason?: 'ok' | 'no_key' | 'closed' }>(`/stores/${storeId}/products/ai/config`), staleTime: 5 * 60_000 })
   const [goal, setGoal] = useState('')
   const [writing, setWriting] = useState(false)
   const [proposal, setProposal] = useState<Rewrite | null>(null)
@@ -163,7 +163,14 @@ export function DescriptionAI({ html, onChange, name, features = [], price = nul
     onChange(removeImage(latest.current, src))
   }
 
-  if (!enabled) return null
+  if (!enabled) {
+    if (config?.reason !== 'no_key') return null
+    return (
+      <p className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+        Rédaction IA indisponible : la clé KIE n’est pas configurée sur le serveur. Ajoutez la variable <code>KIE_API_KEY</code> dans Dokploy, puis redéployez l’API.
+      </p>
+    )
+  }
   return (
     <div className="mt-4 space-y-4">
       {/* Réécriture */}

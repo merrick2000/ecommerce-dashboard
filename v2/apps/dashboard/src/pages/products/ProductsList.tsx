@@ -1,10 +1,10 @@
-import { Copy, ExternalLink, ImageOff, MoreVertical, Package, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react'
+import { Copy, ExternalLink, ImageOff, MoreVertical, Package, Pencil, Plus, Search, Sparkles, Trash2, Upload } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ConfirmDialog, useDialogState } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, ButtonLink, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Switch } from '@/components/ui'
-import { useCan, useCurrentStore } from '@/hooks/auth'
+import { useCan, useCurrentStore, useMe } from '@/hooks/auth'
 import { useDeleteProduct, useDuplicateProduct, useProducts, useToggleProductActive } from '@/hooks/resources'
 import { money, num } from '@/lib/format'
 import type { ProductListItem } from '@/lib/types'
@@ -119,6 +119,7 @@ function RowMenu({ editHref, viewHref, onDuplicate, onDelete, busy, canEdit = tr
 export default function ProductsList() {
   const { storeId, store } = useCurrentStore()
   const canEdit = useCan('products.edit')
+  const { data: me } = useMe()
   const navigate = useNavigate()
   const toast = useToast()
   const { data, error, isPending, refetch } = useProducts()
@@ -180,9 +181,16 @@ export default function ProductsList() {
           description="Créez votre premier produit : physique avec paiement à la livraison, ou digital (ebook, formation…)."
           action={
             canEdit && (
-              <ButtonLink to="new" variant="primary">
-                <Plus className="size-4" /> Créer un produit
-              </ButtonLink>
+              <div className="flex flex-wrap justify-center gap-2">
+                {me?.features.urlImport && (
+                  <ButtonLink to="import/url">
+                    <Sparkles className="size-4" /> Importer depuis un lien avec l’IA
+                  </ButtonLink>
+                )}
+                <ButtonLink to="new" variant="primary">
+                  <Plus className="size-4" /> Créer un produit
+                </ButtonLink>
+              </div>
             )
           }
         />

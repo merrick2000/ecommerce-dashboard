@@ -1,12 +1,12 @@
 import { productContentSchema, productInputSchema, type ProductType } from '@zuri/shared'
-import { ArrowLeft, Box, FileDown } from 'lucide-react'
+import { ArrowLeft, Box, FileDown, Sparkles } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useBeforeUnload, useBlocker, useNavigate, useParams } from 'react-router'
 import { ConfirmDialog } from '@/components/Dialog'
 import { SaveBar } from '@/components/SaveBar'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, cx, ErrorState, Segmented, Skeleton } from '@/components/ui'
-import { useCan, useCurrency, useCurrentStore, useStoreId } from '@/hooks/auth'
+import { useCan, useCurrency, useCurrentStore, useMe, useStoreId } from '@/hooks/auth'
 import { useProduct, useSaveProduct } from '@/hooks/resources'
 import { serverErrors, validate, type Errors } from '@/lib/form'
 import type { Product } from '@/lib/types'
@@ -102,6 +102,7 @@ function toPayload(f: Form): Form {
 }
 
 function Editor({ initial, productId }: { initial: Form; productId: string | null }) {
+  const { data: me } = useMe()
   const storeId = useStoreId()
   const currency = useCurrency()
   const navigate = useNavigate()
@@ -242,6 +243,12 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
             },
           ]}
         />
+        )}
+        {/* Import IA depuis un lien : seulement pour les comptes qui y ont accès (super admin ou ouvert par lui). */}
+        {!productId && me?.features.urlImport && (
+          <Link to={`/stores/${storeId}/products/import/url`} className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/5 px-3 py-1 text-[13px] font-medium text-fg hover:border-accent">
+            <Sparkles className="size-4 text-accent" /> Importer depuis un lien avec l’IA
+          </Link>
         )}
       </div>
 

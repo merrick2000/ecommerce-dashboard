@@ -107,8 +107,9 @@ describe('emails d’accompagnement', () => {
     const night = new Date()
     night.setUTCHours(2)
     expect(await runOnboarding(night)).toBe(0)
+    // Prochaine heure de journée à partir de maintenant (jamais dans le passé : les âges des comptes restent justes à toute heure).
     const day = new Date()
-    day.setUTCHours(10)
+    while (day.getUTCHours() < 7 || day.getUTCHours() >= 19) day.setTime(day.getTime() + HOUR)
     expect(await runOnboarding(day)).toBeGreaterThanOrEqual(2)
     const sent = await db.select().from(onboardingEmails)
     expect(sent.find((e) => e.userId === noStore.id)).toMatchObject({ kind: 'no_store', step: 1 })

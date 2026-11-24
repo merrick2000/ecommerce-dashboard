@@ -12,6 +12,7 @@ import { announcementDismissals, announcements, billingPayments, contactMessages
 import { contactInfo } from './site'
 import { audienceSize } from '../services/announcements'
 import { resetAccount, resetPreview } from '../services/account-reset'
+import { aiAvailable } from '../services/ai-suggest'
 import { enqueue } from '../jobs/queue'
 import { requireAuth } from '../lib/auth'
 import type { AppEnv } from '../lib/context'
@@ -265,6 +266,7 @@ export const adminRoutes = new Hono<AppEnv>()
           webhookUrl: `${env.APP_URL.replace(/\/$/, '')}/api/v1/webhooks/payment-orchestrator`,
         }
       })(),
+      ai: { configured: aiAvailable() },
       firecrawl: await (async () => {
         const stored = await getSetting<string | null>('firecrawl.key', null)
         const key = stored ? decrypt(stored) : (env.FIRECRAWL_API_KEY ?? null)
