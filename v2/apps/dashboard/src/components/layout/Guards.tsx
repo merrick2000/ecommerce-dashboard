@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Navigate, Outlet, isRouteErrorResponse, useLocation, useRouteError } from 'react-router'
+import { isStaleChunkError, reloadForNewVersion } from '@/lib/newVersion'
 import { useMe } from '@/hooks/auth'
 import { LAST_STORE_KEY, readLocal } from '@/lib/storage'
 import { ButtonLink, ErrorState, Spinner } from '../ui'
@@ -65,24 +66,20 @@ export function NotFound() {
 export function RouteError() {
   const err = useRouteError()
   if (isRouteErrorResponse(err) && err.status === 404) return <NotFound />
-  // Chunk introuvable après un déploiement : un rechargement suffit.
-  const chunk = err instanceof Error && /dynamically imported module|Importing a module script failed|Failed to load module script|error loading dynamically/i.test(err.message)
-  // Nouvelle version déployée pendant que la page était ouverte : on recharge une fois, sans rien demander.
+  // Nouvelle version déployée pendant que la page était ouverte : rechargement silencieux, jamais de message d'erreur.
+  const chunk = isStaleChunkError(err)
   useEffect(() => {
-    if (!chunk) return
-    try {
-      const last = Number(sessionStorage.getItem('zuri:chunk-reload') ?? 0)
-      if (Date.now() - last > 30_000) {
-        sessionStorage.setItem('zuri:chunk-reload', String(Date.now()))
-        window.location.reload()
-      }
-    } catch {
-      /* stockage indisponible : l'utilisateur rechargera via le bouton */
-    }
+    if (chunk) reloadForNewVersion()
   }, [chunk])
+  if (chunk)
+    return (
+      <div className="flex min-h-[60dvh] items-center justify-center gap-2 text-sm text-muted" role="status">
+        <span className="size-4 animate-spin rounded-full border-2 border-line border-t-accent" aria-hidden /> Mise à jour de Zuri…
+      </div>
+    )
   return (
     <div className="mx-auto max-w-md p-6 pt-24">
-      <ErrorState error={chunk ? new Error('Une nouvelle version est disponible. Rechargez la page.') : err} onRetry={() => window.location.reload()} />
+      <ErrorState error={err} onRetry={() => window.location.reload()} />
     </div>
   )
 }

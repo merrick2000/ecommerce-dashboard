@@ -8,6 +8,13 @@ import { ToastProvider } from '@/components/Toast'
 import { meKey } from '@/hooks/auth'
 import { ApiError, onUnauthorized } from '@/lib/api'
 import { router } from '@/router'
+import { reloadForNewVersion } from '@/lib/newVersion'
+
+// Fichier d'une ancienne version introuvable (déploiement pendant que la page était ouverte) : rechargement silencieux.
+window.addEventListener('vite:preloadError', (e) => {
+  e.preventDefault()
+  reloadForNewVersion()
+})
 import './index.css'
 import { PushBridge } from '@/components/PushBridge'
 
