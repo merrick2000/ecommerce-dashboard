@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Mail } from 'lucide-react'
+import { Link } from 'react-router'
 import { Card, ErrorState, Skeleton } from '@/components/ui'
 import { api } from '@/lib/api'
 import { Bars, fmt, Ranking, StatBox as Stat } from './shared'
@@ -14,6 +15,9 @@ interface Overview {
   sources: { label: string; count: number }[]
   landings: { label: string; count: number }[]
   umamiUrl: string
+  funnel: { signed: number; store: number; product: number; order: number }
+  onboardingSent30: number
+  newMessages: number
 }
 
 export default function AdminOverview() {
@@ -31,6 +35,11 @@ export default function AdminOverview() {
           Trafic du site (Umami) <ExternalLink className="size-3.5" />
         </a>
       </div>
+      {data.newMessages > 0 && (
+        <Link to="/admin/messages" className="flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/5 px-4 py-3 text-sm font-medium hover:bg-accent/10">
+          <Mail className="size-4 text-accent" /> {data.newMessages} nouveau{data.newMessages > 1 ? 'x' : ''} message{data.newMessages > 1 ? 's' : ''} de contact à lire
+        </Link>
+      )}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Comptes" value={fmt(data.users.total)} sub={`+${data.users.today} aujourd’hui · +${data.users.d7} en 7 j`} />
         <Stat label="Actifs (7 j)" value={fmt(data.users.active7)} sub={`${data.users.d30} inscrits en 30 j`} />
@@ -41,6 +50,9 @@ export default function AdminOverview() {
         <Stat label="Abonnés actifs" value={fmt(data.billing.subscriptions.reduce((s, x) => s + x.n, 0))} sub={data.billing.subscriptions.map((s) => `${s.plan} ${s.n}`).join(' · ') || 'Aucun pour l’instant'} />
         <Stat label="Boutiques fermées" value={fmt(data.stores.closed)} />
       </div>
+      <Card title="Parcours des inscrits" description={`Inscrits des 30 derniers jours (hors invitations d’équipe) : où ils s’arrêtent. ${data.onboardingSent30} email${data.onboardingSent30 > 1 ? 's' : ''} d’accompagnement envoyé${data.onboardingSent30 > 1 ? 's' : ''} sur la période.`}>
+        <Funnel f={data.funnel} />
+      </Card>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Inscriptions par jour" description="30 derniers jours">
           <Bars data={data.signups} />
@@ -58,5 +70,33 @@ export default function AdminOverview() {
         </Card>
       </div>
     </div>
+  )
+}
+
+function Funnel({ f }: { f: Overview['funnel'] }) {
+  const steps = [
+    { label: 'Inscrits', n: f.signed },
+    { label: 'Ont créé une boutique', n: f.store },
+    { label: 'Ont ajouté un produit', n: f.product },
+    { label: 'Ont reçu une commande', n: f.order },
+  ]
+  const max = Math.max(1, f.signed)
+  return (
+    <ol className="grid gap-3 sm:grid-cols-4">
+      {steps.map((s, i) => {
+        const prev = i ? steps[i - 1]!.n : s.n
+        const lost = i && prev ? Math.round(((prev - s.n) / prev) * 100) : 0
+        return (
+          <li key={s.label} className="rounded-lg border border-line p-3">
+            <p className="text-[13px] text-muted">{s.label}</p>
+            <p className="tabular mt-1 text-2xl font-bold">{s.n}</p>
+            <div className="mt-2 h-1.5 rounded-full bg-surface-2">
+              <div className="h-full rounded-full bg-accent" style={{ width: `${(s.n / max) * 100}%` }} />
+            </div>
+            {i > 0 && prev > 0 && <p className="mt-1.5 text-[12px] text-muted">{lost > 0 ? `${lost} % perdus à cette étape` : 'Personne de perdu'}</p>}
+          </li>
+        )
+      })}
+    </ol>
   )
 }

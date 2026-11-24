@@ -6,7 +6,7 @@ import { Link, useParams } from 'react-router'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, Card, ErrorState, Input, Select, Skeleton, Switch } from '@/components/ui'
 import { api } from '@/lib/api'
-import { ago, fdate, fmt, PlanBadge, StatusBadge } from './shared'
+import { ago, fdate, fmt, NUDGE_LABEL, PlanBadge, StageBadge, StatusBadge, type Stage } from './shared'
 
 interface Detail {
   user: { id: number; email: string; name: string; phone: string | null; country: string | null; isPlatformAdmin: boolean; createdAt: string; lastLoginAt: string | null; disabledAt: string | null; features: Record<string, boolean> | null; signupSource: Record<string, string> | null; googleSub: string | null }
@@ -14,6 +14,8 @@ interface Detail {
   payments: { id: number; plan: string; months: number; amount: number; status: string; provider: string; createdAt: string }[]
   subscription: { plan: PlanId; currentPeriodEnd: string; source: string; note: string | null } | null
   plan: EffectivePlan
+  stage: Stage
+  nudges: { kind: string; step: number; at: string }[]
 }
 
 const SOURCE_LABEL: Record<string, string> = { utmSource: 'utm_source', utmMedium: 'utm_medium', utmCampaign: 'utm_campaign', referrer: 'Site d’origine', landing: 'Première page vue', from: 'Clic depuis', firstSeen: 'Première visite', method: 'Méthode' }
@@ -49,6 +51,7 @@ export default function AdminUserDetail() {
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold">{u.name}</h1>
         <PlanBadge plan={data.plan} />
+        <StageBadge stage={data.stage} />
         {u.isPlatformAdmin && <Badge tone="violet">Admin</Badge>}
         {u.disabledAt && <Badge tone="red">Suspendu</Badge>}
       </div>
@@ -84,6 +87,26 @@ export default function AdminUserDetail() {
           )}
         </Card>
       </div>
+
+      <Card
+        title="Emails d’accompagnement"
+        description={(u as { emailOptOutAt?: string | null }).emailOptOutAt ? 'Ce vendeur a demandé à ne plus recevoir ces emails.' : 'Envoyés automatiquement quand le vendeur bloque à une étape (sans boutique, sans produit, sans vente).'}
+      >
+        {data.nudges.length ? (
+          <ul className="divide-y divide-line text-sm">
+            {data.nudges.map((n) => (
+              <li key={`${n.kind}-${n.step}`} className="flex items-center justify-between gap-3 py-2">
+                <span>
+                  {NUDGE_LABEL[n.kind] ?? n.kind} <span className="text-muted">· relance {n.step}</span>
+                </span>
+                <span className="text-muted">{fdate(n.at, true)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted">Aucun email d’accompagnement envoyé pour l’instant.</p>
+        )}
+      </Card>
 
       <Card title="Formule" description={data.subscription ? `${PLANS[data.subscription.plan].name} jusqu’au ${fdate(data.subscription.currentPeriodEnd)} (${data.subscription.source === 'offered' ? 'offerte' : 'payée'})` : 'Aucun abonnement : formule selon le calendrier de lancement.'}>
         <div className="flex flex-wrap items-end gap-3">

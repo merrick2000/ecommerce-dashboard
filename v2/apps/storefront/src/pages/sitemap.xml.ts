@@ -23,6 +23,7 @@ export const GET: APIRoute = () => {
     ...both(PATHS.home.fr, PATHS.home.en, 'daily', '1'),
     ...both('/tarifs', '/en/pricing', 'weekly', '0.9'),
     ...both('/a-propos', '/en/about', 'monthly', '0.6'),
+    ...both('/contact', '/en/contact', 'monthly', '0.5'),
     ...both(PATHS.guides.fr, PATHS.guides.en, 'weekly', '0.9'),
     ...both(PATHS.tools.fr, PATHS.tools.en, 'weekly', '0.9'),
     ...both(PATHS.countries.fr, PATHS.countries.en, 'weekly', '0.8'),

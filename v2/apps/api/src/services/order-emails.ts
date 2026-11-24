@@ -58,14 +58,15 @@ function onColor(hex: string) {
 
 function layout(o: { storeName: string; color: string; preheader: string; inner: string; footer?: string }) {
   const c = /^#[0-9a-f]{6}$/i.test(o.color) ? o.color : '#f59e0b'
-  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${e(o.storeName)}</title></head>
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="x-apple-disable-message-reformatting"><meta name="color-scheme" content="light"><title>${e(o.storeName)}</title>
+<style>a{word-break:break-word}img{max-width:100%}@media (max-width:560px){.zo{padding:12px 6px!important}.zc{padding-left:16px!important;padding-right:16px!important}.zb{display:block!important;margin:6px 0!important;text-align:center!important}}</style></head>
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111827;-webkit-font-smoothing:antialiased">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${e(o.preheader)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="zo" style="background:#f3f4f6;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)">
 <tr><td style="height:6px;background:${c};line-height:6px;font-size:0">&nbsp;</td></tr>
-<tr><td style="padding:22px 28px 0;font-size:15px;font-weight:700;color:#111827">${e(o.storeName)}</td></tr>
-<tr><td style="padding:8px 28px 28px;font-size:15px;line-height:1.6">${o.inner}</td></tr>
+<tr><td class="zc" style="padding:22px 28px 0;font-size:15px;font-weight:700;color:#111827">${e(o.storeName)}</td></tr>
+<tr><td class="zc" style="padding:8px 28px 28px;font-size:15px;line-height:1.6;word-break:break-word">${o.inner}</td></tr>
 </table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px"><tr><td style="padding:16px 28px;font-size:12px;line-height:1.6;color:#6b7280;text-align:center">${o.footer ?? ''}</td></tr></table>
 </td></tr></table></body></html>`
@@ -74,7 +75,7 @@ function layout(o: { storeName: string; color: string; preheader: string; inner:
 const btn = (href: string, label: string, color: string, filled = true) => {
   const c = /^#[0-9a-f]{6}$/i.test(color) ? color : '#f59e0b'
   const style = filled ? `background:${c};color:${onColor(c)};border:1px solid ${c}` : `background:#ffffff;color:#111827;border:1px solid #d1d5db`
-  return `<a href="${e(href)}" style="${style};text-decoration:none;padding:13px 22px;border-radius:10px;font-weight:700;font-size:15px;display:inline-block;margin:4px 6px 4px 0">${e(label)}</a>`
+  return `<a class="zb" href="${e(href)}" style="${style};text-decoration:none;padding:13px 22px;border-radius:10px;font-weight:700;font-size:15px;display:inline-block;margin:4px 6px 4px 0">${e(label)}</a>`
 }
 
 const hero = (title: string, text: string) =>

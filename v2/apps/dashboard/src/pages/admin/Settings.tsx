@@ -10,6 +10,7 @@ interface PlatformSettings {
   billingEnabled: boolean
   billingAccount: { storeId?: string } | null
   urlImport: boolean
+  contact: { email: string; whatsapp: string | null }
   firecrawl: { configured: boolean; source: 'admin' | 'env' | null; hint: string | null }
   po: { configured: boolean; source: 'admin' | 'env' | null; hint: string | null; livemode: boolean | null; webhookSecretSet: boolean; webhookUrl: string }
   myStores: { id: string; name: string; accounts: { provider: string; enabled: boolean; mode: string }[] }[]
@@ -28,6 +29,9 @@ export default function AdminSettings() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Réglages de la plateforme</h1>
+      <Card title="Contact Zuri" description="Affichés sur la page contact du site, en bouton WhatsApp sur les pages marketing, et dans les emails d’accompagnement des vendeurs (les réponses arrivent sur cet email).">
+        <ContactSettings contact={data.contact} onSave={(body) => put(body, 'Coordonnées de contact enregistrées')} saving={save.isPending} />
+      </Card>
       <Card title="Payment Orchestrator de la plateforme" description="Ton compte payment.zurisell.store : il encaisse les abonnements Zuri et les ventes de tes propres boutiques. Jamais celles des autres vendeurs (ils connectent leur propre compte).">
         <PoPlatform po={data.po} onSave={(body, msg) => put(body, msg)} />
       </Card>
@@ -190,5 +194,25 @@ function PoPlatform({ po, onSave }: { po: PlatformSettings['po']; onSave: (body:
         </code>
       </div>
     </div>
+  )
+}
+
+function ContactSettings({ contact, onSave, saving }: { contact: PlatformSettings['contact']; onSave: (body: { contactEmail: string | null; contactWhatsapp: string | null }) => void; saving: boolean }) {
+  const [email, setEmail] = useState(contact.email)
+  const [whatsapp, setWhatsapp] = useState(contact.whatsapp ?? '')
+  return (
+    <form
+      className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+      onSubmit={(e) => {
+        e.preventDefault()
+        onSave({ contactEmail: email.trim() || null, contactWhatsapp: whatsapp.trim() || null })
+      }}
+    >
+      <Input label="Email de contact" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="contact@zurisell.store" />
+      <Input label="WhatsApp" optional inputMode="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="+229 01 23 45 67" />
+      <Button type="submit" variant="primary" loading={saving}>
+        Enregistrer
+      </Button>
+    </form>
   )
 }

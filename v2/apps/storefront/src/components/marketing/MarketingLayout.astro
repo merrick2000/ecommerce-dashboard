@@ -8,6 +8,8 @@ import { env } from 'cloudflare:workers'
 import { COUNTRIES, GUIDES, PATHS, countryPath, guidePath, t } from '../../content/seo'
 import type { Lang } from '../../content/seo'
 import PromoBar from './offer/PromoBar.astro'
+import Icon from './Icon.astro'
+import { contactInfo, waLink } from '../../lib/contact'
 
 interface Crumb {
   label: string
@@ -41,13 +43,15 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr'
 const otherPath = alternate[other] ?? PATHS.home[other]
 
 const T = {
-  fr: { how: 'Comment ça marche', features: 'Fonctionnalités', pricing: 'Tarifs', about: 'À propos', faq: 'Questions', login: 'Se connecter', signup: 'Créer ma boutique', skip: 'Aller au contenu', tagline: 'La boutique en ligne pensée pour le paiement à la livraison et le Mobile Money, en Afrique.', product: 'Produit', resources: 'Ressources', countries: 'Vendre par pays', guides: 'Guides', tools: 'Outils gratuits', cities: 'Vendre par ville', niches: 'Vendre par métier', best: 'Meilleurs outils', alternatives: 'Alternatives', compare: 'Comparatifs', account: 'Compte', popular: 'Guides populaires', bottom: 'Fait pour les vendeurs d’Afrique.', home: 'Accueil', langLabel: 'English', allCountries: 'Tous les pays' },
-  en: { how: 'How it works', features: 'Features', pricing: 'Pricing', about: 'About', faq: 'FAQ', login: 'Log in', signup: 'Create my store', skip: 'Skip to content', tagline: 'The online store built for cash on delivery and Mobile Money, in Africa.', product: 'Product', resources: 'Resources', countries: 'Sell by country', guides: 'Guides', tools: 'Free tools', cities: 'Sell by city', niches: 'Sell by category', best: 'Best tools', alternatives: 'Alternatives', compare: 'Comparisons', account: 'Account', popular: 'Popular guides', bottom: 'Built for sellers across Africa.', home: 'Home', langLabel: 'Français', allCountries: 'All countries' },
+  fr: { how: 'Comment ça marche', features: 'Fonctionnalités', pricing: 'Tarifs', about: 'À propos', faq: 'Questions', login: 'Se connecter', signup: 'Créer ma boutique', skip: 'Aller au contenu', tagline: 'La boutique en ligne pensée pour le paiement à la livraison et le Mobile Money, en Afrique.', product: 'Produit', resources: 'Ressources', countries: 'Vendre par pays', guides: 'Guides', tools: 'Outils gratuits', cities: 'Vendre par ville', niches: 'Vendre par métier', best: 'Meilleurs outils', alternatives: 'Alternatives', compare: 'Comparatifs', account: 'Compte', popular: 'Guides populaires', bottom: 'Fait pour les vendeurs d’Afrique.', home: 'Accueil', langLabel: 'English', allCountries: 'Tous les pays', contact: 'Contact', waFloat: 'Une question ?', waMsg: 'Bonjour Zuri, j’ai une question : ' },
+  en: { how: 'How it works', features: 'Features', pricing: 'Pricing', about: 'About', faq: 'FAQ', login: 'Log in', signup: 'Create my store', skip: 'Skip to content', tagline: 'The online store built for cash on delivery and Mobile Money, in Africa.', product: 'Product', resources: 'Resources', countries: 'Sell by country', guides: 'Guides', tools: 'Free tools', cities: 'Sell by city', niches: 'Sell by category', best: 'Best tools', alternatives: 'Alternatives', compare: 'Comparisons', account: 'Account', popular: 'Popular guides', bottom: 'Built for sellers across Africa.', home: 'Home', langLabel: 'Français', allCountries: 'All countries', contact: 'Contact', waFloat: 'Questions?', waMsg: 'Hello Zuri, I have a question: ' },
 }[lang]
 
 // Pied de page : liens internes vers les pages les plus utiles (maillage SEO).
 const footerCountries = COUNTRIES.filter((c) => (lang === 'fr' ? c.primaryLang === 'fr' && c.region !== 'diaspora' : c.primaryLang === 'en')).slice(0, 8)
 const footerGuides = GUIDES.slice(0, 6)
+const contact = await contactInfo()
+const contactPath = lang === 'fr' ? '/contact' : '/en/contact'
 
 const crumbsLd = breadcrumbs.length
   ? [
@@ -151,6 +155,7 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
           <a href={PATHS.guides[lang]}>{T.guides}</a>
           <a href={PATHS.countries[lang]}>{T.countries}</a>
           <a href={PATHS.tools[lang]}>{T.tools}</a>
+          <a href={contactPath}>{T.contact}</a>
         </nav>
         <div class="mk-header-cta">
           <a class="mk-link" href={otherPath} hreflang={other} lang={other}>{T.langLabel}</a>
@@ -196,6 +201,7 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
           <a href={`${home === '/' ? '' : home}/#fonctions`}>{T.features}</a>
           <a href={lang === 'fr' ? '/tarifs' : '/en/pricing'}>{T.pricing}</a>
           <a href={lang === 'fr' ? '/a-propos' : '/en/about'}>{T.about}</a>
+          <a href={contactPath}>{T.contact}</a>
           <a href={`${home === '/' ? '' : home}/#faq`}>{T.faq}</a>
           <a href={signupUrl}>{T.signup}</a>
           <a href={loginUrl}>{T.login}</a>
@@ -221,8 +227,16 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
           {footerGuides.map((g) => <a href={guidePath(g.slug[lang], lang)}>{t(g.h1, lang)}</a>)}
         </nav>
       </div>
-      <div class="mk-wrap mk-footer-bottom">© {new Date().getFullYear()} Zuri. {T.bottom}</div>
+      <div class="mk-wrap mk-footer-bottom">© {new Date().getFullYear()} Zuri. {T.bottom} <a href={`mailto:${contact.email}`}>{contact.email}</a></div>
     </footer>
+    {
+      contact.whatsapp && (
+        <a class="mk-wa-float" href={waLink(contact.whatsapp, T.waMsg)} target="_blank" rel="noopener" aria-label={T.waFloat} data-umami-event="whatsapp-flottant">
+          <Icon name="message" size={22} />
+          <span>{T.waFloat}</span>
+        </a>
+      )
+    }
     <script is:inline>
       /* Événements Umami : clics vers l'inscription (avec la page d'origine). */
       document.querySelectorAll('a[href*="/register"]').forEach(function (a) {

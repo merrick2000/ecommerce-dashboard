@@ -6,7 +6,7 @@ import { Link } from 'react-router'
 import { Badge, Button, ErrorState, Input, ListSkeleton } from '@/components/ui'
 import { useDebounced } from '@/hooks/useDebounced'
 import { api } from '@/lib/api'
-import { ago, fdate, PlanBadge } from './shared'
+import { ago, fdate, PlanBadge, StageBadge, type Stage } from './shared'
 
 export interface AdminUser {
   id: number
@@ -23,6 +23,9 @@ export interface AdminUser {
   sourceLabel: string
   stores: number
   orders: number
+  stage: Stage
+  nudges: number
+  emailOptOut: boolean
   plan: EffectivePlan
 }
 
@@ -60,6 +63,7 @@ export default function AdminUsers() {
                 <th className="px-3 py-2">Compte</th>
                 <th className="px-3 py-2">Inscrit</th>
                 <th className="px-3 py-2">Provenance</th>
+                <th className="px-3 py-2">Étape</th>
                 <th className="px-3 py-2">Formule</th>
                 <th className="px-3 py-2 text-right">Boutiques</th>
                 <th className="px-3 py-2 text-right">Commandes</th>
@@ -85,6 +89,10 @@ export default function AdminUsers() {
                   <td className="px-3 py-2.5">
                     <div>{u.sourceLabel}</div>
                     {u.signupSource?.from && <div className="max-w-[220px] truncate text-[12px] text-muted">depuis {u.signupSource.from}</div>}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <StageBadge stage={u.stage} />
+                    {(u.nudges > 0 || u.emailOptOut) && <div className="mt-0.5 text-[12px] whitespace-nowrap text-muted">{u.emailOptOut ? 'Relances refusées' : `${u.nudges} relance${u.nudges > 1 ? 's' : ''}`}</div>}
                   </td>
                   <td className="px-3 py-2.5">
                     <PlanBadge plan={u.plan} />

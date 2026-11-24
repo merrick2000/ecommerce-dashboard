@@ -1,0 +1,160 @@
+---
+/**
+ * Page contact (FR /contact, EN /en/contact) : email, WhatsApp et formulaire.
+ * Sans JavaScript : le formulaire est envoyé à la page elle-même, qui le transmet à l'API.
+ */
+import MarketingLayout from '../MarketingLayout.astro'
+import Icon from '../Icon.astro'
+import { apiUrl, originHeaders } from '../../../lib/api'
+import { contactInfo, waLink } from '../../../lib/contact'
+import type { Lang } from '../../../content/seo'
+
+interface Props {
+  lang: Lang
+}
+const { lang } = Astro.props
+const other: Lang = lang === 'fr' ? 'en' : 'fr'
+const path = { fr: '/contact', en: '/en/contact' }
+
+const M = {
+  fr: {
+    title: 'Contacter Zuri : email, WhatsApp et formulaire',
+    description: 'Une question sur Zuri, la boutique en ligne pour le paiement à la livraison et le Mobile Money ? Écrivez-nous par WhatsApp, email ou formulaire : réponse rapide, en français ou en anglais.',
+    label: 'Contact',
+    h1: 'Contactez-nous',
+    sub: 'Une question avant de créer votre boutique, un blocage, une idée ? Une vraie personne vous répond, en français ou en anglais.',
+    waTitle: 'WhatsApp',
+    waText: 'Le plus rapide : réponse en général dans l’heure, en journée.',
+    waBtn: 'Écrire sur WhatsApp',
+    waMsg: 'Bonjour Zuri, j’ai une question : ',
+    mailTitle: 'Email',
+    mailText: 'Pour les demandes détaillées, les partenariats et la presse.',
+    formTitle: 'Envoyer un message',
+    name: 'Votre nom',
+    email: 'Votre email',
+    phone: 'Téléphone ou WhatsApp',
+    optional: 'facultatif',
+    message: 'Votre message',
+    placeholder: 'Ex. je vends des perruques à Abidjan et je veux encaisser à la livraison…',
+    send: 'Envoyer le message',
+    sent: 'Message envoyé. Nous vous répondons très vite, par email ou sur WhatsApp.',
+    error: 'Le message n’a pas pu être envoyé',
+    retry: 'Réessayez, ou écrivez-nous directement par email.',
+  },
+  en: {
+    title: 'Contact Zuri: email, WhatsApp and form',
+    description: 'A question about Zuri, the online store built for cash on delivery and Mobile Money? Reach us on WhatsApp, by email or with the form: quick answers, in English or French.',
+    label: 'Contact',
+    h1: 'Contact us',
+    sub: 'A question before creating your store, something blocking you, an idea? A real person answers, in English or French.',
+    waTitle: 'WhatsApp',
+    waText: 'The fastest way: we usually answer within the hour, during the day.',
+    waBtn: 'Message us on WhatsApp',
+    waMsg: 'Hello Zuri, I have a question: ',
+    mailTitle: 'Email',
+    mailText: 'For detailed requests, partnerships and press.',
+    formTitle: 'Send a message',
+    name: 'Your name',
+    email: 'Your email',
+    phone: 'Phone or WhatsApp',
+    optional: 'optional',
+    message: 'Your message',
+    placeholder: 'E.g. I sell wigs in Nairobi and I want customers to pay on delivery…',
+    send: 'Send message',
+    sent: 'Message sent. We will get back to you very soon, by email or WhatsApp.',
+    error: 'Your message could not be sent',
+    retry: 'Please try again, or email us directly.',
+  },
+}[lang]
+
+const info = await contactInfo()
+let state: 'idle' | 'sent' | 'error' = 'idle'
+let errorText = ''
+const values = { name: '', email: '', phone: '', message: '' }
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData().catch(() => null)
+  const get = (k: string) => String(form?.get(k) ?? '').trim()
+  Object.assign(values, { name: get('name'), email: get('email'), phone: get('phone'), message: get('message') })
+  try {
+    const headers = originHeaders({ 'content-type': 'application/json' })
+    const ip = Astro.request.headers.get('cf-connecting-ip')
+    if (ip) headers.set('cf-connecting-ip', ip)
+    const res = await fetch(apiUrl('/contact'), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ...values, phone: values.phone || undefined, website: get('website') || undefined, page: path[lang], lang }),
+      signal: AbortSignal.timeout(8000),
+    })
+    if (res.ok) {
+      state = 'sent'
+      Object.assign(values, { name: '', email: '', phone: '', message: '' })
+    } else {
+      state = 'error'
+      const body = (await res.json().catch(() => null)) as { error?: string } | null
+      errorText = res.status === 429 ? (lang === 'fr' ? 'Trop de messages envoyés. Réessayez dans quelques minutes.' : 'Too many messages sent. Please try again in a few minutes.') : (body?.error ?? '')
+    }
+  } catch {
+    state = 'error'
+  }
+}
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'ContactPage',
+    name: M.h1,
+    url: `https://zurisell.store${path[lang]}`,
+    mainEntity: {
+      '@type': 'Organization',
+      name: 'Zuri',
+      url: 'https://zurisell.store',
+      email: info.email,
+      contactPoint: [{ '@type': 'ContactPoint', contactType: 'customer support', email: info.email, ...(info.whatsapp ? { telephone: info.whatsapp } : {}), availableLanguage: ['French', 'English'] }],
+    },
+  },
+]
+---
+
+<MarketingLayout title={M.title} description={M.description} canonicalPath={path[lang]} lang={lang} alternate={{ [lang]: path[lang], [other]: path[other] }} breadcrumbs={[{ label: M.label }]} jsonLd={jsonLd} ogImage={`/og/${lang}/hub/home.jpg`} ogImageAlt={M.h1}>
+  <section class="mk-page-hero">
+    <div class="mk-wrap">
+      <span class="mk-eyebrow">{M.label}</span>
+      <h1 class="mk-h1 mk-h1-page">{M.h1}</h1>
+      <p class="mk-hero-sub">{M.sub}</p>
+    </div>
+  </section>
+  <div class="mk-wrap mk-contact">
+    <div class="mk-contact-ways">
+      {
+        info.whatsapp && (
+          <div class="mk-contact-card">
+            <p class="mk-contact-title"><Icon name="message" /> {M.waTitle}</p>
+            <p>{M.waText}</p>
+            <a class="mk-btn mk-btn-wa" href={waLink(info.whatsapp, M.waMsg)} target="_blank" rel="noopener" data-umami-event="contact-whatsapp">{M.waBtn}</a>
+          </div>
+        )
+      }
+      <div class="mk-contact-card">
+        <p class="mk-contact-title"><Icon name="mail" /> {M.mailTitle}</p>
+        <p>{M.mailText}</p>
+        <a class="mk-contact-mail" href={`mailto:${info.email}`} data-umami-event="contact-email">{info.email}</a>
+      </div>
+    </div>
+
+    <form class="mk-tool-form mk-contact-form" method="post" action={path[lang]} id="formulaire">
+      <h2 class="mk-h2-sm">{M.formTitle}</h2>
+      {state === 'sent' && <p class="mk-contact-ok" role="status">{M.sent}</p>}
+      {state === 'error' && <p class="mk-contact-err" role="alert"><strong>{M.error}.</strong> {errorText || M.retry}</p>}
+      <label class="mk-field">{M.name}<input name="name" required minlength="2" maxlength="120" autocomplete="name" value={values.name} /></label>
+      <label class="mk-field">{M.email}<input name="email" type="email" required maxlength="255" autocomplete="email" value={values.email} /></label>
+      <label class="mk-field">
+        <span>{M.phone} <small class="mk-contact-opt">({M.optional})</small></span>
+        <input name="phone" type="tel" maxlength="40" autocomplete="tel" inputmode="tel" value={values.phone} />
+      </label>
+      <label class="mk-field">{M.message}<textarea name="message" required minlength="10" maxlength="5000" rows="6" placeholder={M.placeholder}>{values.message}</textarea></label>
+      <label class="mk-contact-trap" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off" /></label>
+      <button class="mk-btn mk-btn-amber" type="submit" data-umami-event="contact-formulaire">{M.send}</button>
+    </form>
+  </div>
+</MarketingLayout>

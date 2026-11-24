@@ -35,6 +35,7 @@ Faits clés :
 - [Tarifs](${u('/tarifs')}): formules et prix en FCFA
 - [Pricing (English)](${u('/en/pricing')})
 - [À propos de Zuri](${u('/a-propos')}): faits sur la plateforme
+- [Contacter Zuri](${u('/contact')}): email, WhatsApp et formulaire de contact
 - [About Zuri (English)](${u('/en/about')})
 
 ## Guides

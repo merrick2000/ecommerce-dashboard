@@ -70,3 +70,22 @@ export function StatBox({ label, value, sub }: { label: string; value: React.Rea
     </div>
   )
 }
+
+export type Stage = 'no_store' | 'no_product' | 'no_order' | 'active'
+const STAGE: Record<Stage, { label: string; tone: 'neutral' | 'amber' | 'blue' | 'green' }> = {
+  no_store: { label: 'Sans boutique', tone: 'neutral' },
+  no_product: { label: 'Sans produit', tone: 'amber' },
+  no_order: { label: 'Sans vente', tone: 'blue' },
+  active: { label: 'A vendu', tone: 'green' },
+}
+/** Où en est le vendeur dans son démarrage. */
+export function StageBadge({ stage }: { stage: Stage }) {
+  const s = STAGE[stage]
+  return <Badge tone={s.tone}>{s.label}</Badge>
+}
+
+export const NUDGE_LABEL: Record<string, string> = {
+  no_store: 'Créer sa boutique',
+  no_product: 'Ajouter un produit',
+  no_order: 'Obtenir une commande',
+}

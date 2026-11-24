@@ -2,17 +2,32 @@ import { escapeHtml } from '../lib/sanitize'
 
 const fmt = (n: number, currency: string) => `${new Intl.NumberFormat('fr-FR').format(n)} ${currency === 'XOF' || currency === 'XAF' ? 'FCFA' : currency}`
 
-function layout(storeName: string, inner: string, color = '#f59e0b') {
-  return `<!doctype html><html><body style="margin:0;background:#f4f4f5;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#18181b">
-<table width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px"><tr><td align="center">
-<table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fff;border-radius:12px;overflow:hidden">
-<tr><td style="background:${color};padding:18px 24px;color:#fff;font-weight:700;font-size:18px">${escapeHtml(storeName)}</td></tr>
-<tr><td style="padding:24px;font-size:15px;line-height:1.6">${inner}</td></tr>
+/**
+ * Gabarit commun des emails : lisible sur téléphone (viewport, marges réduites, bouton pleine largeur),
+ * tables pour les vieux clients mail, aucune image ni police externe.
+ */
+export function layout(storeName: string, inner: string, color = '#f59e0b', lang: 'fr' | 'en' = 'fr') {
+  return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="x-apple-disable-message-reformatting"><meta name="color-scheme" content="light"><title>${escapeHtml(storeName)}</title>
+<style>
+body{margin:0;padding:0;-webkit-text-size-adjust:100%}
+a{word-break:break-word}
+img{max-width:100%;height:auto}
+@media (max-width:560px){
+.zo{padding:12px 6px!important}
+.zc{padding:20px 16px!important;font-size:16px!important}
+.zh{padding:16px!important}
+.zb{display:block!important;width:100%!important;box-sizing:border-box!important;text-align:center!important}
+}
+</style></head><body style="margin:0;background:#f4f4f5;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#18181b">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="zo" style="padding:24px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;background:#fff;border-radius:12px;overflow:hidden">
+<tr><td class="zh" style="background:${color};padding:18px 24px;color:#fff;font-weight:700;font-size:18px">${escapeHtml(storeName)}</td></tr>
+<tr><td class="zc" style="padding:24px;font-size:15px;line-height:1.6;word-break:break-word">${inner}</td></tr>
 </table></td></tr></table></body></html>`
 }
 
-const button = (href: string, label: string, color = '#f59e0b') =>
-  `<p style="text-align:center;margin:24px 0"><a href="${escapeHtml(href)}" style="background:${color};color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;display:inline-block">${escapeHtml(label)}</a></p>`
+export const button = (href: string, label: string, color = '#f59e0b') =>
+  `<p style="text-align:center;margin:24px 0"><a class="zb" href="${escapeHtml(href)}" style="background:${color};color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;display:inline-block">${escapeHtml(label)}</a></p>`
 
 const REMINDERS = [
   { subject: 'Vous avez oublié quelque chose ?', body: 'Vous étiez sur le point de commander <strong>{product}</strong>. Votre commande vous attend toujours.' },
@@ -40,13 +55,32 @@ export { fmt as formatMoney }
 // ─── Emails de compte (signés Zuri, sans rapport avec une boutique) ─────────
 
 const firstName = (name: string) => escapeHtml(name.trim().split(/\s+/)[0] ?? '')
-const small = (text: string) => `<p style="font-size:13px;color:#71717a;margin-top:24px">${text}</p>`
+export const small = (text: string) => `<p style="font-size:13px;color:#71717a;margin-top:24px">${text}</p>`
 const detailRows = (rows: [string, string][]) =>
   `<table cellpadding="0" cellspacing="0" style="width:100%;background:#f4f4f5;border-radius:8px;padding:12px 16px;font-size:14px;margin:16px 0">${rows
     .map(([k, v]) => `<tr><td style="color:#71717a;padding:4px 12px 4px 0;white-space:nowrap;vertical-align:top">${escapeHtml(k)}</td><td style="padding:4px 0">${escapeHtml(v)}</td></tr>`)
     .join('')}</table>`
 
-export function welcomeEmail(p: { name: string; appUrl: string }) {
+export function welcomeEmail(p: { name: string; appUrl: string; lang?: 'fr' | 'en' }) {
+  if (p.lang === 'en')
+    return {
+      subject: 'Welcome to Zuri',
+      html: layout(
+        'Zuri',
+        `<p>Hi ${firstName(p.name)},</p>
+<p>Your Zuri account is ready. Three steps to your first order:</p>
+<ol style="padding-left:20px">
+<li style="margin-bottom:8px"><strong>Create your store</strong>: name, currency and country.</li>
+<li style="margin-bottom:8px"><strong>Add a product</strong>: photos, price, and how customers pay (online, through an integration, or cash on delivery).</li>
+<li style="margin-bottom:8px"><strong>Share the link</strong> of your sales page in your ads, your bio or on WhatsApp.</li>
+</ol>
+<p>For physical products, also set up your <strong>delivery zones</strong>.</p>
+${button(p.appUrl, 'Open my dashboard')}
+${small('You receive this email because a Zuri account was just created with this address.')}`,
+        '#f59e0b',
+        'en',
+      ),
+    }
   return {
     subject: 'Bienvenue sur Zuri',
     html: layout(

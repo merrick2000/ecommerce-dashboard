@@ -8,7 +8,8 @@ import { Hono } from 'hono'
 import { createMiddleware } from 'hono/factory'
 import { z } from 'zod'
 import { db } from '../db/client'
-import { billingPayments, orders, paymentAccounts, sessions, storeMembers, stores, subscriptions, users } from '../db/schema'
+import { billingPayments, contactMessages, onboardingEmails, orders, paymentAccounts, sessions, storeMembers, stores, subscriptions, users } from '../db/schema'
+import { contactInfo } from './site'
 import { requireAuth } from '../lib/auth'
 import type { AppEnv } from '../lib/context'
 import { HttpError } from '../lib/errors'
@@ -39,6 +40,13 @@ function sourceLabel(s: Record<string, string | undefined> | null | undefined) {
   return 'Inconnue'
 }
 
+/** Étape du vendeur dans son démarrage : sans boutique, sans produit, sans vente, ou actif. */
+const STAGE = dsql<'no_store' | 'no_product' | 'no_order' | 'active'>`(case
+  when not exists (select 1 from store_members m where m.user_id = "users"."id" and m.role = 'owner') then 'no_store'
+  when not exists (select 1 from products p join store_members m on m.store_id = p.store_id and m.role = 'owner' where m.user_id = "users"."id") then 'no_product'
+  when not exists (select 1 from orders o join store_members m on m.store_id = o.store_id and m.role = 'owner' where m.user_id = "users"."id" and o.source <> 'manual') then 'no_order'
+  else 'active' end)`
+
 export const adminRoutes = new Hono<AppEnv>()
   .use(requireAuth)
   .use(requirePlatformAdmin)
@@ -68,6 +76,12 @@ export const adminRoutes = new Hono<AppEnv>()
     const top = (m: Map<string, number>) => [...m].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([label, count]) => ({ label, count }))
     const [b] = await db.select({ paid: dsql`coalesce(sum(amount) filter (where status = 'paid'), 0)`, count: dsql`count(*) filter (where status = 'paid')` }).from(billingPayments)
     const subs = await db.select({ plan: subscriptions.plan, n: dsql<number>`count(*)::int` }).from(subscriptions).where(dsql`${subscriptions.currentPeriodEnd} > now()`).groupBy(subscriptions.plan)
+    // Parcours des inscrits des 30 derniers jours (hors invitations d'équipe) : où ils s'arrêtent.
+    const funnelRows = await db.select({ stage: STAGE, n: dsql<number>`count(*)::int` }).from(users).where(dsql`${users.createdAt} > now() - interval '30 days' and ${users.isPlatformAdmin} = false and coalesce(${users.signupSource}->>'method', '') <> 'invite'`).groupBy(STAGE)
+    const fc = Object.fromEntries(funnelRows.map((r) => [r.stage, r.n])) as Record<string, number>
+    const signed = (fc.no_store ?? 0) + (fc.no_product ?? 0) + (fc.no_order ?? 0) + (fc.active ?? 0)
+    const [msg] = await db.select({ n: dsql<number>`count(*)::int` }).from(contactMessages).where(eq(contactMessages.status, 'new'))
+    const [ob] = await db.select({ n: dsql<number>`count(*)::int` }).from(onboardingEmails).where(dsql`${onboardingEmails.createdAt} > now() - interval '30 days'`)
     return c.json({
       users: { total: n(u?.total), today: n(u?.today), d7: n(u?.d7), d30: n(u?.d30), active7: n(u?.active7) },
       stores: { total: n(s?.total), active: n(s?.active), paused: n(s?.paused), closed: n(s?.closed), withOrders: n(o?.storesWithOrders) },
@@ -78,6 +92,9 @@ export const adminRoutes = new Hono<AppEnv>()
       sources: top(sources),
       landings: top(landings),
       umamiUrl: 'https://cloud.umami.is',
+      funnel: { signed, store: signed - (fc.no_store ?? 0), product: (fc.no_order ?? 0) + (fc.active ?? 0), order: fc.active ?? 0 },
+      onboardingSent30: ob?.n ?? 0,
+      newMessages: msg?.n ?? 0,
     })
   })
   .get('/users', v('query', page), async (c) => {
@@ -91,6 +108,8 @@ export const adminRoutes = new Hono<AppEnv>()
         orders: dsql<number>`(select count(*)::int from ${orders} o join ${storeMembers} m on m.store_id = o.store_id where m.user_id = "users"."id" and m.role = 'owner')`,
         subPlan: subscriptions.plan,
         subEnd: subscriptions.currentPeriodEnd,
+        stage: STAGE,
+        nudges: dsql<number>`(select count(*)::int from ${onboardingEmails} e where e.user_id = "users"."id")`,
       })
       .from(users)
       .leftJoin(subscriptions, eq(subscriptions.userId, users.id))
@@ -102,7 +121,7 @@ export const adminRoutes = new Hono<AppEnv>()
       total,
       page: q.page,
       pageSize: q.pageSize,
-      data: rows.map(({ user: x, stores: st, orders: od, subPlan, subEnd }) => ({
+      data: rows.map(({ user: x, stores: st, orders: od, subPlan, subEnd, stage, nudges }) => ({
         id: x.id,
         email: x.email,
         name: x.name,
@@ -117,6 +136,9 @@ export const adminRoutes = new Hono<AppEnv>()
         sourceLabel: sourceLabel(x.signupSource as never),
         stores: st,
         orders: od,
+        stage,
+        nudges,
+        emailOptOut: Boolean(x.emailOptOutAt),
         plan: effectivePlan({ createdAt: x.createdAt, subscription: subPlan && subEnd ? { plan: subPlan, currentPeriodEnd: subEnd } : null }),
       })),
     })
@@ -128,8 +150,10 @@ export const adminRoutes = new Hono<AppEnv>()
     const ownStores = await db.select({ id: stores.id, name: stores.name, slug: stores.slug, status: stores.status, role: storeMembers.role, createdAt: stores.createdAt }).from(storeMembers).innerJoin(stores, eq(stores.id, storeMembers.storeId)).where(eq(storeMembers.userId, id))
     const payments = await db.select().from(billingPayments).where(eq(billingPayments.userId, id)).orderBy(desc(billingPayments.createdAt)).limit(20)
     const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.userId, id)).limit(1)
+    const nudges = await db.select({ kind: onboardingEmails.kind, step: onboardingEmails.step, at: onboardingEmails.createdAt }).from(onboardingEmails).where(eq(onboardingEmails.userId, id)).orderBy(desc(onboardingEmails.createdAt))
+    const [{ stage } = { stage: 'no_store' as const }] = await db.select({ stage: STAGE }).from(users).where(eq(users.id, id))
     const { passwordHash, ...safe } = x
-    return c.json({ user: safe, stores: ownStores, payments, subscription: sub ?? null, plan: effectivePlan({ createdAt: x.createdAt, subscription: sub ?? null }) })
+    return c.json({ user: safe, stores: ownStores, payments, subscription: sub ?? null, plan: effectivePlan({ createdAt: x.createdAt, subscription: sub ?? null }), stage, nudges })
   })
   .patch('/users/:id', v('param', z.object({ id: z.coerce.number().int() })), v('json', z.object({ disabled: z.boolean().optional(), features: z.record(z.string(), z.boolean()).optional() })), async (c) => {
     const id = c.req.valid('param').id
@@ -199,6 +223,7 @@ export const adminRoutes = new Hono<AppEnv>()
       billingEnabled: await getSetting('billing.enabled', false),
       billingAccount: await getSetting<{ storeId?: string } | null>('billing.account', null),
       urlImport: await getSetting('import.url', false),
+      contact: await contactInfo(),
       po: await (async () => {
         const stored = decryptJson<{ secretKey?: string; webhookSecret?: string } | null>(await getSetting<string | null>('po.platform', null), null)
         const acc = await platformPo()
@@ -219,9 +244,11 @@ export const adminRoutes = new Hono<AppEnv>()
       myStores: myStores.map((s) => ({ ...s, accounts: accounts.filter((a) => a.storeId === s.id && ['fedapay', 'feexpay', 'pawapay'].includes(a.provider)) })),
     })
   })
-  .put('/settings', v('json', z.object({ paymentsOnline: z.boolean().optional(), billingEnabled: z.boolean().optional(), billingStoreId: z.string().max(40).nullable().optional(), urlImport: z.boolean().optional(), poSecretKey: z.string().trim().regex(/^sk_(test|live)_[A-Za-z0-9_]{8,200}$/, 'Clé secrète invalide (sk_test_… ou sk_live_…)').nullable().optional(), poWebhookSecret: z.string().trim().regex(/^whsec_[A-Za-z0-9_]{8,200}$/, 'Secret de webhook invalide (whsec_…)').nullable().optional(), firecrawlKey: z.string().trim().regex(/^fc-[A-Za-z0-9]{16,80}$/, 'Clé Firecrawl invalide (fc-…)').nullable().optional() })), async (c) => {
+  .put('/settings', v('json', z.object({ paymentsOnline: z.boolean().optional(), billingEnabled: z.boolean().optional(), billingStoreId: z.string().max(40).nullable().optional(), urlImport: z.boolean().optional(), poSecretKey: z.string().trim().regex(/^sk_(test|live)_[A-Za-z0-9_]{8,200}$/, 'Clé secrète invalide (sk_test_… ou sk_live_…)').nullable().optional(), poWebhookSecret: z.string().trim().regex(/^whsec_[A-Za-z0-9_]{8,200}$/, 'Secret de webhook invalide (whsec_…)').nullable().optional(), firecrawlKey: z.string().trim().regex(/^fc-[A-Za-z0-9]{16,80}$/, 'Clé Firecrawl invalide (fc-…)').nullable().optional(), contactEmail: z.string().trim().toLowerCase().email('Email invalide').max(255).nullable().optional(), contactWhatsapp: z.string().trim().regex(/^\+?[0-9 ]{8,20}$/, 'Numéro WhatsApp invalide (ex. +229 01 23 45 67)').nullable().optional() })), async (c) => {
     const body = c.req.valid('json')
     if (body.urlImport !== undefined) await setSetting('import.url', body.urlImport)
+    if (body.contactEmail !== undefined) await setSetting('contact.email', body.contactEmail || null)
+    if (body.contactWhatsapp !== undefined) await setSetting('contact.whatsapp', body.contactWhatsapp ? `+${body.contactWhatsapp.replace(/\D/g, '')}` : null)
     if (body.poSecretKey !== undefined || body.poWebhookSecret !== undefined) {
       const cur = decryptJson<{ secretKey?: string; webhookSecret?: string } | null>(await getSetting<string | null>('po.platform', null), null) ?? {}
       const next = { ...cur, ...(body.poSecretKey !== undefined ? { secretKey: body.poSecretKey ?? undefined } : {}), ...(body.poWebhookSecret !== undefined ? { webhookSecret: body.poWebhookSecret ?? undefined } : {}) }
@@ -234,6 +261,27 @@ export const adminRoutes = new Hono<AppEnv>()
     if (body.paymentsOnline !== undefined) await setSetting('payments.online', body.paymentsOnline)
     if (body.billingEnabled !== undefined) await setSetting('billing.enabled', body.billingEnabled)
     if (body.billingStoreId !== undefined) await setSetting('billing.account', body.billingStoreId ? { storeId: body.billingStoreId } : null)
+    return c.json({ ok: true })
+  })
+  /** Messages reçus par la page contact du site. */
+  .get('/messages', v('query', page.extend({ status: z.enum(['new', 'done', 'all']).default('new') })), async (c) => {
+    const q = c.req.valid('query')
+    const conds: SQL[] = []
+    if (q.status !== 'all') conds.push(eq(contactMessages.status, q.status))
+    if (q.q) conds.push(or(ilike(contactMessages.email, like(q.q)), ilike(contactMessages.name, like(q.q)), ilike(contactMessages.message, like(q.q)))!)
+    const where = conds.length ? and(...conds) : undefined
+    const [{ total } = { total: 0 }] = await db.select({ total: dsql<number>`count(*)::int` }).from(contactMessages).where(where)
+    const [counts] = await db.select({ new: dsql<number>`count(*) filter (where status = 'new')::int`, done: dsql<number>`count(*) filter (where status = 'done')::int` }).from(contactMessages)
+    const data = await db.select().from(contactMessages).where(where).orderBy(desc(contactMessages.createdAt)).limit(q.pageSize).offset((q.page - 1) * q.pageSize)
+    // Le compte Zuri lié à l'email, s'il existe (pour ouvrir sa fiche).
+    const emails = [...new Set(data.map((m) => m.email))]
+    const accounts = emails.length ? await db.select({ id: users.id, email: users.email }).from(users).where(inArray(users.email, emails)) : []
+    const byEmail = new Map(accounts.map((a) => [a.email, a.id]))
+    return c.json({ total, page: q.page, pageSize: q.pageSize, counts: counts ?? { new: 0, done: 0 }, data: data.map(({ ip: _ip, ...m }) => ({ ...m, userId: byEmail.get(m.email) ?? null })) })
+  })
+  .patch('/messages/:id', v('param', z.object({ id: z.coerce.number().int() })), v('json', z.object({ status: z.enum(['new', 'done']) })), async (c) => {
+    const { status } = c.req.valid('json')
+    await db.update(contactMessages).set({ status, handledAt: status === 'done' ? new Date() : null }).where(eq(contactMessages.id, c.req.valid('param').id))
     return c.json({ ok: true })
   })
   /** Payment Orchestrator de la plateforme : test de la clé (GET /ping). */

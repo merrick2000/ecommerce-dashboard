@@ -82,6 +82,8 @@ export const users = pgTable('users', {
   disabledAt: ts('disabled_at'),
   /** Options activées pour ce compte (ex. paiements en ligne), réglées par le super admin. */
   features: jsonb('features').$type<Record<string, boolean>>(),
+  /** Ne veut plus recevoir les emails d'accompagnement (relances de démarrage). Les emails de compte partent toujours. */
+  emailOptOutAt: ts('email_opt_out_at'),
   lastLoginAt: ts('last_login_at'),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -834,4 +836,43 @@ export const billingPayments = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index('billing_payments_user_idx').on(t.userId, t.createdAt), index('billing_payments_ref_idx').on(t.providerRef)],
+)
+
+// ─── Contact et accompagnement des vendeurs ──────────────────────────────────
+
+/** Messages envoyés depuis la page contact du site (lus dans le super admin). */
+export const contactMessages = pgTable(
+  'contact_messages',
+  {
+    id: id(),
+    name: varchar('name', { length: 120 }).notNull(),
+    email: varchar('email', { length: 255 }).notNull(),
+    phone: varchar('phone', { length: 40 }),
+    message: text('message').notNull(),
+    /** Page d'où le message a été envoyé, et langue du site. */
+    page: varchar('page', { length: 200 }),
+    lang: varchar('lang', { length: 2 }),
+    ip: varchar('ip', { length: 64 }),
+    /** new | done */
+    status: varchar('status', { length: 10 }).notNull().default('new'),
+    handledAt: ts('handled_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('contact_messages_status_idx').on(t.status, t.createdAt)],
+)
+
+/** Emails d'accompagnement déjà envoyés à un vendeur (une fois par étape). */
+export const onboardingEmails = pgTable(
+  'onboarding_emails',
+  {
+    id: id(),
+    userId: fk('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** no_store | no_product | no_order */
+    kind: varchar('kind', { length: 20 }).notNull(),
+    step: smallint('step').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('onboarding_emails_uq').on(t.userId, t.kind, t.step)],
 )

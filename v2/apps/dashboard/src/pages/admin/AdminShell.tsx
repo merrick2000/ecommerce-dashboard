@@ -1,20 +1,26 @@
-import { ArrowLeft, BarChart3, Settings, Shield, Store, Users } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { ArrowLeft, BarChart3, Mail, Settings, Shield, Store, Users } from 'lucide-react'
 import { Navigate, NavLink, Outlet } from 'react-router'
 import { Logo } from '@/components/layout/Guards'
 import { cx } from '@/components/ui'
 import { useMe } from '@/hooks/auth'
+import { api } from '@/lib/api'
 import { LAST_STORE_KEY, readLocal } from '@/lib/storage'
 
 const NAV = [
   { to: '/admin', label: 'Vue d’ensemble', icon: BarChart3, end: true },
   { to: '/admin/users', label: 'Comptes', icon: Users },
   { to: '/admin/stores', label: 'Boutiques', icon: Store },
+  { to: '/admin/messages', label: 'Messages', icon: Mail },
   { to: '/admin/settings', label: 'Réglages', icon: Settings },
 ]
 
 /** Cadre du super admin : réservé aux administrateurs de la plateforme. */
 export default function AdminShell() {
   const { data: me } = useMe()
+  // Pastille du nombre de messages à lire (même requête que la vue d'ensemble, partagée en cache).
+  const overview = useQuery({ queryKey: ['admin', 'overview'], queryFn: () => api.get<{ newMessages?: number }>('/admin/overview'), enabled: !!me?.isPlatformAdmin, refetchInterval: 60_000 })
+  const unread = overview.data?.newMessages ?? 0
   if (me && !me.isPlatformAdmin) return <Navigate to="/" replace />
   const last = readLocal(LAST_STORE_KEY) ?? me?.stores[0]?.id
   return (
@@ -36,6 +42,7 @@ export default function AdminShell() {
           {NAV.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cx('flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap', isActive ? 'bg-accent-soft text-fg' : 'text-muted hover:bg-surface-2')}>
               <n.icon className="size-4" /> {n.label}
+              {n.to === '/admin/messages' && unread > 0 && <span className="tabular rounded-full bg-accent px-1.5 text-[11px] font-semibold text-accent-fg">{unread}</span>}
             </NavLink>
           ))}
         </nav>

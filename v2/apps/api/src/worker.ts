@@ -6,6 +6,7 @@ import { getBoss, type JobPayloads } from './jobs/queue'
 import { handleAccountNotify, handleLeadsNotifySellers, handleLeadsRemind, handleCustomerStatus, handleOrderNotifyNew, handleOrderPaid } from './jobs/handlers'
 import { reconcilePendingPayments } from './payments/service'
 import { dispatchNotification } from './services/notifications'
+import { runOnboarding } from './services/onboarding'
 
 const boss = await getBoss()
 
@@ -20,9 +21,15 @@ await boss.work('leads.remind', async () => {
 })
 
 await boss.work('payments.reconcile', async () => reconcilePendingPayments())
+await boss.work('onboarding.run', async () => {
+  const n = await runOnboarding()
+  if (n) console.log(`[onboarding] ${n} email(s) envoyé(s)`)
+})
 
 await boss.schedule('leads.remind', '*/5 * * * *')
 await boss.schedule('payments.reconcile', '*/5 * * * *')
+// Toutes les heures (envoi seulement en journée, heure d'Afrique), jamais deux fois le même email.
+await boss.schedule('onboarding.run', '10 * * * *')
 
 console.log('👷 Worker démarré')
 

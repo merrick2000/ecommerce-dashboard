@@ -13,6 +13,7 @@ import { env, isProd } from '../lib/env'
 import { clientIp } from '../lib/rate-limit'
 import { enqueue } from '../jobs/queue'
 import { newLoginEmail, passwordChangedEmail, passwordResetEmail, welcomeEmail } from './emails'
+import { langOf } from './onboarding'
 import { sendEmail } from './notify'
 
 export const DEVICE_COOKIE = isProd ? '__Host-zuri_device' : 'zuri_device'
@@ -153,7 +154,7 @@ export async function sendAccountNotice(user: User, notice: AccountNotice): Prom
   const at = 'at' in notice && notice.at ? new Date(notice.at) : new Date()
   let mail: { subject: string; html: string }
   if (notice.kind === 'welcome') {
-    mail = welcomeEmail({ name: user.name, appUrl: env.APP_URL })
+    mail = welcomeEmail({ name: user.name, appUrl: env.APP_URL, lang: langOf(user.signupSource) })
   } else if (notice.kind === 'new-login') {
     const where = countryName(notice.country)
     mail = newLoginEmail({

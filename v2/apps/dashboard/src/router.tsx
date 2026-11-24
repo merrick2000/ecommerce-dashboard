@@ -31,6 +31,7 @@ export const router = createBrowserRouter([
               { path: 'users', lazy: page(() => import('@/pages/admin/Users')) },
               { path: 'users/:userId', lazy: page(() => import('@/pages/admin/UserDetail')) },
               { path: 'stores', lazy: page(() => import('@/pages/admin/Stores')) },
+              { path: 'messages', lazy: page(() => import('@/pages/admin/Messages')) },
               { path: 'settings', lazy: page(() => import('@/pages/admin/Settings')) },
             ],
           },
