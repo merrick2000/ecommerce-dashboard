@@ -74,7 +74,8 @@ export const leadRoutes = new Hono<AppEnv>()
     if (!row.lead.email) throw badRequest('Pas d’email pour ce client : relance-le par WhatsApp', 'no_email')
     if (!row.lead.productId) throw badRequest('Produit supprimé', 'no_product')
     const step = Math.min(row.lead.reminderCount + 1, 3)
-    const mail = abandonedCartEmail({ step, storeName: store.name, name: row.lead.name, product: row.productName ?? 'votre produit', url: productUrl(store.slug, row.lead.productId) })
+    const en = store.locale === 'en'
+    const mail = abandonedCartEmail({ step, storeName: store.name, name: row.lead.name, product: row.productName ?? (en ? 'your product' : 'votre produit'), url: productUrl(store.slug, row.lead.productId), lang: en ? 'en' : 'fr' })
     await sendEmail(row.lead.email, mail.subject, mail.html, { fromName: store.name, replyTo: store.supportEmail })
     await db
       .update(leads)

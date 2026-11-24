@@ -100,6 +100,12 @@ export function readSignupSource(c: Context, method: SignupSource['method'], fro
     /* cookie illisible : ignoré */
   }
   if (from) out.from = from.slice(0, 200)
+  // Langue préférée du navigateur : la première citée entre français et anglais.
+  const accept = (c.req.header('accept-language') ?? '').toLowerCase()
+  const fr = accept.search(/\bfr\b/)
+  const en = accept.search(/\ben\b/)
+  if (en >= 0 && (fr < 0 || en < fr)) out.lang = 'en'
+  else if (fr >= 0) out.lang = 'fr'
   for (const k of Object.keys(out) as (keyof SignupSource)[]) if (!out[k]) delete out[k]
   return out
 }

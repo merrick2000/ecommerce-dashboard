@@ -31,7 +31,15 @@ const GAP = 40 * HOUR
 /** Au-delà, on ne relance plus (comptes anciens). */
 const WINDOW_DAYS = 30
 
-export const langOf = (src: { from?: string; landing?: string } | null | undefined): Lang => (/^\/en(\/|$)/.test(src?.from ?? src?.landing ?? '') ? 'en' : 'fr')
+/**
+ * Langue des emails d'un vendeur : celle de sa boutique s'il en a une (réglage Paramètres, Langue),
+ * sinon la page d'inscription (/en…), sinon la langue de son navigateur. Français par défaut.
+ */
+export const langOf = (src: { from?: string; landing?: string; lang?: string } | null | undefined, storeLocale?: string | null): Lang => {
+  if (storeLocale === 'en' || storeLocale === 'fr') return storeLocale
+  if (/^\/en(\/|$)/.test(src?.from ?? src?.landing ?? '')) return 'en'
+  return src?.lang === 'en' ? 'en' : 'fr'
+}
 
 // ─── Désinscription ─────────────────────────────────────────────────────────
 
@@ -123,7 +131,8 @@ type Candidate = {
   id: number
   email: string
   name: string
-  signup_source: { from?: string; landing?: string } | null
+  signup_source: { from?: string; landing?: string; lang?: string } | null
+  store_locale: string | null
   created_at: string
   first_store_at: string | null
   store_name: string | null
@@ -152,13 +161,13 @@ export async function runOnboarding(now = new Date()): Promise<number> {
   if (h < 6 || h >= 20) return 0
   const rows = await db.execute<Candidate>(dsql`
     select u.id, u.email, u.name, u.signup_source, u.created_at,
-      st.first_store_at, st.store_name, st.store_slug,
+      st.first_store_at, st.store_name, st.store_slug, st.store_locale,
       (select min(p.created_at) from products p join store_members m on m.store_id = p.store_id and m.role = 'owner' where m.user_id = u.id) as first_product_at,
       (select count(*)::int from orders o join store_members m on m.store_id = o.store_id and m.role = 'owner' where m.user_id = u.id and o.source <> 'manual') as orders,
       (select json_agg(json_build_object('kind', e.kind, 'step', e.step, 'at', e.created_at)) from onboarding_emails e where e.user_id = u.id) as sent
     from users u
     left join lateral (
-      select s.created_at as first_store_at, s.name as store_name, s.slug as store_slug
+      select s.created_at as first_store_at, s.name as store_name, s.slug as store_slug, s.locale as store_locale
       from stores s join store_members m on m.store_id = s.id and m.role = 'owner'
       where m.user_id = u.id order by s.created_at limit 1
     ) st on true
@@ -178,7 +187,7 @@ export async function runOnboarding(now = new Date()): Promise<number> {
     if (!claimed.length) continue
     const mail = onboardingEmail(due.kind, due.step, {
       name: r.name,
-      lang: langOf(r.signup_source),
+      lang: langOf(r.signup_source, r.store_locale),
       appUrl: base,
       storeName: r.store_name,
       storeUrl: r.store_slug ? `https://${r.store_slug}.${host}` : null,

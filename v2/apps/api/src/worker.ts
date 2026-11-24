@@ -7,6 +7,7 @@ import { handleAccountNotify, handleLeadsNotifySellers, handleLeadsRemind, handl
 import { reconcilePendingPayments } from './payments/service'
 import { dispatchNotification } from './services/notifications'
 import { runOnboarding } from './services/onboarding'
+import { notifyPlatformAdmins } from './services/admin-notify'
 
 const boss = await getBoss()
 
@@ -21,6 +22,7 @@ await boss.work('leads.remind', async () => {
 })
 
 await boss.work('payments.reconcile', async () => reconcilePendingPayments())
+await boss.work<JobPayloads['admin.notify']>('admin.notify', async ([job]) => job && notifyPlatformAdmins(job.data))
 await boss.work('onboarding.run', async () => {
   const n = await runOnboarding()
   if (n) console.log(`[onboarding] ${n} email(s) envoyé(s)`)

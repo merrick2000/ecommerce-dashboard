@@ -29,23 +29,38 @@ img{max-width:100%;height:auto}
 export const button = (href: string, label: string, color = '#f59e0b') =>
   `<p style="text-align:center;margin:24px 0"><a class="zb" href="${escapeHtml(href)}" style="background:${color};color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;display:inline-block">${escapeHtml(label)}</a></p>`
 
-const REMINDERS = [
-  { subject: 'Vous avez oublié quelque chose ?', body: 'Vous étiez sur le point de commander <strong>{product}</strong>. Votre commande vous attend toujours.' },
-  { subject: 'Toujours intéressé(e) par {product} ?', body: 'Beaucoup de clients ont déjà franchi le pas. Il ne vous reste qu’un clic pour finaliser votre commande de <strong>{product}</strong>.' },
-  { subject: 'Dernier rappel : une remise vous attend', body: 'C’est notre dernier message au sujet de <strong>{product}</strong>.' },
-]
+const REMINDERS = {
+  fr: [
+    { subject: 'Vous avez oublié quelque chose ?', body: 'Vous étiez sur le point de commander <strong>{product}</strong>. Votre commande vous attend toujours.' },
+    { subject: 'Toujours intéressé(e) par {product} ?', body: 'Beaucoup de clients ont déjà franchi le pas. Il ne vous reste qu’un clic pour finaliser votre commande de <strong>{product}</strong>.' },
+    { subject: 'Dernier rappel : une remise vous attend', body: 'C’est notre dernier message au sujet de <strong>{product}</strong>.' },
+  ],
+  en: [
+    { subject: 'Did you forget something?', body: 'You were about to order <strong>{product}</strong>. Your order is still waiting for you.' },
+    { subject: 'Still interested in {product}?', body: 'Many customers have already taken the plunge. Only one click left to complete your order of <strong>{product}</strong>.' },
+    { subject: 'Last reminder: a discount is waiting for you', body: 'This is our last message about <strong>{product}</strong>.' },
+  ],
+}
 
-export function abandonedCartEmail(p: { step: number; storeName: string; name: string | null; product: string; url: string; promo?: { code: string; label: string } }) {
-  const tpl = REMINDERS[Math.min(p.step, REMINDERS.length) - 1]!
+export function abandonedCartEmail(p: { step: number; storeName: string; name: string | null; product: string; url: string; promo?: { code: string; label: string }; lang?: 'fr' | 'en' }) {
+  const en = p.lang === 'en'
+  const tpl = REMINDERS[en ? 'en' : 'fr'][Math.min(p.step, 3) - 1]!
   const product = escapeHtml(p.product)
+  const promo = p.promo
+    ? en
+      ? `Code <strong>${escapeHtml(p.promo.code)}</strong>: ${escapeHtml(p.promo.label)}, applied automatically with the button below.`
+      : `Code <strong>${escapeHtml(p.promo.code)}</strong> : ${escapeHtml(p.promo.label)}, appliqué automatiquement via le bouton ci-dessous.`
+    : ''
   return {
     subject: tpl.subject.replace('{product}', p.product),
     html: layout(
       p.storeName,
-      `<p>Bonjour ${escapeHtml(p.name?.split(' ')[0] ?? '')},</p>
+      `<p>${en ? 'Hello' : 'Bonjour'} ${escapeHtml(p.name?.split(' ')[0] ?? '')},</p>
 <p>${tpl.body.replace('{product}', product)}</p>
-${p.promo ? `<p style="background:#fef3c7;border-radius:8px;padding:12px;text-align:center">Code <strong>${escapeHtml(p.promo.code)}</strong> : ${escapeHtml(p.promo.label)}, appliqué automatiquement via le bouton ci-dessous.</p>` : ''}
-${button(p.url, 'Finaliser ma commande')}`,
+${promo ? `<p style="background:#fef3c7;border-radius:8px;padding:12px;text-align:center">${promo}</p>` : ''}
+${button(p.url, en ? 'Complete my order' : 'Finaliser ma commande')}`,
+      '#f59e0b',
+      en ? 'en' : 'fr',
     ),
   }
 }

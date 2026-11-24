@@ -16,9 +16,11 @@ export interface JobPayloads {
   'notify.dispatch': { storeId: string; event: NotificationEvent; data: NotifyData }
   /** Emails d'accompagnement des nouveaux vendeurs (toutes les heures). */
   'onboarding.run': Record<string, never>
+  /** Alerte aux administrateurs de la plateforme. */
+  'admin.notify': import('../services/admin-notify').AdminAlert
 }
 export type JobName = keyof JobPayloads
-export const JOB_NAMES: JobName[] = ['order.paid', 'order.notify-new', 'order.customer-status', 'leads.remind', 'payments.reconcile', 'account.notify', 'notify.dispatch', 'onboarding.run']
+export const JOB_NAMES: JobName[] = ['order.paid', 'order.notify-new', 'order.customer-status', 'leads.remind', 'payments.reconcile', 'account.notify', 'notify.dispatch', 'onboarding.run', 'admin.notify']
 
 let boss: PgBoss | null = null
 let starting: Promise<PgBoss> | null = null

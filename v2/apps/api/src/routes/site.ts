@@ -15,6 +15,7 @@ import { v } from '../lib/validate'
 import { layout } from '../services/emails'
 import { sendEmail } from '../services/notify'
 import { checkUnsubscribe, optOut } from '../services/onboarding'
+import { enqueue } from '../jobs/queue'
 import { getSetting } from '../services/platform'
 
 export const DEFAULT_CONTACT_EMAIL = 'contact@zurisell.store'
@@ -67,6 +68,7 @@ export const siteRoutes = new Hono<AppEnv>()
         ),
         { fromName: 'Zuri contact', replyTo: b.email },
       ).catch((e) => console.warn('[contact] email', (e as Error).message))
+      await enqueue('admin.notify', { title: `Nouveau message de ${b.name}`, body: b.message.slice(0, 140), path: '/admin/messages', tag: 'contact' })
       return c.json({ ok: true }, 201)
     },
   )

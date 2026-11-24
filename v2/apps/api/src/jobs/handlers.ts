@@ -4,6 +4,7 @@ import { checkoutSettings, deliveryZones, leads, orderItems, orders, products, p
 import { decrypt } from '../lib/crypto'
 import { env } from '../lib/env'
 import { abandonedCartEmail, formatMoney } from '../services/emails'
+import { notifyPlatformAdmins } from '../services/admin-notify'
 import { customerDigitalEmail, customerOrderEmail, customerStatusEmail, type EmailOrder, type SaleEmailData } from '../services/order-emails'
 import { publicUrl } from '../services/storage'
 import { localMidnight } from '../routes/stats'
@@ -31,14 +32,18 @@ export async function emailOrder(o: Loaded): Promise<EmailOrder> {
   const img = new Map(imgs.map((p) => [p.id, publicUrl(p.thumbnail ?? p.cover)]))
   const [zone] = o.order.deliveryZoneId ? await db.select({ eta: deliveryZones.etaLabel }).from(deliveryZones).where(eq(deliveryZones.id, o.order.deliveryZoneId)).limit(1) : []
   const order = o.order
+  const en = o.store.locale === 'en'
+  const online = en ? 'Online payment' : 'Paiement en ligne'
   const paymentLabel =
     order.paymentMethod === 'cod'
-      ? 'Paiement à la livraison'
+      ? en
+        ? 'Cash on delivery'
+        : 'Paiement à la livraison'
       : order.poOperator
         ? `${order.poOperator.toUpperCase()} Mobile Money`
         : order.paymentProvider
-          ? `Paiement en ligne (${order.paymentProvider})`
-          : 'Paiement en ligne'
+          ? `${online} (${order.paymentProvider})`
+          : online
   return {
     storeName: o.store.name,
     color: o.cfg?.settings.primaryColor ?? '#f59e0b',
@@ -62,6 +67,7 @@ export async function emailOrder(o: Loaded): Promise<EmailOrder> {
     support: { phone: o.store.supportPhone, email: o.store.supportEmail },
     trackUrl: orderUrl(o.store.slug, order.accessToken),
     etaLabel: zone?.eta ?? null,
+    lang: en ? 'en' : 'fr',
   }
 }
 
@@ -221,7 +227,7 @@ export async function handleLeadsRemind() {
       if (code) promo = { code: code.code, label: code.type === 'percentage' ? `-${code.value}%` : `-${formatMoney(code.value, store.currency)}` }
     }
     const url = storefrontUrl(store.slug, `/p/${lead.productId}${promo ? `?promo=${encodeURIComponent(promo.code)}` : ''}`)
-    const mail = abandonedCartEmail({ step, storeName: store.name, name: lead.name, product: productName, url, promo })
+    const mail = abandonedCartEmail({ step, storeName: store.name, name: lead.name, product: productName, url, promo, lang: store.locale === 'en' ? 'en' : 'fr' })
     await sendEmail(lead.email!, mail.subject, mail.html, { fromName: store.name, replyTo: store.supportEmail })
     const nextDelay = REMINDER_DELAYS_H[step]
     await db
@@ -242,6 +248,17 @@ export async function handleAccountNotify(notice: AccountNotice) {
   const [user] = await db.select().from(users).where(eq(users.id, notice.userId)).limit(1)
   if (!user) return
   await sendAccountNotice(user, notice)
+  // Nouvel inscrit : le super admin est prévenu (provenance et page d'origine pour savoir ce qui marche).
+  if (notice.kind === 'welcome' && user.signupSource?.method !== 'invite') {
+    const src = user.signupSource
+    const origin = src?.utmSource ?? src?.referrer?.replace(/^www\./, '') ?? (src?.landing || src?.from ? 'accès direct' : 'provenance inconnue')
+    await notifyPlatformAdmins({
+      title: 'Nouvel inscrit sur Zuri',
+      body: `${user.name} (${user.email}) · ${origin}${src?.from ? `, depuis ${src.from}` : ''}`,
+      path: `/admin/users/${user.id}`,
+      tag: `signup-${user.id}`,
+    })
+  }
 }
 
 /**

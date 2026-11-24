@@ -140,3 +140,50 @@ describe('emails d’accompagnement', () => {
     expect(ov.body.funnel.product).toBeGreaterThanOrEqual(1)
   })
 })
+
+describe('langue et alertes du super admin', () => {
+  test('inscription : langue du navigateur retenue, puis celle de la boutique fait foi', async () => {
+    const c = new Client()
+    c.headers['accept-language'] = 'en-US,en;q=0.9,fr;q=0.8'
+    const { env } = await import('../src/lib/env')
+    const previous = env.REGISTRATION_OPEN
+    env.REGISTRATION_OPEN = 'true'
+    const r = await c.post('/api/auth/register', { name: 'Tracee', email: 'lang-en@test.dev', password: 'motdepasse-solide' }).finally(() => (env.REGISTRATION_OPEN = previous))
+    expect(r.status).toBe(201)
+    const [u] = await db.select().from(users).where(eq(users.email, 'lang-en@test.dev'))
+    expect(u!.signupSource?.lang).toBe('en')
+    expect(langOf(u!.signupSource)).toBe('en')
+    // La boutique est réglée en français : les emails passent en français.
+    expect(langOf(u!.signupSource, 'fr')).toBe('fr')
+    expect(langOf({ lang: 'fr' }, 'en')).toBe('en')
+    // Nouvel inscrit : le super admin est alerté (tâche en file d'attente ou envoi direct par le worker).
+    const { enqueued } = await import('../src/jobs/queue')
+    expect(enqueued.some((j) => j.name === 'account.notify' && (j.data as { kind: string }).kind === 'welcome')).toBe(true)
+  })
+
+  test('message de contact : alerte au super admin', async () => {
+    const { enqueued } = await import('../src/jobs/queue')
+    await new Client().post('/api/v1/contact', { name: 'Moussa', email: 'moussa@test.dev', message: 'Je veux une démo pour mon équipe de closers.' })
+    expect(enqueued.some((j) => j.name === 'admin.notify' && (j.data as { path: string }).path === '/admin/messages')).toBe(true)
+  })
+
+  test('alerte : chaque admin actif est prévenu (email à défaut de téléphone ou Telegram)', async () => {
+    const { notifyPlatformAdmins } = await import('../src/services/admin-notify')
+    const n = await notifyPlatformAdmins({ title: 'Nouvel inscrit sur Zuri', body: 'Tracee (lang-en@test.dev)', path: '/admin/users/1' })
+    expect(n).toBeGreaterThanOrEqual(1)
+  })
+
+  test('emails de commande et de panier dans la langue de la boutique', async () => {
+    const { customerOrderEmail, customerDigitalEmail } = await import('../src/services/order-emails')
+    const { abandonedCartEmail } = await import('../src/services/emails')
+    const base = { storeName: 'Tracee Shop', color: '#f59e0b', orderNumber: 'ZR-1', createdAt: new Date().toISOString(), customerName: 'Amina Juma', customerPhone: '+255712345678', customerEmail: 'a@test.dev', city: 'Dar es Salaam', address: null, note: null, items: [{ name: 'Wig', variant: null, quantity: 1, total: 50000, image: null, role: 'main' as const, bundle: null }], subtotal: 50000, discount: 0, shippingFee: 0, total: 50000, currency: 'TZS', cod: true, digital: false, paymentLabel: 'Cash on delivery', support: { phone: null, email: null }, trackUrl: 'https://x/t', etaLabel: null }
+    const en = customerOrderEmail({ ...base, lang: 'en' })
+    expect(en.subject).toBe('Order ZR-1 received · Tracee Shop')
+    expect(en.html).toContain('Thank you Amina! Your order is confirmed')
+    expect(en.html).toContain('lang="en"')
+    expect(en.html).not.toMatch(/Livraison|Commande|Merci/)
+    expect(customerOrderEmail(base).subject).toBe('Commande ZR-1 bien reçue · Tracee Shop')
+    expect(customerDigitalEmail({ ...base, lang: 'en', digital: true, cod: false, accessUrl: 'https://x/a' }).subject).toBe('Your access is ready · Wig')
+    expect(abandonedCartEmail({ step: 1, storeName: 'Tracee Shop', name: 'Amina', product: 'Wig', url: 'https://x', lang: 'en' }).subject).toBe('Did you forget something?')
+  })
+})

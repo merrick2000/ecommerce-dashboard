@@ -16,7 +16,9 @@ export default function Onboarding() {
   const navigate = useNavigate()
   const toast = useToast()
   const create = useCreateStore()
-  const [form, setForm] = useState({ name: '', slug: '', currency: 'XOF', country: 'BJ', kind: 'physical' as 'physical' | 'digital' })
+  // Langue de la boutique (page de vente, emails aux clients) : celle du navigateur par défaut, modifiable.
+  const browserLocale: 'fr' | 'en' = /^en\b/i.test(navigator.language) ? 'en' : 'fr'
+  const [form, setForm] = useState({ name: '', slug: '', currency: 'XOF', country: 'BJ', kind: 'physical' as 'physical' | 'digital', locale: browserLocale })
   const [slugTouched, setSlugTouched] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
   const first = !me?.stores.length
@@ -101,6 +103,16 @@ export default function Onboarding() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Select label="Pays" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} options={COUNTRIES.map((c) => ({ value: c.code, label: c.name }))} error={errors.country} />
               <Select label="Devise" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} options={CURRENCIES.map((c) => ({ value: c, label: `${c} | ${CURRENCY_NAME[c] ?? c}` }))} error={errors.currency} />
+              <Select
+                label="Langue de la boutique"
+                hint="Page de vente et emails envoyés à vos clients. Modifiable ensuite dans Paramètres."
+                value={form.locale}
+                onChange={(e) => setForm({ ...form, locale: e.target.value as 'fr' | 'en' })}
+                options={[
+                  { value: 'fr', label: 'Français' },
+                  { value: 'en', label: 'English' },
+                ]}
+              />
             </div>
             <Button type="submit" variant="primary" size="lg" className="w-full" loading={create.isPending}>
               Créer la boutique
