@@ -13,7 +13,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
   try {
     cat = await apiGet<StoreCatalog>(`/stores/${encodeURIComponent(params.slug ?? '')}/catalog`)
   } catch (e) {
-    if (e instanceof ApiError && e.status === 404) return new Response('Not found', { status: 404 })
+    if (e instanceof ApiError && (e.status === 404 || e.status === 410)) return new Response('Not found', { status: 404 })
     throw e
   }
   const last = cat.items.reduce((m, i) => (i.updatedAt > m ? i.updatedAt : m), '')

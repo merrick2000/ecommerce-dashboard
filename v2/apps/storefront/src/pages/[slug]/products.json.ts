@@ -12,7 +12,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
   try {
     cat = await apiGet<StoreCatalog>(`/stores/${encodeURIComponent(params.slug ?? '')}/catalog`)
   } catch (e) {
-    if (e instanceof ApiError && e.status === 404) return new Response('{"products":[]}', { status: 404, headers: { 'content-type': 'application/json' } })
+    if (e instanceof ApiError && (e.status === 404 || e.status === 410)) return new Response('{"products":[]}', { status: 404, headers: { 'content-type': 'application/json' } })
     throw e
   }
   return new Response(JSON.stringify(shopifyProductsJson(cat, (path) => absoluteUrl(locals, path))), { headers: { ...feedHeaders('application/json; charset=utf-8'), 'access-control-allow-origin': '*' } })
