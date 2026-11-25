@@ -20,6 +20,7 @@ import { poAccount } from '../services/po'
 import { storeCartAllowed, storeOnlinePayments } from '../services/platform'
 import { displayPrice, evaluatePromoCode } from '../services/pricing'
 import { publicUrl, signedUrl } from '../services/storage'
+import { storeCatalog } from '../services/catalog-feed'
 import { DEFAULT_CHECKOUT, withCheckoutDefaults } from './stores'
 
 /**
@@ -129,6 +130,12 @@ export const publicRoutes = new Hono<AppEnv>()
     if (!store) return c.json({ slug: null }, 404)
     return c.json({ slug: store.slug })
   })
+  /** Catalogue normalisé (flux Google Merchant / Meta, format Shopify, données structurées) : produits actifs. */
+  .get('/stores/:slug/catalog', async (c) => {
+    const store = await storeBySlug(c.req.param('slug'))
+    c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=900')
+    return c.json({ store: publicStore(store), items: store.status === 'active' ? await storeCatalog(store) : [] })
+  })
   .get('/stores/:slug', async (c) => {
     const store = await storeBySlug(c.req.param('slug'))
     const rows = await db.select().from(products).where(and(eq(products.storeId, store.id), eq(products.isActive, true))).orderBy(desc(products.createdAt))
@@ -215,6 +222,9 @@ export const publicRoutes = new Hono<AppEnv>()
         id: product.id,
         type: product.type,
         name: product.name,
+        /** Référence (SKU, sinon identifiant) : données structurées et catalogues. */
+        sku: product.sku || product.id,
+        updatedAt: product.updatedAt,
         description: product.description,
         coverImage: publicUrl(product.coverImage),
         thumbnail: publicUrl(product.thumbnail),
@@ -235,7 +245,7 @@ export const publicRoutes = new Hono<AppEnv>()
           platform: product.payment.method === 'integration' ? (product.payment.integration?.platform ?? null) : null,
         },
         variantLabel: product.variantLabel,
-        variants: variants.map((vr) => ({ id: vr.id, name: vr.name, price: vr.price != null ? displayPrice(product, store.currency, vr) : null, inStock: !product.trackInventory || vr.stock == null || vr.stock > 0 })),
+        variants: variants.map((vr) => ({ id: vr.id, name: vr.name, sku: vr.sku || `${product.sku || product.id}-${vr.id}`, price: vr.price != null ? displayPrice(product, store.currency, vr) : null, inStock: !product.trackInventory || vr.stock == null || vr.stock > 0 })),
         inStock: bundle ? bundle.inStock : !product.trackInventory || product.stock == null || product.stock > 0,
         /** Pack : produits inclus (pour la page de vente). */
         bundle: bundle?.items ?? null,

@@ -13,6 +13,7 @@ import { money } from '../../../lib/format'
 import { dict } from '../../../lib/i18n'
 import type { CheckoutData } from '../../../lib/types'
 import { absoluteUrl, img, originOf, storeUrl } from '../../../lib/urls'
+import { breadcrumbJsonLd, productJsonLd } from '../../../lib/structured'
 import { STICKY_CTA_DEFAULTS } from '@zuri/shared'
 import { interpolate } from '@zuri/shared/form-runtime'
 
@@ -61,6 +62,22 @@ Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
 
 // Page HTML libre du vendeur : remplace le modèle (le formulaire, le suivi et les pixels restent ceux de Zuri).
 const custom = product.content.customPage?.enabled && product.content.customPage.html ? product.content.customPage : null
+// Données produit standard (schema.org, balises produit Open Graph) : générées depuis la fiche, rien à remplir.
+const pageUrl = absoluteUrl(Astro.locals, `/p/${product.id}`)
+const homeUrl = absoluteUrl(Astro.locals, '/')
+const shipByCountry = new Map<string, number>()
+for (const z of zones) shipByCountry.set((z.country || store.country).toUpperCase(), Math.min(shipByCountry.get((z.country || store.country).toUpperCase()) ?? Infinity, Number(z.fee)))
+const shipping = product.type === 'digital' ? [{ country: store.country.toUpperCase(), price: 0 }] : [...shipByCountry].map(([country, price]) => ({ country, price }))
+const ld = [
+  productJsonLd(d, { url: pageUrl, storeUrl: homeUrl, shipping }),
+  breadcrumbJsonLd([
+    { name: store.name, url: homeUrl },
+    { name: product.name, url: pageUrl },
+  ]),
+  ...((product.content.faqs ?? []).filter((f) => f.question && f.answer).length
+    ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: product.content.faqs.filter((f) => f.question && f.answer).map((f) => ({ '@type': 'Question', name: f.question, acceptedAnswer: { '@type': 'Answer', text: f.answer } })) }]
+    : []),
+]
 const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebookPixelId, tt: tracking.tiktokPixelId, value: price.effective, currency: price.currency, name: product.name }
 ---
 
@@ -70,10 +87,23 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebo
   lang={store.locale}
   canonical={absoluteUrl(Astro.locals, `/p/${product.id}`)}
   ogImage={product.coverImage}
+  ogType="product"
   template={checkout.template}
   primaryColor={checkout.primaryColor}
   preconnect={[originOf(product.coverImage)]}
 >
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={jsonForScript(ld)} />
+    <meta property="product:price:amount" content={String(price.regular)} />
+    <meta property="product:price:currency" content={price.currency} />
+    <meta property="product:availability" content={product.inStock ? 'in stock' : 'out of stock'} />
+    <meta property="product:condition" content="new" />
+    <meta property="product:retailer_item_id" content={product.sku ?? product.id} />
+    <meta property="product:brand" content={store.name} />
+    {price.regular > price.effective && <meta property="product:sale_price:amount" content={String(price.effective)} />}
+    {price.regular > price.effective && <meta property="product:sale_price:currency" content={price.currency} />}
+    <meta property="og:site_name" content={store.name} />
+  </Fragment>
   {
     custom && (
       <Fragment slot="head">

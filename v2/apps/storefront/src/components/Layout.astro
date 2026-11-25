@@ -12,9 +12,11 @@ interface Props {
   primaryColor?: string | null
   noindex?: boolean
   preconnect?: (string | null)[]
+  /** og:type : « product » sur les pages de vente (catalogues Meta, aperçus de liens). */
+  ogType?: 'website' | 'product'
 }
 
-const { title, description, lang = 'fr', canonical, ogImage, template = 'classic', primaryColor, noindex = false, preconnect = [] } = Astro.props
+const { title, description, lang = 'fr', canonical, ogImage, template = 'classic', primaryColor, noindex = false, preconnect = [], ogType = 'website' } = Astro.props
 const accent = safeColor(primaryColor)
 const tpl = ['classic', 'dark_premium', 'minimalist_card'].includes(template) ? template : 'classic'
 const themeColor = tpl === 'dark_premium' ? '#0a0a0c' : accent
@@ -31,7 +33,7 @@ const origins = [...new Set(preconnect.filter((o): o is string => !!o))]
     {canonical && <link rel="canonical" href={canonical} />}
     {noindex && <meta name="robots" content="noindex" />}
     <meta name="theme-color" content={themeColor} />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={ogType} />
     <meta property="og:title" content={title} />
     {description && <meta property="og:description" content={description} />}
     {canonical && <meta property="og:url" content={canonical} />}

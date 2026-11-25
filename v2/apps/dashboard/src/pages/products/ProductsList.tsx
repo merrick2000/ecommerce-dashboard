@@ -5,6 +5,7 @@ import { ConfirmDialog, useDialogState } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, ButtonLink, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Switch } from '@/components/ui'
 import { useCan, useCurrentStore, useMe } from '@/hooks/auth'
+import { ExportCatalog } from './ExportCatalog'
 import { useDeleteProduct, useDuplicateProduct, useProducts, useToggleProductActive } from '@/hooks/resources'
 import { money, num } from '@/lib/format'
 import type { ProductListItem } from '@/lib/types'
@@ -153,6 +154,7 @@ export default function ProductsList() {
               <ButtonLink to="import">
                 <Upload className="size-4" /> Importer
               </ButtonLink>
+              <ExportCatalog />
               <ButtonLink to="new" variant="primary">
                 <Plus className="size-4" /> Nouveau produit
               </ButtonLink>

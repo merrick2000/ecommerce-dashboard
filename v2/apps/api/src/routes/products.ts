@@ -16,6 +16,8 @@ import { sanitizeHtml } from '../lib/sanitize'
 import { v } from '../lib/validate'
 import { displayPrice } from '../services/pricing'
 import { publicUrl } from '../services/storage'
+import { storeCatalog } from '../services/catalog-feed'
+import { toShopifyCsv, toWooCommerceCsv } from '../services/catalog-export'
 
 const idParam = z.object({ id: productIdSchema })
 
@@ -38,6 +40,16 @@ async function loadProduct(storeId: string, id: string) {
 }
 
 export const productRoutes = new Hono<AppEnv>()
+  /** Export du catalogue au format d'import officiel de Shopify ou de WooCommerce (produits actifs et brouillons). */
+  .get('/export.csv', requirePermission('products.view'), v('query', z.object({ format: z.enum(['shopify', 'woocommerce']).default('shopify') })), async (c) => {
+    const store = c.get('store')
+    const items = (await storeCatalog(store, { includeInactive: true })).filter((i) => inProductScope(c.get('access'), i.id))
+    const activeIds = new Set((await db.select({ id: products.id }).from(products).where(and(eq(products.storeId, store.id), eq(products.isActive, true)))).map((r) => r.id))
+    const { format } = c.req.valid('query')
+    c.header('Content-Type', 'text/csv; charset=utf-8')
+    c.header('Content-Disposition', `attachment; filename="produits-${store.slug}-${format}.csv"`)
+    return c.body(format === 'woocommerce' ? toWooCommerceCsv(items, { activeIds }) : toShopifyCsv(items, { activeIds }))
+  })
   .get('/', requirePermission('products.view'), async (c) => {
     const store = c.get('store')
     const access = c.get('access')

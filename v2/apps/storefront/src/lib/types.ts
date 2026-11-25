@@ -40,6 +40,7 @@ export interface Zone {
 export interface Variant {
   id: number
   name: string
+  sku?: string
   price: DisplayPrice | null
   inStock: boolean
 }
@@ -70,6 +71,8 @@ export interface CheckoutData {
     id: string
     type: ProductType
     name: string
+    sku?: string
+    updatedAt?: string
     description: string
     coverImage: string | null
     thumbnail: string | null
@@ -138,4 +141,44 @@ export interface ApiErrorBody {
   error: string
   code?: string
   issues?: { path: string; message: string }[]
+}
+
+/** Catalogue normalisé d'une boutique (flux Google Merchant / Meta, format Shopify). */
+export interface CatalogVariant {
+  id: string
+  sku: string
+  title: string
+  price: number
+  salePrice: number | null
+  availability: 'in_stock' | 'out_of_stock'
+  inventory: number | null
+}
+export interface CatalogItem {
+  id: string
+  sku: string
+  title: string
+  description: string
+  descriptionHtml: string
+  path: string
+  images: string[]
+  type: ProductType
+  category: string | null
+  brand: string
+  condition: 'new'
+  currency: string
+  price: number
+  salePrice: number | null
+  availability: 'in_stock' | 'out_of_stock'
+  inventory: number | null
+  weightGrams: number | null
+  variantLabel: string | null
+  variants: CatalogVariant[]
+  shipping: { country: string; price: number }[]
+  rating: { value: number; count: number } | null
+  createdAt: string
+  updatedAt: string
+}
+export interface StoreCatalog {
+  store: PublicStore
+  items: CatalogItem[]
 }

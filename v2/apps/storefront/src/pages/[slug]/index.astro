@@ -10,6 +10,7 @@ import { money } from '../../lib/format'
 import { dict } from '../../lib/i18n'
 import type { CatalogData } from '../../lib/types'
 import { absoluteUrl, img, storeUrl } from '../../lib/urls'
+import { storeJsonLd } from '../../lib/structured'
 
 export const prerender = false
 
@@ -37,10 +38,16 @@ const groups: { title: string | null; items: typeof products }[] =
     ? [...categories.map((c) => ({ title: c, items: products.filter((p) => p.category === c) })), { title: null, items: products.filter((p) => !p.category) }].filter((g) => g.items.length)
     : [{ title: null, items: shown }]
 const cart = Boolean(d.cartEnabled)
+// La boutique et ses produits en données structurées (moteurs, IA, comparateurs).
+const storeLd = storeJsonLd(store, absoluteUrl(Astro.locals, '/'), products.map((p) => ({ name: p.name, url: absoluteUrl(Astro.locals, `/p/${p.id}`), image: p.thumbnail, price: p.price.effective, currency: p.price.currency })))
 const catUrl = (c: string | null) => storeUrl(Astro.locals, c ? `/?cat=${encodeURIComponent(c)}` : '/')
 ---
 
 <Layout title={current ? `${current} | ${store.name}` : store.name} description={`${store.name} | ${t.catalog.products}`} lang={store.locale} canonical={absoluteUrl(Astro.locals, '/')} ogImage={products[0]?.thumbnail} primaryColor={d.primaryColor}>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={jsonForScript(storeLd)} />
+    <link rel="alternate" type="application/rss+xml" title={`${store.name} (catalogue)`} href={absoluteUrl(Astro.locals, '/feeds/google.xml')} />
+  </Fragment>
   <header class="top">
     <div class="wrap wrap-wide"><a href={storeUrl(Astro.locals, '/')}>{store.name}</a></div>
   </header>
