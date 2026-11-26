@@ -17,7 +17,7 @@ export function sanitizeHtml(html: string): string {
       a: ['href', 'target', 'rel', 'data-cta'],
       img: ['src', 'alt', 'width', 'height', 'loading'],
       iframe: ['src', 'width', 'height', 'allow', 'allowfullscreen', 'frameborder'],
-      '*': ['class', 'style', 'data-align'],
+      '*': ['class', 'style', 'data-align', 'data-cta-slot'],
     },
     allowedSchemes: ['http', 'https', 'mailto', 'tel'],
     allowedSchemesByTag: { img: ['http', 'https', 'data'] },

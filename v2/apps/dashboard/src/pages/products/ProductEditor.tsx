@@ -16,6 +16,7 @@ import { serverErrors, validate, type Errors } from '@/lib/form'
 import type { Product } from '@/lib/types'
 import { BundleSection, FunnelSection } from './editor/funnel'
 import { CustomPageSection } from './editor/customPage'
+import { newCtaId } from './editor/ctaSlot'
 import { DeliverySection, GeneralSection, MediaSection, OffersSection, OrderFormSection, PaymentSection, SalesPageSection, type Form, type SectionProps } from './editor/sections'
 
 type Tab = 'general' | 'page' | 'media' | 'delivery' | 'offers' | 'funnel' | 'payment'
@@ -77,7 +78,11 @@ function fromProduct(p: Product): Form {
     offers: p.offers ?? [],
     coverImage: p.coverImage,
     thumbnail: p.thumbnail,
-    content: content.success ? content.data : productContentSchema.parse({}),
+    // Chaque bouton de la description a un repère (pour le placer dans le texte par glisser-déposer).
+    content: (() => {
+      const c = content.success ? content.data : productContentSchema.parse({})
+      return { ...c, descriptionCtas: c.descriptionCtas.map((x) => (x.id ? x : { ...x, id: newCtaId() })) }
+    })(),
     payment,
     delivery: p.type === 'digital' ? (p.delivery ?? { type: 'file', filePath: null }) : null,
     externalProductId: p.externalProductId,

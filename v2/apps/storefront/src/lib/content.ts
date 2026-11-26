@@ -37,19 +37,35 @@ export function ctaHtml(cta: DescriptionCta): string {
   return `<div class="dcta dcta-${cta.alignment}"><a class="btn cta-${cta.style}" data-cta="description" href="${href}"${ext}>${escapeHtml(cta.text)}</a>${sub}</div>`
 }
 
-/** Insère chaque CTA après le paragraphe N (0 = avant le premier, > nb blocs = à la fin). */
+const SLOT_RE = /<div\b[^>]*\bdata-cta-slot="([a-z0-9]{4,16})"[^>]*>\s*<\/div>/gi
+const isSlot = (block: string) => /^<div\b[^>]*\bdata-cta-slot=/i.test(block)
+
+/**
+ * Boutons de la description. Un bouton glissé dans le texte (emplacement data-cta-slot) s'affiche à cet endroit ;
+ * les autres après le paragraphe N (0 = avant le premier, > nb blocs = à la fin). Emplacement sans bouton : retiré.
+ */
 export function descriptionWithCtas(html: string, ctas: DescriptionCta[]): string {
   const clean = lazyImages(html || '')
-  if (!ctas.length) return clean
-  const blocks = splitBlocks(clean)
-  const sorted = [...ctas].sort((a, b) => a.afterParagraph - b.afterParagraph)
-  const out: string[] = sorted.filter((c) => c.afterParagraph === 0).map(ctaHtml)
-  blocks.forEach((b, i) => {
-    out.push(b)
-    for (const c of sorted) if (c.afterParagraph === i + 1) out.push(ctaHtml(c))
-  })
-  for (const c of sorted) if (c.afterParagraph > blocks.length) out.push(ctaHtml(c))
-  return out.join('\n')
+  const byId = new Map(ctas.filter((c) => c.id).map((c) => [c.id!, c]))
+  const placed = new Set([...clean.matchAll(SLOT_RE)].map((m) => m[1]!).filter((id) => byId.has(id)))
+  const rest = ctas.filter((c) => !c.id || !placed.has(c.id))
+  let out = clean
+  if (rest.length) {
+    const blocks = splitBlocks(clean)
+    const sorted = [...rest].sort((a, b) => a.afterParagraph - b.afterParagraph)
+    const parts: string[] = sorted.filter((c) => c.afterParagraph === 0).map(ctaHtml)
+    let n = 0
+    for (const b of blocks) {
+      parts.push(b)
+      // Les emplacements de boutons ne comptent pas comme des paragraphes.
+      if (isSlot(b)) continue
+      n++
+      for (const c of sorted) if (c.afterParagraph === n) parts.push(ctaHtml(c))
+    }
+    for (const c of sorted) if (c.afterParagraph > n) parts.push(ctaHtml(c))
+    out = parts.join('\n')
+  }
+  return out.replace(SLOT_RE, (_, id: string) => (byId.has(id) ? ctaHtml(byId.get(id)!) : ''))
 }
 
 /** Premier texte de la description, pour la meta description. */

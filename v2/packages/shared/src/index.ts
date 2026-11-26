@@ -312,6 +312,8 @@ export const quantityOfferSchema = z.object({
 export type QuantityOffer = z.infer<typeof quantityOfferSchema>
 
 export const descriptionCtaSchema = z.object({
+  /** Repère du bouton : placé dans le texte par glisser-déposer (<div data-cta-slot="id">). */
+  id: z.string().regex(/^[a-z0-9]{4,16}$/).optional(),
   text: z.string().min(1).max(80),
   action: z.enum(['scroll_to_form', 'custom_url']).default('scroll_to_form'),
   url: httpUrl.optional(),

@@ -15,7 +15,7 @@ import {
   type ProductInput,
   type QuantityOffer,
 } from '@zuri/shared'
-import { CreditCard, ExternalLink, FileUp, Paperclip, Star, Trash2, Truck, Wallet } from 'lucide-react'
+import { CreditCard, ExternalLink, FileUp, GripVertical, Paperclip, Star, Trash2, Truck, Wallet } from 'lucide-react'
 import { DescriptionAI } from './DescriptionAI'
 import { lazy, Suspense, useRef, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
@@ -30,6 +30,7 @@ import type { Errors } from '@/lib/form'
 import { currencyLabel, fileSize, money } from '@/lib/format'
 import { CTA_STYLE_LABEL, PROVIDER_LABEL } from '@/lib/labels'
 import { ImageUpload, ListEditor, NumberField, PreviewImage } from './fields'
+import { INSERT_CTA_EVENT, newCtaId } from './ctaSlot'
 
 const RichText = lazy(() => import('./RichText'))
 
@@ -176,6 +177,7 @@ export function SalesPageSection(p: SectionProps) {
             onChange={(description) => p.set({ description })}
             placeholder="Décrivez le produit, ses bénéfices…"
             images={[...new Set([form.coverImage, ...form.content.gallery].filter((x): x is string => !!x && /^(https?:)?\/\//.test(x)))]}
+            ctas={form.content.descriptionCtas.filter((x) => x.id).map((x) => ({ id: x.id!, text: x.text }))}
           />
         </Suspense>
         <DescriptionAI
@@ -299,8 +301,14 @@ export function SalesPageSection(p: SectionProps) {
       <Card title="Boutons dans la description" description="Boutons d’appel à l’action insérés entre les paragraphes.">
         <ListEditor<ProductContent['descriptionCtas'][number]>
           items={c.descriptionCtas}
-          onChange={(descriptionCtas) => setContent(p, { descriptionCtas })}
-          create={() => ({ text: 'Commander maintenant', action: 'scroll_to_form', style: 'default', alignment: 'center', afterParagraph: 1 })}
+          onChange={(descriptionCtas) => {
+            // Bouton supprimé de la liste : son emplacement dans le texte disparaît aussi.
+            const keep = new Set(descriptionCtas.map((x) => x.id))
+            let description = p.form.description
+            for (const r of c.descriptionCtas) if (r.id && !keep.has(r.id)) description = description.replace(new RegExp(`<div[^>]*data-cta-slot="${r.id}"[^>]*>\\s*</div>`, 'g'), '')
+            p.set({ description, content: { ...c, descriptionCtas } })
+          }}
+          create={() => ({ id: newCtaId(), text: 'Commander maintenant', action: 'scroll_to_form', style: 'default', alignment: 'center', afterParagraph: 1 })}
           addLabel="Ajouter un bouton"
           max={20}
           render={(cta, update, i) => (
@@ -316,11 +324,7 @@ export function SalesPageSection(p: SectionProps) {
                   { value: 'custom_url', label: 'Ouvrir un lien' },
                 ]}
               />
-              {cta.action === 'custom_url' ? (
-                <Input label="Lien" placeholder="https://…" value={cta.url ?? ''} onChange={(e) => update({ url: opt(e.target.value) })} error={errors[`content.descriptionCtas.${i}.url`]} />
-              ) : (
-                <NumberField label="Après le paragraphe n°" value={cta.afterParagraph} onChange={(v) => update({ afterParagraph: v ?? 0 })} />
-              )}
+              {cta.action === 'custom_url' && <Input label="Lien" placeholder="https://…" value={cta.url ?? ''} onChange={(e) => update({ url: opt(e.target.value) })} error={errors[`content.descriptionCtas.${i}.url`]} />}
               <Select label="Style" value={cta.style} onChange={(e) => update({ style: e.target.value as (typeof CTA_STYLES)[number] })} options={CTA_STYLES.map((s) => ({ value: s, label: CTA_STYLE_LABEL[s] ?? s }))} />
               <Select
                 label="Alignement"
@@ -332,7 +336,7 @@ export function SalesPageSection(p: SectionProps) {
                   { value: 'full', label: 'Pleine largeur' },
                 ]}
               />
-              {cta.action === 'custom_url' && <NumberField label="Après le paragraphe n°" value={cta.afterParagraph} onChange={(v) => update({ afterParagraph: v ?? 0 })} />}
+              <CtaPlacement id={cta.id} placed={!!cta.id && form.description.includes(`data-cta-slot="${cta.id}"`)} afterParagraph={cta.afterParagraph} onParagraph={(v) => update({ afterParagraph: v })} />
             </div>
           )}
         />
@@ -736,5 +740,38 @@ function CategoryField({ value, onChange, error }: { value: string; onChange: (v
         ))}
       </datalist>
     </>
+  )
+}
+
+/** Où apparaît un bouton : glissé dans le texte (visuel), ou à défaut après le paragraphe n°. */
+function CtaPlacement({ id, placed, afterParagraph, onParagraph }: { id?: string; placed: boolean; afterParagraph: number; onParagraph: (v: number) => void }) {
+  if (!id) return null
+  if (placed)
+    return (
+      <p className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800 sm:col-span-2 dark:bg-emerald-950/40 dark:text-emerald-200">
+        Placé dans le texte. Pour le déplacer, faites-le glisser dans la description.
+      </p>
+    )
+  return (
+    <div className="space-y-2 sm:col-span-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData('text/html', `<div data-cta-slot="${id}"></div>`)
+            e.dataTransfer.setData('text/plain', '')
+            e.dataTransfer.effectAllowed = 'copy'
+          }}
+          className="inline-flex cursor-grab items-center gap-1.5 rounded-lg border-2 border-dashed border-accent/60 px-3 py-1.5 text-[13px] font-medium active:cursor-grabbing"
+          title="Faites glisser ce bouton à l’endroit voulu dans la description"
+        >
+          <GripVertical className="size-4 text-muted" aria-hidden /> Glisser dans le texte
+        </span>
+        <Button size="sm" variant="ghost" onClick={() => window.dispatchEvent(new CustomEvent(INSERT_CTA_EVENT, { detail: id }))}>
+          Placer à l’endroit du curseur
+        </Button>
+      </div>
+      <NumberField label="Sinon, après le paragraphe n°" value={afterParagraph} onChange={(v) => onParagraph(v ?? 0)} wrapClass="sm:max-w-xs" />
+    </div>
   )
 }

@@ -10,4 +10,9 @@ describe('taille des images de description', () => {
     expect(out).not.toContain('30%')
     expect(out).not.toContain('position')
   })
+
+  test('emplacement d’un bouton glissé dans le texte gardé', () => {
+    const out = sanitizeHtml('<p>Un</p><div data-cta-slot="8xtl7qvc"></div><p>Deux</p>')
+    expect(out).toContain('data-cta-slot="8xtl7qvc"')
+  })
 })

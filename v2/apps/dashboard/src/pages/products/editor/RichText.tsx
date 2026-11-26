@@ -37,6 +37,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Dialog } from '@/components/Dialog'
+import { CtaContext, CtaSlot, INSERT_CTA_EVENT, type CtaLabel } from './ctaSlot'
 import { useToast } from '@/components/Toast'
 import { Button, cx } from '@/components/ui'
 import { useStoreId } from '@/hooks/auth'
@@ -393,7 +394,7 @@ function SelectionMenu({ editor }: { editor: Editor }) {
   return (
     <BubbleMenu
       editor={editor}
-      shouldShow={({ editor: e, state }) => e.isEditable && !state.selection.empty && !e.isActive('image')}
+      shouldShow={({ editor: e, state }) => e.isEditable && !state.selection.empty && !e.isActive('image') && !e.isActive('ctaSlot')}
       appendTo={() => document.body}
       options={{ strategy: 'fixed', placement: 'top', offset: 8, flip: true, shift: { padding: 8 } }}
       className="z-50 flex items-center gap-0.5 rounded-lg border border-line bg-surface p-1 shadow-lg"
@@ -430,11 +431,12 @@ function SelectionMenu({ editor }: { editor: Editor }) {
 }
 
 /** Éditeur riche (HTML). Une valeur changée de l'extérieur (réécriture IA, image retirée) est reprise sans recréer l'éditeur. */
-export default function RichText({ value, onChange, placeholder, label, images }: { value: string; onChange: (html: string) => void; placeholder?: string; label: string; /** Photos déjà dans le produit, proposées à l'insertion d'une image. */ images?: string[] }) {
+export default function RichText({ value, onChange, placeholder, label, images, ctas }: { value: string; onChange: (html: string) => void; placeholder?: string; label: string; /** Photos déjà dans le produit, proposées à l'insertion d'une image. */ images?: string[]; /** Boutons du produit, à placer dans le texte par glisser-déposer. */ ctas?: CtaLabel[] }) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [2, 3] }, link: { openOnClick: false, autolink: true, protocols: ['http', 'https', 'mailto', 'tel'] } }),
       SizedImage.configure({ inline: false }),
+      CtaSlot,
       TextStyle,
       Color,
       BackgroundColor,
@@ -452,11 +454,30 @@ export default function RichText({ value, onChange, placeholder, label, images }
     if (value === editor.getHTML() || (!value && editor.isEmpty)) return
     editor.commands.setContent(value, { emitUpdate: false })
   }, [value, editor])
+  // « Placer dans le texte » depuis la liste des boutons : à l'endroit du curseur (sinon à la fin).
+  useEffect(() => {
+    if (!editor || !ctas) return
+    const onInsert = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail
+      if (!id || editor.isDestroyed) return
+      let exists = false
+      editor.state.doc.descendants((n) => {
+        if (n.type.name === 'ctaSlot' && n.attrs.id === id) exists = true
+      })
+      if (exists) return
+      editor.chain().focus().insertContent({ type: 'ctaSlot', attrs: { id } }).run()
+      editor.view.dom.closest('.rounded-lg')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+    window.addEventListener(INSERT_CTA_EVENT, onInsert)
+    return () => window.removeEventListener(INSERT_CTA_EVENT, onInsert)
+  }, [editor, ctas])
   if (!editor) return null
   return (
     <div className="rounded-lg border border-line-strong bg-surface focus-within:ring-2 focus-within:ring-accent/40">
       <Toolbar editor={editor} images={images} />
-      <EditorContent editor={editor} />
+      <CtaContext.Provider value={ctas ?? []}>
+        <EditorContent editor={editor} />
+      </CtaContext.Provider>
       <SelectionMenu editor={editor} />
       <ImageMenu editor={editor} />
     </div>
