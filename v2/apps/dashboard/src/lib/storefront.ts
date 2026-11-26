@@ -11,6 +11,9 @@ export function storefrontProductUrl(storeSlug: string, productId: string): stri
 }
 
 /** Page d'aperçu du formulaire de commande (affichable seulement dans le dashboard). */
+/** Aperçu d'un produit (actif ou non), avec le jeton signé fourni par l'API : jamais compté dans les stats. */
+export const productPreviewUrl = (storeSlug: string, productId: string, token: string) => `${storefrontProductUrl(storeSlug, productId)}/preview?t=${encodeURIComponent(token)}&notrack`
+
 export const formPreviewUrl = (storeSlug: string, productId: string) => `${storefrontProductUrl(storeSlug, productId)}/apercu?notrack`
 
 /** Page d'accueil (catalogue) d'une boutique. */

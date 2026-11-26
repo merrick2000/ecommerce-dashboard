@@ -1,0 +1,12 @@
+---
+/**
+ * Aperçu d'un produit depuis le tableau de bord : /p/:id/preview?t=<jeton signé>.
+ * Même rendu que la page de vente, produit actif ou non ; jamais en cache, non indexé,
+ * aucun suivi (notrack) et aucune commande créée.
+ */
+export const prerender = false
+const { slug = '', productId = '' } = Astro.params
+const token = Astro.url.searchParams.get('t') ?? ''
+if (!/^prd_[0-9A-Za-z]{8,32}$/.test(productId) || !/^\d{9,11}\.[\w-]{20,64}$/.test(token)) return Astro.rewrite('/404')
+return Astro.rewrite(`/${slug}/p/${productId}?preview=${encodeURIComponent(token)}&notrack`)
+---

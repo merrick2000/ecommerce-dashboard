@@ -161,7 +161,13 @@ export function SalesPageSection(p: SectionProps) {
 
       <Card title="Description">
         <Suspense fallback={<Skeleton className="h-56 rounded-lg" />}>
-          <RichText label="Description du produit" value={form.description} onChange={(description) => p.set({ description })} placeholder="Décrivez le produit, ses bénéfices…" />
+          <RichText
+            label="Description du produit"
+            value={form.description}
+            onChange={(description) => p.set({ description })}
+            placeholder="Décrivez le produit, ses bénéfices…"
+            images={[...new Set([form.coverImage, ...form.content.gallery].filter((x): x is string => !!x && /^(https?:)?\/\//.test(x)))]}
+          />
         </Suspense>
         <DescriptionAI
           html={form.description ?? ''}

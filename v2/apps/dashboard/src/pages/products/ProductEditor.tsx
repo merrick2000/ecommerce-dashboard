@@ -1,5 +1,5 @@
 import { productContentSchema, productInputSchema, type ProductType } from '@zuri/shared'
-import { ArrowLeft, Box, FileDown, Sparkles } from 'lucide-react'
+import { ArrowLeft, Box, Eye, FileDown, Sparkles } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useBeforeUnload, useBlocker, useNavigate, useParams } from 'react-router'
 import { ConfirmDialog } from '@/components/Dialog'
@@ -9,6 +9,8 @@ import { Badge, Button, cx, ErrorState, Segmented, Skeleton } from '@/components
 import { useCan, useCurrency, useCurrentStore, useMe, useStoreId } from '@/hooks/auth'
 import { useProduct, useSaveProduct } from '@/hooks/resources'
 import { trackSeller } from '@/lib/sellerEvents'
+import { api } from '@/lib/api'
+import { productPreviewUrl } from '@/lib/storefront'
 import { serverErrors, validate, type Errors } from '@/lib/form'
 import type { Product } from '@/lib/types'
 import { BundleSection, FunnelSection } from './editor/funnel'
@@ -114,6 +116,23 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
   const save = useSaveProduct()
   const canEdit = useCan('products.edit')
   const storeKind = useCurrentStore().store?.kind ?? null
+  const storeSlug = useCurrentStore().store?.slug ?? null
+  /** Aperçu dans un nouvel onglet : la dernière version enregistrée, produit actif ou non, hors statistiques. */
+  const openPreview = async () => {
+    if (!productId || !storeSlug) return
+    // Onglet ouvert tout de suite (sinon le navigateur bloque la fenêtre ouverte après l'attente).
+    const tab = window.open('about:blank', '_blank')
+    try {
+      const { token } = await api.get<{ token: string }>(`/stores/${storeId}/products/${productId}/preview`)
+      const url = productPreviewUrl(storeSlug, productId, token)
+      if (tab) tab.location.href = url
+      else window.location.assign(url)
+      if (dirty) toast.success('Aperçu ouvert : il montre la dernière version enregistrée. Enregistrez pour y voir vos modifications.')
+    } catch (e) {
+      tab?.close()
+      toast.error(e)
+    }
+  }
   const [form, setForm] = useState<Form>(initial)
   const [saved, setSaved] = useState(() => JSON.stringify(initial))
   const [errors, setErrors] = useState<Errors>({})
@@ -210,6 +229,11 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
           <div className="flex items-center gap-2">
             {dirty && <Badge tone="amber">Non enregistré</Badge>}
             {!canEdit && <Badge>Lecture seule</Badge>}
+            {productId && storeSlug && (
+              <Button onClick={() => void openPreview()} title="Voir la page comme vos clients, même si le produit n’est pas en vente">
+                <Eye className="size-4" /> <span className="hidden sm:inline">Aperçu</span>
+              </Button>
+            )}
             <div className={canEdit ? 'hidden sm:block' : 'hidden'}>
               <Button variant="primary" onClick={submit} loading={save.isPending}>
                 Enregistrer

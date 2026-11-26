@@ -49,6 +49,8 @@ export function setTrackConfig(c: TrackConfig): void {
 }
 
 export function noTrack(): boolean {
+  // Aperçu depuis le tableau de bord : la page l'indique elle-même (l'adresse visible ne porte pas notrack).
+  if ((config() as (TrackConfig & { preview?: boolean }) | null)?.preview) return true
   try {
     if (new URLSearchParams(location.search).has('notrack')) setStr('sf_nt', '1', 'session')
   } catch {

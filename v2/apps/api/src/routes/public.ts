@@ -21,6 +21,7 @@ import { storeCartAllowed, storeOnlinePayments } from '../services/platform'
 import { displayPrice, evaluatePromoCode } from '../services/pricing'
 import { publicUrl, signedUrl } from '../services/storage'
 import { storeCatalog } from '../services/catalog-feed'
+import { checkPreviewToken } from '../services/preview'
 import { DEFAULT_CHECKOUT, withCheckoutDefaults } from './stores'
 
 /**
@@ -197,7 +198,9 @@ export const publicRoutes = new Hono<AppEnv>()
     // Ancien lien numérique (/p/123, pubs de Sellit v1) : on retrouve le produit par son ancien numéro.
     // Le storefront voit que product.id diffère de l'URL et redirige (301) vers la nouvelle adresse.
     const byId = /^\d{1,10}$/.test(productId) ? eq(products.legacyId, Number(productId)) : eq(products.id, productId)
-    const [product] = await db.select().from(products).where(and(byId, eq(products.storeId, store.id), eq(products.isActive, true))).limit(1)
+    // Aperçu depuis le tableau de bord (jeton signé) : produit visible même s'il n'est pas en vente.
+    const preview = checkPreviewToken(productId, c.req.query('preview'))
+    const [product] = await db.select().from(products).where(and(byId, eq(products.storeId, store.id), preview ? undefined : eq(products.isActive, true))).limit(1)
     if (!product) throw notFound('Produit')
     const [cfg, variants, zones, providers] = await Promise.all([
       db.select().from(checkoutSettings).where(eq(checkoutSettings.storeId, store.id)).limit(1).then((r) => r[0]),
@@ -215,9 +218,10 @@ export const publicRoutes = new Hono<AppEnv>()
     const poAcc = product.payment.method === 'native' ? await poAccount(store.id) : null
     const onlinePaymentEnabled = Boolean(poAcc) || (providers.some((p) => (NATIVE_PROVIDERS as readonly string[]).includes(p.provider)) && (await storeOnlinePayments(store.id)))
     const { bundle, funnel } = await publicLinks(store, product)
-    c.header('Cache-Control', 'public, max-age=30, stale-while-revalidate=120')
+    c.header('Cache-Control', preview ? 'private, no-store' : 'public, max-age=30, stale-while-revalidate=120')
     return c.json({
       store: publicStore(store),
+      preview,
       product: {
         id: product.id,
         type: product.type,
@@ -225,6 +229,7 @@ export const publicRoutes = new Hono<AppEnv>()
         /** Référence (SKU, sinon identifiant) : données structurées et catalogues. */
         sku: product.sku || product.id,
         updatedAt: product.updatedAt,
+        isActive: product.isActive,
         description: product.description,
         coverImage: publicUrl(product.coverImage),
         thumbnail: publicUrl(product.thumbnail),

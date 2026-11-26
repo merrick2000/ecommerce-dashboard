@@ -31,6 +31,7 @@ const m = (n: number) => money(n, price.currency, store.locale)
   {
     product.inStock && (product.variants.length === 0 || product.variants.some((v) => v.inStock)) ? (
       <OrderForm
+        preview={Boolean(d.preview)}
         client:idle
         slug={store.slug}
         storeId={store.id}

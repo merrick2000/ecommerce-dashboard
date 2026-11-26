@@ -19,6 +19,7 @@ import { publicUrl } from '../services/storage'
 import { storeCatalog } from '../services/catalog-feed'
 import { toShopifyCsv, toWooCommerceCsv } from '../services/catalog-export'
 import { logSellerEvent } from '../services/activation'
+import { previewToken } from '../services/preview'
 
 const idParam = z.object({ id: productIdSchema })
 
@@ -87,6 +88,14 @@ export const productRoutes = new Hono<AppEnv>()
         revenue: showRevenue ? stats.revenue : null,
       })),
     )
+  })
+  /** Lien d'aperçu (jeton signé) : la page de vente telle que la verront les clients, produit actif ou non. */
+  .get('/:id/preview', requirePermission('products.view'), v('param', idParam), async (c) => {
+    const { id } = c.req.valid('param')
+    if (!inProductScope(c.get('access'), id)) throw notFound('Produit')
+    const [p] = await db.select({ id: products.id }).from(products).where(and(eq(products.id, id), eq(products.storeId, c.get('store').id))).limit(1)
+    if (!p) throw notFound('Produit')
+    return c.json(previewToken(p.id))
   })
   .get('/:id', requirePermission('products.view'), v('param', idParam), async (c) => {
     const { id } = c.req.valid('param')

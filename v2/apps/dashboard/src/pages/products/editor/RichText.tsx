@@ -36,8 +36,9 @@ import {
   Undo2,
 } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Dialog } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
-import { cx } from '@/components/ui'
+import { Button, cx } from '@/components/ui'
 import { useStoreId } from '@/hooks/auth'
 import { uploadImage } from '@/hooks/resources'
 
@@ -205,7 +206,8 @@ function useActions(editor: Editor) {
   return { chain, setLink, pickImage: () => file.current?.click(), uploading, imageInput }
 }
 
-function Toolbar({ editor }: { editor: Editor }) {
+function Toolbar({ editor, images = [] }: { editor: Editor; images?: string[] }) {
+  const [picker, setPicker] = useState(false)
   const s = useFormatState(editor)
   const a = useActions(editor)
   return (
@@ -272,13 +274,48 @@ function Toolbar({ editor }: { editor: Editor }) {
       <Tool label="Lien" active={s.link} onClick={a.setLink}>
         <Link2 className="size-4" />
       </Tool>
-      <Tool label="Insérer une image" onClick={a.pickImage} disabled={a.uploading}>
+      <Tool label="Insérer une image" onClick={() => (images.length ? setPicker(true) : a.pickImage())} disabled={a.uploading}>
         {a.uploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
       </Tool>
       <Tool label="Effacer la mise en forme" onClick={() => a.chain().unsetAllMarks().clearNodes().run()}>
         <RemoveFormatting className="size-4" />
       </Tool>
       {a.imageInput}
+      {picker && (
+        <Dialog open onClose={() => setPicker(false)} title="Insérer une image" size="sm">
+          <div className="space-y-4">
+            <Button
+              variant="primary"
+              className="w-full"
+              onClick={() => {
+                setPicker(false)
+                a.pickImage()
+              }}
+            >
+              <ImagePlus className="size-4" /> Importer une nouvelle image
+            </Button>
+            <div>
+              <p className="mb-2 text-sm font-medium">Ou choisir une photo du produit</p>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {images.map((src) => (
+                  <button
+                    key={src}
+                    type="button"
+                    onClick={() => {
+                      a.chain().setImage({ src }).run()
+                      setPicker(false)
+                    }}
+                    className="aspect-square overflow-hidden rounded-lg border border-line bg-surface-2 hover:border-accent focus-visible:outline-2 focus-visible:outline-accent"
+                    aria-label="Insérer cette photo"
+                  >
+                    <img src={src} alt="" loading="lazy" className="size-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Dialog>
+      )}
     </div>
   )
 }
@@ -327,7 +364,7 @@ function SelectionMenu({ editor }: { editor: Editor }) {
 }
 
 /** Éditeur riche (HTML). Une valeur changée de l'extérieur (réécriture IA, image retirée) est reprise sans recréer l'éditeur. */
-export default function RichText({ value, onChange, placeholder, label }: { value: string; onChange: (html: string) => void; placeholder?: string; label: string }) {
+export default function RichText({ value, onChange, placeholder, label, images }: { value: string; onChange: (html: string) => void; placeholder?: string; label: string; /** Photos déjà dans le produit, proposées à l'insertion d'une image. */ images?: string[] }) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [2, 3] }, link: { openOnClick: false, autolink: true, protocols: ['http', 'https', 'mailto', 'tel'] } }),
@@ -352,7 +389,7 @@ export default function RichText({ value, onChange, placeholder, label }: { valu
   if (!editor) return null
   return (
     <div className="rounded-lg border border-line-strong bg-surface focus-within:ring-2 focus-within:ring-accent/40">
-      <Toolbar editor={editor} />
+      <Toolbar editor={editor} images={images} />
       <EditorContent editor={editor} />
       <SelectionMenu editor={editor} />
     </div>

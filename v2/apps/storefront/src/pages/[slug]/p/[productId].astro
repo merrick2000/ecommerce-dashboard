@@ -23,9 +23,11 @@ const { slug = '', productId = '' } = Astro.params
 // Identifiant public (prd_…) ou ancien numéro de Sellit v1 (/p/123, liens de pub).
 if (!/^(prd_[0-9A-Za-z]{8,32}|\d{1,10})$/.test(productId)) return Astro.rewrite('/404')
 
+// Aperçu (route /p/:id/preview) : jeton signé du tableau de bord, produit actif ou non.
+const previewToken = Astro.url.searchParams.get('preview')
 let d: CheckoutData
 try {
-  d = await apiGet<CheckoutData>(`/checkout/${encodeURIComponent(slug)}/${productId}`)
+  d = await apiGet<CheckoutData>(`/checkout/${encodeURIComponent(slug)}/${productId}${previewToken ? `?preview=${encodeURIComponent(previewToken)}` : ''}`)
 } catch (e) {
   if (e instanceof ApiError && (e.status === 404 || e.status === 410 || e.status === 422)) return Astro.rewrite('/404')
   throw e
@@ -56,9 +58,11 @@ const wa = product.content.whatsapp
 const waHref = wa?.enabled && wa.phone ? waLink(wa.phone, wa.welcomeMessage || t.whatsappMessage(product.name)) : null
 const description = excerpt(product.description) || excerpt(product.content.customText ?? '') || product.name
 
-const cache = 'public, s-maxage=30, stale-while-revalidate=300'
+const isPreview = Boolean(d.preview)
+const cache = isPreview ? 'private, no-store' : 'public, s-maxage=30, stale-while-revalidate=300'
 Astro.response.headers.set('Cache-Control', cache)
-Astro.response.headers.set('Cloudflare-CDN-Cache-Control', cache)
+Astro.response.headers.set('Cloudflare-CDN-Cache-Control', isPreview ? 'no-store' : cache)
+if (isPreview) Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow')
 
 // Page HTML libre du vendeur : remplace le modèle (le formulaire, le suivi et les pixels restent ceux de Zuri).
 const custom = product.content.customPage?.enabled && product.content.customPage.html ? product.content.customPage : null
@@ -78,7 +82,8 @@ const ld = [
     ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: product.content.faqs.filter((f) => f.question && f.answer).map((f) => ({ '@type': 'Question', name: f.question, acceptedAnswer: { '@type': 'Answer', text: f.answer } })) }]
     : []),
 ]
-const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebookPixelId, tt: tracking.tiktokPixelId, value: price.effective, currency: price.currency, name: product.name }
+// Aperçu : ni pixels, ni statistiques (le paramètre notrack coupe aussi tout le suivi côté navigateur).
+const trackCfg = { storeId: store.id, productId: product.id, fb: isPreview ? null : tracking.facebookPixelId, tt: isPreview ? null : tracking.tiktokPixelId, value: price.effective, currency: price.currency, name: product.name, ...(isPreview ? { preview: true } : {}) }
 ---
 
 <Layout
@@ -88,6 +93,7 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebo
   canonical={absoluteUrl(Astro.locals, `/p/${product.id}`)}
   ogImage={product.coverImage}
   ogType="product"
+  noindex={isPreview}
   template={checkout.template}
   primaryColor={checkout.primaryColor}
   preconnect={[originOf(product.coverImage)]}
@@ -111,6 +117,15 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: tracking.facebo
         {custom.tailwind && <script is:inline src="https://cdn.tailwindcss.com" />}
         {custom.css && <style is:inline set:html={custom.css} />}
       </Fragment>
+    )
+  }
+  {
+    isPreview && (
+      <div role="status" style="position:sticky;top:0;z-index:60;background:#18181b;color:#fff;font:600 13px/1.4 system-ui,sans-serif;text-align:center;padding:8px 12px">
+        {store.locale === 'en' ? 'Preview: this is what your customers will see.' : 'Aperçu : voici ce que verront vos clients.'}
+        {product.isActive === false && (store.locale === 'en' ? ' This product is not on sale yet.' : ' Ce produit n’est pas encore en vente.')}
+        {store.locale === 'en' ? ' No order is created, nothing is counted in your stats.' : ' Aucune commande n’est créée, rien n’est compté dans vos statistiques.'}
+      </div>
     )
   }
   <div id="sf-promo" class="promo-bar" role="status" hidden></div>

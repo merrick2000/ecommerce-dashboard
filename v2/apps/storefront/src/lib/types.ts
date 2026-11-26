@@ -67,12 +67,15 @@ export type PaymentGateway = { kind: 'orchestrator'; widgetMode: 'auto' | 'modal
 
 export interface CheckoutData {
   store: PublicStore
+  /** Aperçu depuis le tableau de bord : aucune commande, aucun suivi. */
+  preview?: boolean
   product: {
     id: string
     type: ProductType
     name: string
     sku?: string
     updatedAt?: string
+    isActive?: boolean
     description: string
     coverImage: string | null
     thumbnail: string | null
