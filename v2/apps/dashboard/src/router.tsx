@@ -1,10 +1,26 @@
 import type { ComponentType } from 'react'
 import { createBrowserRouter, type RouteObject } from 'react-router'
 import { AppShell } from '@/components/layout/AppShell'
-import { FullPageSpinner, HomeRedirect, NotFound, RequireAuth, RouteError } from '@/components/layout/Guards'
+import { FullPageSpinner, HomeRedirect, NotFound, RequireAuth, RouteError, UpdatingNotice } from '@/components/layout/Guards'
+import { isStaleChunkError, reloadForNewVersion } from '@/lib/newVersion'
 
 /** Route chargée à la demande : chaque écran est un chunk séparé. */
-const page = (load: () => Promise<{ default: ComponentType }>): RouteObject['lazy'] => async () => ({ Component: (await load()).default })
+/**
+ * Page chargée à la demande. Après une mise en ligne, l'ancien fichier n'existe plus : le module arrive vide
+ * (ou le chargement échoue). Dans ce cas, rechargement silencieux vers la nouvelle version, jamais de carte d'erreur.
+ */
+const page =
+  (load: () => Promise<{ default: ComponentType }>): RouteObject['lazy'] =>
+  async () => {
+    try {
+      const m = (await load()) as { default?: ComponentType } | undefined
+      if (m?.default) return { Component: m.default }
+    } catch (e) {
+      if (!isStaleChunkError(e)) throw e
+    }
+    reloadForNewVersion()
+    return { Component: UpdatingNotice }
+  }
 
 export const router = createBrowserRouter([
   {
@@ -28,6 +44,8 @@ export const router = createBrowserRouter([
             lazy: page(() => import('@/pages/admin/AdminShell')),
             errorElement: <RouteError />,
             children: [
+              // Erreur d'une page : affichée à la place du contenu, le menu reste visible.
+              { errorElement: <RouteError />, children: [
               { index: true, lazy: page(() => import('@/pages/admin/Overview')) },
               { path: 'users', lazy: page(() => import('@/pages/admin/Users')) },
               { path: 'users/:userId', lazy: page(() => import('@/pages/admin/UserDetail')) },
@@ -37,6 +55,7 @@ export const router = createBrowserRouter([
               { path: 'announcements', lazy: page(() => import('@/pages/admin/Announcements')) },
               { path: 'activation', lazy: page(() => import('@/pages/admin/Activation')) },
               { path: 'settings', lazy: page(() => import('@/pages/admin/Settings')) },
+            ] },
             ],
           },
           {
@@ -44,6 +63,8 @@ export const router = createBrowserRouter([
             element: <AppShell />,
             errorElement: <RouteError />,
             children: [
+              // Erreur d'une page : affichée à la place du contenu, le menu reste visible.
+              { errorElement: <RouteError />, children: [
               { index: true, lazy: page(() => import('@/pages/Dashboard')) },
               { path: 'orders', lazy: page(() => import('@/pages/orders/OrdersList')) },
               { path: 'orders/new', lazy: page(() => import('@/pages/orders/ManualOrder')) },
@@ -67,6 +88,7 @@ export const router = createBrowserRouter([
               { path: 'api', lazy: page(() => import('@/pages/ApiKeys')) },
               { path: 'expenses', lazy: page(() => import('@/pages/Expenses')) },
               { path: '*', element: <NotFound /> },
+            ] },
             ],
           },
         ],

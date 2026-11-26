@@ -6,7 +6,7 @@
 const KEY = 'zuri:new-version'
 
 export const isStaleChunkError = (err: unknown) =>
-  err instanceof Error && /dynamically imported module|Importing a module script failed|Failed to load module script|error loading dynamically|Unable to preload CSS|Failed to fetch dynamically/i.test(err.message)
+  err instanceof Error && /dynamically imported module|Importing a module script failed|Failed to load module script|error loading dynamically|Unable to preload CSS|Failed to fetch dynamically|property "default" of undefined|reading 'default'|Cannot read properties of undefined \(reading 'default'\)/i.test(err.message)
 
 let pending = false
 

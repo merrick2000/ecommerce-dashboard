@@ -63,6 +63,15 @@ export function NotFound() {
   )
 }
 
+/** Nouvelle version en cours de chargement : jamais de message d'erreur, juste un indicateur. */
+export function UpdatingNotice() {
+  return (
+    <div className="flex min-h-[60dvh] items-center justify-center gap-2 text-sm text-muted" role="status">
+      <span className="size-4 animate-spin rounded-full border-2 border-line border-t-accent" aria-hidden /> Mise à jour de Zuri…
+    </div>
+  )
+}
+
 export function RouteError() {
   const err = useRouteError()
   if (isRouteErrorResponse(err) && err.status === 404) return <NotFound />
@@ -71,12 +80,7 @@ export function RouteError() {
   useEffect(() => {
     if (chunk) reloadForNewVersion()
   }, [chunk])
-  if (chunk)
-    return (
-      <div className="flex min-h-[60dvh] items-center justify-center gap-2 text-sm text-muted" role="status">
-        <span className="size-4 animate-spin rounded-full border-2 border-line border-t-accent" aria-hidden /> Mise à jour de Zuri…
-      </div>
-    )
+  if (chunk) return <UpdatingNotice />
   return (
     <div className="mx-auto max-w-md p-6 pt-24">
       <ErrorState error={err} onRetry={() => window.location.reload()} />

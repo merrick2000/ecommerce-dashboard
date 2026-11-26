@@ -11,8 +11,8 @@ import { router } from '@/router'
 import { reloadForNewVersion } from '@/lib/newVersion'
 
 // Fichier d'une ancienne version introuvable (déploiement pendant que la page était ouverte) : rechargement silencieux.
-window.addEventListener('vite:preloadError', (e) => {
-  e.preventDefault()
+// (Sans preventDefault : l'erreur doit remonter, sinon le module arrive vide et casse la page.)
+window.addEventListener('vite:preloadError', () => {
   reloadForNewVersion()
 })
 import './index.css'

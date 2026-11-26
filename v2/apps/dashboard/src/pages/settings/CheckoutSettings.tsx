@@ -5,7 +5,9 @@ import { useState, type FormEvent } from 'react'
 import { useToast } from '@/components/Toast'
 import { Button, Card, cx, ErrorState, Field, Input, Segmented, Select, Skeleton, Switch, TagInput } from '@/components/ui'
 import { useCheckoutSettings, usePromoCodes, useSaveCheckoutSettings } from '@/hooks/resources'
-import { useMe } from '@/hooks/auth'
+import { useCurrentStore, useMe } from '@/hooks/auth'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/api'
 import { serverErrors, validate, type Errors } from '@/lib/form'
 import { CTA_STYLE_LABEL, PAGE_BLOCK_LABEL, TEMPLATE_LABEL } from '@/lib/labels'
 import { SaveBar } from '@/components/SaveBar'
@@ -287,11 +289,11 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
 
         <Card title="Popup de ventes récentes">
           <div className="space-y-4">
-            <Switch checked={s.salesPopup.enabled} onChange={(enabled) => set({ salesPopup: { ...s.salesPopup, enabled } })} label="Afficher les ventes récentes" description="« Awa de Cotonou vient de commander… »" />
+            <Switch checked={s.salesPopup.enabled} onChange={(enabled) => set({ salesPopup: { ...s.salesPopup, enabled } })} label="Afficher les ventes récentes" description="« Awa de Cotonou vient de commander… » : uniquement vos vraies commandes, jamais de ventes inventées." />
             {s.salesPopup.enabled && (
               <>
                 <NumberField label="Intervalle" value={s.salesPopup.intervalSeconds} onChange={(v) => set({ salesPopup: { ...s.salesPopup, intervalSeconds: v ?? 20 } })} suffix="s" wrapClass="sm:max-w-xs" error={errors['salesPopup.intervalSeconds']} />
-                <Switch checked={s.salesPopup.realSalesOnly} onChange={(realSalesOnly) => set({ salesPopup: { ...s.salesPopup, realSalesOnly } })} label="Vraies ventes uniquement" description="N’affiche que des commandes réelles (prénom + ville)." />
+                <RecentSalesCount />
               </>
             )}
           </div>
@@ -325,4 +327,20 @@ export function CheckoutSettingsForm({ canEdit }: { canEdit: boolean }) {
   if (isPending) return <Skeleton className="h-96 rounded-xl" />
   const parsed = checkoutSettingsSchema.safeParse(data.settings)
   return <Form initial={parsed.success ? parsed.data : checkoutSettingsSchema.parse({})} canEdit={canEdit} />
+}
+
+/** Combien de ventes la popup peut montrer maintenant (mêmes règles que la page de vente). */
+function RecentSalesCount() {
+  const slug = useCurrentStore().store?.slug
+  const { data } = useQuery({ queryKey: ['recent-sales', slug], queryFn: () => api.get<unknown[]>(`/v1/stores/${slug}/recent-sales`), enabled: !!slug, staleTime: 60_000 })
+  if (!data) return null
+  return data.length ? (
+    <p className="text-[13px] text-muted">
+      <strong className="text-fg">{data.length}</strong> vente{data.length > 1 ? 's' : ''} récente{data.length > 1 ? 's' : ''} à afficher. La popup apparaît quelques secondes après l’ouverture de la page.
+    </p>
+  ) : (
+    <p className="rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+      Aucune vente à afficher pour l’instant : la popup apparaîtra dès vos premières commandes confirmées, payées ou livrées (14 derniers jours). Elle ne montre jamais de ventes inventées.
+    </p>
+  )
 }
