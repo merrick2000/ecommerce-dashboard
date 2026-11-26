@@ -68,7 +68,7 @@ async function startPoBilling(user: User, input: { plan: Exclude<PlanId, 'free'>
     const reason = e instanceof PoError ? `Payment Orchestrator ${e.status} ${e.code} : ${e.message}` : e instanceof Error ? e.message : 'Erreur inconnue'
     await db.update(billingPayments).set({ status: 'failed', error: reason.slice(0, 300) }).where(eq(billingPayments.id, bp!.id))
     console.warn('[billing po]', e instanceof PoError ? `${e.status} ${e.code} ${e.message}` : e)
-    throw new HttpError(502, `Le paiement n’a pas pu être préparé. Réessaie dans un instant.${user.isPlatformAdmin ? ` (Détail pour le super admin : ${reason})` : ''}`, 'payment_failed')
+    throw new HttpError(424, `Le paiement n’a pas pu être préparé. Réessaie dans un instant.${user.isPlatformAdmin ? ` (Détail pour le super admin : ${reason})` : ''}`, 'payment_failed')
   }
 }
 
@@ -114,7 +114,7 @@ export async function startBillingPayment(user: User, input: { plan: Exclude<Pla
     }
   }
   console.warn('[billing] échec', errors)
-  throw new HttpError(502, 'Le paiement n’a pas pu être lancé. Réessaie ou choisis un autre réseau.', 'payment_failed')
+  throw new HttpError(424, 'Le paiement n’a pas pu être lancé. Réessaie ou choisis un autre réseau.', 'payment_failed')
 }
 
 /** Vérifie un paiement auprès du prestataire ; s'il est payé (montant exact), prolonge la formule. */

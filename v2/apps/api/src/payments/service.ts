@@ -183,7 +183,7 @@ export async function initiatePayment(token: string, input: { country: string; n
     return { status: 'processing', message: 'Validez le paiement sur votre téléphone' }
   }
   console.warn(`[payments] échec commande ${order.orderNumber}:`, errors)
-  throw new HttpError(502, 'Le paiement n’a pas pu être lancé. Réessayez ou choisissez un autre réseau.', 'payment_failed')
+  throw new HttpError(424, 'Le paiement n’a pas pu être lancé. Réessayez ou choisissez un autre réseau.', 'payment_failed')
 }
 
 export async function confirmOtp(token: string, otp: string): Promise<PublicPaymentResponse> {

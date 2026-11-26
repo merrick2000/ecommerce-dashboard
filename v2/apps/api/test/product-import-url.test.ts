@@ -221,7 +221,7 @@ describe('import par URL : routes', () => {
     ;(env as { KIE_API_KEY?: string }).KIE_API_KEY = 'cle-de-test'
     mockFetch(() => Response.json({ code: 402, msg: 'Crédits insuffisants', data: null }))
     const r = await owner.post(`/api/stores/${storeId}/products/import/url/improve`, { draft: DRAFT })
-    expect(r.status).toBe(502)
+    expect(r.status).toBe(424)
     expect(r.body.error).toContain('Crédits insuffisants')
   })
 })

@@ -119,7 +119,7 @@ describe('paiement intégré', () => {
     const codes: number[] = []
     for (let i = 0; i < 4; i++) codes.push((await visitor.post(`/api/v1/orders/${token}/pay`, { country: 'BJ', network: 'mtn', phone: '97000000' })).status)
     // 2 transactions (feexpay + fedapay) par essai → bloqué au 3e essai.
-    expect(codes).toEqual([502, 502, 502, 429])
+    expect(codes).toEqual([424, 424, 424, 429])
   })
 
   test('réconciliation : rattrape un paiement confirmé après fermeture de la page', async () => {

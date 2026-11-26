@@ -209,8 +209,8 @@ export async function createPoSession(token: string): Promise<{ paid: true } | {
 function toHttp(e: unknown): Error {
   if (e instanceof PoError) {
     console.warn('[po]', e.status, e.code, e.message)
-    if (e.code === 'invalid_api_key') return new HttpError(502, 'Paiement indisponible : la clé du compte de paiement de la boutique est invalide.', 'po_invalid_key')
-    return new HttpError(502, 'Le paiement n’a pas pu être préparé. Réessayez dans un instant.', 'po_error')
+    if (e.code === 'invalid_api_key') return new HttpError(424, 'Paiement indisponible : la clé du compte de paiement de la boutique est invalide.', 'po_invalid_key')
+    return new HttpError(424, 'Le paiement n’a pas pu être préparé. Réessayez dans un instant.', 'po_error')
   }
   return e as Error
 }

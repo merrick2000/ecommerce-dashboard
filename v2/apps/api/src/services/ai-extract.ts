@@ -101,11 +101,11 @@ ${fence(input.text.slice(0, 45_000))}
   const body = (await res.json().catch(() => null)) as { code?: number; msg?: string; content?: { type: string; name?: string; input?: unknown }[] } | null
   if (!res.ok || !body || (body.code != null && body.code !== 200)) {
     console.warn('[ai-extract]', res.status, body?.code, body?.msg)
-    throw new HttpError(502, 'Analyse de la page indisponible pour le moment.', 'ai_error')
+    throw new HttpError(424, 'Analyse de la page indisponible pour le moment.', 'ai_error')
   }
   const call = body.content?.find((b) => b.type === 'tool_use' && b.name === 'product')
   const parsed = extractionSchema.safeParse(call?.input)
-  if (!parsed.success) throw new HttpError(502, 'L’analyse de la page a échoué. Réessaie.', 'ai_error')
+  if (!parsed.success) throw new HttpError(424, 'L’analyse de la page a échoué. Réessaie.', 'ai_error')
 
   // Anti-hallucination : une image n'est gardée que si elle figure vraiment dans la page ou la liste fournie.
   const haystack = input.text

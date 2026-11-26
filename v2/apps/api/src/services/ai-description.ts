@@ -218,13 +218,13 @@ export async function rewriteDescription(input: RewriteInput): Promise<{ framewo
   const body = (await res.json().catch(() => null)) as KieResponse | null
   if (!res.ok || !body || (body.code != null && body.code !== 200)) {
     console.warn('[ai-description]', res.status, body?.code, body?.msg)
-    throw new HttpError(502, body?.msg ? `Rédaction indisponible : ${body.msg}` : 'Rédaction indisponible pour le moment.', 'ai_error')
+    throw new HttpError(424, body?.msg ? `Rédaction indisponible : ${body.msg}` : 'Rédaction indisponible pour le moment.', 'ai_error')
   }
   const call = body.content?.find((b) => b.type === 'tool_use' && b.name === 'description')
   const parsed = rewriteSchema.safeParse(call?.input)
   if (!parsed.success) {
     console.warn('[ai-description] réponse invalide', body.stop_reason, parsed.error?.issues?.slice(0, 3))
-    throw new HttpError(502, 'La description reçue est incomplète. Réessayez.', 'ai_error')
+    throw new HttpError(424, 'La description reçue est incomplète. Réessayez.', 'ai_error')
   }
   const html = sanitizeHtml(placeImages(stripEmoji(noDash(parsed.data.description)), images))
   return { framework: parsed.data.framework, reason: stripEmoji(noDash(parsed.data.reason)).trim(), description: html, images: images.length }
@@ -276,7 +276,7 @@ export async function startImageRegeneration(storeId: string, input: { imageUrl:
   const taskId = body?.data?.taskId
   if (!res.ok || body?.code !== 200 || !taskId) {
     console.warn('[ai-image] createTask', res.status, body?.code, body?.msg)
-    throw new HttpError(502, body?.msg ? `Génération impossible : ${body.msg}` : 'Génération d’image indisponible pour le moment.', 'ai_error')
+    throw new HttpError(424, body?.msg ? `Génération impossible : ${body.msg}` : 'Génération d’image indisponible pour le moment.', 'ai_error')
   }
   const now = Date.now()
   for (const [k, t] of tasks) if (now - t.createdAt > TASK_TTL) tasks.delete(k)

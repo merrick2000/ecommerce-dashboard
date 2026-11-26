@@ -123,13 +123,13 @@ export async function suggestImprovements(input: SuggestInput): Promise<Suggesti
   // Format d'erreur kie.ai : { code, msg, data }.
   if (!res.ok || !body || (body.code != null && body.code !== 200)) {
     console.warn('[ai-suggest]', res.status, body?.code, body?.msg)
-    throw new HttpError(502, body?.msg ? `Suggestions indisponibles : ${body.msg}` : 'Suggestions indisponibles pour le moment.', 'ai_error')
+    throw new HttpError(424, body?.msg ? `Suggestions indisponibles : ${body.msg}` : 'Suggestions indisponibles pour le moment.', 'ai_error')
   }
   const call = body.content?.find((b) => b.type === 'tool_use' && b.name === 'suggestions')
   const parsed = suggestionsSchema.safeParse(call?.input)
   if (!parsed.success) {
     console.warn('[ai-suggest] réponse invalide', body.stop_reason, parsed.error?.issues?.slice(0, 3))
-    throw new HttpError(502, 'Les suggestions reçues sont incomplètes. Réessayez.', 'ai_error')
+    throw new HttpError(424, 'Les suggestions reçues sont incomplètes. Réessayez.', 'ai_error')
   }
   return parsed.data
 }
