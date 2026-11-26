@@ -121,6 +121,31 @@ export const siteRoutes = new Hono<AppEnv>()
     if (inserted.length) await enqueue('admin.notify', { title: `Email de ${m.from.name || m.from.address}`, body: (m.subject || body).slice(0, 140), path: '/admin/messages', tag: 'contact' })
     return c.json({ ok: true })
   })
+  /** « Qu'est-ce qui vous bloque ? » : réponse en un clic depuis l'email (lien signé), aide adaptée, champ libre. */
+  .get('/feedback/blocker', v('query', z.object({ u: z.coerce.number().int().positive(), a: z.string().max(30), t: z.string().max(64) })), async (c) => {
+    const { u, a, t } = c.req.valid('query')
+    const { BLOCKERS, blockerHelp, checkBlocker, recordBlocker } = await import('../services/activation')
+    if (!(a in BLOCKERS) || !checkBlocker(u, a, t)) return c.html(page('Lien invalide', 'Ce lien n’est plus valable.'), 400)
+    const [usr] = await db.select({ id: users.id, signupSource: users.signupSource }).from(users).where(eq(users.id, u)).limit(1)
+    if (!usr) return c.html(page('Lien invalide', 'Ce lien n’est plus valable.'), 400)
+    await recordBlocker(u, a as never, 'email')
+    const lang = usr.signupSource?.lang === 'en' || /^\/en(\/|$)/.test(usr.signupSource?.from ?? '') ? 'en' : 'fr'
+    const app = env.APP_URL.replace(/\/$/, '')
+    const form = `<form method="post" action="/api/v1/feedback/blocker" style="margin-top:16px;text-align:left"><input type="hidden" name="u" value="${u}"><input type="hidden" name="a" value="${escapeHtml(a)}"><input type="hidden" name="t" value="${escapeHtml(t)}"><textarea name="detail" rows="3" maxlength="1000" placeholder="${lang === 'en' ? 'Tell us more (optional)' : 'Dites-nous en plus (facultatif)'}" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #d4d4d8;border-radius:10px;font:inherit"></textarea><button style="margin-top:8px;padding:10px 16px;border:0;border-radius:10px;background:#18181b;color:#fff;font:inherit;cursor:pointer">${lang === 'en' ? 'Send' : 'Envoyer'}</button></form>`
+    const cta = `<p style="margin-top:16px"><a href="${app}" style="display:inline-block;padding:12px 18px;border-radius:10px;background:#f59e0b;color:#18181b;font-weight:600;text-decoration:none">${lang === 'en' ? 'Add my first product' : 'Ajouter mon premier produit'}</a></p>`
+    return c.html(page(lang === 'en' ? 'Thank you, noted' : 'Merci, c’est noté', `${escapeHtml(blockerHelp(a as never, lang))}${cta}${form}`))
+  })
+  .post('/feedback/blocker', rateLimit({ key: 'blocker-detail', limit: 10, windowSec: 600 }), async (c) => {
+    const f = await c.req.parseBody()
+    const u = Number(f.u)
+    const a = String(f.a ?? '')
+    const t = String(f.t ?? '')
+    const detail = String(f.detail ?? '').trim().slice(0, 1000)
+    const { BLOCKERS, checkBlocker, recordBlocker } = await import('../services/activation')
+    if (!Number.isInteger(u) || !(a in BLOCKERS) || !checkBlocker(u, a, t)) return c.html(page('Lien invalide', 'Ce lien n’est plus valable.'), 400)
+    if (detail) await recordBlocker(u, a as never, 'email', detail)
+    return c.html(page('Merci', 'Votre message est bien arrivé. On vous répond très vite.'))
+  })
   .get('/unsubscribe', v('query', z.object({ u: z.coerce.number().int().positive(), t: z.string().max(64) })), async (c) => {
     const { u, t } = c.req.valid('query')
     if (!checkUnsubscribe(u, t)) return c.html(page('Lien invalide', 'Ce lien de désinscription n’est pas valide.'), 400)

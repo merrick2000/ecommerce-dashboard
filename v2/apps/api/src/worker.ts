@@ -8,6 +8,7 @@ import { reconcilePendingPayments } from './payments/service'
 import { dispatchNotification } from './services/notifications'
 import { runOnboarding } from './services/onboarding'
 import { runBillingRecovery } from './services/billing-recovery'
+import { sendFirstProductCampaign } from './services/activation'
 import { notifyPlatformAdmins } from './services/admin-notify'
 import { checkReferralReward } from './services/referrals'
 import { pushAnnouncement } from './services/announcements'
@@ -29,6 +30,10 @@ await boss.work<JobPayloads['order.capi-purchase']>('order.capi-purchase', async
 await boss.work<JobPayloads['announcement.push']>('announcement.push', async ([job]) => job && pushAnnouncement(job.data.id))
 await boss.work<JobPayloads['referral.check']>('referral.check', async ([job]) => job && checkReferralReward(job.data.storeId))
 await boss.work<JobPayloads['admin.notify']>('admin.notify', async ([job]) => job && notifyPlatformAdmins(job.data))
+await boss.work('activation.campaign', async () => {
+  const n = await sendFirstProductCampaign()
+  console.log(`[démarrage] ${n} email(s) « premier produit » envoyé(s)`)
+})
 await boss.work('onboarding.run', async () => {
   const n = await runOnboarding()
   if (n) console.log(`[onboarding] ${n} email(s) envoyé(s)`)

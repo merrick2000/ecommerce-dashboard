@@ -1,12 +1,15 @@
 import { ArrowLeft, FileSpreadsheet, Link2 } from 'lucide-react'
 import { Link } from 'react-router'
 import { PageHeader } from '@/components/ui'
+import { useEffect } from 'react'
 import { useMe, useStoreId } from '@/hooks/auth'
+import { trackSeller } from '@/lib/sellerEvents'
 
 /** Choix du mode d'import : fichier CSV (plusieurs produits) ou adresse d'une page produit. */
 export default function ImportHub() {
   const storeId = useStoreId()
   const { data: me } = useMe()
+  useEffect(() => trackSeller('product_import_open', storeId), [storeId])
   const base = `/stores/${storeId}/products`
   const back = (
     <Link to={base} className="mb-2 inline-flex items-center gap-1 text-sm text-muted hover:text-fg">

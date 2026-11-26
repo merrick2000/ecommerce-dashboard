@@ -968,3 +968,42 @@ export const announcementDismissals = pgTable(
   },
   (t) => [primaryKey({ columns: [t.announcementId, t.userId] })],
 )
+
+// ─── Démarrage des vendeurs : ce qu'ils font et ce qui les bloque ───────────
+
+/** Étapes du vendeur dans le tableau de bord (ouverture de la création de produit, erreur à l'enregistrement…). */
+export const sellerEvents = pgTable(
+  'seller_events',
+  {
+    id: id(),
+    userId: fk('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    storeId: varchar('store_id', { length: 40 }),
+    /** product_editor_open | product_import_open | product_save_error | product_created */
+    type: varchar('type', { length: 40 }).notNull(),
+    data: jsonb('data').$type<Record<string, unknown>>(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('seller_events_type_idx').on(t.type, t.createdAt), index('seller_events_user_idx').on(t.userId)],
+)
+
+/** Réponses à « Qu'est-ce qui vous bloque ? » (email en un clic ou tableau de bord). */
+export const sellerFeedback = pgTable(
+  'seller_feedback',
+  {
+    id: id(),
+    userId: fk('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** blocker */
+    kind: varchar('kind', { length: 20 }).notNull(),
+    /** no_photos | what_to_sell | too_complex | just_looking | payment_delivery | other */
+    answer: varchar('answer', { length: 30 }).notNull(),
+    detail: varchar('detail', { length: 1000 }),
+    /** email | dashboard */
+    source: varchar('source', { length: 10 }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('seller_feedback_kind_idx').on(t.kind, t.createdAt), index('seller_feedback_user_idx').on(t.userId)],
+)

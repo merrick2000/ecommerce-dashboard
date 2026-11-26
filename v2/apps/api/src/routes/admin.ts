@@ -14,6 +14,7 @@ import { audienceSize } from '../services/announcements'
 import { resetAccount, resetPreview } from '../services/account-reset'
 import { aiAvailable } from '../services/ai-suggest'
 import { sendBillingRetry } from '../services/billing-recovery'
+import { activationReport } from '../services/activation'
 import { DEFAULT_PROMO, type BillingPromo } from '@zuri/shared'
 import { enqueue } from '../jobs/queue'
 import { requireAuth } from '../lib/auth'
@@ -305,6 +306,12 @@ export const adminRoutes = new Hono<AppEnv>()
   /** Remise à zéro de MON compte (super admin connecté) : boutiques, contenu et fichiers effacés, compte gardé. */
   .get('/me/reset', async (c) => c.json(await resetPreview(c.get('user').id)))
   .post('/me/reset', v('json', z.object({ confirm: z.literal('EFFACER', { message: 'Tapez EFFACER pour confirmer' }) })), async (c) => c.json(await resetAccount(c.get('user').id)))
+  /** Démarrage : boutiques sans produit, étapes suivies, ce qui bloque, email de relance. */
+  .get('/activation', async (c) => c.json(await activationReport()))
+  .post('/activation/campaign', async (c) => {
+    await enqueue('activation.campaign', {}, { singletonKey: 'activation-campaign' })
+    return c.json({ queued: true })
+  })
   /** Annonces aux vendeurs : bandeau du tableau de bord, notification en option, ciblage. */
   .get('/announcements', async (c) => {
     const rows = await db

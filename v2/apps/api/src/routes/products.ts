@@ -18,6 +18,7 @@ import { displayPrice } from '../services/pricing'
 import { publicUrl } from '../services/storage'
 import { storeCatalog } from '../services/catalog-feed'
 import { toShopifyCsv, toWooCommerceCsv } from '../services/catalog-export'
+import { logSellerEvent } from '../services/activation'
 
 const idParam = z.object({ id: productIdSchema })
 
@@ -99,6 +100,7 @@ export const productRoutes = new Hono<AppEnv>()
     assertWithinLimit(await planForStore(store.id), 'products', n)
     const id = await createProduct(c.get('access'), store, input)
     await logActivity(c, { entityType: 'product', entityId: id, entityLabel: input.name, action: 'created', message: 'Produit créé', productIds: [id] })
+    await logSellerEvent(c.get('user').id, 'product_created', store.id, { type: input.type })
     return c.json(await loadProduct(store.id, id), 201)
   })
   .put('/:id', requirePermission('products.edit'), v('param', idParam), v('json', productInputSchema), async (c) => {

@@ -35,6 +35,7 @@ export const router = createBrowserRouter([
               { path: 'messages', lazy: page(() => import('@/pages/admin/Messages')) },
               { path: 'reviews', lazy: page(() => import('@/pages/admin/Reviews')) },
               { path: 'announcements', lazy: page(() => import('@/pages/admin/Announcements')) },
+              { path: 'activation', lazy: page(() => import('@/pages/admin/Activation')) },
               { path: 'settings', lazy: page(() => import('@/pages/admin/Settings')) },
             ],
           },

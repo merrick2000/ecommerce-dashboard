@@ -66,6 +66,8 @@ interface Ctx {
   storeUrl?: string | null
   unsubscribe: string
   whatsapp?: string | null
+  /** Bloc ajouté après le bouton (ex. « Qu'est-ce qui vous bloque ? » en un clic). */
+  extraHtml?: string
 }
 
 export function onboardingEmail(kind: OnboardingKind, step: number, c: Ctx): { subject: string; html: string } {
@@ -122,7 +124,7 @@ export function onboardingEmail(kind: OnboardingKind, step: number, c: Ctx): { s
           : `<p>Toujours pas de commande après une semaine ? Cela tient souvent à quelques détails : les photos, le prix affiché, les frais de livraison ou le formulaire. Envoyez-nous le lien de votre page : on vous dit quoi améliorer, gratuitement.</p>`
     cta = { href: c.appUrl, label: en ? 'See my traffic' : 'Voir mon trafic' }
   }
-  return { subject, html: layout('Zuri', `${hello}${body}${button(cta.href, cta.label)}<p>${help}</p>${foot}`, '#f59e0b', c.lang) }
+  return { subject, html: layout('Zuri', `${hello}${body}${button(cta.href, cta.label)}${c.extraHtml ?? ''}<p>${help}</p>${foot}`, '#f59e0b', c.lang) }
 }
 
 // ─── Envoi ───────────────────────────────────────────────────────────────────
@@ -193,6 +195,8 @@ export async function runOnboarding(now = new Date()): Promise<number> {
       storeUrl: r.store_slug ? `https://${r.store_slug}.${host}` : null,
       unsubscribe: unsubscribeUrl(r.id),
       whatsapp,
+      // Boutique sans produit : on demande ce qui bloque (un clic), pour comprendre et aider.
+      extraHtml: due.kind === 'no_product' ? (await import('./activation')).blockerChoices(r.id, langOf(r.signup_source, r.store_locale)) : undefined,
     })
     await sendEmail(r.email, mail.subject, mail.html, { fromName: 'Zuri', ...(replyTo ? { replyTo } : {}) })
     sent++

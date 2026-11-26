@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ButtonLink, Card, cx, EmptyState, ErrorState, PageHeader, Segmented, Skeleton } from '@/components/ui'
 import { ReviewPrompt } from '@/components/ReviewPrompt'
+import { BlockerPrompt } from '@/components/BlockerPrompt'
 import { LaunchChecklist } from '@/components/LaunchChecklist'
 import { useCan, useCurrentStore } from '@/hooks/auth'
 import { usePaymentAccounts, useProducts, useStats, useZones } from '@/hooks/resources'
@@ -207,6 +208,7 @@ export default function Dashboard() {
         actions={<Segmented label="Période" value={preset} onChange={setPreset} options={PRESETS.map((p) => ({ value: p.value, label: p.label }))} />}
       />
       <LaunchChecklist />
+      <BlockerPrompt />
       <ReviewPrompt />
     </>
   )

@@ -8,6 +8,7 @@ import { useToast } from '@/components/Toast'
 import { Badge, Button, cx, ErrorState, Segmented, Skeleton } from '@/components/ui'
 import { useCan, useCurrency, useCurrentStore, useMe, useStoreId } from '@/hooks/auth'
 import { useProduct, useSaveProduct } from '@/hooks/resources'
+import { trackSeller } from '@/lib/sellerEvents'
 import { serverErrors, validate, type Errors } from '@/lib/form'
 import type { Product } from '@/lib/types'
 import { BundleSection, FunnelSection } from './editor/funnel'
@@ -103,6 +104,9 @@ function toPayload(f: Form): Form {
 
 function Editor({ initial, productId }: { initial: Form; productId: string | null }) {
   const { data: me } = useMe()
+  useEffect(() => {
+    if (!productId) trackSeller('product_editor_open', storeId)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const storeId = useStoreId()
   const currency = useCurrency()
   const navigate = useNavigate()
@@ -145,6 +149,7 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
     const v = validate(productInputSchema, payload)
     if (v.errors) {
       setErrors(v.errors)
+      if (!productId) trackSeller('product_save_error', storeId, { message: `Champs à corriger : ${Object.keys(v.errors).slice(0, 5).join(', ')}`, fields: Object.keys(v.errors).slice(0, 20), where: 'formulaire' })
       const first = tabs.find((t) => Object.keys(v.errors).some(t.match))
       if (first) setTab(first.id)
       toast.error('Certains champs sont à corriger')
@@ -165,6 +170,7 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
           }
         },
         onError: (err) => {
+          if (!productId) trackSeller('product_save_error', storeId, { message: (err instanceof Error ? err.message : 'Erreur').slice(0, 280), where: 'serveur' })
           const fe = serverErrors(err)
           if (fe) {
             setErrors(fe)
