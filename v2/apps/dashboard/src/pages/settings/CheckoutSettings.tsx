@@ -4,14 +4,14 @@ import { DragHandle, draggingClass, useSortable } from '@/components/Sortable'
 import { useState, type FormEvent } from 'react'
 import { useToast } from '@/components/Toast'
 import { Button, Card, cx, ErrorState, Field, Input, Segmented, Select, Skeleton, Switch, TagInput } from '@/components/ui'
-import { useCheckoutSettings, usePromoCodes, useSaveCheckoutSettings } from '@/hooks/resources'
+import { useCheckoutSettings, useProducts, usePromoCodes, useSaveCheckoutSettings } from '@/hooks/resources'
 import { useCurrentStore, useMe } from '@/hooks/auth'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { serverErrors, validate, type Errors } from '@/lib/form'
 import { CTA_STYLE_LABEL, PAGE_BLOCK_LABEL, TEMPLATE_LABEL } from '@/lib/labels'
 import { SaveBar } from '@/components/SaveBar'
-import { NumberField } from '../products/editor/fields'
+import { ListEditor, NumberField } from '../products/editor/fields'
 
 const PAYMENT_LOGOS = ['mtn', 'moov', 'orange', 'wave', 'free', 'airtel', 'mpesa', 'visa', 'mastercard', 'paypal', 'celtiis', 'togocom']
 
@@ -289,10 +289,31 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
 
         <Card title="Popup de ventes récentes">
           <div className="space-y-4">
-            <Switch checked={s.salesPopup.enabled} onChange={(enabled) => set({ salesPopup: { ...s.salesPopup, enabled } })} label="Afficher les ventes récentes" description="« Awa de Cotonou vient de commander… » : uniquement vos vraies commandes, jamais de ventes inventées." />
+            <Switch checked={s.salesPopup.enabled} onChange={(enabled) => set({ salesPopup: { ...s.salesPopup, enabled } })} label="Afficher les ventes récentes" description="« Awa de Cotonou vient de commander… » : vos vraies commandes récentes, et les messages que vous ajoutez ci-dessous." />
             {s.salesPopup.enabled && (
               <>
                 <NumberField label="Intervalle" value={s.salesPopup.intervalSeconds} onChange={(v) => set({ salesPopup: { ...s.salesPopup, intervalSeconds: v ?? 20 } })} suffix="s" wrapClass="sm:max-w-xs" error={errors['salesPopup.intervalSeconds']} />
+                <Input
+                  label="Texte du message"
+                  optional
+                  value={s.salesPopup.template ?? ''}
+                  onChange={(e) => set({ salesPopup: { ...s.salesPopup, template: e.target.value || undefined } })}
+                  maxLength={160}
+                  placeholder="{prenom} de {ville} vient de commander « {produit} »"
+                  hint="Repères remplacés automatiquement : {prenom}, {ville}, {produit}. Vide : texte par défaut."
+                />
+                <SalesPopupEntries entries={s.salesPopup.entries ?? []} onChange={(entries) => set({ salesPopup: { ...s.salesPopup, entries } })} errors={errors} />
+                {(s.salesPopup.entries ?? []).length > 0 && (
+                  <Input
+                    label="Moment affiché sous vos entrées"
+                    optional
+                    value={s.salesPopup.recentLabel ?? ''}
+                    onChange={(e) => set({ salesPopup: { ...s.salesPopup, recentLabel: e.target.value || undefined } })}
+                    maxLength={40}
+                    placeholder="récemment"
+                    wrapClass="sm:max-w-xs"
+                  />
+                )}
                 <RecentSalesCount />
               </>
             )}
@@ -336,11 +357,38 @@ function RecentSalesCount() {
   if (!data) return null
   return data.length ? (
     <p className="text-[13px] text-muted">
-      <strong className="text-fg">{data.length}</strong> vente{data.length > 1 ? 's' : ''} récente{data.length > 1 ? 's' : ''} à afficher. La popup apparaît quelques secondes après l’ouverture de la page.
+      <strong className="text-fg">{data.length}</strong> message{data.length > 1 ? 's' : ''} à afficher (commandes récentes et messages ajoutés), une fois les réglages enregistrés. La popup apparaît quelques secondes après l’ouverture de la page.
     </p>
   ) : (
     <p className="rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-      Aucune vente à afficher pour l’instant : la popup apparaîtra dès vos premières commandes confirmées, payées ou livrées (14 derniers jours). Elle ne montre jamais de ventes inventées.
+      Rien à afficher pour l’instant : ajoutez des messages ci-dessus, ou la popup montrera vos commandes confirmées, payées ou livrées des 14 derniers jours.
     </p>
+  )
+}
+
+type PopupEntry = NonNullable<CheckoutSettings['salesPopup']['entries']>[number]
+
+/** Entrées de la popup ajoutées à la main, comme les avis : prénom, ville, produit, texte libre facultatif. */
+function SalesPopupEntries({ entries, onChange, errors }: { entries: PopupEntry[]; onChange: (e: PopupEntry[]) => void; errors: Errors }) {
+  const { data: products } = useProducts()
+  return (
+    <Field label="Messages à afficher" hint="Ils s’ajoutent aux vraies commandes de la boutique, qui passent en premier.">
+      <datalist id="popup-products">{products?.map((p) => <option key={p.id} value={p.name} />)}</datalist>
+      <ListEditor<PopupEntry>
+        items={entries}
+        onChange={onChange}
+        create={() => ({ firstName: '', product: products?.[0]?.name ?? '' })}
+        addLabel="Ajouter un message"
+        max={30}
+        render={(e, update, i) => (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Input aria-label="Prénom" placeholder="Prénom" value={e.firstName} onChange={(ev) => update({ firstName: ev.target.value })} error={errors[`salesPopup.entries.${i}.firstName`]} />
+            <Input aria-label="Ville" placeholder="Ville (facultatif)" value={e.city ?? ''} onChange={(ev) => update({ city: ev.target.value || undefined })} />
+            <Input aria-label="Produit" placeholder="Produit" list="popup-products" value={e.product} onChange={(ev) => update({ product: ev.target.value })} error={errors[`salesPopup.entries.${i}.product`]} />
+            <Input aria-label="Texte libre" placeholder="Texte libre (facultatif), ex. {prenom} a pris 2 boîtes" value={e.text ?? ''} onChange={(ev) => update({ text: ev.target.value || undefined })} maxLength={160} wrapClass="sm:col-span-3" />
+          </div>
+        )}
+      />
+    </Field>
   )
 }

@@ -205,7 +205,7 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: isPreview ? nul
 
   {
     checkout.salesPopup?.enabled && (
-      <div id="sf-popup" class="popup" role="status" aria-live="polite" data-slug={store.slug} data-interval={checkout.salesPopup.intervalSeconds} data-bought={t.justBought} data-from={t.from} data-ago={JSON.stringify(t.ago)} />
+      <div id="sf-popup" class="popup" role="status" aria-live="polite" data-slug={store.slug} data-interval={checkout.salesPopup.intervalSeconds} data-bought={t.justBought} data-from={t.from} data-ago={JSON.stringify(t.ago)} data-template={checkout.salesPopup.template ?? ''} data-recent={checkout.salesPopup.recentLabel || (store.locale === 'en' ? 'recently' : 'récemment')} />
     )
   }
 

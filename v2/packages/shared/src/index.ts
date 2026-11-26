@@ -703,10 +703,27 @@ export const checkoutSettingsSchema = z.object({
     .object({
       enabled: z.boolean().default(false),
       intervalSeconds: z.number().int().min(5).max(600).default(20),
-      /** Si vrai, n'affiche que de vraies ventes récentes (prénom + ville). */
+      /** Ancien réglage, sans effet : seules de vraies ventes sont montrées. */
       realSalesOnly: z.boolean().default(true),
+      /** Entrées ajoutées par le vendeur (comme les avis) : prénom, ville, produit ; affichées avec « récemment ». */
+      entries: z
+        .array(
+          z.object({
+            firstName: z.string().trim().min(1, 'Prénom').max(40),
+            city: z.string().trim().max(60).optional(),
+            product: z.string().trim().min(1, 'Produit').max(120),
+            /** Texte libre de cette entrée (remplace le modèle), avec {prenom}, {ville}, {produit}. */
+            text: z.string().trim().max(160).optional(),
+          }),
+        )
+        .max(30)
+        .default([]),
+      /** Modèle du message : {prenom}, {ville}, {produit}. Vide = texte par défaut de la langue de la boutique. */
+      template: z.string().trim().max(160).optional(),
+      /** Petit texte sous le message pour les entrées ajoutées (défaut : « récemment »). */
+      recentLabel: z.string().trim().max(40).optional(),
     })
-    .default({ enabled: false, intervalSeconds: 20, realSalesOnly: true }),
+    .default({ enabled: false, intervalSeconds: 20, realSalesOnly: true, entries: [] }),
   abandonedCart: z
     .object({
       enabled: z.boolean().default(false),

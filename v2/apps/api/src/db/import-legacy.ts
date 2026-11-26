@@ -123,7 +123,7 @@ function checkout(c: Row | undefined): { settings: CheckoutSettings; tracking: R
       viewers: u.social_proof ? { enabled: Boolean(u.social_proof.enabled), base: Math.min(500, Math.max(1, num(u.social_proof.viewer_count, 12))) } : undefined,
     },
     // Les anciennes « ventes » du popup étaient fictives : on passe en vraies ventes uniquement.
-    salesPopup: { enabled: Boolean(json<Row>(c.sales_popup, {}).enabled), intervalSeconds: Math.min(600, Math.max(5, num(json<Row>(c.sales_popup, {}).interval_seconds, 20))), realSalesOnly: true },
+    salesPopup: { enabled: Boolean(json<Row>(c.sales_popup, {}).enabled), intervalSeconds: Math.min(600, Math.max(5, num(json<Row>(c.sales_popup, {}).interval_seconds, 20))), realSalesOnly: true, entries: [] },
     abandonedCart: { enabled: false, promoCodeId: null },
   }
   return { settings, tracking: json<Row>(c.tracking_config, {}) }
