@@ -1,13 +1,14 @@
 import { productContentSchema, productInputSchema, type ProductType } from '@zuri/shared'
-import { ArrowLeft, Box, Eye, FileDown, Sparkles } from 'lucide-react'
+import { ArrowLeft, Box, Eye, FileDown, Rocket, Sparkles } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useBeforeUnload, useBlocker, useNavigate, useParams } from 'react-router'
+import { useQueryClient } from '@tanstack/react-query'
+import { Link, useBeforeUnload, useBlocker, useLocation, useNavigate, useParams } from 'react-router'
 import { ConfirmDialog } from '@/components/Dialog'
 import { SaveBar } from '@/components/SaveBar'
 import { useToast } from '@/components/Toast'
 import { Badge, Button, cx, ErrorState, Segmented, Skeleton } from '@/components/ui'
 import { useCan, useCurrency, useCurrentStore, useMe, useStoreId } from '@/hooks/auth'
-import { useProduct, useSaveProduct } from '@/hooks/resources'
+import { keys, useProduct, useSaveProduct } from '@/hooks/resources'
 import { trackSeller } from '@/lib/sellerEvents'
 import { api } from '@/lib/api'
 import { productPreviewUrl } from '@/lib/storefront'
@@ -139,6 +140,27 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
   const canEdit = useCan('products.edit')
   const storeKind = useCurrentStore().store?.kind ?? null
   const storeSlug = useCurrentStore().store?.slug ?? null
+  const location = useLocation()
+  const qc = useQueryClient()
+  // Produit enregistré sans être en vente : on le rappelle tout de suite, avec la mise en vente en un clic.
+  const [askActivate, setAskActivate] = useState(() => Boolean((location.state as { askActivate?: boolean } | null)?.askActivate))
+  const [activating, setActivating] = useState(false)
+  const activate = async () => {
+    if (!productId) return
+    setActivating(true)
+    try {
+      await api.patch(`/stores/${storeId}/products/${productId}/active`, { isActive: true })
+      setForm((f) => ({ ...f, isActive: true }))
+      setSaved((prev) => JSON.stringify({ ...(JSON.parse(prev) as Form), isActive: true }))
+      setAskActivate(false)
+      void qc.invalidateQueries({ queryKey: keys.products(storeId) })
+      toast.success('Produit en vente : il est visible dans votre boutique et peut recevoir des commandes')
+    } catch (e) {
+      toast.error(e)
+    } finally {
+      setActivating(false)
+    }
+  }
   /** Aperçu dans un nouvel onglet : la dernière version enregistrée, produit actif ou non, hors statistiques. */
   const openPreview = async () => {
     if (!productId || !storeSlug) return
@@ -205,9 +227,10 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
           setForm(next)
           setSaved(JSON.stringify(next))
           toast.success(productId ? 'Produit enregistré' : 'Produit créé')
+          setAskActivate(!p.isActive)
           if (!productId) {
             leaving.current = true
-            navigate(`/stores/${storeId}/products/${p.id}`, { replace: true })
+            navigate(`/stores/${storeId}/products/${p.id}`, { replace: true, state: { askActivate: !p.isActive } })
           }
         },
         onError: (err) => {
@@ -264,6 +287,24 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
           </div>
         </div>
       </div>
+
+      {askActivate && productId && canEdit && !form.isActive && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3" role="status">
+          <Rocket className="size-5 shrink-0 text-accent" aria-hidden />
+          <p className="min-w-0 flex-1 text-sm">
+            <span className="font-semibold">Votre produit est enregistré, mais pas encore en vente.</span>{' '}
+            <span className="text-muted">Il n’apparaît pas dans votre boutique et ne peut pas recevoir de commandes.</span>
+          </p>
+          <div className="flex gap-2">
+            <Button variant="primary" size="sm" loading={activating} onClick={() => void activate()}>
+              Mettre en vente
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setAskActivate(false)}>
+              Plus tard
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         {/* Le type suit la boutique ; le sélecteur n'apparaît que pour un ancien produit d'un autre type. */}
