@@ -14,7 +14,7 @@ import { v } from '../lib/validate'
 import { aiAvailable } from '../services/ai-suggest'
 import { imageRegenerationStatus, rewriteDescription, startImageRegeneration } from '../services/ai-description'
 import { resolveFeatures } from '../services/platform'
-import { maybeTask, readTask } from '../services/tasks'
+import { keepAliveJson, maybeTask, readTask } from '../services/tasks'
 import { assertPublicUrl } from '../services/remote'
 
 export const productAiRoutes = new Hono<AppEnv>()
@@ -50,7 +50,16 @@ export const productAiRoutes = new Hono<AppEnv>()
     async (c) => {
       const store = c.get('store')
       const { type, ...body } = c.req.valid('json')
-      return maybeTask(c, () => rewriteDescription({ ...body, price: body.price ?? null, currency: store.currency, kind: type ?? (store.kind === 'digital' ? 'digital' : 'physical') }))
+      const work = () => rewriteDescription({ ...body, price: body.price ?? null, currency: store.currency, kind: type ?? (store.kind === 'digital' ? 'digital' : 'physical') })
+      // Nouveau tableau de bord : arrière-plan. Clé d'API ou MCP : réponse directe. Ancien tableau de bord : connexion maintenue.
+      if (c.req.header('x-async') === '1' || c.req.header('authorization')) return maybeTask(c, work)
+      return keepAliveJson(c, work(), (e) => ({
+        // Échec après le début de la réponse : description d'origine intacte, raison affichée à la place de l'explication.
+        framework: 'PASA',
+        reason: `La réécriture n’a pas abouti : ${e instanceof HttpError ? e.message : 'erreur du service de rédaction'} Votre texte n’a pas été modifié, réessayez.`,
+        description: body.description,
+        images: 0,
+      }))
     },
   )
   .post(

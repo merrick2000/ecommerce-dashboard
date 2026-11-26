@@ -63,3 +63,45 @@ export async function maybeTask(c: Context<AppEnv>, work: () => Promise<unknown>
   if (c.req.header('x-async') === '1') return startTask(c, work, okStatus)
   return c.json((await work()) as object, okStatus)
 }
+
+/**
+ * Pour l'ancien tableau de bord (sans mode arrière-plan) : si le travail dépasse 3 s, la réponse démarre
+ * tout de suite et un espace est envoyé toutes les 5 s, pour que les relais ne coupent pas une connexion
+ * silencieuse ; le JSON arrive à la fin (les espaces avant sont ignorés à la lecture).
+ * Le statut 200 part avant la fin : un échec tardif est renvoyé sous la forme donnée par `onLateError`.
+ */
+export async function keepAliveJson(c: Context<AppEnv>, work: Promise<unknown>, onLateError: (e: unknown) => object): Promise<Response> {
+  const settled = work.then(
+    (value) => ({ ok: true as const, value }),
+    (error: unknown) => ({ ok: false as const, error }),
+  )
+  const first = await Promise.race([settled, new Promise<null>((r) => setTimeout(() => r(null), 3000))])
+  if (first) {
+    if (first.ok) return c.json(first.value as object)
+    throw first.error
+  }
+  const enc = new TextEncoder()
+  const stream = new ReadableStream<Uint8Array>({
+    async start(ctrl) {
+      const push = (s: string) => {
+        try {
+          ctrl.enqueue(enc.encode(s))
+        } catch {
+          /* client parti */
+        }
+      }
+      push(' ')
+      const timer = setInterval(() => push(' '), 5000)
+      const r = await settled
+      clearInterval(timer)
+      if (!r.ok && !(r.error instanceof HttpError)) console.error('[réponse longue]', r.error)
+      push(JSON.stringify(r.ok ? r.value : onLateError(r.error)))
+      try {
+        ctrl.close()
+      } catch {
+        /* déjà fermé */
+      }
+    },
+  })
+  return new Response(stream, { status: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-accel-buffering': 'no' } })
+}

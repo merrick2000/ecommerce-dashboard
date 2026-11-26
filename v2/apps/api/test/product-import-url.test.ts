@@ -277,6 +277,27 @@ describe('rédaction IA : description PASA / AIDA et images', () => {
     expect(prompt).not.toContain('cdn.exemple.com')
   })
 
+  test('réécriture longue avec l’ancien tableau de bord : connexion maintenue, résultat complet ; échec tardif sans perte du texte', async () => {
+    ;(env as { KIE_API_KEY?: string }).KIE_API_KEY = 'cle-de-test'
+    mockFetch(async () => {
+      await Bun.sleep(3600)
+      return Response.json({ content: [{ type: 'tool_use', name: 'description', input: { framework: 'AIDA', reason: 'Produit qui se vend par l’envie.', description: `<p>Nouveau texte complet.</p>${'<p>Le support tient le téléphone sur les routes les plus difficiles, sans bouger, même sur les pistes.</p>'.repeat(6)}` } }] })
+    })
+    const slow = await owner.req('POST', `/api/stores/${storeId}/products/ai/rewrite-description`, { name: 'ROBO-MOUNT', description: FLAT, features: ['Ventouse'], price: 8900 })
+    expect(slow.status).toBe(200)
+    expect(slow.body).toMatchObject({ framework: 'AIDA' })
+    expect(slow.body.description).toContain('Nouveau texte complet.')
+
+    mockFetch(async () => {
+      await Bun.sleep(3600)
+      return new Response('panne', { status: 500 })
+    })
+    const late = await owner.req('POST', `/api/stores/${storeId}/products/ai/rewrite-description`, { name: 'ROBO-MOUNT', description: FLAT, features: [], price: 8900 })
+    expect(late.status).toBe(200)
+    expect(late.body.description).toBe(FLAT)
+    expect(late.body.reason).toContain('n’a pas abouti')
+  }, 20_000)
+
   test('opérations longues en arrière-plan : réponse immédiate, résultat suivi, plus de 13 images acceptées', async () => {
     mockFetch(() => new Response('pas une image', { headers: { 'content-type': 'image/jpeg' } }))
     owner.headers = { 'x-async': '1' }
