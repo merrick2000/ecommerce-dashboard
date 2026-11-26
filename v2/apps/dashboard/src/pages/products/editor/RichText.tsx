@@ -61,6 +61,72 @@ const HIGHLIGHTS = [
   { label: 'Orange', value: '#fed7aa' },
 ]
 
+/** Image avec taille (largeur en %) et alignement, gardés dans le HTML : style="width:50%" et data-align. */
+const SIZES = [25, 50, 75, 100] as const
+const SizedImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: {
+        default: null,
+        parseHTML: (el) => {
+          const m = /width:\s*(25|50|75|100)%/.exec(el.getAttribute('style') ?? '')
+          return m ? Number(m[1]) : null
+        },
+        renderHTML: (attrs) => (attrs.width && attrs.width !== 100 ? { style: `width:${attrs.width}%` } : {}),
+      },
+      align: {
+        default: null,
+        parseHTML: (el) => {
+          const a = el.getAttribute('data-align')
+          return a === 'left' || a === 'right' || a === 'center' ? a : null
+        },
+        renderHTML: (attrs) => (attrs.align && attrs.align !== 'center' ? { 'data-align': attrs.align } : {}),
+      },
+    }
+  },
+})
+
+/** Menu sur une image sélectionnée : taille et alignement. */
+function ImageMenu({ editor }: { editor: Editor }) {
+  const attrs = useEditorState({ editor, selector: ({ editor: e }) => ({ width: (e.getAttributes('image').width as number | null) ?? 100, align: (e.getAttributes('image').align as string | null) ?? 'center' }) })
+  const setAttr = (v: Record<string, unknown>) => editor.chain().focus().updateAttributes('image', v).run()
+  return (
+    <BubbleMenu
+      editor={editor}
+      pluginKey="imageMenu"
+      shouldShow={({ editor: e }) => e.isEditable && e.isActive('image')}
+      appendTo={() => document.body}
+      options={{ strategy: 'fixed', placement: 'top', offset: 8, flip: true, shift: { padding: 8 } }}
+      className="z-50 flex items-center gap-0.5 rounded-lg border border-line bg-surface p-1 shadow-lg"
+    >
+      {SIZES.map((w) => (
+        <button
+          key={w}
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => setAttr({ width: w === 100 ? null : w })}
+          aria-pressed={attrs.width === w}
+          title={w === 100 ? 'Pleine largeur' : `Largeur ${w} %`}
+          className={cx('h-8 rounded-md px-2 text-[12px] font-semibold text-muted hover:bg-surface-2 hover:text-fg', attrs.width === w && 'bg-accent/10 text-accent hover:bg-accent/15 hover:text-accent')}
+        >
+          {w === 100 ? 'Pleine' : `${w} %`}
+        </button>
+      ))}
+      <Sep />
+      <Tool label="Image à gauche" active={attrs.align === 'left'} onClick={() => setAttr({ align: 'left' })}>
+        <AlignLeft className="size-4" />
+      </Tool>
+      <Tool label="Image centrée" active={attrs.align === 'center'} onClick={() => setAttr({ align: null })}>
+        <AlignCenter className="size-4" />
+      </Tool>
+      <Tool label="Image à droite" active={attrs.align === 'right'} onClick={() => setAttr({ align: 'right' })}>
+        <AlignRight className="size-4" />
+      </Tool>
+    </BubbleMenu>
+  )
+}
+
 function Tool({ onClick, active, label, children, disabled }: { onClick: () => void; active?: boolean; label: string; children: ReactNode; disabled?: boolean }) {
   return (
     <button
@@ -368,7 +434,7 @@ export default function RichText({ value, onChange, placeholder, label, images }
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [2, 3] }, link: { openOnClick: false, autolink: true, protocols: ['http', 'https', 'mailto', 'tel'] } }),
-      Image.configure({ inline: false }),
+      SizedImage.configure({ inline: false }),
       TextStyle,
       Color,
       BackgroundColor,
@@ -392,6 +458,7 @@ export default function RichText({ value, onChange, placeholder, label, images }
       <Toolbar editor={editor} images={images} />
       <EditorContent editor={editor} />
       <SelectionMenu editor={editor} />
+      <ImageMenu editor={editor} />
     </div>
   )
 }

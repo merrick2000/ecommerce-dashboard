@@ -531,9 +531,18 @@ p {
   margin: 1em 0;
 }
 .prose:where(:not(.custom-page *)) img {
+  display: block;
+  max-width: 100%;
   height: auto;
   border-radius: 10px;
   margin: 12px auto;
+}
+/* Image réduite et alignée depuis l'éditeur (largeur en %, data-align). */
+.prose:where(:not(.custom-page *)) img[data-align='left'] {
+  margin-left: 0;
+}
+.prose:where(:not(.custom-page *)) img[data-align='right'] {
+  margin-right: 0;
 }
 .prose:where(:not(.custom-page *)) blockquote {
   margin: 1em 0;

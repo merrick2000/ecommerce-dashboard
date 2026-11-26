@@ -28,6 +28,8 @@ export function sanitizeHtml(html: string): string {
         'background-color': [/^#[0-9a-f]{3,8}$/i, /^rgb\(/i],
         'text-align': [/^(left|right|center|justify)$/],
         'font-weight': [/^\d{3}$|^bold$/],
+        // Taille d'une image de description (menu de l'éditeur) : seulement ces largeurs.
+        width: [/^(25|50|75|100)%$/],
       },
     },
     transformTags: {
