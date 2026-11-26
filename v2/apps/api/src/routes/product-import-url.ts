@@ -13,6 +13,7 @@ import type { AppEnv } from '../lib/context'
 import { badRequest } from '../lib/errors'
 import { rateLimit } from '../lib/rate-limit'
 import { v } from '../lib/validate'
+import { maybeTask } from '../services/tasks'
 import { logActivity } from '../services/activity'
 import { aiAvailable, suggestImprovements } from '../services/ai-suggest'
 import { createProduct } from '../services/product-write'
@@ -58,8 +59,9 @@ export const productImportUrlRoutes = new Hono<AppEnv>()
   .get('/config', async (c) => c.json({ aiAvailable: aiAvailable(), browserAvailable: await firecrawlAvailable(), enabled: (await resolveFeatures(c.get('user'))).urlImport }))
   .post('/preview', rateLimit({ key: 'import-url', limit: 20, windowSec: 600 }), v('json', z.object({ url: z.string().trim().url().max(2000) })), async (c) => {
     await assertFeature(await planForStore(c.get('store').id), 'aiImport')
-    const preview = await previewFromUrl(c.req.valid('json').url, c.get('store').currency, c.get('store').kind)
-    return c.json({ ...preview, aiAvailable: aiAvailable() })
+    const { url } = c.req.valid('json')
+    const store = c.get('store')
+    return maybeTask(c, async () => ({ ...(await previewFromUrl(url, store.currency, store.kind)), aiAvailable: aiAvailable() }))
   })
   /** Secours quand un site bloque toute lecture : le vendeur colle le texte de la page, l'IA remplit la fiche. */
   .post(
@@ -70,7 +72,8 @@ export const productImportUrlRoutes = new Hono<AppEnv>()
       await assertFeature(await planForStore(c.get('store').id), 'aiImport')
       if (!aiAvailable()) throw badRequest('Analyse IA non configurée', 'ai_unavailable')
       const { text, url } = c.req.valid('json')
-      return c.json({ ...(await previewFromText(text, c.get('store').currency, url ?? null, c.get('store').kind)), aiAvailable: true })
+      const store = c.get('store')
+      return maybeTask(c, async () => ({ ...(await previewFromText(text, store.currency, url ?? null, store.kind)), aiAvailable: true }))
     },
   )
   .post(
@@ -79,98 +82,103 @@ export const productImportUrlRoutes = new Hono<AppEnv>()
     v('json', z.object({ draft: draftSchema.partial({ price: true }).extend({ name: z.string().max(160) }), currency: z.string().max(3).nullable().optional(), brand: z.string().max(80).nullable().optional(), goal: z.string().max(300).optional() })),
     async (c) => {
       const { draft, currency, brand, goal } = c.req.valid('json')
-      const s = await suggestImprovements({
-        name: draft.name,
-        description: stripTags(draft.description ?? ''),
-        price: draft.price ?? null,
-        currency: currency ?? null,
-        storeCurrency: c.get('store').currency,
-        features: draft.features ?? [],
-        variants: (draft.variants ?? []).map((x) => x.name),
-        brand: brand ?? null,
-        goal,
+      return maybeTask(c, async () => {
+        const s = await suggestImprovements({
+          name: draft.name,
+          description: stripTags(draft.description ?? ''),
+          price: draft.price ?? null,
+          currency: currency ?? null,
+          storeCurrency: c.get('store').currency,
+          features: draft.features ?? [],
+          variants: (draft.variants ?? []).map((x) => x.name),
+          brand: brand ?? null,
+          goal,
       })
       // Sortie du modèle : HTML nettoyé et ponctuation conforme, comme tout contenu vendeur.
-      return c.json({
+      return {
         name: noDash(s.name),
         kicker: noDash(s.kicker),
         headline: noDash(s.headline),
         tagline: noDash(s.tagline),
         features: s.features.map(noDash).filter(Boolean),
         faqs: s.faqs.map((f) => ({ question: noDash(f.question), answer: noDash(f.answer) })).filter((f) => f.question && f.answer),
+      }
       })
     },
   )
   .post(
     '/commit',
     rateLimit({ key: 'import-commit', limit: 30, windowSec: 600 }),
-    v('json', z.object({ draft: draftSchema, imageUrls: z.array(z.string().url().max(2000)).max(13).default([]), activate: z.boolean().default(false), sourceUrl: z.string().url().max(2000).optional() })),
+    v('json', z.object({ draft: draftSchema, imageUrls: z.array(z.string().url().max(2000)).max(60).default([]), activate: z.boolean().default(false), sourceUrl: z.string().url().max(2000).optional() })),
     async (c) => {
       const store = c.get('store')
       const { draft, imageUrls, activate, sourceUrl } = c.req.valid('json')
-      const warnings: string[] = []
+      return maybeTask(c, async () => {
+        const warnings: string[] = []
+        if (new Set(imageUrls).size > 13) warnings.push('Seules les 13 premières images ont été gardées (une couverture et 12 dans la galerie).')
 
-      // Images : 1re = couverture (et miniature), suivantes = galerie ; 3 téléchargements à la fois.
-      const urls = [...new Set(imageUrls)].slice(0, 13)
-      const stored: (string | null)[] = new Array(urls.length).fill(null)
-      let thumbnail: string | null = null
-      const jobs = urls.map((u, i) => async () => {
-        try {
-          stored[i] = await importRemoteImage(store.id, u, i === 0 ? 'cover' : 'gallery')
-          if (i === 0) thumbnail = await importRemoteImage(store.id, u, 'thumbnail').catch(() => stored[0] ?? null)
-        } catch {
-          warnings.push(`Image ${i + 1} non importée (inaccessible ou format non supporté).`)
+        // Images : 1re = couverture (et miniature), suivantes = galerie ; 3 téléchargements à la fois.
+        const urls = [...new Set(imageUrls)].slice(0, 13)
+        const stored: (string | null)[] = new Array(urls.length).fill(null)
+        let thumbnail: string | null = null
+        const jobs = urls.map((u, i) => async () => {
+          try {
+            stored[i] = await importRemoteImage(store.id, u, i === 0 ? 'cover' : 'gallery')
+            if (i === 0) thumbnail = await importRemoteImage(store.id, u, 'thumbnail').catch(() => stored[0] ?? null)
+          } catch {
+            warnings.push(`Image ${i + 1} non importée (inaccessible ou format non supporté).`)
+          }
+        })
+        for (let k = 0; k < jobs.length; k += 3) await Promise.all(jobs.slice(k, k + 3).map((j) => j()))
+        const images = stored.filter((x): x is string => !!x)
+        const cover = images[0] ?? null
+
+        // Images de la description gardées depuis le site source : copiées chez nous (elles peuvent disparaître).
+        const ours = (publicUrl('x') ?? '').slice(0, -1)
+        let description = draft.description
+        const remote = descriptionImages(description).filter((i) => !ours || !i.src.startsWith(ours)).slice(0, 12)
+        for (let k = 0; k < remote.length; k += 3) {
+          await Promise.all(
+            remote.slice(k, k + 3).map(async ({ src }) => {
+              try {
+                const url = await importRemoteImage(store.id, src, 'gallery')
+                description = description.split(src).join(url).split(src.replace(/&/g, '&amp;')).join(url)
+              } catch {
+                warnings.push('Une image de la description n’a pas pu être copiée : elle reste chargée depuis le site source.')
+              }
+            }),
+          )
         }
-      })
-      for (let k = 0; k < jobs.length; k += 3) await Promise.all(jobs.slice(k, k + 3).map((j) => j()))
-      const images = stored.filter((x): x is string => !!x)
-      const cover = images[0] ?? null
 
-      // Images de la description gardées depuis le site source : copiées chez nous (elles peuvent disparaître).
-      const ours = (publicUrl('x') ?? '').slice(0, -1)
-      let description = draft.description
-      const remote = descriptionImages(description).filter((i) => !ours || !i.src.startsWith(ours)).slice(0, 12)
-      for (let k = 0; k < remote.length; k += 3) {
-        await Promise.all(
-          remote.slice(k, k + 3).map(async ({ src }) => {
-            try {
-              const url = await importRemoteImage(store.id, src, 'gallery')
-              description = description.split(src).join(url).split(src.replace(/&/g, '&amp;')).join(url)
-            } catch {
-              warnings.push('Une image de la description n’a pas pu être copiée : elle reste chargée depuis le site source.')
-            }
-          }),
-        )
-      }
+        const parsed = productInputSchema.safeParse({
+          type: store.kind === 'digital' ? 'digital' : 'physical',
+          name: noDash(draft.name),
+          isActive: activate,
+          description: noDash(description),
+          price: draft.price,
+          compareAtPrice: draft.compareAtPrice != null && draft.compareAtPrice > draft.price ? draft.compareAtPrice : null,
+          coverImage: cover,
+          thumbnail: thumbnail ?? cover,
+          // Produit digital : ni variantes ni stock (les formules se décrivent dans la page).
+          variantLabel: store.kind !== 'digital' && draft.variants.length ? (draft.variantLabel ?? 'Option') : null,
+          variants: store.kind === 'digital' ? [] : draft.variants.map((x) => ({ name: noDash(x.name).slice(0, 80), sku: x.sku, price: x.price, isActive: x.available })),
+          content: {
+            gallery: images.slice(1, 13),
+            features: draft.features.map(noDash),
+            faqs: draft.faqs.map((f) => ({ question: noDash(f.question), answer: noDash(f.answer) })),
+            testimonials: draft.testimonials.map((t) => ({ ...t, text: noDash(t.text) })),
+            video: draft.video ? { url: draft.video, position: 'before_description' } : null,
+            kicker: draft.kicker ? noDash(draft.kicker) : undefined,
+            headline: draft.headline ? noDash(draft.headline) : undefined,
+            tagline: draft.tagline ? noDash(draft.tagline) : undefined,
+          },
+        })
+        if (!parsed.success) throw badRequest(`Produit invalide : ${parsed.error.issues[0]?.path.join('.')} ${parsed.error.issues[0]?.message ?? ''}`.trim())
 
-      const parsed = productInputSchema.safeParse({
-        type: store.kind === 'digital' ? 'digital' : 'physical',
-        name: noDash(draft.name),
-        isActive: activate,
-        description: noDash(description),
-        price: draft.price,
-        compareAtPrice: draft.compareAtPrice != null && draft.compareAtPrice > draft.price ? draft.compareAtPrice : null,
-        coverImage: cover,
-        thumbnail: thumbnail ?? cover,
-        // Produit digital : ni variantes ni stock (les formules se décrivent dans la page).
-        variantLabel: store.kind !== 'digital' && draft.variants.length ? (draft.variantLabel ?? 'Option') : null,
-        variants: store.kind === 'digital' ? [] : draft.variants.map((x) => ({ name: noDash(x.name).slice(0, 80), sku: x.sku, price: x.price, isActive: x.available })),
-        content: {
-          gallery: images.slice(1, 13),
-          features: draft.features.map(noDash),
-          faqs: draft.faqs.map((f) => ({ question: noDash(f.question), answer: noDash(f.answer) })),
-          testimonials: draft.testimonials.map((t) => ({ ...t, text: noDash(t.text) })),
-          video: draft.video ? { url: draft.video, position: 'before_description' } : null,
-          kicker: draft.kicker ? noDash(draft.kicker) : undefined,
-          headline: draft.headline ? noDash(draft.headline) : undefined,
-          tagline: draft.tagline ? noDash(draft.tagline) : undefined,
-        },
-      })
-      if (!parsed.success) throw badRequest(`Produit invalide : ${parsed.error.issues[0]?.path.join('.')} ${parsed.error.issues[0]?.message ?? ''}`.trim())
-
-      const id = await createProduct(c.get('access'), store, parsed.data)
-      const domain = sourceUrl ? new URL(sourceUrl).hostname.replace(/^www\./, '') : null
-      await logActivity(c, { entityType: 'product', entityId: id, entityLabel: parsed.data.name, action: 'imported', message: domain ? `Produit importé depuis ${domain}` : 'Produit importé depuis une URL', productIds: [id] })
-      return c.json({ id, warnings, images: images.length }, 201)
+        const id = await createProduct(c.get('access'), store, parsed.data)
+        const domain = sourceUrl ? new URL(sourceUrl).hostname.replace(/^www\./, '') : null
+        await logActivity(c, { entityType: 'product', entityId: id, entityLabel: parsed.data.name, action: 'imported', message: domain ? `Produit importé depuis ${domain}` : 'Produit importé depuis une URL', productIds: [id] })
+        return { id, warnings, images: images.length }
+      }, 201)
     },
   )

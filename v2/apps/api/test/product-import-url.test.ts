@@ -277,6 +277,30 @@ describe('rédaction IA : description PASA / AIDA et images', () => {
     expect(prompt).not.toContain('cdn.exemple.com')
   })
 
+  test('opérations longues en arrière-plan : réponse immédiate, résultat suivi, plus de 13 images acceptées', async () => {
+    mockFetch(() => new Response('pas une image', { headers: { 'content-type': 'image/jpeg' } }))
+    owner.headers = { 'x-async': '1' }
+    const imageUrls = Array.from({ length: 15 }, (_, i) => `${BASE}/img/${i}.jpg`)
+    const start = await owner.post(`/api/stores/${storeId}/products/import/url/commit`, { draft: { ...DRAFT, name: 'Sac en arrière-plan' }, imageUrls })
+    owner.headers = {}
+    expect(start.status).toBe(202)
+    expect(start.body.taskId).toMatch(/^tsk_/)
+    let state = { status: 'pending' } as { status: string; httpStatus?: number; result?: { id: string; warnings: string[] } }
+    for (let i = 0; i < 50 && state.status === 'pending'; i++) {
+      await Bun.sleep(50)
+      state = (await owner.get(`/api/stores/${storeId}/products/ai/tasks/${start.body.taskId}`)).body
+    }
+    expect(state).toMatchObject({ status: 'done', httpStatus: 201 })
+    expect(state.result!.warnings.some((w) => w.includes('13 premières images'))).toBe(true)
+    const [p] = await db.select().from(products).where(eq(products.id, state.result!.id))
+    expect(p!.name).toBe('Sac en arrière-plan')
+    // Tâche réservée à celui qui l'a lancée ; tâche inconnue : message clair.
+    expect((await closer.get(`/api/stores/${storeId}/products/ai/tasks/${start.body.taskId}`)).status).toBe(403)
+    expect((await owner.get(`/api/stores/${storeId}/products/ai/tasks/tsk_inconnue`)).body.code).toBe('task_not_found')
+    // Sans l'en-tête (MCP, API) : réponse directe comme avant.
+    expect((await owner.post(`/api/stores/${storeId}/products/import/url/commit`, { draft: DRAFT })).status).toBe(201)
+  })
+
   test('régénération d’une image : lancement, suivi, image copiée chez nous une seule fois', async () => {
     ;(env as { KIE_API_KEY?: string }).KIE_API_KEY = 'cle-de-test'
     const { generatedImageStore } = await import('../src/services/ai-description')

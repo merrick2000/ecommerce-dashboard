@@ -65,6 +65,7 @@ interface RequestOptions {
   /** Ne pas déclencher la redirection sur 401 (ex. GET /auth/me). */
   silent401?: boolean
   signal?: AbortSignal
+  headers?: Record<string, string>
 }
 
 /** Combine le signal d'annulation de l'appelant et une limite de temps (compatible navigateurs anciens). */
@@ -93,7 +94,7 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
     res = await fetch(withQuery(`/api${path}`, opts.query), {
       method: opts.method ?? 'GET',
       credentials: 'include',
-      headers: opts.body !== undefined && !isForm ? { 'content-type': 'application/json' } : undefined,
+      headers: { ...(opts.body !== undefined && !isForm ? { 'content-type': 'application/json' } : {}), ...opts.headers },
       body: opts.body === undefined ? undefined : isForm ? (opts.body as FormData) : JSON.stringify(opts.body),
       signal,
     })
@@ -118,9 +119,43 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   return data as T
 }
 
+/**
+ * Opérations longues (rédaction IA, import par lien) : lancées en arrière-plan côté serveur, puis résultat
+ * demandé toutes les 2 s. Aucune connexion ne reste ouverte longtemps (les relais coupent au-delà de 60 s).
+ */
+const LONG_TASK = /^\/stores\/([^/]+)\/products\/(ai\/rewrite-description|import\/url\/(preview|preview-text|improve|commit))$/
+
+type TaskState<T> = { status: 'pending'; taskId?: string } | { status: 'done'; httpStatus: number; result: T } | { status: 'error'; httpStatus: number; error: ApiErrorBody }
+
+async function runTask<T>(path: string, body: unknown, storeId: string): Promise<T> {
+  const started = await request<{ taskId?: string; status?: string } & T>(path, { method: 'POST', body: body ?? {}, headers: { 'x-async': '1' } })
+  // Serveur pas encore à jour : il a répondu directement.
+  if (!started || typeof started !== 'object' || !('taskId' in started) || !started.taskId) return started as T
+  const deadline = Date.now() + 6 * 60_000
+  let misses = 0
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 2000))
+    let state: TaskState<T>
+    try {
+      state = await request<TaskState<T>>(`/stores/${storeId}/products/ai/tasks/${started.taskId}`)
+      misses = 0
+    } catch (e) {
+      // Coupure réseau ou redémarrage passager : on réessaie quelques fois avant d'abandonner.
+      if (e instanceof ApiError && (e.status === 0 || e.status >= 502) && ++misses < 5) continue
+      throw e
+    }
+    if (state.status === 'done') return state.result
+    if (state.status === 'error') throw new ApiError(state.httpStatus, state.error)
+  }
+  throw new ApiError(0, { error: 'L’opération prend trop de temps. Réessayez.', code: 'timeout' })
+}
+
 export const api = {
   get: <T>(path: string, query?: Query, signal?: AbortSignal) => request<T>(path, { query, signal }),
-  post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body: body ?? {} }),
+  post: <T>(path: string, body?: unknown) => {
+    const long = LONG_TASK.exec(path)
+    return long ? runTask<T>(path, body, long[1]!) : request<T>(path, { method: 'POST', body: body ?? {} })
+  },
   put: <T>(path: string, body: unknown) => request<T>(path, { method: 'PUT', body }),
   patch: <T>(path: string, body: unknown) => request<T>(path, { method: 'PATCH', body }),
   del: <T>(path: string) => request<T>(path, { method: 'DELETE' }),

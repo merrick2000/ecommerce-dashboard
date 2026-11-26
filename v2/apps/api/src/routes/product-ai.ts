@@ -14,6 +14,7 @@ import { v } from '../lib/validate'
 import { aiAvailable } from '../services/ai-suggest'
 import { imageRegenerationStatus, rewriteDescription, startImageRegeneration } from '../services/ai-description'
 import { resolveFeatures } from '../services/platform'
+import { maybeTask, readTask } from '../services/tasks'
 import { assertPublicUrl } from '../services/remote'
 
 export const productAiRoutes = new Hono<AppEnv>()
@@ -24,6 +25,8 @@ export const productAiRoutes = new Hono<AppEnv>()
     // Raison donnée seulement à ceux qui ont l'accès : un vendeur sans accès ne voit jamais rien.
     return c.json({ rewrite: enabled, images: enabled, reason: enabled ? 'ok' : open ? 'no_key' : 'closed' })
   })
+  /** Résultat d'une tâche longue (rédaction IA, import par lien) lancée en arrière-plan. */
+  .get('/tasks/:taskId', async (c) => c.json(readTask(c.req.param('taskId').slice(0, 60), c.get('store').id, c.get('user').id)))
   .use(async (c, next) => {
     if (!(await resolveFeatures(c.get('user'))).urlImport) throw new HttpError(403, 'La rédaction IA n’est pas encore ouverte sur ton compte.', 'ai_disabled')
     if (!aiAvailable()) throw new HttpError(404, 'Rédaction IA non configurée', 'ai_unavailable')
@@ -47,7 +50,7 @@ export const productAiRoutes = new Hono<AppEnv>()
     async (c) => {
       const store = c.get('store')
       const { type, ...body } = c.req.valid('json')
-      return c.json(await rewriteDescription({ ...body, price: body.price ?? null, currency: store.currency, kind: type ?? (store.kind === 'digital' ? 'digital' : 'physical') }))
+      return maybeTask(c, () => rewriteDescription({ ...body, price: body.price ?? null, currency: store.currency, kind: type ?? (store.kind === 'digital' ? 'digital' : 'physical') }))
     },
   )
   .post(
