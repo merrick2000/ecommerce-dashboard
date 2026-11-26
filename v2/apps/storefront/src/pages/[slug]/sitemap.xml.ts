@@ -11,7 +11,7 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 export const GET: APIRoute = async ({ params, locals }) => {
   let cat: StoreCatalog
   try {
-    cat = await apiGet<StoreCatalog>(`/stores/${encodeURIComponent(params.slug ?? '')}/catalog`)
+    cat = await apiGet<StoreCatalog>(`/stores/${encodeURIComponent(locals.hostSlug ?? params.slug ?? '')}/catalog`)
   } catch (e) {
     if (e instanceof ApiError && (e.status === 404 || e.status === 410)) return new Response('Not found', { status: 404 })
     throw e

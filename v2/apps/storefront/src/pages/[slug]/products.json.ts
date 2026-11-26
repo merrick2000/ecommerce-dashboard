@@ -10,7 +10,7 @@ export const prerender = false
 export const GET: APIRoute = async ({ params, locals }) => {
   let cat: StoreCatalog
   try {
-    cat = await apiGet<StoreCatalog>(`/stores/${encodeURIComponent(params.slug ?? '')}/catalog`)
+    cat = await apiGet<StoreCatalog>(`/stores/${encodeURIComponent(locals.hostSlug ?? params.slug ?? '')}/catalog`)
   } catch (e) {
     if (e instanceof ApiError && (e.status === 404 || e.status === 410)) return new Response('{"products":[]}', { status: 404, headers: { 'content-type': 'application/json' } })
     throw e
