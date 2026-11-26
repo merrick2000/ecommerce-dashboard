@@ -46,7 +46,10 @@ const schema = z.object({
   REGISTRATION_OPEN: z.enum(['true', 'false']).default('true'),
 })
 
-const parsed = schema.safeParse(process.env)
+// Variable vide (ex. « KIE_MODEL: ${KIE_MODEL:-} » dans docker-compose quand elle n'est pas définie) = absente :
+// sinon une valeur vide remplace la valeur par défaut (le modèle d'IA partait vide).
+const cleaned = Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== undefined && v.trim() !== ''))
+const parsed = schema.safeParse(cleaned)
 if (!parsed.success) {
   console.error('❌ Variables d’environnement invalides :', z.flattenError(parsed.error).fieldErrors)
   process.exit(1)

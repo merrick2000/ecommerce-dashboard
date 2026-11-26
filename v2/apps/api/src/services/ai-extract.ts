@@ -85,7 +85,7 @@ ${fence(input.text.slice(0, 45_000))}
       method: 'POST',
       headers: { Authorization: `Bearer ${env.KIE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: env.KIE_MODEL ?? 'claude-sonnet-5',
+        model: env.KIE_MODEL || 'claude-sonnet-5',
         stream: false,
         max_tokens: 12000,
         messages: [{ role: 'user', content: prompt }],

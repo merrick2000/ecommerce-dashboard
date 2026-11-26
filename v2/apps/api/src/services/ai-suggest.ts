@@ -106,7 +106,7 @@ export async function suggestImprovements(input: SuggestInput): Promise<Suggesti
       method: 'POST',
       headers: { Authorization: `Bearer ${env.KIE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: env.KIE_MODEL ?? 'claude-sonnet-5',
+        model: env.KIE_MODEL || 'claude-sonnet-5',
         stream: false,
         max_tokens: 4096,
         messages: [{ role: 'user', content: buildPrompt(input) }],

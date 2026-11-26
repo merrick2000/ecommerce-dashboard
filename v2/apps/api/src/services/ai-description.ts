@@ -202,7 +202,7 @@ export async function rewriteDescription(input: RewriteInput): Promise<{ framewo
       method: 'POST',
       headers: { Authorization: `Bearer ${env.KIE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: env.KIE_MODEL ?? 'claude-sonnet-5',
+        model: env.KIE_MODEL || 'claude-sonnet-5',
         stream: false,
         max_tokens: 8000,
         messages: [{ role: 'user', content: buildRewritePrompt(input, text, images) }],
@@ -232,7 +232,7 @@ export async function rewriteDescription(input: RewriteInput): Promise<{ framewo
 
 // ─── Régénération d'une image ───────────────────────────────────────────────
 
-export const IMAGE_MODEL = () => env.KIE_IMAGE_MODEL ?? 'google/nano-banana-edit'
+export const IMAGE_MODEL = () => env.KIE_IMAGE_MODEL || 'google/nano-banana-edit'
 
 /** Tâches en cours : la boutique qui les a lancées, et le résultat une fois rapatrié (évite de le stocker deux fois). */
 const tasks = new Map<string, { storeId: string; createdAt: number; url?: string }>()
