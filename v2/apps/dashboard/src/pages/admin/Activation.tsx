@@ -17,6 +17,33 @@ interface Report {
   sellers: { id: number; name: string; email: string; storeName: string; mailed: boolean }[]
 }
 
+/** Champs du formulaire produit en français (les erreurs arrivent avec leur chemin technique). */
+const FIELD: [RegExp, string][] = [
+  [/^name$/, 'Nom'],
+  [/^price$/, 'Prix'],
+  [/^compareAtPrice$/, 'Prix barré'],
+  [/^costPrice$/, 'Prix d’achat'],
+  [/^coverImage$/, 'Photo du produit'],
+  [/^thumbnail$/, 'Miniature'],
+  [/^description$/, 'Description'],
+  [/^category$/, 'Catégorie'],
+  [/^stock$/, 'Stock'],
+  [/^variants\.\d+\.(\w+)$/, 'Variante'],
+  [/^bundle\.items\.\d+\.productId$/, 'Produit du pack'],
+  [/^bundle/, 'Pack'],
+  [/^funnel\.thankYou\.buttonUrl$/, 'Lien du bouton de remerciement'],
+  [/^funnel\.thankYou/, 'Page de remerciement'],
+  [/^funnel/, 'Tunnel'],
+  [/^payment/, 'Paiement'],
+  [/^delivery/, 'Livraison digitale'],
+  [/^offers/, 'Offres'],
+  [/^content\.gallery/, 'Galerie'],
+  [/^content\./, 'Page de vente'],
+]
+const fieldLabel = (path: string) => FIELD.find(([re]) => re.test(path))?.[1] ?? path
+const humanError = (message: string) =>
+  message.replace(/^Champs à corriger : (.+)$/, (_, list: string) => `Champs à corriger : ${[...new Set(list.split(/,\s*/).map(fieldLabel))].join(', ')}`)
+
 function Stat({ n, of, label, hint }: { n: number; of?: number; label: string; hint?: string }) {
   const pct = of ? Math.round((n / of) * 100) : null
   return (
@@ -89,7 +116,7 @@ export default function AdminActivation() {
           <ul className="divide-y divide-line text-sm">
             {data.saveErrors.map((e) => (
               <li key={e.message} className="flex justify-between gap-3 py-2">
-                <span className="min-w-0 break-words">{e.message}</span>
+                <span className="min-w-0 break-words" title={e.message}>{humanError(e.message)}</span>
                 <span className="tabular shrink-0 font-semibold">{e.count}</span>
               </li>
             ))}

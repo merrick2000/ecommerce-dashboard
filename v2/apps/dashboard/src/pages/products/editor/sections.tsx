@@ -63,6 +63,15 @@ export function GeneralSection(p: SectionProps) {
         </div>
       </Card>
 
+      <Card title="Photos" description="La photo est la première chose que voient vos clients : elle donne envie et rassure. Une photo prise au téléphone, à la lumière du jour, suffit.">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <ImageUpload label="Photo du produit" hint="En haut de la page de vente, et dans les aperçus de lien WhatsApp et Facebook." preset="cover" aspect="video" value={form.coverImage} onChange={(coverImage) => set({ coverImage })} error={errors.coverImage} />
+          <ImageUpload label="Miniature (facultative)" hint="Image carrée des listes et du panier. Sans miniature, la photo du produit est utilisée." preset="thumbnail" value={form.thumbnail} onChange={(thumbnail) => set({ thumbnail })} error={errors.thumbnail} />
+        </div>
+        {!form.coverImage && <p className="mt-3 text-[13px] text-muted">Pas encore de photo ? Vous pouvez enregistrer et l’ajouter plus tard, mais un produit avec photo attire nettement plus de clients.</p>}
+        <p className="mt-2 text-[13px] text-muted">D’autres photos du produit ? Ajoutez-les dans l’onglet Médias.</p>
+      </Card>
+
       <Card title="Prix">
         <div className="grid gap-4 sm:grid-cols-2">
           <NumberField label="Prix de vente" value={form.price} onChange={(v) => set({ price: v ?? 0 })} suffix={cur} error={errors.price} />
@@ -363,8 +372,8 @@ export function MediaSection(p: SectionProps) {
     <div className="space-y-4">
       <Card title="Images principales">
         <div className="grid gap-6 sm:grid-cols-[2fr_1fr]">
-          <ImageUpload label="Couverture (16:9)" hint="Image en haut de la page de vente." preset="cover" aspect="video" value={form.coverImage} onChange={(coverImage) => set({ coverImage })} error={errors.coverImage} />
-          <ImageUpload label="Miniature (1:1)" hint="Listes, partage, panier." preset="thumbnail" value={form.thumbnail} onChange={(thumbnail) => set({ thumbnail })} error={errors.thumbnail} />
+          <ImageUpload label="Photo du produit (16:9)" hint="Image en haut de la page de vente." preset="cover" aspect="video" value={form.coverImage} onChange={(coverImage) => set({ coverImage })} error={errors.coverImage} />
+          <ImageUpload label="Miniature (1:1, facultative)" hint="Listes et panier. Sans miniature, la photo du produit est utilisée." preset="thumbnail" value={form.thumbnail} onChange={(thumbnail) => set({ thumbnail })} error={errors.thumbnail} />
         </div>
       </Card>
       {form.type === 'physical' && (

@@ -1,4 +1,4 @@
-import { Copy, ExternalLink, ImageOff, MoreVertical, Package, Pencil, Plus, Search, Sparkles, Trash2, Upload } from 'lucide-react'
+import { Camera, Copy, ExternalLink, MoreVertical, Package, Pencil, Plus, Search, Sparkles, Trash2, Upload } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ConfirmDialog, useDialogState } from '@/components/Dialog'
@@ -6,6 +6,7 @@ import { useToast } from '@/components/Toast'
 import { Badge, Button, ButtonLink, cx, EmptyState, ErrorState, Input, ListSkeleton, PageHeader, Switch } from '@/components/ui'
 import { useCan, useCurrentStore, useMe } from '@/hooks/auth'
 import { ExportCatalog } from './ExportCatalog'
+import { PhotoNudge } from '@/components/PhotoNudge'
 import { useDeleteProduct, useDuplicateProduct, useProducts, useToggleProductActive } from '@/hooks/resources'
 import { money, num } from '@/lib/format'
 import type { ProductListItem } from '@/lib/types'
@@ -14,8 +15,9 @@ function Thumb({ src, name }: { src: string | null; name: string }) {
   const [broken, setBroken] = useState(false)
   if (!src || broken)
     return (
-      <div className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-subtle" aria-hidden>
-        <ImageOff className="size-5" />
+      <div className="flex size-14 shrink-0 items-center justify-center rounded-lg border border-dashed border-line-strong text-subtle" title="Sans photo : ajoutez-en une, elle attire les clients">
+        <Camera className="size-5" aria-hidden />
+        <span className="sr-only">Sans photo</span>
       </div>
     )
   return <img src={src} alt={name} loading="lazy" onError={() => setBroken(true)} className="size-14 shrink-0 rounded-lg bg-surface-2 object-contain" />
@@ -163,6 +165,7 @@ export default function ProductsList() {
         }
       />
 
+      {data && data.length > 0 && <PhotoNudge />}
       {data && data.length > 0 && (
         <div className="mb-3">
           <div className="relative">

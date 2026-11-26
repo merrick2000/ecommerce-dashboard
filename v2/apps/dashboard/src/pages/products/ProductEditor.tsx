@@ -93,10 +93,32 @@ function fromProduct(p: Product): Form {
 }
 
 /** Nettoie l'état du formulaire avant validation (champs vides → null). */
+/** Lien saisi sans « https:// » : complété ; vide : null. */
+function normalizeUrl(u: string): string | null {
+  const t = u.trim()
+  if (!t) return null
+  return /^[a-z][a-z0-9+.-]*:/i.test(t) ? t : `https://${t.replace(/^\/+/, '')}`
+}
+
 function toPayload(f: Form): Form {
   const video = f.content.video && f.content.video.url.trim() ? f.content.video : null
+  // Détails facultatifs qui ne doivent jamais bloquer l'enregistrement :
+  // bouton de remerciement sans lien = pas de bouton ; lignes de pack sans produit retirées.
+  let funnel = f.funnel
+  if (funnel?.thankYou) {
+    const url = normalizeUrl(funnel.thankYou.buttonUrl)
+    funnel = { ...funnel, thankYou: url ? { buttonLabel: funnel.thankYou.buttonLabel.trim() || 'Continuer', buttonUrl: url } : null }
+    if (!funnel.bump && !funnel.upsells.length && !funnel.thankYou) funnel = null
+  }
+  let bundle = f.bundle
+  if (bundle) {
+    const items = bundle.items.filter((i) => i.productId)
+    bundle = items.length ? { ...bundle, items } : null
+  }
   return {
     ...f,
+    funnel,
+    bundle,
     content: { ...f.content, video, features: f.content.features.filter((x) => x.trim()) },
     delivery: f.type === 'digital' ? f.delivery : null,
     offers: f.type === 'physical' ? f.offers : [],
