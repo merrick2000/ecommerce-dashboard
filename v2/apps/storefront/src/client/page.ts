@@ -24,7 +24,12 @@ if (sticky) {
     sticky.classList.toggle('show', on)
     sticky.setAttribute('aria-hidden', String(!on))
     document.body.classList.toggle('sticky-on', on && !sticky.classList.contains('sticky-top'))
+    document.body.classList.toggle('sticky-top-on', on && sticky.classList.contains('sticky-top'))
   }
+  // Hauteur réelle du bouton collant (miniature, texte sur 2 lignes…) : les popups et WhatsApp se placent juste à côté.
+  const measure = () => document.documentElement.style.setProperty('--sticky-h', `${Math.ceil(sticky.getBoundingClientRect().height)}px`)
+  measure()
+  if ('ResizeObserver' in window) new ResizeObserver(measure).observe(sticky)
   if ('IntersectionObserver' in window) {
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) {

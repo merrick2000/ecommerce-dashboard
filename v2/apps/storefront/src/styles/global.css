@@ -1428,7 +1428,11 @@ textarea.input {
   left: 16px;
 }
 .sticky-on .wa {
-  bottom: 88px;
+  bottom: calc(var(--sticky-h, 76px) + 12px);
+}
+/* Popup de ventes en bas : toujours au-dessus du bouton collant, quelle que soit sa hauteur. */
+.sticky-on .popup:not(.popup-notif) {
+  bottom: calc(var(--sticky-h, 76px) + 10px);
 }
 .popup {
   position: fixed;
@@ -2097,4 +2101,114 @@ textarea.input {
   min-height: 40px;
   padding: 8px 12px;
   font-size: 0.9rem;
+}
+
+/* ─── Popup de ventes « notification » : arrive en haut comme une notification de téléphone ─── */
+.popup.popup-notif {
+  top: calc(8px + env(safe-area-inset-top));
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  z-index: 60;
+  width: min(420px, calc(100vw - 16px));
+  max-width: none;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 11px 14px 17px 11px;
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--page) 55%, transparent);
+  background: color-mix(in srgb, var(--page) 76%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  backdrop-filter: saturate(180%) blur(22px);
+  box-shadow:
+    0 12px 40px rgb(0 0 0 / 0.18),
+    0 2px 6px rgb(0 0 0 / 0.08);
+  opacity: 1;
+  transform: translate(-50%, calc(-100% - 24px)) scale(0.96);
+  transition:
+    transform 0.6s cubic-bezier(0.2, 1.25, 0.35, 1),
+    top 0.25s;
+  touch-action: pan-x;
+}
+.popup.popup-notif.show {
+  transform: translate(-50%, 0) scale(1);
+  pointer-events: auto;
+}
+.popup.popup-notif.leaving {
+  transition: transform 0.35s cubic-bezier(0.4, 0, 1, 1);
+}
+.sticky-top-on .popup.popup-notif {
+  top: calc(var(--sticky-h, 64px) + 8px);
+}
+.notif-icon {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--accent);
+  color: var(--on-accent);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.06);
+}
+.notif-main {
+  min-width: 0;
+  flex: 1;
+}
+.notif-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.74rem;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.notif-app {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.notif-time {
+  flex: none;
+}
+.notif-title {
+  margin-top: 1px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+.popup-notif .popup-msg {
+  font-size: 0.86rem;
+  color: color-mix(in srgb, var(--fg) 88%, transparent);
+}
+.notif-grab {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  width: 34px;
+  height: 4px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--fg) 18%, transparent);
+  transform: translateX(-50%);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .popup.popup-notif {
+    background: var(--page);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .popup.popup-notif {
+    transition: opacity 0.3s;
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+  .popup.popup-notif.show {
+    opacity: 1;
+  }
 }

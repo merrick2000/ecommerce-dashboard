@@ -857,7 +857,7 @@ export const checkoutSettingsSchema = z.object({
       /** Petit texte sous le message pour les entrées ajoutées (défaut : « récemment »). */
       recentLabel: z.string().trim().max(40).optional(),
       /** Apparence : carte avec photo du produit, discrète, pastille ou sombre. */
-      style: z.enum(['card', 'minimal', 'pill', 'dark']).default('card'),
+      style: z.enum(['card', 'minimal', 'pill', 'dark', 'notif']).default('card'),
       /** Coin de l'écran. */
       position: z.enum(['left', 'right']).default('left'),
     })

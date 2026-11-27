@@ -2,7 +2,8 @@
 type Sale = { firstName: string; city: string | null; product: string; at: string | null; text?: string | null; image?: string | null }
 
 export async function startPopup(el: HTMLElement): Promise<void> {
-  const { slug, interval, bought, from, template, recent, product } = el.dataset
+  const { slug, interval, bought, from, template, recent, product, store, notifTitle } = el.dataset
+  const notif = el.classList.contains('popup-notif')
   let ago: string[] = []
   try {
     ago = JSON.parse(el.dataset.ago ?? '[]') as string[]
@@ -50,6 +51,34 @@ export async function startPopup(el: HTMLElement): Promise<void> {
     if (min < 1440) return (ago[2] ?? '').replace('{n}', String(Math.round(min / 60)))
     return (ago[3] ?? '').replace('{n}', String(Math.round(min / 1440)))
   }
+  const hide = () => {
+    el.classList.add('leaving')
+    el.classList.remove('show')
+    el.style.transform = ''
+  }
+  // Notification : glisser vers le haut pour la fermer.
+  if (notif) {
+    let y0: number | null = null
+    el.addEventListener('touchstart', (e) => (y0 = e.touches[0]?.clientY ?? null), { passive: true })
+    el.addEventListener(
+      'touchmove',
+      (e) => {
+        if (y0 == null) return
+        const dy = Math.min(0, (e.touches[0]?.clientY ?? y0) - y0)
+        el.style.transition = 'none'
+        el.style.transform = `translate(-50%, ${dy}px)`
+      },
+      { passive: true },
+    )
+    el.addEventListener('touchend', (e) => {
+      if (y0 == null) return
+      const dy = (e.changedTouches[0]?.clientY ?? y0) - y0
+      el.style.transition = ''
+      y0 = null
+      if (dy < -25) hide()
+      else el.style.transform = ''
+    })
+  }
   let i = 0
   const show = () => {
     const s = sales[i++ % sales.length]!
@@ -74,14 +103,53 @@ export async function startPopup(el: HTMLElement): Promise<void> {
       im.className = 'popup-img'
       el.append(im)
     }
-    const small = document.createElement('small')
-    small.textContent = rel(s.at, `${s.firstName}|${s.product}|${s.city ?? ''}`)
-    const body = document.createElement('div')
-    body.className = 'popup-body'
-    body.append(p, small)
-    el.append(body)
+    const when = rel(s.at, `${s.firstName}|${s.product}|${s.city ?? ''}`)
+    if (notif) {
+      // Comme une notification de téléphone : icône, boutique et heure, titre, message.
+      let icon: HTMLElement
+      if (s.image) {
+        const im = document.createElement('img')
+        im.src = s.image
+        im.alt = ''
+        im.width = 40
+        im.height = 40
+        icon = im
+      } else {
+        icon = document.createElement('span')
+        icon.textContent = (store ?? '?').trim().charAt(0).toUpperCase()
+      }
+      icon.className = 'notif-icon'
+      const head = document.createElement('div')
+      head.className = 'notif-head'
+      const app = document.createElement('span')
+      app.className = 'notif-app'
+      app.textContent = store ?? ''
+      const time = document.createElement('span')
+      time.className = 'notif-time'
+      time.textContent = when
+      head.append(app, time)
+      const title = document.createElement('div')
+      title.className = 'notif-title'
+      title.textContent = notifTitle ?? ''
+      const main = document.createElement('div')
+      main.className = 'notif-main'
+      main.append(head, title, p)
+      const grab = document.createElement('span')
+      grab.className = 'notif-grab'
+      grab.setAttribute('aria-hidden', 'true')
+      el.replaceChildren(icon, main, grab)
+    } else {
+      const small = document.createElement('small')
+      small.textContent = when
+      const body = document.createElement('div')
+      body.className = 'popup-body'
+      body.append(p, small)
+      el.append(body)
+    }
+    el.classList.remove('leaving')
+    el.style.transform = ''
     el.classList.add('show')
-    setTimeout(() => el.classList.remove('show'), 5000)
+    setTimeout(hide, notif ? 5500 : 5000)
     // On ne boucle pas indéfiniment sur les mêmes ventes.
     if (i < sales.length * 2) setTimeout(show, every)
   }

@@ -23,6 +23,7 @@ const STYLES: { id: Popup['style']; label: string; hint: string }[] = [
   { id: 'card', label: 'Carte', hint: 'Avec la photo du produit' },
   { id: 'minimal', label: 'Discret', hint: 'Petit et léger' },
   { id: 'pill', label: 'Pastille', hint: 'Une ligne arrondie' },
+  { id: 'notif', label: 'Notification', hint: 'En haut, comme sur un téléphone' },
   { id: 'dark', label: 'Sombre', hint: 'Fond foncé, bien visible' },
 ]
 
@@ -36,6 +37,25 @@ function Preview({ popup, entry, image }: { popup: Popup; entry?: Entry; image?:
   const tpl = entry?.text || popup.template
   const msg = tpl ? tpl.replace(/\{prenom\}/gi, name).replace(/\{ville\}/gi, city).replace(/\{produit\}/gi, product) : null
   const style = popup.style ?? 'card'
+  const store = useCurrentStore().store?.name ?? 'Ma boutique'
+  const when = entry ? popup.recentLabel || 'il y a 12 min' : 'il y a 5 min'
+  if (style === 'notif')
+    return (
+      <div className="flex min-h-[110px] items-start justify-center rounded-xl bg-gradient-to-b from-gray-300 to-gray-100 p-2.5 dark:from-gray-700 dark:to-gray-900">
+        <div className="relative flex w-full max-w-[360px] items-start gap-2.5 rounded-[20px] border border-white/50 bg-white/75 px-3 pt-2.5 pb-3 text-[13px] shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-gray-800/75">
+          {image ? <img src={image} alt="" className="size-10 shrink-0 rounded-[10px] object-cover" /> : <span className="grid size-10 shrink-0 place-items-center rounded-[10px] bg-accent font-extrabold text-white">{store.charAt(0).toUpperCase()}</span>}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline justify-between gap-2 text-[11.5px] text-muted">
+              <span className="truncate font-semibold">{store}</span>
+              <span className="shrink-0">{when}</span>
+            </div>
+            <p className="font-bold">Nouvelle commande</p>
+            <p className="line-clamp-2 leading-snug">{msg ?? <><strong>{name}</strong> de {city} vient de commander « {product} »</>}</p>
+          </div>
+          <span className="absolute bottom-1 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-black/15 dark:bg-white/20" />
+        </div>
+      </div>
+    )
   return (
     <div className={cx('flex min-h-[92px] items-end rounded-xl bg-surface-2 p-3', (popup.position ?? 'left') === 'right' ? 'justify-end' : 'justify-start')}>
       <div
@@ -50,7 +70,7 @@ function Preview({ popup, entry, image }: { popup: Popup; entry?: Entry; image?:
         {style === 'card' && (image ? <img src={image} alt="" className="size-11 shrink-0 rounded-lg object-cover" /> : <span className="size-11 shrink-0 rounded-lg bg-surface-2" />)}
         <div className="min-w-0">
           <p className={cx('leading-snug', style === 'pill' ? 'line-clamp-1' : 'line-clamp-2')}>{msg ?? <><strong>{name}</strong> de {city} vient de commander « {product} »</>}</p>
-          {style !== 'pill' && <p className={cx('text-[11.5px]', style === 'dark' ? 'text-gray-300' : 'text-muted')}>{entry ? popup.recentLabel || 'il y a 12 min' : 'il y a 5 min'}</p>}
+          {style !== 'pill' && <p className={cx('text-[11.5px]', style === 'dark' ? 'text-gray-300' : 'text-muted')}>{when}</p>}
         </div>
       </div>
     </div>
@@ -86,7 +106,7 @@ export function SalesPopupEditor({ value, onChange, errors }: { value: Popup; on
       <Switch checked={value.enabled} onChange={(enabled) => set({ enabled })} label="Afficher la popup sur les pages de vente" description="Vos vraies commandes récentes, puis les messages ci-dessous. Chaque produit peut aussi l’activer ou la masquer (onglet Page de vente)." />
 
       <Field label="Apparence">
-        <div className="grid gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Style de la popup">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" role="radiogroup" aria-label="Style de la popup">
           {STYLES.map((st) => (
             <button
               key={st.id}
@@ -103,7 +123,7 @@ export function SalesPopupEditor({ value, onChange, errors }: { value: Popup; on
         </div>
       </Field>
       <div className="flex flex-wrap items-end gap-4">
-        <Segmented showLabel label="Position" value={value.position ?? 'left'} onChange={(position) => set({ position })} options={[{ value: 'left', label: 'En bas à gauche' }, { value: 'right', label: 'En bas à droite' }]} />
+        {value.style !== 'notif' && <Segmented showLabel label="Position" value={value.position ?? 'left'} onChange={(position) => set({ position })} options={[{ value: 'left', label: 'En bas à gauche' }, { value: 'right', label: 'En bas à droite' }]} />}
         <NumberField label="Une popup toutes les" value={value.intervalSeconds} onChange={(v) => set({ intervalSeconds: v ?? 20 })} suffix="s" wrapClass="w-44" error={errors['salesPopup.intervalSeconds']} />
       </div>
       <Preview popup={value} entry={entries[0]} image={productImage(entries[0]?.productId) ?? firstProduct?.thumbnail} />
