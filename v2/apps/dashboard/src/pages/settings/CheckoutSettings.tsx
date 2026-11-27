@@ -3,7 +3,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import { DragHandle, draggingClass, useSortable } from '@/components/Sortable'
 import { useState, type FormEvent } from 'react'
 import { useToast } from '@/components/Toast'
-import { Button, Card, cx, ErrorState, Field, Input, Segmented, Select, Skeleton, Switch, TagInput } from '@/components/ui'
+import { Button, Card, CollapseAll, cx, ErrorState, Field, Input, Segmented, Select, Skeleton, Switch, TagInput } from '@/components/ui'
 import { useCheckoutSettings, useProducts, usePromoCodes, useSaveCheckoutSettings } from '@/hooks/resources'
 import { useCurrentStore, useMe } from '@/hooks/auth'
 import { useQuery } from '@tanstack/react-query'
@@ -117,8 +117,9 @@ function Form({ initial, canEdit, section }: { initial: CheckoutSettings; canEdi
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
       <fieldset disabled={!canEdit} className="space-y-4">
+        {(section === 'page' || section === 'proof') && <CollapseAll className="-mb-2" />}
         {section === 'page' && <>
-        <Card title="Mise en page sur ordinateur" description="Sur téléphone, tout s’affiche sur une colonne, le formulaire après le prix.">
+        <Card collapsible title="Mise en page sur ordinateur" description="Sur téléphone, tout s’affiche sur une colonne, le formulaire après le prix.">
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-3">
               {LAYOUTS.map((l) => (
@@ -151,10 +152,10 @@ function Form({ initial, canEdit, section }: { initial: CheckoutSettings; canEdi
           </div>
         </Card>
 
-        {cartAllowed && <Card title="Panier" description="Le client peut ajouter plusieurs produits de votre boutique et passer une seule commande. Les produits doivent se payer de la même façon (tous à la livraison, ou tous en ligne).">
+        {cartAllowed && <Card collapsible title="Panier" description="Le client peut ajouter plusieurs produits de votre boutique et passer une seule commande. Les produits doivent se payer de la même façon (tous à la livraison, ou tous en ligne).">
           <Switch checked={s.cart.enabled} onChange={(enabled) => set({ cart: { enabled } })} label="Activer le panier" description={s.cart.enabled ? 'Un bouton « Ajouter au panier » apparaît sur vos pages et sur la page d’accueil de la boutique.' : 'Désactivé : chaque commande concerne un seul produit, comme aujourd’hui.'} />
         </Card>}
-        <Card title="Apparence">
+        <Card collapsible title="Apparence">
           <div className="grid gap-4 sm:grid-cols-2">
             <Select label="Modèle" value={s.template} onChange={(e) => set({ template: e.target.value as CheckoutSettings['template'] })} options={TEMPLATES.map((t) => ({ value: t, label: TEMPLATE_LABEL[t] ?? t }))} />
             <Field label="Couleur principale" error={errors.primaryColor}>
@@ -168,7 +169,7 @@ function Form({ initial, canEdit, section }: { initial: CheckoutSettings; canEdi
           </div>
         </Card>
 
-        <Card title="Réassurance">
+        <Card collapsible title="Réassurance">
           <div className="space-y-4">
             <TagInput label="Badges de confiance" placeholder="Ex. Livraison rapide, Paiement à la livraison" value={s.trustBadges} onChange={(trustBadges) => set({ trustBadges: trustBadges.slice(0, 8) })} hint="8 maximum." error={errors.trustBadges} />
             <Field label="Logos de paiement affichés">
@@ -192,7 +193,7 @@ function Form({ initial, canEdit, section }: { initial: CheckoutSettings; canEdi
           </div>
         </Card>
 
-        <Card title="Ordre des blocs" description="Glissez la poignée pour changer l’ordre ; l’œil affiche ou masque un bloc.">
+        <Card collapsible title="Ordre des blocs" description="Glissez la poignée pour changer l’ordre ; l’œil affiche ou masque un bloc.">
           <ol ref={layoutSort.listRef} className={cx('divide-y divide-line rounded-lg border border-line', layoutSort.dragging && 'select-none')}>
             {s.pageLayout.map((b, i) => (
               <li key={b.block} {...layoutSort.itemProps(i)} className={cx('flex items-center gap-2 px-3 py-2', !b.visible && 'bg-surface-2/50', layoutSort.dragIndex === i && draggingClass)}>
@@ -207,7 +208,7 @@ function Form({ initial, canEdit, section }: { initial: CheckoutSettings; canEdi
           </ol>
         </Card>
 
-        <Card title="Bouton d’achat collant" description="Il suit le client pendant qu’il fait défiler la page, pour commander à tout moment.">
+        <Card collapsible title="Bouton d’achat collant" summary={st.enabled ? `Activé · ${st.devices === 'all' ? 'mobile et ordinateur' : 'mobile'} · ${st.position === 'top' ? 'en haut' : 'en bas'}` : 'Désactivé'} description="Il suit le client pendant qu’il fait défiler la page, pour commander à tout moment.">
           <div className="space-y-5">
             <Switch checked={st.enabled} onChange={(enabled) => setSticky({ enabled })} label="Afficher le bouton collant" />
             {st.enabled && (
@@ -274,23 +275,23 @@ function Form({ initial, canEdit, section }: { initial: CheckoutSettings; canEdi
         </>}
 
         {section === 'proof' && <>
-        <Card title="Urgence">
+        <Card collapsible title="Urgence" summary={[u.countdown?.enabled && 'Compte à rebours', u.limitedStock?.enabled && 'Stock limité', u.viewers?.enabled && 'Visiteurs'].filter(Boolean).join(' · ') || 'Rien d’activé'}>
           <UrgencyEditor value={u} onChange={(urgency) => set({ urgency })} errors={errors} />
         </Card>
 
-        <Card title="Popup de ventes récentes">
+        <Card collapsible title="Popup de ventes récentes" summary={s.salesPopup.enabled ? `Activée · ${(s.salesPopup.entries ?? []).length} message(s) ajouté(s)` : 'Désactivée'}>
           <SalesPopupEditor value={s.salesPopup} onChange={(salesPopup) => set({ salesPopup })} errors={errors} />
         </Card>
         </>}
 
         {section === 'popups' && <>
-        <Card title="Popups marketing">
+        <Card collapsible title="Popups marketing" summary={`${(s.marketingPopups ?? []).filter((x) => x.enabled).length} active(s) sur ${(s.marketingPopups ?? []).length}`}>
           <MarketingPopupsEditor value={s.marketingPopups ?? []} onChange={(marketingPopups) => set({ marketingPopups })} />
         </Card>
         </>}
 
         {section === 'recovery' && <>
-        <Card title="Panier abandonné">
+        <Card collapsible title="Panier abandonné" summary={s.abandonedCart.enabled ? 'Relances activées' : 'Désactivé'}>
           <div className="space-y-4">
             <Switch checked={s.abandonedCart.enabled} onChange={(enabled) => set({ abandonedCart: { ...s.abandonedCart, enabled } })} label="Relancer les paniers abandonnés" description="Relance des visiteurs ayant laissé leurs coordonnées sans commander." />
             {s.abandonedCart.enabled && (

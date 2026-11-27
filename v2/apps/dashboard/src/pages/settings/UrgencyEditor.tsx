@@ -3,8 +3,8 @@
  * son emplacement sur la page, son style et sa couleur ; aperçu en direct de la page de vente.
  */
 import { URGENCY_COLORS, URGENCY_PLACEMENTS, URGENCY_STYLES, type CheckoutSettings, type UrgencyPlacement } from '@zuri/shared'
-import { Clock, Eye, Flame } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { ChevronDown, Clock, Eye, Flame } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 import { cx, Field, Input, Segmented, Select, Switch } from '@/components/ui'
 import type { Errors } from '@/lib/form'
 import { NumberField } from '../products/editor/fields'
@@ -48,6 +48,8 @@ function lookClass(l: Look) {
   }
 }
 
+const lookSummary = (l: Look) => `${PLACEMENT_LABEL[l.placement ?? 'under_cta']} · ${STYLE_LABEL[l.style ?? 'soft']} · ${COLOR[l.color ?? 'orange'].label}`
+
 const toLocalInput = (iso?: string) => {
   if (!iso) return ''
   const d = new Date(iso)
@@ -67,7 +69,7 @@ export function UrgencyEditor({ value, onChange, errors }: { value: Urgency; onC
     <div className="space-y-4">
       <p className="text-[13px] text-muted">Chaque élément se place où vous voulez sur la page, avec son style et sa couleur. Un produit peut aussi les masquer ou afficher son propre stock (onglet Page de vente du produit).</p>
 
-      <Item icon={<Clock className="size-4" />} title="Compte à rebours" on={!!cd?.enabled} onToggle={(enabled) => setCd({ enabled })}>
+      <Item icon={<Clock className="size-4" />} title="Compte à rebours" summary={cd ? [cd.mode === 'daily' ? 'Jusqu’à minuit' : cd.mode === 'date' ? `Jusqu’au ${cd.endsAt ? new Date(cd.endsAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '…'}` : `Durée par visiteur, ${cd.minutes} min`, lookSummary(cd)].join(' · ') : undefined} on={!!cd?.enabled} onToggle={(enabled) => setCd({ enabled })}>
         {cd && (
           <>
             <Segmented showLabel
@@ -100,7 +102,7 @@ export function UrgencyEditor({ value, onChange, errors }: { value: Urgency; onC
         )}
       </Item>
 
-      <Item icon={<Flame className="size-4" />} title="Stock limité" on={!!st?.enabled} onToggle={(enabled) => setSt({ enabled })}>
+      <Item icon={<Flame className="size-4" />} title="Stock limité" summary={st ? [`${st.remaining} pièces${st.showBar ? ', avec jauge' : ''}`, lookSummary(st)].join(' · ') : undefined} on={!!st?.enabled} onToggle={(enabled) => setSt({ enabled })}>
         {st && (
           <>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -114,7 +116,7 @@ export function UrgencyEditor({ value, onChange, errors }: { value: Urgency; onC
         )}
       </Item>
 
-      <Item icon={<Eye className="size-4" />} title="Visiteurs en ce moment" on={!!vw?.enabled} onToggle={(enabled) => setVw({ enabled })}>
+      <Item icon={<Eye className="size-4" />} title="Visiteurs en ce moment" summary={vw ? [`${vw.base} visiteurs${vw.vary === false ? '' : ', variable'}`, lookSummary(vw)].join(' · ') : undefined} on={!!vw?.enabled} onToggle={(enabled) => setVw({ enabled })}>
         {vw && (
           <>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -132,16 +134,36 @@ export function UrgencyEditor({ value, onChange, errors }: { value: Urgency; onC
   )
 }
 
-function Item({ icon, title, on, onToggle, children }: { icon: ReactNode; title: string; on: boolean; onToggle: (v: boolean) => void; children: ReactNode }) {
+/** Un élément : interrupteur + accordéon (fermé avec son résumé, ouvert aussitôt qu'on l'active). */
+function Item({ icon, title, summary, on, onToggle, children }: { icon: ReactNode; title: string; summary?: string; on: boolean; onToggle: (v: boolean) => void; children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const expanded = on && open
   return (
-    <div className={cx('rounded-xl border', on ? 'border-line-strong' : 'border-line')}>
+    <div className={cx('rounded-xl border transition-colors', on ? 'border-line-strong' : 'border-line')}>
       <div className="flex items-center gap-3 px-3.5 py-3">
-        <span className={cx('grid size-8 place-items-center rounded-lg', on ? 'bg-accent/10 text-accent' : 'bg-surface-2 text-muted')}>{icon}</span>
-        <div className="min-w-0 flex-1">
-          <Switch checked={on} onChange={onToggle} label={title} />
+        <button type="button" onClick={() => on && setOpen(!open)} aria-expanded={expanded} disabled={!on} className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:cursor-default">
+          <span className={cx('grid size-8 shrink-0 place-items-center rounded-lg', on ? 'bg-accent/10 text-accent' : 'bg-surface-2 text-muted')}>{icon}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium">{title}</span>
+            {on && !expanded && summary && <span className="block truncate text-[12.5px] text-muted">{summary}</span>}
+            {!on && <span className="block text-[12.5px] text-muted">Désactivé</span>}
+          </span>
+          {on && <ChevronDown className={cx('size-4 shrink-0 text-muted transition-transform duration-200', expanded && 'rotate-180')} aria-hidden />}
+        </button>
+        <Switch
+          checked={on}
+          onChange={(v) => {
+            onToggle(v)
+            setOpen(v)
+          }}
+          label={<span className="sr-only">{title}</span>}
+        />
+      </div>
+      <div className={cx('grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none', expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+        <div className="min-h-0 overflow-hidden" inert={!expanded}>
+          {on && <div className="space-y-4 border-t border-line px-3.5 py-4">{children}</div>}
         </div>
       </div>
-      {on && <div className="space-y-4 border-t border-line px-3.5 py-4">{children}</div>}
     </div>
   )
 }

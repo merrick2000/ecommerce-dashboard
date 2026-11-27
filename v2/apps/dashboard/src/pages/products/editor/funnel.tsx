@@ -78,7 +78,7 @@ export function BundleSection({ form, set, errors, currency, productId }: Sectio
   const separate = items.reduce((a, i) => a + (byId.get(i.productId)?.price.effective ?? 0) * i.quantity, 0)
   const setItems = (next: typeof items) => set({ bundle: { items: next } })
   return (
-    <Card title="Pack de produits" description="Vends plusieurs produits ensemble à un prix de pack. Le stock et le prix d’achat de chaque produit sont pris en compte.">
+    <Card collapsible title="Pack de produits" description="Vends plusieurs produits ensemble à un prix de pack. Le stock et le prix d’achat de chaque produit sont pris en compte.">
       <Switch
         checked={on}
         onChange={(v) => set({ bundle: v ? { items: [{ productId: '', variantId: null, quantity: 1 }, { productId: '', variantId: null, quantity: 1 }] } : null })}
@@ -177,7 +177,7 @@ export function FunnelSection({ form, set, errors, currency, productId }: Sectio
   const isCod = form.payment?.method === 'cod'
   return (
     <div className="space-y-4">
-      <Card title="Order bump" description="Une case à cocher sur le formulaire : « Ajoute aussi… ». Le client l’ajoute en un geste, sans quitter la page.">
+      <Card collapsible title="Order bump" description="Une case à cocher sur le formulaire : « Ajoute aussi… ». Le client l’ajoute en un geste, sans quitter la page.">
         <Switch checked={!!f.bump} onChange={(v) => setF({ bump: v ? blankOffer('bump') : null })} label="Proposer un order bump" />
         {f.bump && (
           <div className="mt-4">
@@ -186,7 +186,7 @@ export function FunnelSection({ form, set, errors, currency, productId }: Sectio
         )}
       </Card>
 
-      <Card
+      <Card collapsible
         title="Offres après la commande"
         description={
           isCod
@@ -226,7 +226,7 @@ export function FunnelSection({ form, set, errors, currency, productId }: Sectio
         </div>
       </Card>
 
-      <Card title="Page de remerciement" description="Un bouton d’action après la commande : groupe WhatsApp, chaîne, autre produit… Le titre et le message se règlent dans le formulaire de commande (onglet Paiement).">
+      <Card collapsible title="Page de remerciement" description="Un bouton d’action après la commande : groupe WhatsApp, chaîne, autre produit… Le titre et le message se règlent dans le formulaire de commande (onglet Paiement).">
         <div className="grid gap-3 sm:grid-cols-2">
           <Input label="Texte du bouton" optional value={f.thankYou?.buttonLabel ?? ''} onChange={(e) => setF({ thankYou: e.target.value || f.thankYou?.buttonUrl ? { buttonLabel: e.target.value, buttonUrl: f.thankYou?.buttonUrl ?? '' } : null })} maxLength={60} placeholder="Rejoins le groupe WhatsApp" error={errors['funnel.thankYou.buttonLabel']} />
           <Input label="Lien du bouton" optional type="url" value={f.thankYou?.buttonUrl ?? ''} onChange={(e) => setF({ thankYou: e.target.value || f.thankYou?.buttonLabel ? { buttonLabel: f.thankYou?.buttonLabel ?? '', buttonUrl: e.target.value } : null })} placeholder="https://chat.whatsapp.com/…" error={errors['funnel.thankYou.buttonUrl']} />
@@ -234,7 +234,7 @@ export function FunnelSection({ form, set, errors, currency, productId }: Sectio
       </Card>
 
       {productId && canStats && (form.funnel?.bump || form.funnel?.upsells.length) ? (
-        <Card title="Résultats du tunnel" description="30 derniers jours, commandes de ce produit.">
+        <Card collapsible title="Résultats du tunnel" description="30 derniers jours, commandes de ce produit.">
           <FunnelStats productId={productId} currency={currency} />
         </Card>
       ) : null}

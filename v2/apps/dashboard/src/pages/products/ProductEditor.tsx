@@ -6,7 +6,7 @@ import { Link, useBeforeUnload, useBlocker, useLocation, useNavigate, useParams 
 import { ConfirmDialog } from '@/components/Dialog'
 import { SaveBar } from '@/components/SaveBar'
 import { useToast } from '@/components/Toast'
-import { Badge, Button, cx, ErrorState, Segmented, Skeleton } from '@/components/ui'
+import { Badge, Button, cx, ErrorState, Segmented, Skeleton, CollapseAll } from '@/components/ui'
 import { useCan, useCurrency, useCurrentStore, useMe, useStoreId } from '@/hooks/auth'
 import { keys, useProduct, useSaveProduct } from '@/hooks/resources'
 import { trackSeller } from '@/lib/sellerEvents'
@@ -369,6 +369,7 @@ function Editor({ initial, productId }: { initial: Form; productId: string | nul
       </div>
 
       <div role="tabpanel">
+        <CollapseAll className="mb-2" />
         {tab === 'general' && (
           <div className="space-y-4">
             <GeneralSection {...props} />

@@ -35,22 +35,22 @@ export default function AdminSettings() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Réglages de la plateforme</h1>
-      <Card title="Contact Zuri" description="Affichés sur la page contact du site, en bouton WhatsApp sur les pages marketing, et dans les emails d’accompagnement des vendeurs (les réponses arrivent sur cet email).">
+      <Card collapsible title="Contact Zuri" description="Affichés sur la page contact du site, en bouton WhatsApp sur les pages marketing, et dans les emails d’accompagnement des vendeurs (les réponses arrivent sur cet email).">
         <ContactSettings contact={data.contact} onSave={(body) => put(body, 'Coordonnées de contact enregistrées')} saving={save.isPending} />
       </Card>
-      <Card title="Payment Orchestrator de la plateforme" description="Ton compte payment.zurisell.store : il encaisse les abonnements Zuri et les ventes de tes propres boutiques. Jamais celles des autres vendeurs (ils connectent leur propre compte).">
+      <Card collapsible title="Payment Orchestrator de la plateforme" description="Ton compte payment.zurisell.store : il encaisse les abonnements Zuri et les ventes de tes propres boutiques. Jamais celles des autres vendeurs (ils connectent leur propre compte).">
         <PoPlatform po={data.po} onSave={(body, msg) => put(body, msg)} />
       </Card>
-      <Card title="Offre sur les formules" description="Réduction appliquée au paiement des abonnements, affichée sur la page Abonnement, le tableau de bord des vendeurs, le site (tarifs et bandeau) et les emails de relance.">
+      <Card collapsible title="Offre sur les formules" description="Réduction appliquée au paiement des abonnements, affichée sur la page Abonnement, le tableau de bord des vendeurs, le site (tarifs et bandeau) et les emails de relance.">
         <PromoForm promo={data.billingPromo} billingOpen={data.billingEnabled} onSave={(billingPromo, msg) => put({ billingPromo }, msg)} />
       </Card>
-      <Card title="Ouverture des paiements" description="Tant que c’est désactivé, seules tes boutiques (et les comptes que tu autorises dans leur fiche) encaissent en ligne. Les autres vendeurs restent en paiement à la livraison.">
+      <Card collapsible title="Ouverture des paiements" description="Tant que c’est désactivé, seules tes boutiques (et les comptes que tu autorises dans leur fiche) encaissent en ligne. Les autres vendeurs restent en paiement à la livraison.">
         <div className="space-y-3">
           <Switch label="Paiement en ligne (Payment Orchestrator, Mobile Money) ouvert à tous les vendeurs" checked={data.paymentsOnline} onChange={(v) => put({ paymentsOnline: v }, v ? 'Paiements en ligne ouverts à tous' : 'Paiements en ligne réservés')} />
           <Switch label="Paiement des abonnements ouvert à tous" checked={data.billingEnabled} onChange={(v) => put({ billingEnabled: v }, v ? 'Abonnements payants ouverts' : 'Abonnements payants réservés')} />
         </div>
       </Card>
-      <Card title="Import de produit par lien" description="Lecture des pages produit protégées (AliExpress, Amazon…) avec un navigateur distant Firecrawl, puis IA. Chaque import consomme des crédits Firecrawl : tant que c’est fermé, seuls toi et les comptes que tu autorises (fiche du compte) le voient.">
+      <Card collapsible title="Import de produit par lien" description="Lecture des pages produit protégées (AliExpress, Amazon…) avec un navigateur distant Firecrawl, puis IA. Chaque import consomme des crédits Firecrawl : tant que c’est fermé, seuls toi et les comptes que tu autorises (fiche du compte) le voient.">
         <div className="space-y-4">
           <Switch label="Import par lien ouvert à tous les vendeurs" checked={data.urlImport} onChange={(v) => put({ urlImport: v }, v ? 'Import par lien ouvert à tous' : 'Import par lien réservé')} />
           <p className="flex flex-wrap items-center gap-2 text-sm">
@@ -60,7 +60,7 @@ export default function AdminSettings() {
           <FirecrawlKey firecrawl={data.firecrawl} onSave={(key, msg) => put({ firecrawlKey: key }, msg)} />
         </div>
       </Card>
-      <Card title="Panier (en observation)" description="Plusieurs produits dans une seule commande, et catégories sur la page d’accueil des boutiques. Fermé : personne ne le voit, sauf toi et les comptes que tu ouvres dans leur fiche. Le vendeur doit ensuite l’activer dans ses réglages.">
+      <Card collapsible title="Panier (en observation)" description="Plusieurs produits dans une seule commande, et catégories sur la page d’accueil des boutiques. Fermé : personne ne le voit, sauf toi et les comptes que tu ouvres dans leur fiche. Le vendeur doit ensuite l’activer dans ses réglages.">
         <Switch
           label="Panier ouvert à tous les vendeurs"
           checked={data.cartEnabled || data.cartEnv}
@@ -69,7 +69,7 @@ export default function AdminSettings() {
           onChange={(v) => put({ cartEnabled: v }, v ? 'Panier ouvert à tous' : 'Panier réservé')}
         />
       </Card>
-      <Card title="Compte d’encaissement des abonnements" description="Les abonnements sont payés sur les comptes FedaPay, FeexPay ou pawaPay connectés à cette boutique (Paramètres, Paiements).">
+      <Card collapsible title="Compte d’encaissement des abonnements" description="Les abonnements sont payés sur les comptes FedaPay, FeexPay ou pawaPay connectés à cette boutique (Paramètres, Paiements).">
         <Select
           label="Boutique qui encaisse"
           value={data.billingAccount?.storeId ?? ''}
@@ -90,7 +90,7 @@ export default function AdminSettings() {
           </div>
         )}
       </Card>
-      <Card title="Derniers paiements d’abonnement">
+      <Card collapsible title="Derniers paiements d’abonnement">
         {payments.data?.length ? (
           <ul className="divide-y divide-line text-sm">
             {payments.data.map((p) => (
@@ -141,7 +141,7 @@ function ResetAccount() {
   })
   const p = preview.data
   return (
-    <Card title="Remettre mon compte à zéro">
+    <Card collapsible title="Remettre mon compte à zéro">
       <div className="space-y-3 text-sm">
         <p className="text-muted">
           Efface <strong className="text-fg">toutes tes boutiques</strong> et tout ce qu’elles contiennent : produits, commandes, clients, stats, équipe, réglages, moyens de paiement, photos et fichiers. Ton compte, ton mot de passe, ton accès super admin, ton abonnement et ton code de parrainage sont gardés. Les comptes des autres vendeurs ne sont pas touchés.

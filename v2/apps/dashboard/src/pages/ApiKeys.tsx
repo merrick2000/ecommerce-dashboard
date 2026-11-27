@@ -139,7 +139,7 @@ export default function ApiKeys() {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_minmax(0,22rem)]">
         <div className="space-y-4">
-          <Card title="1. Crée une clé" description="Une clé agit en ton nom, avec exactement tes droits. Garde-la secrète comme un mot de passe.">
+          <Card collapsible title="1. Crée une clé" description="Une clé agit en ton nom, avec exactement tes droits. Garde-la secrète comme un mot de passe.">
             {created ? (
               <div className="space-y-3">
                 <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Clé créée. Copie-la maintenant : elle ne sera plus jamais affichée.</p>
@@ -184,7 +184,7 @@ export default function ApiKeys() {
             )}
           </Card>
 
-          <Card title="2. Branche ton IA" description={`Adresse du serveur MCP : ${MCP_URL}`}>
+          <Card collapsible title="2. Branche ton IA" description={`Adresse du serveur MCP : ${MCP_URL}`}>
             <div className="mb-3 flex flex-wrap gap-1.5">
               {CLIENTS.map((c) => (
                 <button
@@ -202,7 +202,7 @@ export default function ApiKeys() {
             {!created && <p className="mt-2 text-[12px] text-muted">Remplace zk_live_TA_CLE par ta clé (affichée une seule fois à sa création).</p>}
           </Card>
 
-          <Card title="Mes clés">
+          <Card collapsible title="Mes clés">
             {keys.isPending ? (
               <ListSkeleton rows={2} />
             ) : keys.error ? (
@@ -234,7 +234,7 @@ export default function ApiKeys() {
         </div>
 
         <div className="space-y-4">
-          <Card title="Ce que tu peux demander">
+          <Card collapsible title="Ce que tu peux demander">
             <ul className="space-y-2.5">
               {(store?.kind === 'digital' ? DIGITAL_EXAMPLES : EXAMPLES).map((x) => (
                 <li key={x} className="flex gap-2 text-[13px]">
@@ -244,7 +244,7 @@ export default function ApiKeys() {
               ))}
             </ul>
           </Card>
-          <Card title="Sécurité">
+          <Card collapsible title="Sécurité">
             <ul className="list-disc space-y-1.5 pl-4 text-[13px] text-muted">
               <li>La clé a tes droits, jamais plus : un closer ne voit que ses produits, sans montants s’il n’y a pas accès.</li>
               <li>Pas d’accès aux clés de paiement, à l’abonnement ni aux autres clés.</li>

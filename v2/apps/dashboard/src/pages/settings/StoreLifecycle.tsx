@@ -31,7 +31,7 @@ export function StoreLifecycle({ store }: { store: Store }) {
 
   const paused = store.status === 'paused'
   return (
-    <Card title="Statut de la boutique" description="Mets ta boutique en pause pendant une rupture de stock ou des congés, ou ferme-la définitivement.">
+    <Card collapsible defaultOpen={false} title="Statut de la boutique" description="Mets ta boutique en pause pendant une rupture de stock ou des congés, ou ferme-la définitivement.">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm">
           État actuel : {paused ? <Badge tone="amber">En pause</Badge> : <Badge tone="green">En ligne</Badge>}

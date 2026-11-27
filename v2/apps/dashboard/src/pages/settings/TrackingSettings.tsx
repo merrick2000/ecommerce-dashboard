@@ -51,7 +51,7 @@ function Form({ tracking, canEdit }: { tracking: CheckoutSettingsResponse['track
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
       <fieldset disabled={!canEdit} className="space-y-4">
-        <Card title="Meta (Facebook / Instagram)">
+        <Card collapsible title="Meta (Facebook / Instagram)">
           <div className="space-y-4">
             <Input label="ID du pixel" inputMode="numeric" placeholder="123456789012345" value={f.facebookPixelId} onChange={(e) => setF({ ...f, facebookPixelId: e.target.value })} error={errors.facebookPixelId && 'Identifiant numérique (5 à 20 chiffres)'} />
             <Input label="Code d’événement test" optional placeholder="TEST12345" value={f.facebookTestEventCode} onChange={(e) => setF({ ...f, facebookTestEventCode: e.target.value })} error={errors.facebookTestEventCode} />
@@ -87,7 +87,7 @@ function Form({ tracking, canEdit }: { tracking: CheckoutSettingsResponse['track
           </div>
         </Card>
         <CapiPanel tracking={tracking} />
-        <Card title="Paiement à la livraison : quand déclarer l’achat à Meta ?" description="Les pubs apprennent des achats que vous déclarez. En paiement à la livraison, beaucoup de commandes ne sont jamais livrées : déclarer l’achat plus tard apprend à Meta à trouver des clients qui paient vraiment. Avant ce moment, la commande est déclarée comme prospect (Lead).">
+        <Card collapsible title="Paiement à la livraison : quand déclarer l’achat à Meta ?" description="Les pubs apprennent des achats que vous déclarez. En paiement à la livraison, beaucoup de commandes ne sont jamais livrées : déclarer l’achat plus tard apprend à Meta à trouver des clients qui paient vraiment. Avant ce moment, la commande est déclarée comme prospect (Lead).">
           <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Moment de l’achat déclaré à Meta">
             {(
               [
@@ -105,7 +105,7 @@ function Form({ tracking, canEdit }: { tracking: CheckoutSettingsResponse['track
           </div>
           <p className="mt-3 text-[13px] text-muted">L’achat différé part de nos serveurs par l’API Conversions : renseignez le jeton d’accès ci-dessus. Les paiements en ligne restent déclarés dès qu’ils sont payés.</p>
         </Card>
-        <Card title="TikTok">
+        <Card collapsible title="TikTok">
           <Input label="ID du pixel TikTok" value={f.tiktokPixelId} onChange={(e) => setF({ ...f, tiktokPixelId: e.target.value })} error={errors.tiktokPixelId} />
         </Card>
       </fieldset>
@@ -154,7 +154,7 @@ function CapiPanel({ tracking }: { tracking: CheckoutSettingsResponse['tracking'
     }
   }
   return (
-    <Card title="API Conversions (envois du serveur)" description="Achats, prospects et débuts de commande envoyés par le serveur avec votre jeton, en plus du pixel du navigateur (même identifiant : Meta ne compte chaque événement qu’une fois).">
+    <Card collapsible title="API Conversions (envois du serveur)" description="Achats, prospects et débuts de commande envoyés par le serveur avec votre jeton, en plus du pixel du navigateur (même identifiant : Meta ne compte chaque événement qu’une fois).">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <Button type="button" onClick={() => void test()} loading={busy} disabled={!tracking.facebookPixelId || !tracking.hasFacebookAccessToken}>

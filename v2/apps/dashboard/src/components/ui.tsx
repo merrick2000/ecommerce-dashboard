@@ -2,9 +2,12 @@
  * Composants de base, volontairement petits (pas de kit UI) :
  * accessibles (labels, focus visibles), utilisables au pouce sur mobile.
  */
-import { AlertTriangle, Loader2, X } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronsDownUp, ChevronsUpDown, Loader2, X } from 'lucide-react'
 import {
+  useEffect,
   useId,
+  useLayoutEffect,
+  useRef,
   useState,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
@@ -321,7 +324,41 @@ export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; 
   return <span className={cx('inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] font-medium whitespace-nowrap ring-1 ring-inset', TONE[tone], className)}>{children}</span>
 }
 
-export function Card({ children, className, title, actions, description }: { children: ReactNode; className?: string; title?: ReactNode; actions?: ReactNode; description?: ReactNode }) {
+/** Événement « tout replier / tout déplier » pour les cartes repliables de la page. */
+const CARDS_EVENT = 'zuri:cards'
+/** Clé de mémoire d'une carte : même page (sans les identifiants), même titre. */
+const cardKey = (id: string) => `zuri:card:${location.pathname.replace(/\/(shp|prd|ord|cus|usr)_[A-Za-z0-9]+/g, '').replace(/\/\d+(?=\/|$)/g, '')}${location.search.match(/[?&]tab=[\w-]+/)?.[0] ?? ''}:${id}`
+function readOpen(id: string | undefined, def: boolean) {
+  if (!id) return def
+  try {
+    const v = localStorage.getItem(cardKey(id))
+    return v === null ? def : v === '1'
+  } catch {
+    return def
+  }
+}
+
+type CardProps = {
+  children: ReactNode
+  className?: string
+  title?: ReactNode
+  actions?: ReactNode
+  description?: ReactNode
+  /** Accordéon : un clic sur l'en-tête plie ou déplie la carte (choix mémorisé pour cette page). */
+  collapsible?: boolean
+  /** Ouverte au premier passage (ensuite, le dernier choix du vendeur). */
+  defaultOpen?: boolean
+  /** Identifiant de mémoire, si le titre n'est pas un simple texte. */
+  id?: string
+  /** Résumé affiché dans l'en-tête quand la carte est fermée (ex. « Activé · 30 min »). */
+  summary?: ReactNode
+}
+
+export function Card(props: CardProps) {
+  return props.collapsible && props.title ? <CollapsibleCard {...props} /> : <StaticCard {...props} />
+}
+
+function StaticCard({ children, className, title, actions, description }: CardProps) {
   return (
     <section className={cx('rounded-xl border border-line bg-surface', className)}>
       {(title || actions) && (
@@ -335,6 +372,65 @@ export function Card({ children, className, title, actions, description }: { chi
       )}
       <div className={title || actions ? 'p-4 sm:p-5' : ''}>{children}</div>
     </section>
+  )
+}
+
+function CollapsibleCard({ children, className, title, actions, description, defaultOpen = true, id, summary }: CardProps) {
+  const memId = id ?? (typeof title === 'string' ? title : undefined)
+  const [open, setOpenState] = useState(() => readOpen(memId, defaultOpen))
+  const bodyId = useId()
+  const body = useRef<HTMLDivElement>(null)
+  const setOpen = (v: boolean) => {
+    setOpenState(v)
+    if (memId)
+      try {
+        localStorage.setItem(cardKey(memId), v ? '1' : '0')
+      } catch {
+        /* navigation privée */
+      }
+  }
+  // Une erreur à corriger dans une carte fermée : on l'ouvre pour la montrer.
+  useLayoutEffect(() => {
+    if (!open && body.current?.querySelector('[role="alert"]')) setOpenState(true)
+  })
+  useEffect(() => {
+    const on = (e: Event) => setOpen((e as CustomEvent<boolean>).detail)
+    window.addEventListener(CARDS_EVENT, on)
+    return () => window.removeEventListener(CARDS_EVENT, on)
+  })
+  return (
+    <section className={cx('rounded-xl border border-line bg-surface', className)}>
+      <header className={cx('flex items-center gap-3 px-4 py-3 sm:px-5', open && 'border-b border-line')}>
+        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls={bodyId} className="-my-1 flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 text-left focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[15px] font-semibold">{title}</h2>
+            {open ? description && <p className="mt-0.5 text-[13px] text-muted">{description}</p> : summary ? <p className="mt-0.5 truncate text-[13px] text-muted">{summary}</p> : null}
+          </div>
+          <ChevronDown className={cx('size-4 shrink-0 text-muted transition-transform duration-200', open && 'rotate-180')} aria-hidden />
+        </button>
+        {actions}
+      </header>
+      <div id={bodyId} className={cx('grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none', open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+        <div ref={body} className="min-h-0 overflow-hidden" inert={!open}>
+          <div className="p-4 sm:p-5">{children}</div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/** « Tout replier / Tout déplier » pour les cartes repliables de la page. */
+export function CollapseAll({ className }: { className?: string }) {
+  const fire = (open: boolean) => window.dispatchEvent(new CustomEvent(CARDS_EVENT, { detail: open }))
+  return (
+    <div className={cx('flex justify-end gap-1 text-[12.5px]', className)}>
+      <button type="button" onClick={() => fire(false)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-muted hover:bg-surface-2 hover:text-fg">
+        <ChevronsDownUp className="size-3.5" /> Tout replier
+      </button>
+      <button type="button" onClick={() => fire(true)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-muted hover:bg-surface-2 hover:text-fg">
+        <ChevronsUpDown className="size-3.5" /> Tout déplier
+      </button>
+    </div>
   )
 }
 

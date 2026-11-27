@@ -59,7 +59,7 @@ function StoreForm({ store, canEdit }: { store: Store; canEdit: boolean }) {
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
       <fieldset disabled={!canEdit} className="space-y-4">
-        <Card title="Identité">
+        <Card collapsible title="Identité">
           <div className="grid gap-4 sm:grid-cols-2">
             <Input label="Nom" value={form.name} onChange={(e) => set({ name: e.target.value })} error={errors.name} />
             <Input label="Identifiant (slug)" value={form.slug} onChange={(e) => set({ slug: e.target.value.toLowerCase() })} error={errors.slug} autoCapitalize="off" />
@@ -69,7 +69,7 @@ function StoreForm({ store, canEdit }: { store: Store; canEdit: boolean }) {
           </div>
         </Card>
 
-        <Card title="Adresse web">
+        <Card collapsible title="Adresse web">
           <div className="space-y-4">
             <Input label="Sous-domaine" value={form.subdomain} onChange={(e) => set({ subdomain: e.target.value.toLowerCase() })} error={errors.subdomain} suffix=".zurisell.store" autoCapitalize="off" />
             <div>
@@ -100,7 +100,7 @@ function StoreForm({ store, canEdit }: { store: Store; canEdit: boolean }) {
           </div>
         </Card>
 
-        <Card title="Support client" description="Affiché aux clients sur les pages et dans les emails.">
+        <Card collapsible title="Support client" description="Affiché aux clients sur les pages et dans les emails.">
           <div className="grid gap-4 sm:grid-cols-2">
             <Input label="Téléphone" optional type="tel" inputMode="tel" value={form.supportPhone} onChange={(e) => set({ supportPhone: e.target.value })} error={errors.supportPhone} />
             <Input label="Email" optional type="email" value={form.supportEmail} onChange={(e) => set({ supportEmail: e.target.value })} error={errors.supportEmail} />

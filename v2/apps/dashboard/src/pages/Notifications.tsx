@@ -300,27 +300,27 @@ export default function Notifications() {
         }
       />
       <div className="space-y-4">
-        <Card title="Cet appareil" description={isIOS() ? 'iPhone ou iPad' : 'Téléphone ou ordinateur que vous utilisez maintenant'}>
+        <Card collapsible title="Cet appareil" description={isIOS() ? 'iPhone ou iPad' : 'Téléphone ou ordinateur que vous utilisez maintenant'}>
           <div className="p-4 sm:p-5">
             <ThisDevice onChange={() => void devices.refetch()} />
           </div>
         </Card>
-        <Card title="Son de vente" description="Quand Zuri est ouvert sur cet appareil.">
+        <Card collapsible title="Son de vente" description="Quand Zuri est ouvert sur cet appareil.">
           <div className="p-4 sm:p-5">
             <SoundPicker />
           </div>
         </Card>
-        <Card title="Telegram">
+        <Card collapsible title="Telegram">
           <div className="p-4 sm:p-5">
             <Telegram />
           </div>
         </Card>
-        <Card title="Quoi recevoir, et où" description="Pour cette boutique. Les changements sont enregistrés tout de suite.">
+        <Card collapsible title="Quoi recevoir, et où" description="Pour cette boutique. Les changements sont enregistrés tout de suite.">
           <div className="p-4 sm:p-5">
             <Preferences />
           </div>
         </Card>
-        <Card
+        <Card collapsible
           title="Mes appareils"
           actions={
             devices.data?.length ? (

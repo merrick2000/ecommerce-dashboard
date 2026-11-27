@@ -67,7 +67,7 @@ export function CustomPageSection({ form, set, productId, saved }: SectionProps 
   const missingForm = on && source.trim() && !/\{\{\s*(formulaire|commande)\s*\}\}/i.test(source)
 
   return (
-    <Card
+    <Card collapsible
       title="Page HTML libre"
       description="Colle une page complète faite ailleurs (ChatGPT, Lovable, un constructeur de pages). Elle remplace le modèle ; Zuri y ajoute son formulaire, ses prix et son suivi."
     >

@@ -56,7 +56,7 @@ export function GeneralSection(p: SectionProps) {
     promo.type === 'percentage' ? form.price * (1 - Math.min(promo.value, 100) / 100) : promo.type === 'fixed' ? Math.max(0, form.price - promo.value) : form.price
   return (
     <div className="space-y-4">
-      <Card title="Informations">
+      <Card collapsible title="Informations">
         <div className="space-y-4">
           <Input label="Nom du produit" value={form.name} onChange={(e) => set({ name: e.target.value })} error={errors.name} placeholder="Ex. Montre connectée X1" />
           <CategoryField value={form.category ?? ''} onChange={(category) => set({ category: category.trim() || null })} error={errors.category} />
@@ -64,7 +64,7 @@ export function GeneralSection(p: SectionProps) {
         </div>
       </Card>
 
-      <Card title="Photos" description="La photo est la première chose que voient vos clients : elle donne envie et rassure. Une photo prise au téléphone, à la lumière du jour, suffit.">
+      <Card collapsible title="Photos" description="La photo est la première chose que voient vos clients : elle donne envie et rassure. Une photo prise au téléphone, à la lumière du jour, suffit.">
         <div className="grid gap-4 sm:grid-cols-2">
           <ImageUpload label="Photo du produit" hint="En haut de la page de vente, et dans les aperçus de lien WhatsApp et Facebook." preset="cover" aspect="video" value={form.coverImage} onChange={(coverImage) => set({ coverImage })} error={errors.coverImage} />
           <ImageUpload label="Miniature (facultative)" hint="Image carrée des listes et du panier. Sans miniature, la photo du produit est utilisée." preset="thumbnail" value={form.thumbnail} onChange={(thumbnail) => set({ thumbnail })} error={errors.thumbnail} />
@@ -73,7 +73,7 @@ export function GeneralSection(p: SectionProps) {
         <p className="mt-2 text-[13px] text-muted">D’autres photos du produit ? Ajoutez-les dans l’onglet Médias.</p>
       </Card>
 
-      <Card title="Prix">
+      <Card collapsible title="Prix">
         <div className="grid gap-4 sm:grid-cols-2">
           <NumberField label="Prix de vente" value={form.price} onChange={(v) => set({ price: v ?? 0 })} suffix={cur} error={errors.price} />
           <NumberField label="Prix barré" optional value={form.compareAtPrice} onChange={(v) => set({ compareAtPrice: v })} suffix={cur} error={errors.compareAtPrice} hint="Affiché barré pour montrer la réduction." />
@@ -126,7 +126,7 @@ export function GeneralSection(p: SectionProps) {
         </div>
       </Card>
 
-      <Card title="Prix dans d’autres devises" description="Pour les clients d’autres pays (sinon le prix de base s’applique).">
+      <Card collapsible title="Prix dans d’autres devises" description="Pour les clients d’autres pays (sinon le prix de base s’applique).">
         <ListEditor<Form['currencyPrices'][number]>
           items={form.currencyPrices}
           onChange={(currencyPrices) => set({ currencyPrices })}
@@ -152,7 +152,7 @@ export function SalesPageSection(p: SectionProps) {
   const c = form.content
   return (
     <div className="space-y-4">
-      <Card title="En-tête de la page" description="Ce que le client voit en premier, à côté ou au-dessus de l’image.">
+      <Card collapsible title="En-tête de la page" description="Ce que le client voit en premier, à côté ou au-dessus de l’image.">
         <div className="space-y-4">
           <Input label="Sur-titre" optional maxLength={80} placeholder="Ex. Complément alimentaire · Hommes dès 40 ans" value={c.kicker ?? ''} onChange={(e) => setContent(p, { kicker: opt(e.target.value) })} error={errors['content.kicker']} />
           <Input
@@ -169,7 +169,7 @@ export function SalesPageSection(p: SectionProps) {
         </div>
       </Card>
 
-      <Card title="Description">
+      <Card collapsible title="Description">
         <Suspense fallback={<Skeleton className="h-56 rounded-lg" />}>
           <RichText
             label="Description du produit"
@@ -191,11 +191,11 @@ export function SalesPageSection(p: SectionProps) {
         {errors.description && <p className="mt-1 text-[13px] text-red-600">{errors.description}</p>}
       </Card>
 
-      <Card title="Texte personnalisé" description="Bloc libre (HTML simple accepté), placé selon la mise en page de la boutique.">
+      <Card collapsible title="Texte personnalisé" description="Bloc libre (HTML simple accepté), placé selon la mise en page de la boutique.">
         <Textarea aria-label="Texte personnalisé" rows={4} value={c.customText ?? ''} onChange={(e) => setContent(p, { customText: opt(e.target.value) })} error={errors['content.customText']} />
       </Card>
 
-      <Card title="Points forts">
+      <Card collapsible title="Points forts">
         <div className="space-y-3">
           <Select
             label="Position"
@@ -220,7 +220,7 @@ export function SalesPageSection(p: SectionProps) {
         </div>
       </Card>
 
-      <Card title="Vidéo">
+      <Card collapsible title="Vidéo">
         <div className="space-y-4">
           <Switch checked={c.video !== null} onChange={(on) => setContent(p, { video: on ? { url: '', position: 'before_description' } : null })} label="Afficher une vidéo" description="YouTube, Facebook, TikTok…" />
           {c.video && (
@@ -242,7 +242,7 @@ export function SalesPageSection(p: SectionProps) {
         </div>
       </Card>
 
-      <Card title="Questions fréquentes">
+      <Card collapsible title="Questions fréquentes">
         <ListEditor
           items={c.faqs}
           onChange={(faqs) => setContent(p, { faqs })}
@@ -259,7 +259,7 @@ export function SalesPageSection(p: SectionProps) {
         />
       </Card>
 
-      <Card
+      <Card collapsible
         title="Témoignages"
         actions={
           <Select
@@ -298,7 +298,7 @@ export function SalesPageSection(p: SectionProps) {
         />
       </Card>
 
-      <Card title="Boutons dans la description" description="Boutons d’appel à l’action insérés entre les paragraphes.">
+      <Card collapsible title="Boutons dans la description" description="Boutons d’appel à l’action insérés entre les paragraphes.">
         <ListEditor<ProductContent['descriptionCtas'][number]>
           items={c.descriptionCtas}
           onChange={(descriptionCtas) => {
@@ -342,7 +342,7 @@ export function SalesPageSection(p: SectionProps) {
         />
       </Card>
 
-      <Card title="Popup de ventes récentes" description="« Awa de Cotonou vient de commander… ». Style et messages se règlent dans Marketing, Preuve sociale et urgence.">
+      <Card collapsible title="Popup de ventes récentes" description="« Awa de Cotonou vient de commander… ». Style et messages se règlent dans Marketing, Preuve sociale et urgence.">
         <Select
           label="Sur ce produit"
           value={c.salesPopup ?? 'inherit'}
@@ -356,7 +356,7 @@ export function SalesPageSection(p: SectionProps) {
         />
       </Card>
 
-      <Card title="Popups marketing" description="Code promo à la sortie, formulaire abandonné… Elles se créent dans Marketing, Popups.">
+      <Card collapsible title="Popups marketing" description="Code promo à la sortie, formulaire abandonné… Elles se créent dans Marketing, Popups.">
         <Select
           label="Sur ce produit"
           value={c.marketingPopups ?? 'inherit'}
@@ -369,7 +369,7 @@ export function SalesPageSection(p: SectionProps) {
         />
       </Card>
 
-      <Card title="Urgence" description="Compte à rebours, stock limité, visiteurs : réglés dans Marketing, Preuve sociale et urgence.">
+      <Card collapsible title="Urgence" description="Compte à rebours, stock limité, visiteurs : réglés dans Marketing, Preuve sociale et urgence.">
         <div className="grid gap-3 sm:grid-cols-2">
           <Select
             label="Sur ce produit"
@@ -386,7 +386,7 @@ export function SalesPageSection(p: SectionProps) {
         </div>
       </Card>
 
-      <Card title="Bouton WhatsApp">
+      <Card collapsible title="Bouton WhatsApp">
         <div className="space-y-4">
           <Switch checked={c.whatsapp.enabled} onChange={(enabled) => setContent(p, { whatsapp: { ...c.whatsapp, enabled } })} label="Afficher le bouton WhatsApp flottant" />
           {c.whatsapp.enabled && (
@@ -418,14 +418,14 @@ export function MediaSection(p: SectionProps) {
   const gallerySort = useSortable(gallery, (next) => setContent(p, { gallery: next }), { mode: 'grid' })
   return (
     <div className="space-y-4">
-      <Card title="Images principales">
+      <Card collapsible title="Images principales">
         <div className="grid gap-6 sm:grid-cols-[2fr_1fr]">
           <ImageUpload label="Photo du produit (16:9)" hint="Image en haut de la page de vente." preset="cover" aspect="video" value={form.coverImage} onChange={(coverImage) => set({ coverImage })} error={errors.coverImage} />
           <ImageUpload label="Miniature (1:1, facultative)" hint="Listes et panier. Sans miniature, la photo du produit est utilisée." preset="thumbnail" value={form.thumbnail} onChange={(thumbnail) => set({ thumbnail })} error={errors.thumbnail} />
         </div>
       </Card>
       {form.type === 'physical' && (
-        <Card title="Galerie" description={`Photos supplémentaires du produit (${gallery.length}/12). Glissez une photo pour changer l’ordre.`}>
+        <Card collapsible title="Galerie" description={`Photos supplémentaires du produit (${gallery.length}/12). Glissez une photo pour changer l’ordre.`}>
           <div ref={gallerySort.listRef} className={cx('grid grid-cols-2 gap-4 sm:grid-cols-4', gallerySort.dragging && 'select-none')}>
             {gallery.map((src, i) => (
               <div key={src} {...gallerySort.itemProps(i)} className={cx('relative aspect-square overflow-hidden rounded-xl border border-line bg-surface-2', gallerySort.dragIndex === i && draggingClass)}>
@@ -481,7 +481,7 @@ function DigitalDelivery(p: SectionProps) {
   }
 
   return (
-    <Card title="Livraison du produit digital" description="Ce que le client reçoit après paiement.">
+    <Card collapsible title="Livraison du produit digital" description="Ce que le client reçoit après paiement.">
       <div className="space-y-4">
         <Segmented
           label="Mode de livraison"
@@ -540,7 +540,7 @@ function PhysicalDelivery(p: SectionProps) {
   const variantSort = useSortable(form.variants, (variants) => set({ variants }))
   return (
     <div className="space-y-4">
-      <Card title="Inventaire">
+      <Card collapsible title="Inventaire">
         <div className="grid gap-4 sm:grid-cols-2">
           <Input label="SKU" optional value={form.sku ?? ''} onChange={(e) => set({ sku: nul(e.target.value) })} error={errors.sku} />
           <NumberField label="Poids" optional value={form.weightGrams} onChange={(weightGrams) => set({ weightGrams })} suffix="g" error={errors.weightGrams} />
@@ -552,7 +552,7 @@ function PhysicalDelivery(p: SectionProps) {
         </div>
       </Card>
 
-      <Card title="Variantes" description="Tailles, couleurs… Laissez le prix vide pour utiliser le prix du produit.">
+      <Card collapsible title="Variantes" description="Tailles, couleurs… Laissez le prix vide pour utiliser le prix du produit.">
         <div className="space-y-4">
           <Input label="Nom de l’option" placeholder="Ex. Couleur, Taille" value={form.variantLabel ?? ''} onChange={(e) => set({ variantLabel: nul(e.target.value) })} wrapClass="sm:max-w-xs" />
           <div className="hidden grid-cols-[28px_1.4fr_1fr_1fr_1fr_0.8fr_60px_40px] gap-2 px-1 text-[12px] font-medium text-muted md:grid">
@@ -608,7 +608,7 @@ export function OffersSection(p: SectionProps) {
   const { form, set, errors, currency } = p
   const newId = () => `o${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
   return (
-    <Card title="Offres par quantité" description="Ex. 1 pour 15 000, 2 pour 27 000. Le client choisit l’offre sur la page de vente.">
+    <Card collapsible title="Offres par quantité" description="Ex. 1 pour 15 000, 2 pour 27 000. Le client choisit l’offre sur la page de vente.">
       <ListEditor<QuantityOffer>
         items={form.offers}
         onChange={(offers) => set({ offers })}
@@ -675,7 +675,7 @@ export function PaymentSection(p: SectionProps) {
   const setInteg = (patch: Partial<typeof integ>) => set({ payment: { method: 'integration', integration: { ...integ, ...patch } } })
 
   return (
-    <Card title="Paiement" description="Un seul mode de paiement par produit.">
+    <Card collapsible title="Paiement" description="Un seul mode de paiement par produit.">
       <div className="space-y-3" role="radiogroup" aria-label="Mode de paiement">
         <ChoiceCard
           value="native"
@@ -746,7 +746,7 @@ export function OrderFormSection(p: SectionProps) {
   }
   return (
     <div className="mt-4 space-y-4">
-      <Card title="Formulaire de commande" description="Par défaut, le produit utilise le formulaire de la boutique (Paramètres, Formulaire de commande).">
+      <Card collapsible title="Formulaire de commande" description="Par défaut, le produit utilise le formulaire de la boutique (Paramètres, Formulaire de commande).">
         <Segmented
           label="Formulaire utilisé"
           value={custom ? 'custom' : 'store'}
