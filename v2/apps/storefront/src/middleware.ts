@@ -37,6 +37,13 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   const rawHost = ctx.request.headers.get('host') ?? url.host
   const host = normalizeHost(rawHost)
   ctx.locals.publicOrigin = `${url.protocol}//${rawHost}`
+
+  // Une seule adresse par page (guide Google) : http vers https, www.zurisell.store vers zurisell.store.
+  if (!import.meta.env.DEV && !/^(localhost|127\.|0\.0\.0\.0)/.test(host)) {
+    const apex = env.PLATFORM_HOST && env.PLATFORM_HOST !== 'localhost' ? env.PLATFORM_HOST : 'zurisell.store'
+    if (url.protocol === 'http:') return Response.redirect(`https://${rawHost}${url.pathname}${url.search}`, 301)
+    if (host === `www.${apex}`) return Response.redirect(`https://${apex}${url.pathname}${url.search}`, 301)
+  }
   ctx.locals.publicPath = url.pathname
   ctx.locals.hostSlug = null
   ctx.locals.storeBase = ''

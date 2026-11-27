@@ -32,3 +32,21 @@ export function originOf(url: string | null | undefined): string | null {
     return null
   }
 }
+
+type CanonicalStore = { canonicalHost?: string }
+const isLocalHost = (h: string) => /^(localhost|127\.|0\.0\.0\.0)/.test(h)
+
+/** URL officielle (canonique) d'une page de boutique : une seule adresse par contenu. En local : l'adresse courante. */
+export function canonicalStoreUrl(locals: App.Locals, store: CanonicalStore, path: string): string {
+  const host = new URL(locals.publicOrigin).host
+  if (import.meta.env.DEV || !store.canonicalHost || isLocalHost(host)) return absoluteUrl(locals, path)
+  const p = path.startsWith('/') ? path : `/${path}`
+  return `https://${store.canonicalHost}${p}`
+}
+
+/** Page de boutique ouverte ailleurs qu'à son adresse officielle : URL de redirection 301 (sinon null). */
+export function canonicalRedirect(locals: App.Locals, store: CanonicalStore, path: string, search: string): string | null {
+  const host = new URL(locals.publicOrigin).host
+  if (import.meta.env.DEV || !store.canonicalHost || isLocalHost(host) || host === store.canonicalHost) return null
+  return canonicalStoreUrl(locals, store, path) + search
+}

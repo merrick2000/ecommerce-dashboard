@@ -24,6 +24,8 @@ export interface PublicStore {
   supportPhone: string | null
   /** Pas encore exposé par l'API (voir rapport), gardé optionnel. */
   supportEmail?: string | null
+  /** Adresse officielle de la boutique (domaine perso vérifié ou sous-domaine) : canonique et redirections. */
+  canonicalHost?: string
 }
 
 export interface Zone {

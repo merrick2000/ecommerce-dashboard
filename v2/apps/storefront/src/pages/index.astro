@@ -23,9 +23,9 @@ export const prerender = false
 const appOrigin = import.meta.env.DEV ? 'http://localhost:5173' : (env.APP_ORIGIN ?? `https://app.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
 const signup = `${appOrigin}/register`
 
-const title = 'Créer une boutique en ligne gratuite avec paiement à la livraison et Mobile Money | Zuri'
+const title = 'Boutique en ligne gratuite : paiement à la livraison | Zuri'
 const description =
-  'Crée ta boutique en ligne gratuitement : paiement à la livraison, Mobile Money (Orange, MTN, Wave, Moov), closers, suivi des livraisons, pixel Facebook. Pages ultra rapides même en 3G. 0 % de commission.'
+  'Crée ta boutique en ligne gratuitement : paiement à la livraison, Mobile Money, closers et suivi des livraisons. Pages rapides même en 3G, 0 % de commission.'
 
 const countries = ['Côte d’Ivoire', 'Sénégal', 'Bénin', 'Cameroun', 'Togo', 'Mali', 'Burkina Faso', 'Niger', 'Guinée', 'Gabon', 'RD Congo']
 
@@ -492,7 +492,7 @@ const jsonLd = [
         {
           featuredGuides.map((g) => (
             <a class="mk-card" href={guidePath(g.slug.fr, 'fr')}>
-              <img class="mk-card-img" src={`/img/guides/${g.slug.fr}.webp`} alt="" width="1280" height="720" loading="lazy" decoding="async" />
+              <img class="mk-card-img" src={`/img/guides/${g.slug.fr}.webp`} alt={t(g.h1, 'fr')} width="1280" height="720" loading="lazy" decoding="async" />
               <span class="mk-card-kicker">Guide</span>
               <span class="mk-card-title">{t(g.h1, 'fr')}</span>
               <span class="mk-card-text">{t(g.description, 'fr')}</span>

@@ -1,66 +1,13 @@
-/** Plan du site marketing au format sitemaps.org standard (lisible, une balise par ligne). Les liens de langue sont dans chaque page (hreflang). */
+/** Index du plan du site marketing : un fichier par type de page (/sitemaps/<type>.xml), avec sa date réelle. */
 import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
-import { ALTERNATIVES, COMPARISONS, COUNTRIES, GUIDES, PATHS, alternativePath, comparisonPath, countryPath, guidePath } from '../content/seo'
-import { TOOLS } from '../content/seo/tools'
-import { BEST_PAGES, CITIES, NICHES, bestPath, cityPath, nichePath, toolPath } from '../content/seo'
-import { COMBOS, comboPath, helpPath } from '../content/seo'
-import { HELP } from '../content/seo/help'
+import { latest, sitemapIndexXml, xmlHeaders } from '../lib/sitemap'
+import { MARKETING_SITEMAPS } from '../lib/sitemap-marketing'
 
 export const prerender = false
 
-/** Date de dernière mise à jour des contenus (à changer quand les contenus évoluent). */
-const LASTMOD = '2026-11-24T00:00:00.000Z'
-
-type Entry = { path: string; changefreq: 'daily' | 'weekly' | 'monthly'; priority: string }
-
 export const GET: APIRoute = () => {
   const base = `https://${env.PLATFORM_HOST && env.PLATFORM_HOST !== 'localhost' ? env.PLATFORM_HOST : 'zurisell.store'}`
-  const both = (fr: string, en: string, changefreq: Entry['changefreq'], priority: string): Entry[] => [
-    { path: fr, changefreq, priority },
-    { path: en, changefreq, priority },
-  ]
-  const entries: Entry[] = [
-    ...both(PATHS.home.fr, PATHS.home.en, 'daily', '1'),
-    ...both('/tarifs', '/en/pricing', 'weekly', '0.9'),
-    ...both('/a-propos', '/en/about', 'monthly', '0.6'),
-    ...both('/contact', '/en/contact', 'monthly', '0.5'),
-    ...both('/fonctionnalites', '/en/features', 'weekly', '0.8'),
-    ...both('/aide', '/en/help', 'weekly', '0.7'),
-    ...both('/nouveautes', '/en/changelog', 'weekly', '0.6'),
-    ...HELP.flatMap((h) => both(helpPath(h.slug.fr, 'fr'), helpPath(h.slug.en, 'en'), 'monthly', '0.6')),
-    ...both(PATHS.guides.fr, PATHS.guides.en, 'weekly', '0.9'),
-    ...both(PATHS.tools.fr, PATHS.tools.en, 'weekly', '0.9'),
-    ...both(PATHS.countries.fr, PATHS.countries.en, 'weekly', '0.8'),
-    ...both(PATHS.alternatives.fr, PATHS.alternatives.en, 'weekly', '0.8'),
-    ...both(PATHS.comparisons.fr, PATHS.comparisons.en, 'weekly', '0.7'),
-    ...both(PATHS.niches.fr, PATHS.niches.en, 'weekly', '0.8'),
-    ...both(PATHS.best.fr, PATHS.best.en, 'weekly', '0.9'),
-    ...BEST_PAGES.flatMap((b) => both(bestPath(b.slug.fr, 'fr'), bestPath(b.slug.en, 'en'), 'monthly', b.country ? '0.8' : '0.9')),
-    ...both(PATHS.cities.fr, PATHS.cities.en, 'weekly', '0.8'),
-    ...TOOLS.flatMap((x) => both(toolPath(x.slug.fr, 'fr'), toolPath(x.slug.en, 'en'), 'monthly', '0.8')),
-    ...GUIDES.flatMap((g) => both(guidePath(g.slug.fr, 'fr'), guidePath(g.slug.en, 'en'), 'monthly', '0.8')),
-    ...NICHES.flatMap((n) => both(nichePath(n.slug.fr, 'fr'), nichePath(n.slug.en, 'en'), 'monthly', '0.8')),
-    ...CITIES.flatMap((c) => both(cityPath(c.slug, 'fr'), cityPath(c.slug, 'en'), 'monthly', '0.7')),
-    ...COMBOS.flatMap((x) => both(comboPath(x.niche, x.city, 'fr'), comboPath(x.niche, x.city, 'en'), 'monthly', '0.6')),
-    ...COUNTRIES.flatMap((c) => both(countryPath(c.slug, 'fr'), countryPath(c.slug, 'en'), 'monthly', '0.7')),
-    ...ALTERNATIVES.flatMap((a) => both(alternativePath(a.slug, 'fr'), alternativePath(a.slug, 'en'), 'monthly', '0.7')),
-    ...COMPARISONS.flatMap((c) => both(comparisonPath(c.slug, 'fr'), comparisonPath(c.slug, 'en'), 'monthly', '0.6')),
-  ]
-  const loc = (p: string) => `${base}${p}`
-  const body = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${entries
-  .map(
-    (e) => `  <url>
-    <loc>${loc(e.path)}</loc>
-    <lastmod>${LASTMOD}</lastmod>
-    <changefreq>${e.changefreq}</changefreq>
-    <priority>${e.priority}</priority>
-  </url>`,
-  )
-  .join('\n')}
-</urlset>
-`
-  return new Response(body, { headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=300, must-revalidate' } })
+  const files = Object.entries(MARKETING_SITEMAPS).map(([type, g]) => ({ loc: `${base}/sitemaps/${type}.xml`, lastmod: latest(g.entries(base)) }))
+  return new Response(sitemapIndexXml(files), { headers: xmlHeaders })
 }

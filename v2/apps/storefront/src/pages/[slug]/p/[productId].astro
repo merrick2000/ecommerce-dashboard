@@ -12,7 +12,7 @@ import { excerpt, jsonForScript, waLink } from '../../../lib/content'
 import { money } from '../../../lib/format'
 import { dict } from '../../../lib/i18n'
 import type { CheckoutData } from '../../../lib/types'
-import { absoluteUrl, img, originOf, storeUrl } from '../../../lib/urls'
+import { absoluteUrl, canonicalRedirect, canonicalStoreUrl, img, originOf, storeUrl } from '../../../lib/urls'
 import { breadcrumbJsonLd, productJsonLd } from '../../../lib/structured'
 import { STICKY_CTA_DEFAULTS } from '@zuri/shared'
 import { interpolate } from '@zuri/shared/form-runtime'
@@ -36,6 +36,11 @@ try {
 const { store, product, checkout, zones, tracking } = d
 // Ancien lien numérique : redirection permanente vers l'adresse définitive (les pubs gardent leur trafic).
 if (product.id !== productId) return Astro.redirect(storeUrl(Astro.locals, `/p/${product.id}`) + Astro.url.search, 301)
+// Une seule adresse par produit (guide Google, contenu dupliqué) : zurisell.store/boutique/p/… redirige vers l'adresse officielle.
+if (!d.preview) {
+  const to = canonicalRedirect(Astro.locals, store, `/p/${product.id}`, Astro.url.search)
+  if (to) return Astro.redirect(to, 301)
+}
 const T = dict(store.locale)
 const t = T.page
 const isCod = product.payment.method === 'cod'
@@ -67,8 +72,8 @@ if (isPreview) Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow')
 // Page HTML libre du vendeur : remplace le modèle (le formulaire, le suivi et les pixels restent ceux de Zuri).
 const custom = product.content.customPage?.enabled && product.content.customPage.html ? product.content.customPage : null
 // Données produit standard (schema.org, balises produit Open Graph) : générées depuis la fiche, rien à remplir.
-const pageUrl = absoluteUrl(Astro.locals, `/p/${product.id}`)
-const homeUrl = absoluteUrl(Astro.locals, '/')
+const pageUrl = canonicalStoreUrl(Astro.locals, store, `/p/${product.id}`)
+const homeUrl = canonicalStoreUrl(Astro.locals, store, '/')
 const shipByCountry = new Map<string, number>()
 for (const z of zones) shipByCountry.set((z.country || store.country).toUpperCase(), Math.min(shipByCountry.get((z.country || store.country).toUpperCase()) ?? Infinity, Number(z.fee)))
 const shipping = product.type === 'digital' ? [{ country: store.country.toUpperCase(), price: 0 }] : [...shipByCountry].map(([country, price]) => ({ country, price }))
@@ -90,7 +95,7 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: isPreview ? nul
   title={`${product.name} | ${store.name}`}
   description={description}
   lang={store.locale}
-  canonical={absoluteUrl(Astro.locals, `/p/${product.id}`)}
+  canonical={pageUrl}
   ogImage={product.coverImage}
   ogType="product"
   noindex={isPreview}

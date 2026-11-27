@@ -65,7 +65,7 @@ const jsonLd = [
           <div class="mk-cards">
             {related.map((g) => (
               <a class="mk-card" href={guidePath(g!.slug[lang], lang)}>
-                <img class="mk-card-img" src={IMG.guide(g!.slug.fr)} alt="" width="1280" height="720" loading="lazy" decoding="async" />
+                <img class="mk-card-img" src={IMG.guide(g!.slug.fr)} alt={t(g!.h1, lang)} width="1280" height="720" loading="lazy" decoding="async" />
                 <span class="mk-card-kicker">Guide</span>
                 <span class="mk-card-title">{t(g!.h1, lang)}</span>
               </a>

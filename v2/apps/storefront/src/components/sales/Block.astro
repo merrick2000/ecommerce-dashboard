@@ -170,7 +170,7 @@ const LOGO: Record<string, string> = { mtn: 'MTN MoMo', moov: 'Moov Money', oran
 
 {
   block === 'description' && product.description && (
-    <div class="block prose" set:html={descriptionWithCtas(product.description, content.descriptionCtas)} />
+    <div class="block prose" set:html={descriptionWithCtas(product.description, content.descriptionCtas, product.name)} />
   )
 }
 

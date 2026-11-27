@@ -3,7 +3,7 @@ import type { APIRoute } from 'astro'
 import { ApiError, apiGet } from '../../lib/api'
 import { feedHeaders, shopifyProductsJson } from '../../lib/structured'
 import type { StoreCatalog } from '../../lib/types'
-import { absoluteUrl } from '../../lib/urls'
+import { canonicalStoreUrl } from '../../lib/urls'
 
 export const prerender = false
 
@@ -15,5 +15,5 @@ export const GET: APIRoute = async ({ params, locals }) => {
     if (e instanceof ApiError && (e.status === 404 || e.status === 410)) return new Response('{"products":[]}', { status: 404, headers: { 'content-type': 'application/json' } })
     throw e
   }
-  return new Response(JSON.stringify(shopifyProductsJson(cat, (path) => absoluteUrl(locals, path))), { headers: { ...feedHeaders('application/json; charset=utf-8'), 'access-control-allow-origin': '*' } })
+  return new Response(JSON.stringify(shopifyProductsJson(cat, (path) => canonicalStoreUrl(locals, cat.store, path))), { headers: { ...feedHeaders('application/json; charset=utf-8'), 'access-control-allow-origin': '*' } })
 }

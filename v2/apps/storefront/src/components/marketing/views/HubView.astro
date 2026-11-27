@@ -53,7 +53,7 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr'
             <div class="mk-cards">
               {COUNTRIES.filter((c) => c.region === r).map((c) => (
                 <a class="mk-card" href={countryPath(c.slug, lang)}>
-                  <img class="mk-card-img" src={IMG.country(c.slug)} alt="" width="1280" height="720" loading="lazy" decoding="async" />
+                  <img class="mk-card-img" src={IMG.country(c.slug)} alt={lang === 'fr' ? `Vendre en ligne : ${t(c.name, lang)}` : `Sell online: ${t(c.name, lang)}`} width="1280" height="720" loading="lazy" decoding="async" />
                   <span class="mk-card-kicker">{c.currency.code}</span>
                   <span class="mk-card-title">{t(c.name, lang)}</span>
                   <span class="mk-card-text">{c.mobileMoney.slice(0, 3).join(', ') || c.cities.slice(0, 3).join(', ')}</span>
@@ -71,7 +71,7 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr'
             <div class="mk-cards">
               {GUIDES.filter((g) => g.category === cat).map((g) => (
                 <a class="mk-card" href={guidePath(g.slug[lang], lang)}>
-                  <img class="mk-card-img" src={IMG.guide(g.slug.fr)} alt="" width="1280" height="720" loading="lazy" decoding="async" />
+                  <img class="mk-card-img" src={IMG.guide(g.slug.fr)} alt={t(g.h1, lang)} width="1280" height="720" loading="lazy" decoding="async" />
                   <span class="mk-card-kicker">{g.readingMinutes} min</span>
                   <span class="mk-card-title">{t(g.h1, lang)}</span>
                   <span class="mk-card-text">{t(g.description, lang)}</span>

@@ -13,7 +13,7 @@ const { lang } = Astro.props
 const other: Lang = lang === 'fr' ? 'en' : 'fr'
 const path = { fr: '/aide', en: '/en/help' }
 const M = {
-  fr: { title: 'Centre d’aide Zuri : réponses sur la boutique, les paiements et le suivi', description: 'Toutes les réponses sur Zuri : créer sa boutique, domaine, variantes, paiement à la livraison, Mobile Money et retraits, produits digitaux, pixel et API Conversions, export des données.', label: 'Aide', h1: 'Centre d’aide', sub: 'Des réponses précises, vérifiables dans le produit, pour choisir et utiliser Zuri.' },
+  fr: { title: 'Centre d’aide Zuri : réponses sur la boutique, les paiements et le suivi', description: 'Toutes les réponses sur Zuri : créer sa boutique, domaine, paiement à la livraison, Mobile Money et retraits, produits digitaux, pixel, export des données.', label: 'Aide', h1: 'Centre d’aide', sub: 'Des réponses précises, vérifiables dans le produit, pour choisir et utiliser Zuri.' },
   en: { title: 'Zuri help center: answers on stores, payments and tracking', description: 'All answers about Zuri: create a store, domain, variants, cash on delivery, Mobile Money and payouts, digital products, pixel and Conversions API, data export.', label: 'Help', h1: 'Help center', sub: 'Precise answers, verifiable in the product, to choose and use Zuri.' },
 }[lang]
 const topics = Object.keys(HELP_TOPICS) as (keyof typeof HELP_TOPICS)[]

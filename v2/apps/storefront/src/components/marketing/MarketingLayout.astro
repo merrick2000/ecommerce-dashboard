@@ -31,7 +31,9 @@ interface Props {
   ogImageAlt?: string
 }
 
-const { title, description, canonicalPath, lang = 'fr', alternate = {}, jsonLd = [], breadcrumbs = [], ogImage, ogImageAlt } = Astro.props
+const { title: rawTitle, description, canonicalPath, lang = 'fr', alternate = {}, jsonLd = [], breadcrumbs = [], ogImage, ogImageAlt } = Astro.props
+// Titre concis (guide Google : Google coupe au-delà d'environ 60 caractères) : le suffixe « | Zuri » n'est gardé que s'il tient.
+const title = rawTitle.length > 65 && / \| Zuri$/.test(rawTitle) ? rawTitle.replace(/ \| Zuri$/, '') : rawTitle
 const base = `https://${env.PLATFORM_HOST && env.PLATFORM_HOST !== 'localhost' ? env.PLATFORM_HOST : 'zurisell.store'}`
 const abs = (p: string) => new URL(p, base).toString()
 const canonical = abs(canonicalPath)

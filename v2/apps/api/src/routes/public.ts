@@ -60,7 +60,9 @@ async function storeBySlug(slug: string) {
   return store
 }
 
-const publicStore = (s: typeof stores.$inferSelect) => ({ id: s.id, status: s.status, pauseMessage: s.pauseMessage, name: s.name, slug: s.slug, currency: s.currency, locale: s.locale, country: s.country, supportPhone: s.supportPhone, supportEmail: s.supportEmail })
+/** Adresse officielle d'une boutique (une seule URL par contenu) : domaine perso vérifié, sinon son sous-domaine. */
+const canonicalHost = (s: typeof stores.$inferSelect) => (s.customDomain && s.customDomainVerifiedAt ? s.customDomain : `${s.subdomain || s.slug}.${env.BASE_DOMAIN ?? 'zurisell.store'}`)
+const publicStore = (s: typeof stores.$inferSelect) => ({ id: s.id, status: s.status, pauseMessage: s.pauseMessage, name: s.name, slug: s.slug, currency: s.currency, locale: s.locale, country: s.country, supportPhone: s.supportPhone, supportEmail: s.supportEmail, canonicalHost: canonicalHost(s) })
 
 /**
  * Données publiques des liens d'un produit : contenu du pack et offres du tunnel

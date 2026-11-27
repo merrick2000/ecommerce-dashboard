@@ -6,7 +6,7 @@ import type { APIRoute } from 'astro'
 import { ApiError, apiGet } from '../../../lib/api'
 import { feedHeaders, googleFeedXml } from '../../../lib/structured'
 import type { StoreCatalog } from '../../../lib/types'
-import { absoluteUrl } from '../../../lib/urls'
+import { canonicalStoreUrl } from '../../../lib/urls'
 
 export const prerender = false
 
@@ -18,5 +18,5 @@ export const GET: APIRoute = async ({ params, locals }) => {
     if (e instanceof ApiError && (e.status === 404 || e.status === 410)) return new Response('Not found', { status: 404 })
     throw e
   }
-  return new Response(googleFeedXml(cat, absoluteUrl(locals, '/'), (path) => absoluteUrl(locals, path)), { headers: feedHeaders('application/xml; charset=utf-8') })
+  return new Response(googleFeedXml(cat, canonicalStoreUrl(locals, cat.store, '/'), (path) => canonicalStoreUrl(locals, cat.store, path)), { headers: feedHeaders('application/xml; charset=utf-8') })
 }

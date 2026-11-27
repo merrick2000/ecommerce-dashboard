@@ -9,7 +9,7 @@ import { jsonForScript } from '../../lib/content'
 import { money } from '../../lib/format'
 import { dict } from '../../lib/i18n'
 import type { CatalogData } from '../../lib/types'
-import { absoluteUrl, img, storeUrl } from '../../lib/urls'
+import { canonicalRedirect, canonicalStoreUrl, img, storeUrl } from '../../lib/urls'
 import { storeJsonLd } from '../../lib/structured'
 
 export const prerender = false
@@ -23,6 +23,9 @@ try {
   throw e
 }
 const { store, products } = d
+// Une seule adresse par boutique : zurisell.store/boutique redirige vers son sous-domaine (ou son domaine).
+const redirectTo = canonicalRedirect(Astro.locals, store, '/', Astro.url.search)
+if (redirectTo) return Astro.redirect(redirectTo, 301)
 const t = dict(store.locale)
 const cache = 'public, s-maxage=30, stale-while-revalidate=300'
 Astro.response.headers.set('Cache-Control', cache)
@@ -39,14 +42,14 @@ const groups: { title: string | null; items: typeof products }[] =
     : [{ title: null, items: shown }]
 const cart = Boolean(d.cartEnabled)
 // La boutique et ses produits en données structurées (moteurs, IA, comparateurs).
-const storeLd = storeJsonLd(store, absoluteUrl(Astro.locals, '/'), products.map((p) => ({ name: p.name, url: absoluteUrl(Astro.locals, `/p/${p.id}`), image: p.thumbnail, price: p.price.effective, currency: p.price.currency })))
+const storeLd = storeJsonLd(store, canonicalStoreUrl(Astro.locals, store, '/'), products.map((p) => ({ name: p.name, url: canonicalStoreUrl(Astro.locals, store, `/p/${p.id}`), image: p.thumbnail, price: p.price.effective, currency: p.price.currency })))
 const catUrl = (c: string | null) => storeUrl(Astro.locals, c ? `/?cat=${encodeURIComponent(c)}` : '/')
 ---
 
-<Layout title={current ? `${current} | ${store.name}` : store.name} description={`${store.name} | ${t.catalog.products}`} lang={store.locale} canonical={absoluteUrl(Astro.locals, '/')} ogImage={products[0]?.thumbnail} primaryColor={d.primaryColor}>
+<Layout title={current ? `${current} | ${store.name}` : store.name} description={`${store.name} | ${t.catalog.products}`} lang={store.locale} canonical={canonicalStoreUrl(Astro.locals, store, '/')} ogImage={products[0]?.thumbnail} primaryColor={d.primaryColor}>
   <Fragment slot="head">
     <script type="application/ld+json" set:html={jsonForScript(storeLd)} />
-    <link rel="alternate" type="application/rss+xml" title={`${store.name} (catalogue)`} href={absoluteUrl(Astro.locals, '/feeds/google.xml')} />
+    <link rel="alternate" type="application/rss+xml" title={`${store.name} (catalogue)`} href={canonicalStoreUrl(Astro.locals, store, '/feeds/google.xml')} />
   </Fragment>
   <header class="top">
     <div class="wrap wrap-wide"><a href={storeUrl(Astro.locals, '/')}>{store.name}</a></div>
@@ -75,7 +78,7 @@ const catUrl = (c: string | null) => storeUrl(Astro.locals, c ? `/?cat=${encodeU
               {g.items.map((p, i) => (
                 <div class="card">
                   <a href={storeUrl(Astro.locals, `/p/${p.id}`)} style="display:block;color:inherit;text-decoration:none">
-                    {p.thumbnail ? <img src={img(p.thumbnail, 400)} alt="" width="400" height="400" loading={gi === 0 && i < 2 ? 'eager' : 'lazy'} decoding="async" /> : <div class="ph" />}
+                    {p.thumbnail ? <img src={img(p.thumbnail, 400)} alt={p.name} width="400" height="400" loading={gi === 0 && i < 2 ? 'eager' : 'lazy'} decoding="async" /> : <div class="ph" />}
                     <div class="card-b">
                       <p class="card-n">{p.name}</p>
                       <span class="card-p">

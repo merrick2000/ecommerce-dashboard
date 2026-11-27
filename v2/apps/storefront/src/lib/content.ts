@@ -8,6 +8,13 @@ type DescriptionCta = ProductContent['descriptionCtas'][number]
 
 export const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
+/** Images de la description sans texte alternatif : on leur donne le nom du produit (Google Images, accessibilité). */
+export function withAlt(html: string, alt?: string): string {
+  if (!alt) return html
+  const a = escapeHtml(alt)
+  return html.replace(/<img\b[^>]*>/gi, (tag) => (/\balt="[^"]+"/i.test(tag) ? tag : tag.replace(/\salt=""/i, '').replace(/^<img\b/i, `<img alt="${a}"`)))
+}
+
 /** Les images de la description ne doivent jamais concurrencer l'image principale. */
 export function lazyImages(html: string): string {
   return html.replace(/<img\b(?![^>]*\bloading=)/gi, '<img loading="lazy" decoding="async"')
@@ -44,8 +51,8 @@ const isSlot = (block: string) => /^<div\b[^>]*\bdata-cta-slot=/i.test(block)
  * Boutons de la description. Un bouton glissé dans le texte (emplacement data-cta-slot) s'affiche à cet endroit ;
  * les autres après le paragraphe N (0 = avant le premier, > nb blocs = à la fin). Emplacement sans bouton : retiré.
  */
-export function descriptionWithCtas(html: string, ctas: DescriptionCta[]): string {
-  const clean = lazyImages(html || '')
+export function descriptionWithCtas(html: string, ctas: DescriptionCta[], altFallback?: string): string {
+  const clean = withAlt(lazyImages(html || ''), altFallback)
   const byId = new Map(ctas.filter((c) => c.id).map((c) => [c.id!, c]))
   const placed = new Set([...clean.matchAll(SLOT_RE)].map((m) => m[1]!).filter((id) => byId.has(id)))
   const rest = ctas.filter((c) => !c.id || !placed.has(c.id))

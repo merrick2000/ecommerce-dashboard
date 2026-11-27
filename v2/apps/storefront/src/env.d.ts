@@ -42,3 +42,6 @@ declare namespace App {
     publicPath: string
   }
 }
+
+/** Dates réelles de dernière modification des contenus (historique git, injectées au build). */
+declare const __CONTENT_DATES__: Record<string, string | null>
