@@ -50,7 +50,7 @@ function Preview({ popup, entry, image }: { popup: Popup; entry?: Entry; image?:
         {style === 'card' && (image ? <img src={image} alt="" className="size-11 shrink-0 rounded-lg object-cover" /> : <span className="size-11 shrink-0 rounded-lg bg-surface-2" />)}
         <div className="min-w-0">
           <p className={cx('leading-snug', style === 'pill' ? 'line-clamp-1' : 'line-clamp-2')}>{msg ?? <><strong>{name}</strong> de {city} vient de commander « {product} »</>}</p>
-          {style !== 'pill' && <p className={cx('text-[11.5px]', style === 'dark' ? 'text-gray-300' : 'text-muted')}>{entry ? popup.recentLabel || 'récemment' : 'il y a 5 min'}</p>}
+          {style !== 'pill' && <p className={cx('text-[11.5px]', style === 'dark' ? 'text-gray-300' : 'text-muted')}>{entry ? popup.recentLabel || 'il y a 12 min' : 'il y a 5 min'}</p>}
         </div>
       </div>
     </div>
@@ -163,7 +163,16 @@ export function SalesPopupEditor({ value, onChange, errors }: { value: Popup; on
       </div>
 
       {entries.length > 0 && (
-        <Input label="Moment affiché sous vos messages" optional value={value.recentLabel ?? ''} onChange={(e) => set({ recentLabel: e.target.value || undefined })} maxLength={40} placeholder="récemment" wrapClass="sm:max-w-xs" />
+        <Input
+          label="Moment affiché sous vos messages"
+          optional
+          value={value.recentLabel ?? ''}
+          onChange={(e) => set({ recentLabel: e.target.value || undefined })}
+          maxLength={40}
+          placeholder="Varié automatiquement"
+          wrapClass="sm:max-w-md"
+          hint="Vide (recommandé) : un moment différent pour chaque message, comme « il y a 4 min », « il y a 23 min » ou « il y a 2 h ». Rempli : ce texte sous tous vos messages."
+        />
       )}
       <RecentSalesCount />
 

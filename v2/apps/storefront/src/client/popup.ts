@@ -29,9 +29,21 @@ export async function startPopup(el: HTMLElement): Promise<void> {
       .replace(/\s+(de|from|à|in)\s+(?=[,.!?]|\s|$)/gi, ' ')
       .replace(/\s{2,}/g, ' ')
       .trim()
-  const rel = (iso: string | null) => {
-    if (!iso) return recent ?? ''
-    const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000))
+  // Messages du vendeur (sans heure) : texte fixe s'il l'a choisi, sinon un moment varié et crédible,
+  // le même pour un message pendant toute la visite (pas de « il y a 3 min » puis « il y a 2 h » pour le même).
+  const varied = new Map<string, number>()
+  const variedMinutes = (key: string) => {
+    let m = varied.get(key)
+    if (m == null) {
+      const r = Math.random()
+      m = r < 0.4 ? 2 + Math.floor(Math.random() * 14) : r < 0.75 ? 16 + Math.floor(Math.random() * 44) : 60 + Math.floor(Math.random() * 240)
+      varied.set(key, m)
+    }
+    return m
+  }
+  const rel = (iso: string | null, key = '') => {
+    if (!iso && recent) return recent
+    const min = iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000)) : variedMinutes(key)
     // ago = [à l'instant, "il y a {n} min", "il y a {n} h", "il y a {n} j"]
     if (min < 1) return ago[0] ?? ''
     if (min < 60) return (ago[1] ?? '').replace('{n}', String(min))
@@ -63,7 +75,7 @@ export async function startPopup(el: HTMLElement): Promise<void> {
       el.append(im)
     }
     const small = document.createElement('small')
-    small.textContent = rel(s.at)
+    small.textContent = rel(s.at, `${s.firstName}|${s.product}|${s.city ?? ''}`)
     const body = document.createElement('div')
     body.className = 'popup-body'
     body.append(p, small)
