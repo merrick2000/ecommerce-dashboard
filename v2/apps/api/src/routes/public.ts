@@ -435,7 +435,7 @@ export const publicRoutes = new Hono<AppEnv>()
   .get('/stores/:slug/recent-sales', async (c) => {
     const store = await storeBySlug(c.req.param('slug'))
     const rows = await db
-      .select({ name: orders.customerName, city: orders.city, product: orderItems.name, at: orders.createdAt })
+      .select({ name: orders.customerName, city: orders.city, product: orderItems.name, productId: orderItems.productId, at: orders.createdAt })
       .from(orders)
       .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
       .where(and(eq(orders.storeId, store.id), gte(orders.createdAt, new Date(Date.now() - 14 * 86400_000)), dsql`(${orders.paymentStatus} = 'paid' or ${orders.fulfillmentStatus} in ('confirmed','shipped','delivered'))`))
@@ -443,8 +443,17 @@ export const publicRoutes = new Hono<AppEnv>()
       .limit(20)
     // Entrées configurées par le vendeur (comme les avis) : après les vraies commandes, sans heure (« récemment »).
     const [cfg] = await db.select({ settings: checkoutSettings.settings }).from(checkoutSettings).where(eq(checkoutSettings.storeId, store.id)).limit(1)
-    const entries = (cfg?.settings.salesPopup?.entries ?? []).map((m) => ({ firstName: m.firstName.trim().split(/\s+/)[0] || 'Un client', city: m.city || null, product: m.product, text: m.text || null, at: null }))
-    const real = rows.map((r) => ({ firstName: (r.name ?? '').trim().split(/\s+/)[0] || 'Un client', city: r.city, product: r.product, at: r.at as Date | null }))
+    // Sur une page de vente : les messages de ce produit (et ceux sans produit), pas ceux des autres produits.
+    const forProduct = c.req.query('product')
+    const entries = (cfg?.settings.salesPopup?.entries ?? [])
+      .filter((m) => !forProduct || !m.productId || m.productId === forProduct)
+      .map((m) => ({ firstName: m.firstName.trim().split(/\s+/)[0] || 'Un client', city: m.city || null, product: m.product, productId: m.productId ?? null, text: m.text || null, at: null as Date | null }))
+    const real = rows.map((r) => ({ firstName: (r.name ?? '').trim().split(/\s+/)[0] || 'Un client', city: r.city, product: r.product, productId: r.productId, text: null as string | null, at: r.at as Date | null }))
+    const all = [...real, ...entries].slice(0, 40)
+    // Photo du produit (style « carte ») : miniature, sinon couverture.
+    const ids = [...new Set(all.map((x) => x.productId).filter((x): x is string => !!x))]
+    const pics = ids.length ? await db.select({ id: products.id, thumb: products.thumbnail, cover: products.coverImage }).from(products).where(and(inArray(products.id, ids), eq(products.storeId, store.id))) : []
+    const image = new Map(pics.map((p) => [p.id, publicUrl(p.thumb ?? p.cover)]))
     c.header('Cache-Control', 'public, max-age=120')
-    return c.json([...real, ...entries].slice(0, 40))
+    return c.json(all.map(({ productId, ...x }) => ({ ...x, image: productId ? (image.get(productId) ?? null) : null })))
   })

@@ -64,6 +64,9 @@ const waHref = wa?.enabled && wa.phone ? waLink(wa.phone, wa.welcomeMessage || t
 const description = excerpt(product.description) || excerpt(product.content.customText ?? '') || product.name
 
 const isPreview = Boolean(d.preview)
+// Popup de ventes : réglage du produit (toujours, jamais), sinon celui de la boutique.
+const popupMode = product.content.salesPopup ?? 'inherit'
+const popupOn = popupMode === 'on' || (popupMode === 'inherit' && Boolean(checkout.salesPopup?.enabled))
 const cache = isPreview ? 'private, no-store' : 'public, s-maxage=30, stale-while-revalidate=300'
 Astro.response.headers.set('Cache-Control', cache)
 Astro.response.headers.set('Cloudflare-CDN-Cache-Control', isPreview ? 'no-store' : cache)
@@ -209,8 +212,8 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: isPreview ? nul
   }
 
   {
-    checkout.salesPopup?.enabled && (
-      <div id="sf-popup" class="popup" role="status" aria-live="polite" data-slug={store.slug} data-interval={checkout.salesPopup.intervalSeconds} data-bought={t.justBought} data-from={t.from} data-ago={JSON.stringify(t.ago)} data-template={checkout.salesPopup.template ?? ''} data-recent={checkout.salesPopup.recentLabel || (store.locale === 'en' ? 'recently' : 'récemment')} />
+    popupOn && (
+      <div id="sf-popup" class={`popup popup-${checkout.salesPopup?.style ?? 'card'} popup-${checkout.salesPopup?.position ?? 'left'}`} role="status" aria-live="polite" data-product={product.id} data-slug={store.slug} data-interval={checkout.salesPopup.intervalSeconds} data-bought={t.justBought} data-from={t.from} data-ago={JSON.stringify(t.ago)} data-template={checkout.salesPopup.template ?? ''} data-recent={checkout.salesPopup.recentLabel || (store.locale === 'en' ? 'recently' : 'récemment')} />
     )
   }
 

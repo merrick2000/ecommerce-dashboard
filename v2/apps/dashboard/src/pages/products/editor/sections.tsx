@@ -342,6 +342,20 @@ export function SalesPageSection(p: SectionProps) {
         />
       </Card>
 
+      <Card title="Popup de ventes récentes" description="« Awa de Cotonou vient de commander… ». Style et messages se règlent dans Paramètres, Page de vente.">
+        <Select
+          label="Sur ce produit"
+          value={c.salesPopup ?? 'inherit'}
+          onChange={(e) => setContent(p, { salesPopup: e.target.value as 'inherit' | 'on' | 'off' })}
+          options={[
+            { value: 'inherit', label: 'Selon le réglage de la boutique' },
+            { value: 'on', label: 'Toujours affichée' },
+            { value: 'off', label: 'Jamais affichée' },
+          ]}
+          wrapClass="sm:max-w-sm"
+        />
+      </Card>
+
       <Card title="Bouton WhatsApp">
         <div className="space-y-4">
           <Switch checked={c.whatsapp.enabled} onChange={(enabled) => setContent(p, { whatsapp: { ...c.whatsapp, enabled } })} label="Afficher le bouton WhatsApp flottant" />

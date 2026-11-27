@@ -2,7 +2,8 @@ import { checkoutSettingsSchema, storeCloseSchema, storeCreateSchema, storePause
 import { and, eq, ne, or } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { db } from '../db/client'
-import { checkoutSettings, storeMembers, stores } from '../db/schema'
+import { checkoutSettings, deliveryZones, products, storeMembers, stores } from '../db/schema'
+import { z } from 'zod'
 import { requireAuth, requirePermission, requireStore } from '../lib/auth'
 import { logActivity, tagApiOrderEvents } from '../services/activity'
 import { activityRoutes } from './activity'
@@ -120,6 +121,27 @@ const storeScoped = new Hono<AppEnv>()
       },
     })
   })
+  /** Messages de la popup de ventes rédigés par l'IA (réservé aux comptes avec l'IA ouverte, comme la rédaction). */
+  .post(
+    '/sales-popup/generate',
+    requirePermission('store.settings'),
+    v('json', z.object({ count: z.coerce.number().int().min(1).max(30).default(10), instructions: z.string().trim().max(600).optional(), productIds: z.array(z.string().max(40)).max(50).optional() })),
+    async (c) => {
+      const store = c.get('store')
+      const { resolveFeatures } = await import('../services/platform')
+      const { aiAvailable } = await import('../services/ai-suggest')
+      if (!(await resolveFeatures(c.get('user'))).urlImport || !aiAvailable()) throw new HttpError(403, 'La génération par l’IA n’est pas ouverte sur ce compte.', 'ai_disabled')
+      const b = c.req.valid('json')
+      const list = await db.select({ id: products.id, name: products.name }).from(products).where(eq(products.storeId, store.id))
+      const chosen = b.productIds?.length ? list.filter((p) => b.productIds!.includes(p.id)) : list
+      if (!chosen.length) throw new HttpError(400, 'Ajoutez d’abord un produit.', 'no_product')
+      const zones = await db.select({ cities: deliveryZones.cities }).from(deliveryZones).where(eq(deliveryZones.storeId, store.id))
+      const cities = [...new Set(zones.flatMap((z) => z.cities ?? []))].slice(0, 40)
+      const { generatePopupEntries } = await import('../services/ai-popup')
+      const entries = await generatePopupEntries({ count: b.count, country: store.country, locale: store.locale, products: chosen.map((p) => p.name), cities, instructions: b.instructions })
+      return c.json(entries.map((e) => ({ ...e, productId: chosen.find((p) => p.name === e.product)?.id })))
+    },
+  )
   /** Test de l'API Conversions : un événement de test (code d'événement test obligatoire), réponse de Meta renvoyée. */
   .post('/tracking/capi-test', requirePermission('store.settings'), async (c) => {
     const store = c.get('store')

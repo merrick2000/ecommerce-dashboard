@@ -408,6 +408,8 @@ export const productContentSchema = z.object({
     })
     .default({ enabled: false, position: 'right' }),
   gallery: z.array(z.string().max(500)).max(12).default([]),
+  /** Popup de ventes sur ce produit : selon la boutique, toujours affichée, ou jamais. */
+  salesPopup: z.enum(['inherit', 'on', 'off']).default('inherit'),
   /** Formulaire propre à ce produit ; null = formulaire de la boutique. */
   orderForm: orderFormSchema.nullable().default(null),
   /**
@@ -714,6 +716,8 @@ export const checkoutSettingsSchema = z.object({
             firstName: z.string().trim().min(1, 'Prénom').max(40),
             city: z.string().trim().max(60).optional(),
             product: z.string().trim().min(1, 'Produit').max(120),
+            /** Produit concerné : le message s'affiche en priorité sur sa page de vente. */
+            productId: z.string().max(40).optional(),
             /** Texte libre de cette entrée (remplace le modèle), avec {prenom}, {ville}, {produit}. */
             text: z.string().trim().max(160).optional(),
           }),
@@ -724,8 +728,12 @@ export const checkoutSettingsSchema = z.object({
       template: z.string().trim().max(160).optional(),
       /** Petit texte sous le message pour les entrées ajoutées (défaut : « récemment »). */
       recentLabel: z.string().trim().max(40).optional(),
+      /** Apparence : carte avec photo du produit, discrète, pastille ou sombre. */
+      style: z.enum(['card', 'minimal', 'pill', 'dark']).default('card'),
+      /** Coin de l'écran. */
+      position: z.enum(['left', 'right']).default('left'),
     })
-    .default({ enabled: false, intervalSeconds: 20, realSalesOnly: true, entries: [] }),
+    .default({ enabled: false, intervalSeconds: 20, realSalesOnly: true, entries: [], style: 'card', position: 'left' }),
   abandonedCart: z
     .object({
       enabled: z.boolean().default(false),
