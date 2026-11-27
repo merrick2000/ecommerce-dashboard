@@ -356,6 +356,23 @@ export function SalesPageSection(p: SectionProps) {
         />
       </Card>
 
+      <Card title="Urgence" description="Compte à rebours, stock limité, visiteurs : réglés dans Paramètres, Page de vente.">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Select
+            label="Sur ce produit"
+            value={c.urgency ?? 'inherit'}
+            onChange={(e) => setContent(p, { urgency: e.target.value as 'inherit' | 'off' })}
+            options={[
+              { value: 'inherit', label: 'Selon le réglage de la boutique' },
+              { value: 'off', label: 'Masquée' },
+            ]}
+          />
+          {(c.urgency ?? 'inherit') !== 'off' && (
+            <NumberField label="Stock affiché pour ce produit" value={c.stockLeft ?? null} onChange={(v) => setContent(p, { stockLeft: v ?? undefined })} hint="Vide : le nombre de la boutique." />
+          )}
+        </div>
+      </Card>
+
       <Card title="Bouton WhatsApp">
         <div className="space-y-4">
           <Switch checked={c.whatsapp.enabled} onChange={(enabled) => setContent(p, { whatsapp: { ...c.whatsapp, enabled } })} label="Afficher le bouton WhatsApp flottant" />

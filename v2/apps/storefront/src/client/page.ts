@@ -58,41 +58,59 @@ document.addEventListener('click', (e) => {
   box.replaceChildren(f)
 })
 
-// ─── Compte à rebours : même échéance pour un visiteur, il ne repart pas à chaque visite ───
-const cd = document.querySelector<HTMLElement>('[data-countdown]')
-if (cd) {
-  const key = `sf_cd_${cd.dataset.pid}`
-  let end = Number(getStr(key))
-  if (!end || Number.isNaN(end)) {
-    end = Date.now() + Number(cd.dataset.countdown) * 60_000
-    setStr(key, String(end))
+// ─── Compte à rebours ───
+// visitor : même échéance pour un visiteur (il ne repart pas à chaque visite) ;
+// daily : jusqu'à minuit, chaque jour ; date : jusqu'à la date choisie par le vendeur.
+// Échéance passée : l'élément disparaît, on n'invente pas une nouvelle offre.
+const pad = (n: number) => String(n).padStart(2, '0')
+document.querySelectorAll<HTMLElement>('[data-countdown]').forEach((cd) => {
+  const mode = cd.dataset.mode ?? 'visitor'
+  const endOf = (): number => {
+    if (mode === 'date') return Date.parse(cd.dataset.ends ?? '') || 0
+    if (mode === 'daily') {
+      const d = new Date()
+      d.setHours(24, 0, 0, 0)
+      return d.getTime()
+    }
+    const key = `sf_cd_${cd.dataset.pid}`
+    let end = Number(getStr(key))
+    if (!end || Number.isNaN(end)) {
+      end = Date.now() + Number(cd.dataset.countdown) * 60_000
+      setStr(key, String(end))
+    }
+    return end
   }
-  const out = cd.querySelector('.cd-time')!
-  const pad = (n: number) => String(n).padStart(2, '0')
+  let end = endOf()
+  const clock = cd.querySelector('.cd-time:not(.cd-blocks)')
+  const boxes = cd.querySelectorAll('.cd-box b')
   const tick = () => {
+    if (mode === 'daily' && end - Date.now() <= 0) end = endOf()
     const left = Math.floor((end - Date.now()) / 1000)
     if (left <= 0) {
-      cd.hidden = true // Échéance passée : on n'invente pas une nouvelle offre.
+      cd.hidden = true
       return
     }
-    out.textContent = `${pad(Math.floor(left / 3600))}:${pad(Math.floor((left % 3600) / 60))}:${pad(left % 60)}`
+    const parts = [Math.floor(left / 3600), Math.floor((left % 3600) / 60), left % 60].map(pad)
+    if (clock) clock.textContent = parts.join(':')
+    boxes.forEach((b, i) => (b.textContent = parts[i]!))
     cd.hidden = false
     setTimeout(tick, 1000)
   }
   tick()
-}
+})
 
 // ─── Visiteurs : légère variation autour de la valeur configurée ───
-const vw = document.querySelector<HTMLElement>('[data-viewers]')
-if (vw) {
+document.querySelectorAll<HTMLElement>('[data-viewers]').forEach((vw) => {
+  if (vw.dataset.vary === '0') return
   const base = Number(vw.dataset.viewers)
+  const tpl = vw.dataset.tpl
   const txt = vw.querySelector('[data-vtext]')!
   let n = base
   setInterval(() => {
     n = Math.max(Math.round(base * 0.7), Math.min(Math.round(base * 1.4) + 1, n + Math.round(Math.random() * 4) - 2))
-    txt.textContent = (txt.textContent ?? '').replace(/\d+/, String(n))
+    txt.textContent = tpl ? tpl.replace(/\{n\}/gi, String(n)) : (txt.textContent ?? '').replace(/\d+/, String(n))
   }, 8000)
-}
+})
 
 // ─── Pop-up de ventes réelles : chargé après le temps mort ───
 const popup = document.getElementById('sf-popup')

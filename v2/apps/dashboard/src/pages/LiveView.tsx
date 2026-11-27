@@ -6,6 +6,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { ArrowLeft, ClipboardPen, CreditCard, Eye, Maximize2, Minimize2, ShoppingBag } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router'
 import { Area, AreaChart, ResponsiveContainer } from 'recharts'
 import { Flag } from '@/components/Flag'
@@ -82,13 +83,29 @@ export default function LiveView() {
     if (!seen.current || Date.parse(last.at) > Date.parse(seen.current)) seen.current = last.at
   }, [q.data])
 
-  // Échap quitte le plein écran.
+  // Plein écran : celui du navigateur (au-dessus de tout, quel que soit le bloc parent).
+  // Sans lui (iPhone), le globe est sorti de la page et posé sur tout l'écran.
+  const globeRef = useRef<HTMLDivElement>(null)
+  const [fallback, setFallback] = useState(false)
   useEffect(() => {
-    if (!full) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setFull(false)
+    const onChange = () => setFull(Boolean(document.fullscreenElement) && document.fullscreenElement === globeRef.current)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+  const toggleFull = () => {
+    if (document.fullscreenElement) return void document.exitFullscreen()
+    if (fallback) return void (setFallback(false), setFull(false))
+    const el = globeRef.current
+    if (el?.requestFullscreen && document.fullscreenEnabled) el.requestFullscreen().catch(() => (setFallback(true), setFull(true)))
+    else (setFallback(true), setFull(true))
+  }
+  // Échap quitte le plein écran de secours.
+  useEffect(() => {
+    if (!fallback) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && (setFallback(false), setFull(false))
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [full])
+  }, [fallback])
 
   const productOptions = [{ value: '', label: 'Tous les produits' }, ...(products.data ?? []).map((p) => ({ value: p.id, label: p.name }))]
   const d = q.data
@@ -117,7 +134,7 @@ export default function LiveView() {
     )
 
   const globe = (
-    <div className={cx('relative overflow-hidden border border-line bg-[radial-gradient(ellipse_at_center,var(--accent-soft)_0%,transparent_65%)]', full ? 'fixed inset-0 z-[60] rounded-none bg-bg' : 'h-[22rem] rounded-xl sm:h-[28rem] lg:sticky lg:top-6 lg:h-[calc(100dvh-7.5rem)] lg:min-h-[32rem]')}>
+    <div ref={globeRef} className={cx('relative overflow-hidden border border-line bg-[radial-gradient(ellipse_at_center,var(--accent-soft)_0%,transparent_65%)]', full ? 'fixed inset-0 z-[80] h-dvh w-screen rounded-none border-0 bg-bg' : 'h-[22rem] rounded-xl sm:h-[28rem] lg:sticky lg:top-6 lg:h-[calc(100dvh-7.5rem)] lg:min-h-[32rem]')}>
       <Suspense fallback={<div className="grid size-full place-items-center text-sm text-muted">Chargement du globe…</div>}>
         {d && <LiveGlobe points={d.now.points} orders={d.orders} country={d.country} focus={focus} />}
       </Suspense>
@@ -141,7 +158,7 @@ export default function LiveView() {
       </div>
       <button
         type="button"
-        onClick={() => setFull((f) => !f)}
+        onClick={toggleFull}
         title={full ? 'Quitter le plein écran' : 'Plein écran'}
         aria-label={full ? 'Quitter le plein écran' : 'Plein écran'}
         className="absolute right-3 top-3 grid size-9 place-items-center rounded-full border border-line bg-surface/90 text-muted shadow-sm backdrop-blur hover:text-fg"
@@ -164,7 +181,7 @@ export default function LiveView() {
     <div>
       {header}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,25rem)_minmax(0,1fr)]">
-        <div className="lg:order-2">{globe}</div>
+        <div className="lg:order-2">{fallback ? createPortal(globe, document.body) : globe}</div>
         <div className="min-w-0 space-y-4 lg:order-1">
           {!d ? (
             <>

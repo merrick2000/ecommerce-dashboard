@@ -68,4 +68,17 @@ describe('popup de ventes : messages configurés', () => {
     expect((await visitor.get('/api/v1/stores/popup-shop/recent-sales?product=prd_autreautreautre1')).body).toHaveLength(0)
     expect((await owner.get(`/api/stores/${s}/checkout-settings`)).body.settings.salesPopup).toMatchObject({ style: 'dark', position: 'right' })
   })
+
+  test('urgence : emplacement, style, couleur et modes enregistrés ; date invalide refusée', async () => {
+    const s = (await owner.get('/api/auth/me')).body.stores.find((x: { slug: string }) => x.slug === 'popup-shop').id
+    const urgency = {
+      countdown: { enabled: true, minutes: 30, mode: 'date', endsAt: '2026-12-31T23:59:00.000Z', format: 'blocks', placement: 'top_bar', style: 'solid', color: 'red' },
+      limitedStock: { enabled: true, remaining: 7, label: 'Il reste {n} pièces', showBar: true, total: 50, placement: 'above_form', style: 'outline', color: 'green' },
+      viewers: { enabled: true, base: 12, vary: false, placement: 'under_title', style: 'pill', color: 'accent' },
+    }
+    expect((await owner.put(`/api/stores/${s}/checkout-settings`, { urgency })).status).toBe(200)
+    expect((await owner.get(`/api/stores/${s}/checkout-settings`)).body.settings.urgency).toMatchObject(urgency)
+    const bad = await owner.put(`/api/stores/${s}/checkout-settings`, { urgency: { ...urgency, countdown: { ...urgency.countdown, endsAt: 'demain' } } })
+    expect(bad.status).toBe(422)
+  })
 })

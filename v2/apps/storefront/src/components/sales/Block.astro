@@ -76,6 +76,7 @@ const LOGO: Record<string, string> = { mtn: 'MTN MoMo', moov: 'Moov Money', oran
           {content.tagline}
         </p>
       )}
+      <Urgency d={d} at="under_title" />
     </div>
   )
 }
@@ -83,6 +84,7 @@ const LOGO: Record<string, string> = { mtn: 'MTN MoMo', moov: 'Moov Money', oran
 {
   block === 'price_cta' && (
     <div class="block" data-sticky-after>
+      <Urgency d={d} at="above_price" />
       <div class="price-row">
         <span class="price-now">{m(price.effective)}</span>
         {showStrike && <s class="price-old">{m(price.regular)}</s>}
@@ -97,7 +99,7 @@ const LOGO: Record<string, string> = { mtn: 'MTN MoMo', moov: 'Moov Money', oran
       ) : (
         <p class="notice warn center">{t.outOfStock}</p>
       )}
-      <Urgency d={d} />
+      <Urgency d={d} at="under_cta" />
       {isCod ? (
         <p class="center" style="margin:12px 0 0">
           <span class="cod-tag">✓ {t.badgesCod[0]}</span>

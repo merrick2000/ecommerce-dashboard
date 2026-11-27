@@ -1,6 +1,7 @@
 ---
 /** Bloc « commander » (titre + formulaire), réutilisé par toutes les mises en page. */
 import OrderForm from '../../islands/OrderForm'
+import Urgency from './Urgency.astro'
 import { money } from '../../lib/format'
 import { dict } from '../../lib/i18n'
 import type { CheckoutData } from '../../lib/types'
@@ -20,6 +21,7 @@ const m = (n: number) => money(n, price.currency, store.locale)
 ---
 
 <div class="order-box">
+  <Urgency d={d} at="above_form" />
   {
     !compact && !(d.orderForm.texts.title || d.orderForm.texts.subtitle) && (
       <>

@@ -6,6 +6,7 @@
  * - Conserve les ID des boutiques, produits et commandes : les liens de pub
  *   (/boutique/p/123) et l'historique restent valides.
  * - Idempotent pour un import dans une base v2 VIDE (refuse sinon).
+
  * - Tout se fait dans une transaction : en cas d'erreur, rien n'est écrit.
  */
 import { productContentSchema, type CheckoutSettings, type ProductContent, type ProductPayment } from '@zuri/shared'
@@ -18,6 +19,8 @@ import { normalizePhone } from '../services/orders'
 import { newId } from '../lib/ids'
 import { DEFAULT_CHECKOUT } from '../routes/stores'
 import { sql as dsql } from 'drizzle-orm'
+
+const LOOK = { placement: 'under_cta' as const, style: 'soft' as const, color: 'orange' as const }
 
 const DRY_RUN = process.argv.includes('--dry-run')
 if (!env.LEGACY_DATABASE_URL) {
@@ -118,9 +121,9 @@ function checkout(c: Row | undefined): { settings: CheckoutSettings; tracking: R
     paymentLogos: json<string[]>(c.payment_logos, []).filter((b) => typeof b === 'string').slice(0, 16),
     pageLayout: pageLayout.length ? pageLayout : DEFAULT_CHECKOUT.pageLayout,
     urgency: {
-      countdown: u.countdown_timer ? { enabled: Boolean(u.countdown_timer.enabled), minutes: Math.min(1440, Math.max(5, num(u.countdown_timer.duration_minutes, 15))), label: u.countdown_timer.label ?? undefined } : undefined,
-      limitedStock: u.limited_spots ? { enabled: Boolean(u.limited_spots.enabled), remaining: Math.max(1, num(u.limited_spots.remaining_spots, 10)) } : undefined,
-      viewers: u.social_proof ? { enabled: Boolean(u.social_proof.enabled), base: Math.min(500, Math.max(1, num(u.social_proof.viewer_count, 12))) } : undefined,
+      countdown: u.countdown_timer ? { enabled: Boolean(u.countdown_timer.enabled), minutes: Math.min(1440, Math.max(5, num(u.countdown_timer.duration_minutes, 15))), label: u.countdown_timer.label ?? undefined, mode: 'visitor' as const, format: 'clock' as const, ...LOOK } : undefined,
+      limitedStock: u.limited_spots ? { enabled: Boolean(u.limited_spots.enabled), remaining: Math.max(1, num(u.limited_spots.remaining_spots, 10)), showBar: false, ...LOOK } : undefined,
+      viewers: u.social_proof ? { enabled: Boolean(u.social_proof.enabled), base: Math.min(500, Math.max(1, num(u.social_proof.viewer_count, 12))), vary: true, ...LOOK } : undefined,
     },
     // Les anciennes « ventes » du popup étaient fictives : on passe en vraies ventes uniquement.
     salesPopup: { enabled: Boolean(json<Row>(c.sales_popup, {}).enabled), intervalSeconds: Math.min(600, Math.max(5, num(json<Row>(c.sales_popup, {}).interval_seconds, 20))), realSalesOnly: true, entries: [], style: 'card', position: 'left' },

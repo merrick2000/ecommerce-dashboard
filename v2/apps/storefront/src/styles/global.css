@@ -438,6 +438,134 @@ p {
   font-weight: 800;
   letter-spacing: 0.03em;
 }
+/* Couleurs (--u : texte et contour ; --u-bg : fond doux). */
+.urg {
+  --u: var(--warn);
+  --u-bg: var(--warn-bg);
+  text-align: center;
+  flex-wrap: wrap;
+}
+.urg-c-red {
+  --u: #b91c1c;
+  --u-bg: #fef2f2;
+}
+.urg-c-accent {
+  --u: var(--accent);
+  --u-bg: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.urg-c-green {
+  --u: #047857;
+  --u-bg: #ecfdf5;
+}
+.urg-c-dark {
+  --u: #111827;
+  --u-bg: #f3f4f6;
+}
+/* Styles. */
+.urg-soft {
+  background: var(--u-bg);
+  color: var(--u);
+}
+.urg-outline {
+  background: transparent;
+  color: var(--u);
+  border: 1.5px solid var(--u);
+}
+.urg-solid {
+  background: var(--u);
+  color: #fff;
+}
+.urg-minimal {
+  background: none;
+  color: var(--u);
+  padding: 2px 0;
+  font-size: 0.86rem;
+}
+.urg-pill {
+  background: var(--u-bg);
+  color: var(--u);
+  border-radius: 999px;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+  padding: 6px 16px;
+}
+.urg[hidden] {
+  display: none;
+}
+.urg-ico {
+  flex: none;
+}
+.urg-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+}
+.urg-has-bar {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.urg-bar {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  overflow: hidden;
+}
+.urg-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
+}
+.cd-blocks {
+  display: inline-flex;
+  gap: 4px;
+}
+.cd-box {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--u);
+  color: #fff;
+}
+.urg-solid .cd-box {
+  background: rgb(255 255 255 / 0.2);
+}
+.cd-box small {
+  font-size: 0.68rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+.urg-solid .dot {
+  background: #fff;
+}
+/* Emplacements. */
+.urgency-at-top_bar {
+  margin: 0;
+  gap: 0;
+}
+.urgency-at-top_bar .urg {
+  border-radius: 0;
+  border-inline: 0;
+  margin: 0;
+  width: auto;
+  padding: 8px 12px;
+}
+.urgency-at-above_price {
+  margin: 0 0 12px;
+}
+.urgency-at-under_title {
+  margin-top: 10px;
+}
+.urgency-at-above_form {
+  margin: 0 0 14px;
+}
 .dot:where(:not(.custom-page *)) {
   width: 8px;
   height: 8px;

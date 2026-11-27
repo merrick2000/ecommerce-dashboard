@@ -13,6 +13,7 @@ import { CTA_STYLE_LABEL, PAGE_BLOCK_LABEL, TEMPLATE_LABEL } from '@/lib/labels'
 import { SaveBar } from '@/components/SaveBar'
 import { NumberField } from '../products/editor/fields'
 import { SalesPopupEditor } from './SalesPopupEditor'
+import { UrgencyEditor } from './UrgencyEditor'
 
 const PAYMENT_LOGOS = ['mtn', 'moov', 'orange', 'wave', 'free', 'airtel', 'mpesa', 'visa', 'mastercard', 'paypal', 'celtiis', 'togocom']
 
@@ -267,25 +268,7 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
         </Card>
 
         <Card title="Urgence">
-          <div className="space-y-5">
-            <div className="space-y-3">
-              <Switch checked={!!u.countdown?.enabled} onChange={(enabled) => set({ urgency: { ...u, countdown: { minutes: 15, ...u.countdown, enabled } } })} label="Compte à rebours" />
-              {u.countdown?.enabled && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <NumberField label="Durée" value={u.countdown.minutes} onChange={(v) => set({ urgency: { ...u, countdown: { ...u.countdown!, minutes: v ?? 15 } } })} suffix="min" error={errors['urgency.countdown.minutes']} />
-                  <Input label="Libellé" optional placeholder="L’offre se termine dans" value={u.countdown.label ?? ''} onChange={(e) => set({ urgency: { ...u, countdown: { ...u.countdown!, label: e.target.value || undefined } } })} />
-                </div>
-              )}
-            </div>
-            <div className="space-y-3">
-              <Switch checked={!!u.limitedStock?.enabled} onChange={(enabled) => set({ urgency: { ...u, limitedStock: { remaining: 12, ...u.limitedStock, enabled } } })} label="Stock limité affiché" />
-              {u.limitedStock?.enabled && <NumberField label="Pièces restantes affichées" value={u.limitedStock.remaining} onChange={(v) => set({ urgency: { ...u, limitedStock: { ...u.limitedStock!, remaining: v ?? 1 } } })} wrapClass="sm:max-w-xs" error={errors['urgency.limitedStock.remaining']} />}
-            </div>
-            <div className="space-y-3">
-              <Switch checked={!!u.viewers?.enabled} onChange={(enabled) => set({ urgency: { ...u, viewers: { base: 8, ...u.viewers, enabled } } })} label="Visiteurs en ce moment" />
-              {u.viewers?.enabled && <NumberField label="Nombre de base" value={u.viewers.base} onChange={(v) => set({ urgency: { ...u, viewers: { ...u.viewers!, base: v ?? 1 } } })} wrapClass="sm:max-w-xs" error={errors['urgency.viewers.base']} />}
-            </div>
-          </div>
+          <UrgencyEditor value={u} onChange={(urgency) => set({ urgency })} errors={errors} />
         </Card>
 
         <Card title="Popup de ventes récentes">

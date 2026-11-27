@@ -1,33 +1,77 @@
 ---
-/** Urgence configurée par le vendeur. Le compte à rebours est persistant par visiteur (localStorage, voir client/page.ts). */
+/**
+ * Éléments d'urgence configurés par le vendeur : compte à rebours, stock limité, visiteurs.
+ * Chacun a son emplacement (`at`), son style et sa couleur. Sans `at` (page personnalisée) : tous.
+ * Le compte à rebours et la variation des visiteurs sont animés par client/page.ts.
+ */
+import type { UrgencyPlacement } from '@zuri/shared'
 import { dict } from '../../lib/i18n'
 import type { CheckoutData } from '../../lib/types'
 
 interface Props {
   d: CheckoutData
+  at?: UrgencyPlacement
 }
-const { d } = Astro.props
+const { d, at } = Astro.props
 const u = d.checkout.urgency ?? {}
 const t = dict(d.store.locale).page
-const cd = u.countdown?.enabled ? u.countdown : null
-const stock = u.limitedStock?.enabled ? u.limitedStock.remaining : null
-const viewers = u.viewers?.enabled ? u.viewers.base : null
-const show = d.product.inStock && (cd || stock || viewers)
+const content = d.product.content
+const here = (p?: string) => !at || (p ?? 'under_cta') === at
+const off = content.urgency === 'off' || !d.product.inStock
+
+const cd = !off && u.countdown?.enabled && here(u.countdown.placement) && (u.countdown.mode !== 'date' || u.countdown.endsAt) ? u.countdown : null
+const st = !off && u.limitedStock?.enabled && here(u.limitedStock.placement) ? u.limitedStock : null
+const vw = !off && u.viewers?.enabled && here(u.viewers.placement) ? u.viewers : null
+const remaining = content.stockLeft ?? st?.remaining ?? 0
+const fill = (tpl: string | undefined, n: number, fallback: string) => (tpl ? tpl.replace(/\{n\}/gi, String(n)) : fallback)
+const cls = (x: { style?: string; color?: string }) => `urg urg-${x.style ?? 'soft'} urg-c-${x.color ?? 'orange'}`
+const barPct = st?.showBar ? Math.max(4, Math.min(100, Math.round((remaining / Math.max(st.total ?? remaining * 4, remaining)) * 100))) : 0
+const units = d.store.locale === 'en' ? ['h', 'min', 's'] : ['h', 'min', 's']
 ---
 
 {
-  show && (
-    <div class="urgency">
+  (cd || st || vw) && (
+    <div class={`urgency${at ? ` urgency-at-${at}` : ''}`}>
       {cd && (
-        <p class="urg" data-countdown={cd.minutes} data-pid={d.product.id} hidden>
-          ⏰ {cd.label || t.countdown} <span class="cd-time">--:--:--</span>
+        <p class={`${cls(cd)}${cd.format === 'blocks' ? ' urg-blocks' : ''}`} data-countdown={cd.minutes} data-mode={cd.mode ?? 'visitor'} data-ends={cd.endsAt ?? ''} data-pid={d.product.id} hidden>
+          <svg class="urg-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="13" r="8" />
+            <path d="M12 9v4l2 2M9 2h6" />
+          </svg>
+          <span>{cd.label || t.countdown}</span>
+          {cd.format === 'blocks' ? (
+            <span class="cd-time cd-blocks">
+              {units.map((un) => (
+                <span class="cd-box">
+                  <b>--</b>
+                  <small>{un}</small>
+                </span>
+              ))}
+            </span>
+          ) : (
+            <span class="cd-time">--:--:--</span>
+          )}
         </p>
       )}
-      {stock && <p class="urg"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-0.15em"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3.3.3 1.6 1.4 2.8 2.5 2.8z"></path></svg> {t.inStockLow(stock)}</p>}
-      {viewers && (
-        <p class="urg" data-viewers={viewers}>
+      {st && (
+        <div class={`${cls(st)}${st.showBar ? ' urg-has-bar' : ''}`}>
+          <p class="urg-line">
+            <svg class="urg-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3.3.3 1.6 1.4 2.8 2.5 2.8z" />
+            </svg>
+            <span>{fill(st.label, remaining, t.inStockLow(remaining))}</span>
+          </p>
+          {st.showBar && (
+            <span class="urg-bar" aria-hidden="true">
+              <span style={`width:${barPct}%`} />
+            </span>
+          )}
+        </div>
+      )}
+      {vw && (
+        <p class={cls(vw)} data-viewers={vw.base} data-vary={vw.vary === false ? '0' : '1'} data-tpl={vw.label ?? ''}>
           <span class="dot" aria-hidden="true" />
-          <span data-vtext>{t.viewers(viewers)}</span>
+          <span data-vtext>{fill(vw.label, vw.base, t.viewers(vw.base))}</span>
         </p>
       )}
     </div>

@@ -2,6 +2,7 @@
 /** Page de vente, HTML d'abord, mise en cache (aucune donnée personnelle ici). */
 import Footer from '../../../components/Footer.astro'
 import Layout from '../../../components/Layout.astro'
+import Urgency from '../../../components/sales/Urgency.astro'
 import Block from '../../../components/sales/Block.astro'
 import OrderBox from '../../../components/sales/OrderBox.astro'
 import PausedNotice from '../../../components/sales/PausedNotice.astro'
@@ -137,6 +138,7 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: isPreview ? nul
     )
   }
   <div id="sf-promo" class="promo-bar" role="status" hidden></div>
+  {!custom && <Urgency d={d} at="top_bar" />}
 
   {
     custom ? (

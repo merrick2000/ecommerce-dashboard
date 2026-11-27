@@ -410,6 +410,10 @@ export const productContentSchema = z.object({
   gallery: z.array(z.string().max(500)).max(12).default([]),
   /** Popup de ventes sur ce produit : selon la boutique, toujours affichée, ou jamais. */
   salesPopup: z.enum(['inherit', 'on', 'off']).default('inherit'),
+  /** Éléments d'urgence sur ce produit : selon la boutique ou masqués. */
+  urgency: z.enum(['inherit', 'off']).default('inherit'),
+  /** Stock affiché pour ce produit (remplace le nombre de la boutique). */
+  stockLeft: z.number().int().min(1).max(10_000).optional(),
   /** Formulaire propre à ce produit ; null = formulaire de la boutique. */
   orderForm: orderFormSchema.nullable().default(null),
   /**
@@ -674,6 +678,18 @@ export const stickyCtaSchema = z.object({
 export type StickyCta = z.infer<typeof stickyCtaSchema>
 export const STICKY_CTA_DEFAULTS: StickyCta = stickyCtaSchema.parse({})
 
+/** Éléments d'urgence : où les afficher et à quoi ils ressemblent. */
+export const URGENCY_PLACEMENTS = ['top_bar', 'under_title', 'above_price', 'under_cta', 'above_form'] as const
+export const URGENCY_STYLES = ['soft', 'outline', 'solid', 'minimal', 'pill'] as const
+export const URGENCY_COLORS = ['orange', 'red', 'accent', 'green', 'dark'] as const
+export const URGENCY_COUNTDOWN_MODES = ['visitor', 'daily', 'date'] as const
+export type UrgencyPlacement = (typeof URGENCY_PLACEMENTS)[number]
+const urgencyLook = {
+  placement: z.enum(URGENCY_PLACEMENTS).default('under_cta'),
+  style: z.enum(URGENCY_STYLES).default('soft'),
+  color: z.enum(URGENCY_COLORS).default('orange'),
+}
+
 export const checkoutSettingsSchema = z.object({
   template: templateSchema.default('classic'),
   /**
@@ -694,9 +710,40 @@ export const checkoutSettingsSchema = z.object({
     .default(PAGE_BLOCKS.map((block) => ({ block, visible: block !== 'custom_text' }))),
   urgency: z
     .object({
-      countdown: z.object({ enabled: z.boolean(), minutes: z.number().int().min(5).max(1440), label: z.string().max(80).optional() }).optional(),
-      limitedStock: z.object({ enabled: z.boolean(), remaining: z.number().int().min(1).max(10_000) }).optional(),
-      viewers: z.object({ enabled: z.boolean(), base: z.number().int().min(1).max(500) }).optional(),
+      countdown: z
+        .object({
+          enabled: z.boolean(),
+          minutes: z.number().int().min(5).max(1440),
+          label: z.string().max(80).optional(),
+          /** visitor = durée propre à chaque visiteur ; daily = jusqu'à minuit chaque jour ; date = jusqu'à une date fixe. */
+          mode: z.enum(URGENCY_COUNTDOWN_MODES).default('visitor'),
+          endsAt: z.string().datetime({ offset: true }).optional(),
+          format: z.enum(['clock', 'blocks']).default('clock'),
+          ...urgencyLook,
+        })
+        .optional(),
+      limitedStock: z
+        .object({
+          enabled: z.boolean(),
+          remaining: z.number().int().min(1).max(10_000),
+          /** Texte avec {n} remplacé par le nombre. */
+          label: z.string().max(80).optional(),
+          /** Barre de progression : reste {remaining} sur {total}. */
+          showBar: z.boolean().default(false),
+          total: z.number().int().min(1).max(100_000).optional(),
+          ...urgencyLook,
+        })
+        .optional(),
+      viewers: z
+        .object({
+          enabled: z.boolean(),
+          base: z.number().int().min(1).max(500),
+          label: z.string().max(80).optional(),
+          /** Le nombre bouge un peu toutes les quelques secondes. */
+          vary: z.boolean().default(true),
+          ...urgencyLook,
+        })
+        .optional(),
     })
     .default({}),
   /** Bouton d'achat collant qui suit le défilement (page de vente). */
