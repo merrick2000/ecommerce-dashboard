@@ -286,7 +286,7 @@ function Form({ initial, canEdit, section }: { initial: CheckoutSettings; canEdi
 
         {section === 'popups' && <>
         <Card collapsible title="Popups marketing" summary={`${(s.marketingPopups ?? []).filter((x) => x.enabled).length} active(s) sur ${(s.marketingPopups ?? []).length}`}>
-          <MarketingPopupsEditor value={s.marketingPopups ?? []} onChange={(marketingPopups) => set({ marketingPopups })} />
+          <MarketingPopupsEditor value={s.marketingPopups ?? []} onChange={(marketingPopups) => set({ marketingPopups })} accent={s.primaryColor} />
         </Card>
         </>}
 

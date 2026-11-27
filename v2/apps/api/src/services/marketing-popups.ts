@@ -4,7 +4,7 @@
  * Un code devenu invalide n'est jamais montré : la popup s'affiche sans lui.
  */
 import { and, eq, inArray } from 'drizzle-orm'
-import type { CheckoutSettings, ProductContent } from '@zuri/shared'
+import { marketingPopupSchema, type CheckoutSettings, type MarketingPopup, type ProductContent } from '@zuri/shared'
 import { db } from '../db/client'
 import { promoCodes } from '../db/schema'
 
@@ -12,7 +12,12 @@ export type PublicPopupPromo = { code: string; type: 'percentage' | 'fixed'; val
 
 export async function popupsForProduct(storeId: string, productId: string, content: Pick<ProductContent, 'marketingPopups'>, settings: Pick<CheckoutSettings, 'marketingPopups'> | undefined, now = new Date()) {
   if (content.marketingPopups === 'off') return []
-  const list = (settings?.marketingPopups ?? []).filter((p) => p.enabled && (p.scope === 'all' || p.productIds.includes(productId)))
+  // Popups enregistrées avant un nouveau réglage : valeurs par défaut complétées (design, moments…).
+  const list = (settings?.marketingPopups ?? [])
+    .map((p) => marketingPopupSchema.safeParse(p))
+    .filter((r): r is { success: true; data: MarketingPopup } => r.success)
+    .map((r) => r.data)
+    .filter((p) => p.enabled && (p.scope === 'all' || p.productIds.includes(productId)))
   if (!list.length) return []
   const codes = [...new Set(list.map((p) => p.promoCode).filter((c): c is string => Boolean(c)))]
   const rules = codes.length ? await db.select().from(promoCodes).where(and(eq(promoCodes.storeId, storeId), inArray(promoCodes.code, codes))) : []

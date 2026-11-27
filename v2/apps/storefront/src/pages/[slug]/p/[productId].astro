@@ -15,7 +15,8 @@ import { dict } from '../../../lib/i18n'
 import type { CheckoutData } from '../../../lib/types'
 import { absoluteUrl, canonicalRedirect, canonicalStoreUrl, img, originOf, storeUrl } from '../../../lib/urls'
 import { breadcrumbJsonLd, productJsonLd } from '../../../lib/structured'
-import { STICKY_CTA_DEFAULTS } from '@zuri/shared'
+import { popupTriggers, STICKY_CTA_DEFAULTS } from '@zuri/shared'
+import { POPUP_TEXTS } from '@zuri/shared/popup-render'
 import { dialFor } from '../../../client/phone'
 import { interpolate } from '@zuri/shared/form-runtime'
 
@@ -79,11 +80,10 @@ const mktCfg = mktPopups.length
       wa: waHref,
       force: Astro.url.searchParams.get('zuri_popup'),
       preview: isPreview,
-      t: en
-        ? { cta: 'Continue', ctaOrder: 'Claim my offer', dismiss: 'No thanks', copy: 'Copy', copied: 'Copied', endsIn: 'Offer ends in', phoneLabel: 'Your WhatsApp number', phonePh: 'Phone number', reveal: 'Show my code', phoneBad: 'Please enter a valid number', applied: 'Code applied', close: 'Close', yourCode: 'Your code' }
-        : { cta: 'Continuer', ctaOrder: 'J’en profite', dismiss: 'Non merci', copy: 'Copier', copied: 'Copié', endsIn: 'Offre valable encore', phoneLabel: 'Votre numéro WhatsApp', phonePh: 'Numéro de téléphone', reveal: 'Voir mon code', phoneBad: 'Entrez un numéro valide', applied: 'Code appliqué', close: 'Fermer', yourCode: 'Votre code' },
+      t: POPUP_TEXTS[en ? 'en' : 'fr'],
       popups: mktPopups.map((p) => ({
         ...p,
+        triggers: popupTriggers(p),
         imageSrc: p.image === 'custom' && p.imageUrl ? img(p.imageUrl, 640) : p.image === 'product' && productImg ? img(productImg, 640) : null,
         promo: p.promo
           ? {

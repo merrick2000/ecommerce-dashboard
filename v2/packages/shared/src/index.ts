@@ -686,6 +686,39 @@ export const STICKY_CTA_DEFAULTS: StickyCta = stickyCtaSchema.parse({})
  */
 export const MKT_TRIGGERS = ['exit', 'delay', 'scroll', 'idle', 'form_abandon', 'cta_no_order', 'return_visit', 'tab_return'] as const
 export type MktTrigger = (typeof MKT_TRIGGERS)[number]
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/)
+/** Design libre de la popup : tout est réglable, avec des valeurs par défaut sûres. */
+export const popupDesignSchema = z.object({
+  width: z.enum(['sm', 'md', 'lg']).default('md'),
+  radius: z.number().int().min(0).max(40).default(18),
+  align: z.enum(['center', 'left']).default('center'),
+  titleSize: z.enum(['sm', 'md', 'lg']).default('md'),
+  /** Couleurs personnalisées (sinon celles du thème). */
+  bg: hexColor.optional(),
+  fg: hexColor.optional(),
+  btnBg: hexColor.optional(),
+  btnFg: hexColor.optional(),
+  badgeBg: hexColor.optional(),
+  btnShape: z.enum(['rounded', 'pill', 'square']).default('rounded'),
+  /** Assombrissement du fond de page, en %. */
+  overlay: z.number().int().min(0).max(90).default(50),
+  animation: z.enum(['slide', 'fade', 'zoom', 'none']).default('slide'),
+  showBadge: z.boolean().default(true),
+  showClose: z.boolean().default(true),
+  showDismiss: z.boolean().default(true),
+  /** Image entière (contain) ou recadrée pour remplir (cover). */
+  imageFit: z.enum(['contain', 'cover']).default('contain'),
+  /** En haut, à gauche (ordinateur ; en haut sur téléphone) ou en fond derrière le texte. */
+  imagePosition: z.enum(['top', 'left', 'background']).default('top'),
+  /** Sur téléphone : panneau en bas (recommandé), au centre, ou plein écran. */
+  mobileLayout: z.enum(['bottom', 'center', 'fullscreen']).default('bottom'),
+  /** CSS libre pour aller plus loin (classes .mkp-card, .mkp-title, .mkp-cta…). */
+  customCss: z.string().max(4000).optional(),
+})
+export type PopupDesign = z.infer<typeof popupDesignSchema>
+export const popupTriggerSchema = z.object({ type: z.enum(MKT_TRIGGERS), value: z.number().int().min(0).max(600).default(0) })
+export type PopupTrigger = z.infer<typeof popupTriggerSchema>
+
 export const marketingPopupSchema = z.object({
   id: z.string().regex(/^[a-z0-9]{4,16}$/),
   name: z.string().trim().min(1, 'Nom').max(60),
@@ -693,6 +726,10 @@ export const marketingPopupSchema = z.object({
   trigger: z.enum(MKT_TRIGGERS).default('exit'),
   /** Secondes (attente, inactivité, formulaire, hésitation, retour) ou pourcentage de défilement. */
   value: z.number().int().min(0).max(600).default(10),
+  /** Plusieurs moments : la popup s'ouvre au premier (any) ou quand tous sont arrivés (all). Vide : trigger + value. */
+  triggers: z.array(popupTriggerSchema).max(5).default([]),
+  triggerMode: z.enum(['any', 'all']).default('any'),
+  design: popupDesignSchema.default(popupDesignSchema.parse({})),
   title: z.string().trim().min(1, 'Titre').max(90),
   text: z.string().max(300).optional(),
   image: z.enum(['none', 'product', 'custom']).default('product'),
@@ -719,6 +756,8 @@ export const marketingPopupSchema = z.object({
   productIds: z.array(z.string().max(40)).max(200).default([]),
 })
 export type MarketingPopup = z.infer<typeof marketingPopupSchema>
+/** Moments effectifs d'une popup (anciennes popups : un seul déclencheur). */
+export const popupTriggers = (p: Pick<MarketingPopup, 'trigger' | 'value' | 'triggers'>): PopupTrigger[] => (p.triggers?.length ? p.triggers : [{ type: p.trigger, value: p.value }])
 
 /** Éléments d'urgence : où les afficher et à quoi ils ressemblent. */
 export const URGENCY_PLACEMENTS = ['top_bar', 'under_title', 'above_price', 'under_cta', 'above_form'] as const
