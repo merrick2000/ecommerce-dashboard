@@ -190,6 +190,13 @@
       "when": 1795781362158,
       "tag": "0026_capi_log",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1795798648338,
+      "tag": "0027_wallet",
+      "breakpoints": true
     }
   ]
 }

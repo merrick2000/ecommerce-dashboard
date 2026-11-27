@@ -23,7 +23,7 @@ describe('achat déclaré à Meta en paiement à la livraison', () => {
     await db.insert(users).values({ email: 'capi-cod@test.dev', name: 'Capi', passwordHash: await Bun.password.hash('motdepasse-solide', { algorithm: 'argon2id' }) }).onConflictDoNothing()
     await owner.post('/api/auth/login', { email: 'capi-cod@test.dev', password: 'motdepasse-solide' })
     const s = (await owner.post('/api/stores', { name: 'Capi Cod', slug: 'capi-cod', currency: 'XOF' })).body.id
-    expect((await owner.get(`/api/stores/${s}/checkout-settings`)).body.tracking.codPurchaseOn).toBe('confirmed')
+    expect((await owner.get(`/api/stores/${s}/checkout-settings`)).body.tracking.codPurchaseOn).toBe('delivered')
     expect((await owner.put(`/api/stores/${s}/tracking`, { facebookPixelId: '123456789012', codPurchaseOn: 'confirmed' })).status).toBe(200)
     expect((await owner.get(`/api/stores/${s}/checkout-settings`)).body.tracking.codPurchaseOn).toBe('confirmed')
     expect((await owner.put(`/api/stores/${s}/tracking`, { facebookPixelId: '123456789012', codPurchaseOn: 'demain' })).status).toBe(422)

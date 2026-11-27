@@ -24,6 +24,9 @@ interface AdminStore {
   lastOrderAt: string | null
   products: number
   payments: string | null
+  kind: 'physical' | 'digital'
+  walletEnabled: boolean
+  walletCommissionPct: number | null
 }
 
 export default function AdminStores() {
@@ -73,6 +76,7 @@ export default function AdminStores() {
                 <th className="px-3 py-2 text-right">Livré</th>
                 <th className="px-3 py-2">Dernière commande</th>
                 <th className="px-3 py-2">Paiements</th>
+                <th className="px-3 py-2">Portefeuille</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
@@ -100,7 +104,8 @@ export default function AdminStores() {
                   </td>
                   <td className="tabular px-3 py-2.5 text-right whitespace-nowrap">{fmt(s.delivered)} {s.currency === 'XOF' || s.currency === 'XAF' ? 'F' : s.currency}</td>
                   <td className="px-3 py-2.5 whitespace-nowrap text-muted">{ago(s.lastOrderAt)}</td>
-                  <td className="px-3 py-2.5 text-[12px] text-muted">{s.payments ?? 'COD seul'}</td>
+                  <td className="px-3 py-2.5 text-[12px] text-muted">{s.walletEnabled ? 'Portefeuille Zuri' : (s.payments ?? 'COD seul')}</td>
+                  <td className="px-3 py-2.5">{s.kind === 'digital' ? <WalletCell store={s} /> : <span className="text-[12px] text-muted">Physique</span>}</td>
                   <td className="px-3 py-2.5 whitespace-nowrap">
                     {s.status === 'active' ? (
                       <Button size="sm" onClick={() => act(s.id, 'paused')}>
@@ -130,6 +135,41 @@ export default function AdminStores() {
             <ChevronRight className="size-4" />
           </Button>
         </div>
+      )}
+    </div>
+  )
+}
+
+/** Portefeuille d'une boutique digitale : ouverture et commission propre (vide = celle de sa formule). */
+function WalletCell({ store }: { store: AdminStore }) {
+  const qc = useQueryClient()
+  const toast = useToast()
+  const [pct, setPct] = useState(store.walletCommissionPct == null ? '' : String(store.walletCommissionPct))
+  const save = useMutation({
+    mutationFn: (body: { enabled?: boolean; commissionPct?: number | null }) => api.patch(`/admin/stores/${store.id}/wallet`, body),
+    onSuccess: () => (toast.success('Portefeuille mis à jour'), void qc.invalidateQueries({ queryKey: ['admin', 'stores'] })),
+    onError: (e) => toast.error(e),
+  })
+  return (
+    <div className="flex items-center gap-2 whitespace-nowrap">
+      <Button size="sm" variant={store.walletEnabled ? 'secondary' : 'primary'} loading={save.isPending} onClick={() => (store.walletEnabled ? window.confirm(`Couper le portefeuille de ${store.name} ? Ses prochains paiements en ligne ne passeront plus par Zuri.`) : true) && save.mutate({ enabled: !store.walletEnabled })}>
+        {store.walletEnabled ? 'Couper' : 'Ouvrir'}
+      </Button>
+      {store.walletEnabled && (
+        <label className="flex items-center gap-1 text-[12px] text-muted" title="Commission propre à cette boutique. Vide : celle de sa formule.">
+          <input
+            value={pct}
+            onChange={(e) => setPct(e.target.value.replace(/[^\d.]/g, ''))}
+            onBlur={() => {
+              const v = pct === '' ? null : Number(pct)
+              if (v !== store.walletCommissionPct && (v === null || (v >= 0 && v <= 50))) save.mutate({ commissionPct: v })
+            }}
+            placeholder="formule"
+            className="w-16 rounded-md border border-line bg-surface px-1.5 py-1 text-right text-fg"
+            aria-label={`Commission de ${store.name} (%)`}
+          />
+          %
+        </label>
       )}
     </div>
   )

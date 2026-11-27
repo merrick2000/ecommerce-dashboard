@@ -244,6 +244,12 @@ export const stores = pgTable('stores', {
   /** Message affiché aux visiteurs pendant la pause. */
   pauseMessage: varchar('pause_message', { length: 300 }),
   closedAt: ts('closed_at'),
+  /** Portefeuille (produits digitaux) : Zuri encaisse pour la boutique et lui reverse ; ouvert par le super admin. */
+  walletEnabled: boolean('wallet_enabled').notNull().default(false),
+  /** Commission propre à cette boutique (%), sinon celle de sa formule. */
+  walletCommissionPct: numeric('wallet_commission_pct', { precision: 5, scale: 2, mode: 'number' }),
+  /** Dernier numéro Mobile Money utilisé pour un retrait (prérempli la fois suivante). */
+  walletPayoutTo: jsonb('wallet_payout_to').$type<{ phone: string; network: string; country: string; name?: string } | null>(),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 })
@@ -567,6 +573,8 @@ export const orders = pgTable(
     poLivemode: boolean('po_livemode'),
     /** Numéro de la session (une nouvelle session si le total change ou après expiration). */
     poSessionSeq: smallint('po_session_seq').notNull().default(0),
+    /** Paiement encaissé par Zuri pour le portefeuille de la boutique (crédité une fois payé). */
+    walletCollected: boolean('wallet_collected').notNull().default(false),
     /** Prestataire et opérateur réellement utilisés (pawapay, mtn…), raison d'échec. */
     poProvider: varchar('po_provider', { length: 30 }),
     poOperator: varchar('po_operator', { length: 30 }),
@@ -1022,3 +1030,56 @@ export const sellerFeedback = pgTable(
   },
   (t) => [index('seller_feedback_kind_idx').on(t.kind, t.createdAt), index('seller_feedback_user_idx').on(t.userId)],
 )
+
+/**
+ * Portefeuille : registre des mouvements (jamais modifié, seulement complété).
+ * sale + / commission - à la vente (disponibles après le délai), refund -, withdrawal - à la demande,
+ * withdrawal_reversal + si le retrait est refusé ou échoue, adjustment +/- par le super admin.
+ */
+export const walletEntries = pgTable(
+  'wallet_entries',
+  {
+    id: id(),
+    storeId: ref('store_id')
+      .notNull()
+      .references(() => stores.id, { onDelete: 'cascade' }),
+    type: varchar('type', { length: 24 }).$type<'sale' | 'commission' | 'refund' | 'withdrawal' | 'withdrawal_reversal' | 'adjustment'>().notNull(),
+    amount: money('amount').notNull(),
+    currency: varchar('currency', { length: 3 }).notNull(),
+    orderId: ref('order_id').references(() => orders.id, { onDelete: 'set null' }),
+    withdrawalId: fk('withdrawal_id'),
+    note: varchar('note', { length: 255 }),
+    /** Date à partir de laquelle le montant compte dans le solde disponible. */
+    availableAt: ts('available_at').notNull().defaultNow(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('wallet_entries_store_idx').on(t.storeId, t.createdAt), uniqueIndex('wallet_entries_order_type_uq').on(t.orderId, t.type)],
+)
+export type WalletEntry = typeof walletEntries.$inferSelect
+
+/** Demandes de retrait vers Mobile Money : en attente, validée, en cours d'envoi, payée, refusée ou échouée. */
+export const withdrawals = pgTable(
+  'withdrawals',
+  {
+    id: id(),
+    storeId: ref('store_id')
+      .notNull()
+      .references(() => stores.id, { onDelete: 'cascade' }),
+    amount: money('amount').notNull(),
+    currency: varchar('currency', { length: 3 }).notNull(),
+    phone: varchar('phone', { length: 30 }).notNull(),
+    network: varchar('network', { length: 40 }).notNull(),
+    country: varchar('country', { length: 2 }).notNull(),
+    holderName: varchar('holder_name', { length: 120 }),
+    status: varchar('status', { length: 16 }).$type<'pending' | 'approved' | 'processing' | 'paid' | 'rejected' | 'failed' | 'cancelled'>().notNull().default('pending'),
+    requestedBy: fk('requested_by').references(() => users.id, { onDelete: 'set null' }),
+    reviewedBy: fk('reviewed_by').references(() => users.id, { onDelete: 'set null' }),
+    reviewedAt: ts('reviewed_at'),
+    paidAt: ts('paid_at'),
+    reference: varchar('reference', { length: 120 }),
+    reason: varchar('reason', { length: 255 }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('withdrawals_store_idx').on(t.storeId, t.createdAt), index('withdrawals_status_idx').on(t.status, t.createdAt)],
+)
+export type Withdrawal = typeof withdrawals.$inferSelect

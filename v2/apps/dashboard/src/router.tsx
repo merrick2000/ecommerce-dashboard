@@ -50,6 +50,7 @@ export const router = createBrowserRouter([
               { path: 'users', lazy: page(() => import('@/pages/admin/Users')) },
               { path: 'users/:userId', lazy: page(() => import('@/pages/admin/UserDetail')) },
               { path: 'stores', lazy: page(() => import('@/pages/admin/Stores')) },
+              { path: 'withdrawals', lazy: page(() => import('@/pages/admin/Withdrawals')) },
               { path: 'messages', lazy: page(() => import('@/pages/admin/Messages')) },
               { path: 'reviews', lazy: page(() => import('@/pages/admin/Reviews')) },
               { path: 'announcements', lazy: page(() => import('@/pages/admin/Announcements')) },
@@ -81,6 +82,7 @@ export const router = createBrowserRouter([
               { path: 'customers/:customerId', lazy: page(() => import('@/pages/customers/CustomerDetail')) },
               { path: 'zones', lazy: page(() => import('@/pages/Zones')) },
               { path: 'marketing', lazy: page(() => import('@/pages/Marketing')) },
+              { path: 'finances', lazy: page(() => import('@/pages/Finances')) },
               // Ancienne adresse : les codes promo sont dans Marketing.
               { path: 'promo-codes', element: <Navigate to="../marketing?tab=promos" replace relative="path" /> },
               { path: 'settings', lazy: page(() => import('@/pages/settings/Settings')) },

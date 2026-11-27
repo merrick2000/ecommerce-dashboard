@@ -1,6 +1,6 @@
 import type { Permission } from '@zuri/shared'
 import { MARKETING_PERMS } from '@/pages/Marketing'
-import { Activity, Bell, Bot, ChartLine, Check, ChevronsUpDown, Crown, LayoutDashboard, Megaphone, LogOut, Menu, Moon, Package, PanelLeftClose, PanelLeftOpen, PauseCircle, Plus, Receipt, Settings, Shield, ShoppingBag, Sun, Tag, Truck, UserPlus, Users, type LucideIcon, Gift } from 'lucide-react'
+import { Activity, Bell, Bot, ChartLine, Check, ChevronsUpDown, Crown, LayoutDashboard, Megaphone, Wallet, LogOut, Menu, Moon, Package, PanelLeftClose, PanelLeftOpen, PauseCircle, Plus, Receipt, Settings, Shield, ShoppingBag, Sun, Tag, Truck, UserPlus, Users, type LucideIcon, Gift } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Outlet, useLocation, useNavigate, useNavigation } from 'react-router'
 import { Announcements } from '@/components/Announcements'
@@ -40,6 +40,7 @@ const NAV: NavItem[] = [
   { to: 'traffic', label: 'Trafic', icon: ChartLine, perm: 'stats.view' },
   { to: 'zones', label: 'Livraison', icon: Truck, perm: 'delivery.edit', kind: 'physical' },
   { to: 'expenses', label: 'Dépenses', icon: Receipt, perm: 'stats.revenue' },
+  { to: 'finances', label: 'Finances', icon: Wallet, perm: 'payments.manage', kind: 'digital' },
   { to: 'marketing', label: 'Marketing', icon: Megaphone },
   { to: 'activity', label: 'Activité', icon: Activity, perm: 'activity.view' },
   { to: 'team', label: 'Équipe', icon: UserPlus, perm: 'team.manage' },

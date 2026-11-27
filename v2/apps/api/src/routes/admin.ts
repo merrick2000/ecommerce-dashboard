@@ -8,7 +8,7 @@ import { Hono } from 'hono'
 import { createMiddleware } from 'hono/factory'
 import { z } from 'zod'
 import { db } from '../db/client'
-import { announcementDismissals, announcements, billingPayments, contactMessages, onboardingEmails, sellerReviews, orders, paymentAccounts, sessions, storeMembers, stores, subscriptions, users } from '../db/schema'
+import { announcementDismissals, announcements, billingPayments, contactMessages, onboardingEmails, sellerReviews, orders, paymentAccounts, sessions, storeMembers, stores, subscriptions, users, withdrawals } from '../db/schema'
 import { contactInfo } from './site'
 import { audienceSize } from '../services/announcements'
 import { resetAccount, resetPreview } from '../services/account-reset'
@@ -19,7 +19,8 @@ import { DEFAULT_PROMO, type BillingPromo } from '@zuri/shared'
 import { enqueue } from '../jobs/queue'
 import { requireAuth } from '../lib/auth'
 import type { AppEnv } from '../lib/context'
-import { HttpError } from '../lib/errors'
+import { badRequest, HttpError, notFound } from '../lib/errors'
+import { closeWithdrawal, notifyWithdrawal, reviewWithdrawal, saveWalletConfig, walletBalances, walletConfig } from '../services/wallet'
 import { v } from '../lib/validate'
 import { extendSubscription } from '../services/billing'
 import { getSetting, setSetting } from '../services/platform'
@@ -218,7 +219,7 @@ export const adminRoutes = new Hono<AppEnv>()
     const [{ total } = { total: 0 }] = await db.select({ total: dsql<number>`count(*)::int` }).from(stores).where(where)
     const rows = await db
       .select({
-        store: { id: stores.id, name: stores.name, slug: stores.slug, status: stores.status, country: stores.country, currency: stores.currency, createdAt: stores.createdAt },
+        store: { id: stores.id, name: stores.name, slug: stores.slug, status: stores.status, country: stores.country, currency: stores.currency, createdAt: stores.createdAt, kind: stores.kind, walletEnabled: stores.walletEnabled, walletCommissionPct: stores.walletCommissionPct },
         owner: dsql<string>`(select u.email from ${storeMembers} m join ${users} u on u.id = m.user_id where m.store_id = "stores"."id" and m.role = 'owner' limit 1)`,
         orders: dsql<number>`(select count(*)::int from ${orders} o where o.store_id = "stores"."id")`,
         orders30: dsql<number>`(select count(*)::int from ${orders} o where o.store_id = "stores"."id" and o.created_at > now() - interval '30 days')`,
@@ -233,6 +234,48 @@ export const adminRoutes = new Hono<AppEnv>()
       .limit(q.pageSize)
       .offset((q.page - 1) * q.pageSize)
     return c.json({ total, page: q.page, pageSize: q.pageSize, data: rows.map((r) => ({ ...r.store, owner: r.owner, orders: r.orders, orders30: r.orders30, delivered: Number(r.delivered), lastOrderAt: r.lastOrderAt, products: r.products, payments: r.payments })) })
+  })
+  /** Portefeuille d'une boutique : ouverture (produits digitaux) et commission propre (null = celle de la formule). */
+  .patch('/stores/:id/wallet', v('param', z.object({ id: z.string().max(40) })), v('json', z.object({ enabled: z.boolean().optional(), commissionPct: z.number().min(0).max(50).nullable().optional() })), async (c) => {
+    const { id } = c.req.valid('param')
+    const body = c.req.valid('json')
+    const [st] = await db.select({ kind: stores.kind }).from(stores).where(eq(stores.id, id)).limit(1)
+    if (!st) throw notFound('Boutique')
+    if (body.enabled && st.kind !== 'digital') throw badRequest('Le portefeuille est réservé aux boutiques de produits digitaux', 'wallet_digital_only')
+    const [row] = await db
+      .update(stores)
+      .set({ ...(body.enabled !== undefined ? { walletEnabled: body.enabled } : {}), ...(body.commissionPct !== undefined ? { walletCommissionPct: body.commissionPct } : {}) })
+      .where(eq(stores.id, id))
+      .returning({ id: stores.id, walletEnabled: stores.walletEnabled, walletCommissionPct: stores.walletCommissionPct })
+    return c.json(row)
+  })
+  /** Réglages du portefeuille : délai avant retrait, retrait minimum, commission par formule. */
+  .get('/wallet/config', async (c) => c.json(await walletConfig()))
+  .put('/wallet/config', v('json', z.object({ holdDays: z.number().int().min(0).max(60), minWithdrawal: z.number().min(0).max(10_000_000), commission: z.object({ free: z.number().min(0).max(50), starter: z.number().min(0).max(50), pro: z.number().min(0).max(50), business: z.number().min(0).max(50) }) })), async (c) => {
+    await saveWalletConfig(c.req.valid('json'))
+    return c.json(await walletConfig())
+  })
+  /** Retraits de toutes les boutiques, avec le solde de chacune (pour vérifier avant de verser). */
+  .get('/withdrawals', v('query', z.object({ status: z.enum(['open', 'pending', 'approved', 'paid', 'rejected', 'failed', 'cancelled', 'all']).default('open') })), async (c) => {
+    const { status } = c.req.valid('query')
+    const where = status === 'all' ? undefined : status === 'open' ? dsql`${withdrawals.status} in ('pending', 'approved', 'processing')` : eq(withdrawals.status, status)
+    const rows = await db
+      .select({ w: withdrawals, storeName: stores.name, storeSlug: stores.slug, owner: dsql<string>`(select u.email from ${storeMembers} m join ${users} u on u.id = m.user_id where m.store_id = ${withdrawals.storeId} and m.role = 'owner' limit 1)` })
+      .from(withdrawals)
+      .innerJoin(stores, eq(stores.id, withdrawals.storeId))
+      .where(where)
+      .orderBy(desc(withdrawals.createdAt))
+      .limit(200)
+    const out = await Promise.all(rows.map(async (r) => ({ ...r.w, storeName: r.storeName, storeSlug: r.storeSlug, owner: r.owner, balance: await walletBalances(r.w.storeId) })))
+    return c.json(out)
+  })
+  .post('/withdrawals/:wid/:action', v('param', z.object({ wid: z.coerce.number().int().positive(), action: z.enum(['approve', 'paid', 'reject', 'failed']) })), v('json', z.object({ reference: z.string().max(120).optional(), reason: z.string().max(255).optional() })), async (c) => {
+    const { wid, action } = c.req.valid('param')
+    const { reference, reason } = c.req.valid('json')
+    const uid = c.get('user').id
+    const w = action === 'reject' || action === 'failed' ? await closeWithdrawal(wid, action === 'reject' ? 'rejected' : 'failed', { userId: uid, reason }) : await reviewWithdrawal(wid, action, uid, reference)
+    if (w.status === 'paid' || w.status === 'rejected' || w.status === 'failed') await notifyWithdrawal(w).catch(() => undefined)
+    return c.json(w)
   })
   .post('/stores/:id/status', v('param', z.object({ id: z.string().max(40) })), v('json', z.object({ status: z.enum(['active', 'paused', 'closed']) })), async (c) => {
     const { status } = c.req.valid('json')

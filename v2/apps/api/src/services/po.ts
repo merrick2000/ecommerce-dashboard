@@ -25,7 +25,8 @@ export interface PoAccount {
   webhookSecret: string | null
   livemode: boolean
   settings: PoSettings
-  source: 'store' | 'platform'
+  /** wallet : compte de la plateforme qui encaisse pour le portefeuille de la boutique. */
+  source: 'store' | 'platform' | 'wallet'
 }
 
 interface PoSession {
@@ -83,6 +84,13 @@ export async function platformPo(): Promise<{ secretKey: string; webhookSecret: 
 }
 
 export async function poAccount(storeId: string): Promise<PoAccount | null> {
+  // Portefeuille ouvert par le super admin : la plateforme encaisse et reverse à la boutique.
+  const [st] = await db.select({ walletEnabled: stores.walletEnabled, kind: stores.kind }).from(stores).where(eq(stores.id, storeId)).limit(1)
+  if (st?.walletEnabled) {
+    const platform = await platformPo()
+    const [row] = await db.select({ settings: paymentAccounts.settings }).from(paymentAccounts).where(and(eq(paymentAccounts.storeId, storeId), eq(paymentAccounts.provider, 'orchestrator'))).limit(1)
+    if (platform) return { ...platform, settings: poSettingsSchema.parse(row?.settings ?? {}), source: 'wallet' }
+  }
   // Paiement en ligne réservé : le super admin l'ouvre à tous ou compte par compte (Super admin).
   const owner = await (await import('./platform')).storeOwner(storeId)
   if (!owner || !(await resolveFeatures(owner)).onlinePayments) return null
@@ -200,7 +208,7 @@ export async function createPoSession(token: string): Promise<{ paid: true } | {
   }
   await db
     .update(orders)
-    .set({ poSessionId: session.id, poLivemode: session.livemode, poStatus: 'unpaid', poSessionSeq: seq, poFailure: null, paymentProvider: 'orchestrator', paymentRef: session.id })
+    .set({ poSessionId: session.id, poLivemode: session.livemode, poStatus: 'unpaid', poSessionSeq: seq, poFailure: null, paymentProvider: 'orchestrator', paymentRef: session.id, walletCollected: acc.source === 'wallet' })
     .where(eq(orders.id, order.id))
   await db.insert(orderEvents).values({ orderId: order.id, type: 'payment_started', message: `Session de paiement créée${session.livemode ? '' : ' (test)'}`, data: { sessionId: session.id, seq } })
   return out(session)

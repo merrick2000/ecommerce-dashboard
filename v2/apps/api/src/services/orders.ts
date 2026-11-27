@@ -403,6 +403,8 @@ export async function markOrderPaid(orderId: string, info: { provider?: string |
       userId: info.userId ?? null,
     })
     await convertLeads(tx, order)
+    // Paiement encaissé par Zuri (portefeuille) et confirmé par le serveur de paiement : crédit de la boutique.
+    if (order.walletCollected && info.userId == null && info.provider === 'orchestrator') await (await import('./wallet')).creditSale(tx, order)
     return order
   })
   if (changed) {
@@ -552,6 +554,8 @@ export async function setPaymentStatus(store: Store, orderId: string, status: Pa
   await db.transaction(async (tx) => {
     await tx.update(orders).set({ paymentStatus: status }).where(eq(orders.id, orderId))
     await tx.insert(orderEvents).values({ orderId, type: `payment_${status}`, message: note ?? `Paiement : ${status}`, userId })
+    // Vente remboursée qui avait crédité le portefeuille : le net est retiré.
+    if (status === 'refunded' && order.walletCollected) await (await import('./wallet')).debitRefund(tx, order)
   })
   return true
 }
