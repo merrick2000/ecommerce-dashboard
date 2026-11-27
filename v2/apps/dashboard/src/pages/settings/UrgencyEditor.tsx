@@ -95,7 +95,7 @@ export function UrgencyEditor({ value, onChange, errors }: { value: Urgency; onC
               )}
               <Input label="Texte" optional placeholder="L’offre expire dans" value={cd.label ?? ''} maxLength={80} onChange={(e) => setCd({ label: e.target.value || undefined })} />
             </div>
-            <Segmented showLabel label="Affichage du temps" value={cd.format ?? 'clock'} onChange={(format) => setCd({ format })} options={[{ value: 'clock', label: '00:18:15' }, { value: 'blocks', label: 'Cases 00 h 18 min 15 s' }]} />
+            <Segmented showLabel label="Affichage du temps" value={cd.format ?? 'clock'} onChange={(format) => setCd({ format })} options={[{ value: 'clock', label: 'Texte : 18 min 15 s' }, { value: 'blocks', label: 'Cases : 00 h 18 min 15 s' }]} />
             <p className="text-[12px] text-muted">Une fois l’heure passée, le compte à rebours disparaît : on n’invente pas une nouvelle offre.</p>
             <LookFields look={cd} onChange={(l) => setCd(l)} />
           </>
@@ -212,7 +212,7 @@ function PagePreview({ u }: { u: Urgency }) {
               ))}
             </span>
           ) : (
-            <span className="tabular-nums font-extrabold">00:18:15</span>
+            <span className="tabular-nums font-extrabold">18 min 15 s</span>
           )}
         </div>
       ),

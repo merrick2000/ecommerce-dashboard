@@ -96,7 +96,7 @@ export function popupInnerHtml(p: RenderPopup, t: RenderTexts, opts: { stage: 'p
           ${p.promo && d.showBadge ? `<p class="mkp-badge">${TAG_ICON}<span>${esc(p.promo.label)}</span></p>` : ''}
           <h2 class="mkp-title" id="mkp-title-${p.id}">${esc(p.title)}</h2>
           ${p.text ? `<p class="mkp-text">${esc(p.text)}</p>` : ''}
-          ${p.countdown !== 'none' ? `<div class="mkp-cd"${opts.cdText ? '' : ' hidden'}><span>${esc(t.endsIn)}</span> <b class="mkp-cd-time">${esc(opts.cdText ?? '--:--')}</b></div>` : ''}
+          ${p.countdown !== 'none' ? `<div class="mkp-cd"${opts.cdText ? '' : ' hidden'}><span>${esc(t.endsIn)}</span> <b class="mkp-cd-time">${esc(opts.cdText ?? '')}</b></div>` : ''}
           ${code}
         </div></div>
         <div class="mkp-actions">

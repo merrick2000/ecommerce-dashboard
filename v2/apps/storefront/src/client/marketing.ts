@@ -7,6 +7,7 @@
  * Une seule popup par visite de page, dans l'ordre du vendeur ; jamais pour un client qui vient de commander.
  */
 import { POPUP_CSS, POPUP_X_ICON, popupInnerHtml, popupRootClass, popupRootStyle, TAG_ICON, type RenderPopup, type RenderTexts } from '@zuri/shared/popup-render'
+import { formatCountdown } from '@zuri/shared/time'
 import { fullPhone } from './phone'
 import { getJSON, getStr, setJSON, setStr } from './storage'
 import { track } from './track'
@@ -26,7 +27,6 @@ type T = RenderTexts & { copied: string; applied: string }
 type Cfg = { storeId: string; productId: string; slug: string; dial: string; wa: string | null; force: string | null; preview: boolean; popups: Popup[]; t: T }
 
 const WINDOW: Record<Popup['frequency'], number> = { session: 0, day: 86400_000, week: 7 * 86400_000, once: Number.POSITIVE_INFINITY }
-const pad = (n: number) => String(n).padStart(2, '0')
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
 
 export function startMarketing(el: HTMLElement) {
@@ -74,12 +74,7 @@ export function startMarketing(el: HTMLElement) {
     }
     return end
   }
-  const fmtLeft = (left: number) => {
-    const d = Math.floor(left / 86400)
-    const h = Math.floor((left % 86400) / 3600)
-    const m = Math.floor((left % 3600) / 60)
-    return d > 0 ? `${d} j ${pad(h)}:${pad(m)}` : `${h ? `${pad(h)}:` : ''}${pad(m)}:${pad(left % 60)}`
-  }
+  const fmtLeft = (left: number) => formatCountdown(left, cfg.t.close === 'Close' ? 'en' : 'fr')
 
   // ─── Affichage ───
   let shown = false

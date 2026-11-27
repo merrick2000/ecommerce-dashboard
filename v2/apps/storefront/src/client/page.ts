@@ -4,6 +4,7 @@
  * suivi, et pop-up de ventes réelles chargé en différé.
  */
 import { getStr, setStr } from './storage'
+import { formatCountdown } from '@zuri/shared/time'
 import { startTracking } from './track'
 
 startTracking({ viewContent: true })
@@ -90,8 +91,9 @@ document.querySelectorAll<HTMLElement>('[data-countdown]').forEach((cd) => {
       cd.hidden = true
       return
     }
+    // Cases : heures (jours compris), minutes, secondes ; texte : toujours avec les unités.
     const parts = [Math.floor(left / 3600), Math.floor((left % 3600) / 60), left % 60].map(pad)
-    if (clock) clock.textContent = parts.join(':')
+    if (clock) clock.textContent = formatCountdown(left, document.documentElement.lang === 'en' ? 'en' : 'fr')
     boxes.forEach((b, i) => (b.textContent = parts[i]!))
     cd.hidden = false
     setTimeout(tick, 1000)

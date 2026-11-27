@@ -561,7 +561,7 @@ const onAccent = (hex?: string) => {
 /** Page de test : le vrai rendu de la popup sur une fausse page de vente. */
 function previewDoc(popup: RenderPopup, accent?: string) {
   const a = /^#[0-9a-f]{6}$/i.test(accent ?? '') ? accent! : '#f59e0b'
-  const inner = popupInnerHtml(popup, POPUP_TEXTS.fr, { stage: popup.collectPhone && popup.promo ? 'phone' : 'code', dial: '229', cdText: popup.countdown !== 'none' ? '14:59' : undefined })
+  const inner = popupInnerHtml(popup, POPUP_TEXTS.fr, { stage: popup.collectPhone && popup.promo ? 'phone' : 'code', dial: '229', cdText: popup.countdown !== 'none' ? '14 min 59 s' : undefined })
   return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
 :root{--accent:${a};--on-accent:${onAccent(a)};--page:#fff;--fg:#111827;--muted:#6b7280;--line:#e5e7eb;--radius-btn:12px}
 html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#fff;color:#111827}
