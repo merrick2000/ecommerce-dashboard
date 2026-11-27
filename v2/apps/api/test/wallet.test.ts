@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { eq } from 'drizzle-orm'
 import { db } from '../src/db/client'
-import { orders, users, walletEntries } from '../src/db/schema'
+import { contactMessages, orders, users, walletEntries } from '../src/db/schema'
 import { env } from '../src/lib/env'
 import { markOrderPaid } from '../src/services/orders'
 import { Client } from './helpers'
@@ -43,7 +43,15 @@ describe('portefeuille', () => {
     await login(admin, 'wallet-admin@test.dev', true)
     storeId = (await owner.post('/api/stores', { name: 'Wallet Shop', slug: 'wallet-shop', currency: 'XOF', kind: 'digital', country: 'BJ' })).body.id
     productId = (await owner.post(`/api/stores/${storeId}/products`, { type: 'digital', name: 'Formation', isActive: true, price: 20000, delivery: { type: 'external_url', url: 'https://x.test/f' } })).body.id
-    expect((await owner.get(`/api/stores/${storeId}/wallet`)).body).toEqual({ enabled: false, currency: 'XOF' })
+    expect((await owner.get(`/api/stores/${storeId}/wallet`)).body).toEqual({ enabled: false, currency: 'XOF', requestedAt: null })
+    // Demande d'activation : un message dans le super admin, une seule tant qu'elle n'est pas traitée.
+    expect((await owner.post(`/api/stores/${storeId}/wallet/activation-request`, { note: 'Je vends des formations' })).body).toEqual({ ok: true, already: false })
+    expect((await owner.post(`/api/stores/${storeId}/wallet/activation-request`, {})).body).toEqual({ ok: true, already: true })
+    const msgs = await db.select().from(contactMessages).where(eq(contactMessages.page, `wallet:${storeId}`))
+    expect(msgs).toHaveLength(1)
+    expect(msgs[0]!.message).toContain('Wallet Shop')
+    expect(msgs[0]!.message).toContain('Je vends des formations')
+    expect((await owner.get(`/api/stores/${storeId}/wallet`)).body.requestedAt).toBeTruthy()
     const phys = (await owner.post('/api/stores', { name: 'Physique', slug: 'wallet-phys', currency: 'XOF' })).body.id
     expect((await admin.patch(`/api/admin/stores/${phys}/wallet`, { enabled: true })).status).toBe(400)
     expect((await owner.patch(`/api/admin/stores/${storeId}/wallet`, { enabled: true })).status).toBe(404)

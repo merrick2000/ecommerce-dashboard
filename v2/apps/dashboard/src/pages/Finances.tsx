@@ -3,12 +3,12 @@
  * demandes de retrait vers Mobile Money, suivi des retraits et historique des mouvements.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowDownToLine, Clock, Info, Wallet, X } from 'lucide-react'
+import { ArrowDownToLine, Check, Clock, Info, Wallet, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Dialog } from '@/components/Dialog'
 import { useToast } from '@/components/Toast'
-import { Badge, Button, Card, cx, EmptyState, ErrorState, Input, PageHeader, Select, Skeleton } from '@/components/ui'
+import { Badge, Button, Card, cx, EmptyState, ErrorState, Input, PageHeader, Select, Skeleton, Textarea } from '@/components/ui'
 import { useCan, useCurrentStore } from '@/hooks/auth'
 import { api } from '@/lib/api'
 import { money, relative } from '@/lib/format'
@@ -17,7 +17,7 @@ import type { Tone } from '@/lib/labels'
 type Entry = { id: number; type: 'sale' | 'commission' | 'refund' | 'withdrawal' | 'withdrawal_reversal' | 'adjustment'; amount: number; currency: string; note: string | null; availableAt: string; createdAt: string; orderId: string | null; orderNumber: string | null }
 type Withdrawal = { id: number; amount: number; currency: string; phone: string; network: string; country: string; holderName: string | null; status: 'pending' | 'approved' | 'processing' | 'paid' | 'rejected' | 'failed' | 'cancelled'; reference: string | null; reason: string | null; createdAt: string; paidAt: string | null }
 type WalletData =
-  | { enabled: false; currency: string }
+  | { enabled: false; currency: string; requestedAt?: string | null }
   | {
       enabled: true
       currency: string
@@ -97,8 +97,8 @@ export default function Finances() {
             </span>
             <h2 className="text-lg font-semibold">Encaissez sans compte de paiement</h2>
             <p className="max-w-lg text-sm text-muted">Avec le portefeuille Zuri, vos clients paient par Mobile Money sans que vous ayez à ouvrir un compte chez un prestataire. Votre argent s’accumule ici et vous demandez un retrait vers votre numéro quand vous voulez.</p>
-            <p className="text-sm text-muted">Le portefeuille s’ouvre sur demande. Écrivez-nous pour l’activer sur votre boutique.</p>
-            <ContactLink storeName={store?.name ?? ''} />
+            <p className="text-sm text-muted">Le portefeuille s’ouvre sur demande : envoyez la vôtre ci-dessous, l’équipe Zuri la reçoit directement.</p>
+            <ActivationRequest storeId={storeId} requestedAt={d.requestedAt ?? null} />
           </div>
         </Card>
       ) : (
@@ -157,15 +157,34 @@ export default function Finances() {
   )
 }
 
-/** Demande d'activation : WhatsApp de l'équipe Zuri (message prérempli), sinon email. */
-function ContactLink({ storeName }: { storeName: string }) {
-  const { data } = useQuery({ queryKey: ['platform-contact'], queryFn: () => api.get<{ email: string; whatsapp: string | null }>('/v1/platform/contact'), staleTime: 3600_000 })
-  const msg = `Bonjour, je souhaite activer le portefeuille Zuri sur ma boutique « ${storeName} ».`
-  const href = data?.whatsapp ? `https://wa.me/${data.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}` : data ? `mailto:${data.email}?subject=${encodeURIComponent('Activer le portefeuille')}&body=${encodeURIComponent(msg)}` : undefined
+/** Demande d'activation : envoyée directement dans les Messages du super admin (et par email), sans rien ouvrir. */
+function ActivationRequest({ storeId, requestedAt }: { storeId: string; requestedAt: string | null }) {
+  const qc = useQueryClient()
+  const toast = useToast()
+  const [note, setNote] = useState('')
+  const send = useMutation({
+    mutationFn: () => api.post<{ ok: true; already: boolean }>(`/stores/${storeId}/wallet/activation-request`, { note: note.trim() || undefined }),
+    onSuccess: () => {
+      toast.success('Demande envoyée : nous vous prévenons dès que le portefeuille est ouvert')
+      void qc.invalidateQueries({ queryKey: ['store', storeId, 'wallet'] })
+    },
+    onError: (e) => toast.error(e),
+  })
+  if (requestedAt)
+    return (
+      <p className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+        <Check className="size-4 shrink-0" /> Demande envoyée {relative(requestedAt)}. Nous vous prévenons dès que le portefeuille est ouvert.
+      </p>
+    )
   return (
-    <Button variant="primary" disabled={!href} onClick={() => href && window.open(href, '_blank', 'noopener')}>
-      Demander l’activation
-    </Button>
+    <div className="w-full max-w-md space-y-2 text-left">
+      <Textarea label="Un mot pour l’équipe" optional rows={2} value={note} maxLength={1000} onChange={(e) => setNote(e.target.value)} placeholder="Ex. je vends des formations, environ 30 ventes par mois." />
+      <div className="flex justify-center">
+        <Button variant="primary" loading={send.isPending} onClick={() => send.mutate()}>
+          Demander l’activation
+        </Button>
+      </div>
+    </div>
   )
 }
 
