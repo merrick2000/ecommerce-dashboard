@@ -412,6 +412,8 @@ export const productContentSchema = z.object({
   salesPopup: z.enum(['inherit', 'on', 'off']).default('inherit'),
   /** Éléments d'urgence sur ce produit : selon la boutique ou masqués. */
   urgency: z.enum(['inherit', 'off']).default('inherit'),
+  /** Popups marketing sur ce produit : selon leur réglage ou toutes masquées. */
+  marketingPopups: z.enum(['inherit', 'off']).default('inherit'),
   /** Stock affiché pour ce produit (remplace le nombre de la boutique). */
   stockLeft: z.number().int().min(1).max(10_000).optional(),
   /** Formulaire propre à ce produit ; null = formulaire de la boutique. */
@@ -678,6 +680,46 @@ export const stickyCtaSchema = z.object({
 export type StickyCta = z.infer<typeof stickyCtaSchema>
 export const STICKY_CTA_DEFAULTS: StickyCta = stickyCtaSchema.parse({})
 
+/**
+ * Popups marketing : un message qui s'ouvre au bon moment (sortie, hésitation, formulaire commencé…),
+ * avec en option un code promo, un compte à rebours, ou la demande du numéro WhatsApp.
+ */
+export const MKT_TRIGGERS = ['exit', 'delay', 'scroll', 'idle', 'form_abandon', 'cta_no_order', 'return_visit', 'tab_return'] as const
+export type MktTrigger = (typeof MKT_TRIGGERS)[number]
+export const marketingPopupSchema = z.object({
+  id: z.string().regex(/^[a-z0-9]{4,16}$/),
+  name: z.string().trim().min(1, 'Nom').max(60),
+  enabled: z.boolean().default(true),
+  trigger: z.enum(MKT_TRIGGERS).default('exit'),
+  /** Secondes (attente, inactivité, formulaire, hésitation, retour) ou pourcentage de défilement. */
+  value: z.number().int().min(0).max(600).default(10),
+  title: z.string().trim().min(1, 'Titre').max(90),
+  text: z.string().max(300).optional(),
+  image: z.enum(['none', 'product', 'custom']).default('product'),
+  imageUrl: z.string().max(500).optional(),
+  /** Code promo existant de la boutique, affiché et appliqué au formulaire. */
+  promoCode: z.string().trim().toUpperCase().max(30).optional(),
+  autoApply: z.boolean().default(true),
+  /** none ; minutes = durée propre à chaque visiteur ; promo_end = date de fin du code. */
+  countdown: z.enum(['none', 'minutes', 'promo_end']).default('none'),
+  countdownMinutes: z.number().int().min(1).max(1440).default(15),
+  /** Le visiteur laisse son numéro WhatsApp pour voir le code (il rejoint les paniers à relancer). */
+  collectPhone: z.boolean().default(false),
+  ctaText: z.string().max(40).optional(),
+  ctaAction: z.enum(['order', 'whatsapp', 'close', 'url']).default('order'),
+  ctaUrl: z.string().url().max(500).optional(),
+  dismissText: z.string().max(40).optional(),
+  layout: z.enum(['center', 'bottom', 'side']).default('center'),
+  theme: z.enum(['light', 'dark', 'accent']).default('light'),
+  /** Après fermeture, petit rappel du code dans un coin de l'écran. */
+  teaser: z.boolean().default(true),
+  devices: z.enum(['all', 'mobile', 'desktop']).default('all'),
+  frequency: z.enum(['session', 'day', 'week', 'once']).default('day'),
+  scope: z.enum(['all', 'selected']).default('all'),
+  productIds: z.array(z.string().max(40)).max(200).default([]),
+})
+export type MarketingPopup = z.infer<typeof marketingPopupSchema>
+
 /** Éléments d'urgence : où les afficher et à quoi ils ressemblent. */
 export const URGENCY_PLACEMENTS = ['top_bar', 'under_title', 'above_price', 'under_cta', 'above_form'] as const
 export const URGENCY_STYLES = ['soft', 'outline', 'solid', 'minimal', 'pill'] as const
@@ -789,6 +831,8 @@ export const checkoutSettingsSchema = z.object({
     .default({ enabled: false, promoCodeId: null }),
   /** Formulaire de commande de la boutique (tous les produits, sauf surcharge produit). */
   form: orderFormSchema.default(DEFAULT_ORDER_FORM),
+  /** Popups marketing, dans l'ordre de priorité (une seule s'ouvre par visite de page). */
+  marketingPopups: z.array(marketingPopupSchema).max(10).default([]),
 })
 export type CheckoutSettings = z.infer<typeof checkoutSettingsSchema>
 

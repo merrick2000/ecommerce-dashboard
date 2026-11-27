@@ -2,7 +2,7 @@
  * Formes des réponses de l'API publique (/api/v1) telles que renvoyées par
  * apps/api/src/routes/public.ts et routes/payments.ts, c'est le code qui fait foi.
  */
-import type { CheckoutSettings, OrderForm, Currency, FulfillmentStatus, PaymentMethod, PaymentStatus, ProductContent, ProductType, Promo, QuantityOffer } from '@zuri/shared'
+import type { CheckoutSettings, MarketingPopup, OrderForm, Currency, FulfillmentStatus, PaymentMethod, PaymentStatus, ProductContent, ProductType, Promo, QuantityOffer } from '@zuri/shared'
 
 export interface DisplayPrice {
   currency: string
@@ -99,9 +99,15 @@ export interface CheckoutData {
   paymentGateway?: PaymentGateway
   zones: Zone[]
   checkout: CheckoutSettings
+  /** Popups marketing qui visent ce produit (codes promo déjà vérifiés par l'API). */
+  marketingPopups?: PublicMarketingPopup[]
   orderForm: OrderForm
   tracking: { facebookPixelId: string | null; tiktokPixelId: string | null }
   onlinePaymentEnabled: boolean
+}
+
+export type PublicMarketingPopup = Omit<MarketingPopup, 'scope' | 'productIds' | 'promoCode'> & {
+  promo: { code: string; type: 'percentage' | 'fixed'; value: number; endsAt: string | null; minSubtotal: number | null } | null
 }
 
 export interface CatalogData {

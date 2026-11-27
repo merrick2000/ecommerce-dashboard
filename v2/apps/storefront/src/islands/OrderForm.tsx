@@ -7,7 +7,7 @@ import { checkCustomFields, interpolate, resolveFormFields } from '@zuri/shared/
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { api, fmt } from '../client/http'
 import { DIAL, dialFor, flag, fullPhone, validEmail } from '../client/phone'
-import { getJSON, setJSON } from '../client/storage'
+import { getJSON, getStr, setJSON, setStr } from '../client/storage'
 import { initiateCheckout, noTrack, orderAttribution, purchaseOnce, track } from '../client/track'
 import { money, roundMoney } from '../lib/format'
 import type { CartStrings, FormStrings, PayStrings } from '../lib/i18n'
@@ -176,12 +176,22 @@ export default function OrderForm(p: OrderFormProps) {
       else if (b.city && !cityOptions.length) setCityText(b.city)
     }
     try {
-      const code = new URLSearchParams(location.search).get('promo')
+      const code = new URLSearchParams(location.search).get('promo') || getStr('sf_promo_pending', 'session')
       if (code) applyPromo(code)
     } catch {
       /* ignore */
     }
   }, [])
+
+  // Code promo choisi dans une popup marketing : appliqué aussitôt.
+  useEffect(() => {
+    const on = (e: Event) => {
+      const code = (e as CustomEvent<string>).detail
+      if (typeof code === 'string' && code) applyPromo(code)
+    }
+    window.addEventListener('zuri:promo', on)
+    return () => window.removeEventListener('zuri:promo', on)
+  }, [subtotal])
 
   // ─── Code promo ───
   const applyPromo = async (raw: string, forSubtotal = subtotal) => {
@@ -327,6 +337,8 @@ export default function OrderForm(p: OrderFormProps) {
       else for (const i of readCart(p.storeId)) if (sent.has(`${i.productId}:${i.variantId ?? null}`)) removeFromCart(p.storeId, i.productId, i.variantId)
     }
     track('order_created', { total: o.total, method: o.paymentMethod })
+    // Client qui vient de commander : plus de popup marketing pour lui.
+    setStr(`sf_ordered_${p.storeId}`, String(Date.now()))
     // Pour la page commande (Purchase après paiement en ligne) : l'API ne renvoie pas les pixels avec la commande.
     setJSON(`sf_o_${o.token}`, { fb: p.fb, tt: p.tt, productId: p.productId, name: p.productName, storeId: p.storeId }, 'local')
 

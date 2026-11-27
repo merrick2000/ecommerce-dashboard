@@ -112,6 +112,14 @@ document.querySelectorAll<HTMLElement>('[data-viewers]').forEach((vw) => {
   }, 8000)
 })
 
+// ─── Popups marketing : moteur chargé dès que la page est prête (la sortie peut arriver tôt) ───
+const mkt = document.getElementById('sf-mkt')
+if (mkt) {
+  const go = () => import('./marketing').then((m) => m.startMarketing(mkt))
+  if (document.readyState === 'complete') setTimeout(go, 300)
+  else window.addEventListener('load', () => setTimeout(go, 300), { once: true })
+}
+
 // ─── Pop-up de ventes réelles : chargé après le temps mort ───
 const popup = document.getElementById('sf-popup')
 if (popup) {

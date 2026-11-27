@@ -70,7 +70,7 @@ export function UrgencyEditor({ value, onChange, errors }: { value: Urgency; onC
       <Item icon={<Clock className="size-4" />} title="Compte à rebours" on={!!cd?.enabled} onToggle={(enabled) => setCd({ enabled })}>
         {cd && (
           <>
-            <Segmented
+            <Segmented showLabel
               label="Jusqu’à quand"
               value={cd.mode ?? 'visitor'}
               onChange={(mode) => setCd({ mode })}
@@ -93,7 +93,7 @@ export function UrgencyEditor({ value, onChange, errors }: { value: Urgency; onC
               )}
               <Input label="Texte" optional placeholder="L’offre expire dans" value={cd.label ?? ''} maxLength={80} onChange={(e) => setCd({ label: e.target.value || undefined })} />
             </div>
-            <Segmented label="Affichage du temps" value={cd.format ?? 'clock'} onChange={(format) => setCd({ format })} options={[{ value: 'clock', label: '00:18:15' }, { value: 'blocks', label: 'Cases 00 h 18 min 15 s' }]} />
+            <Segmented showLabel label="Affichage du temps" value={cd.format ?? 'clock'} onChange={(format) => setCd({ format })} options={[{ value: 'clock', label: '00:18:15' }, { value: 'blocks', label: 'Cases 00 h 18 min 15 s' }]} />
             <p className="text-[12px] text-muted">Une fois l’heure passée, le compte à rebours disparaît : on n’invente pas une nouvelle offre.</p>
             <LookFields look={cd} onChange={(l) => setCd(l)} />
           </>

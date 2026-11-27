@@ -103,7 +103,7 @@ export function SalesPopupEditor({ value, onChange, errors }: { value: Popup; on
         </div>
       </Field>
       <div className="flex flex-wrap items-end gap-4">
-        <Segmented label="Position" value={value.position ?? 'left'} onChange={(position) => set({ position })} options={[{ value: 'left', label: 'En bas à gauche' }, { value: 'right', label: 'En bas à droite' }]} />
+        <Segmented showLabel label="Position" value={value.position ?? 'left'} onChange={(position) => set({ position })} options={[{ value: 'left', label: 'En bas à gauche' }, { value: 'right', label: 'En bas à droite' }]} />
         <NumberField label="Une popup toutes les" value={value.intervalSeconds} onChange={(v) => set({ intervalSeconds: v ?? 20 })} suffix="s" wrapClass="w-44" error={errors['salesPopup.intervalSeconds']} />
       </div>
       <Preview popup={value} entry={entries[0]} image={productImage(entries[0]?.productId) ?? firstProduct?.thumbnail} />

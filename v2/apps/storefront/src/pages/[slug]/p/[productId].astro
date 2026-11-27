@@ -16,6 +16,7 @@ import type { CheckoutData } from '../../../lib/types'
 import { absoluteUrl, canonicalRedirect, canonicalStoreUrl, img, originOf, storeUrl } from '../../../lib/urls'
 import { breadcrumbJsonLd, productJsonLd } from '../../../lib/structured'
 import { STICKY_CTA_DEFAULTS } from '@zuri/shared'
+import { dialFor } from '../../../client/phone'
 import { interpolate } from '@zuri/shared/form-runtime'
 
 export const prerender = false
@@ -65,6 +66,36 @@ const waHref = wa?.enabled && wa.phone ? waLink(wa.phone, wa.welcomeMessage || t
 const description = excerpt(product.description) || excerpt(product.content.customText ?? '') || product.name
 
 const isPreview = Boolean(d.preview)
+// Popups marketing : textes, images et réduction prêts à afficher ; tout le reste se joue dans client/marketing.ts.
+const en = store.locale === 'en'
+const productImg = product.thumbnail ?? product.coverImage
+const mktPopups = product.inStock ? (d.marketingPopups ?? []) : []
+const mktCfg = mktPopups.length
+  ? {
+      storeId: store.id,
+      productId: product.id,
+      slug: store.slug,
+      dial: dialFor(store.country),
+      wa: waHref,
+      force: Astro.url.searchParams.get('zuri_popup'),
+      preview: isPreview,
+      t: en
+        ? { cta: 'Continue', ctaOrder: 'Claim my offer', dismiss: 'No thanks', copy: 'Copy', copied: 'Copied', endsIn: 'Offer ends in', phoneLabel: 'Your WhatsApp number', phonePh: 'Phone number', reveal: 'Show my code', phoneBad: 'Please enter a valid number', applied: 'Code applied', close: 'Close', yourCode: 'Your code' }
+        : { cta: 'Continuer', ctaOrder: 'J’en profite', dismiss: 'Non merci', copy: 'Copier', copied: 'Copié', endsIn: 'Offre valable encore', phoneLabel: 'Votre numéro WhatsApp', phonePh: 'Numéro de téléphone', reveal: 'Voir mon code', phoneBad: 'Entrez un numéro valide', applied: 'Code appliqué', close: 'Fermer', yourCode: 'Votre code' },
+      popups: mktPopups.map((p) => ({
+        ...p,
+        imageSrc: p.image === 'custom' && p.imageUrl ? img(p.imageUrl, 640) : p.image === 'product' && productImg ? img(productImg, 640) : null,
+        promo: p.promo
+          ? {
+              code: p.promo.code,
+              label: p.promo.type === 'percentage' ? `-${p.promo.value}%` : `-${m(p.promo.value)}`,
+              endsAt: p.promo.endsAt,
+              minText: p.promo.minSubtotal ? (en ? `For orders from ${m(p.promo.minSubtotal)}` : `Dès ${m(p.promo.minSubtotal)} d’achat`) : null,
+            }
+          : null,
+      })),
+    }
+  : null
 // Popup de ventes : réglage du produit (toujours, jamais), sinon celui de la boutique.
 const popupMode = product.content.salesPopup ?? 'inherit'
 const popupOn = popupMode === 'on' || (popupMode === 'inherit' && Boolean(checkout.salesPopup?.enabled))
@@ -178,6 +209,7 @@ const trackCfg = { storeId: store.id, productId: product.id, fb: isPreview ? nul
 
   {checkout.cart?.enabled && <CartDrawer client:idle storeId={store.id} slug={store.slug} locale={store.locale} productBase={storeUrl(Astro.locals, '/p/')} t={T.cart} />}
   <Footer store={store} />
+  {mktCfg && <script is:inline type="application/json" id="sf-mkt" set:html={jsonForScript(mktCfg)} />}
 
   {
     product.inStock && sticky.enabled && (

@@ -356,6 +356,19 @@ export function SalesPageSection(p: SectionProps) {
         />
       </Card>
 
+      <Card title="Popups marketing" description="Code promo à la sortie, formulaire abandonné… Elles se créent dans Paramètres, Page de vente.">
+        <Select
+          label="Sur ce produit"
+          value={c.marketingPopups ?? 'inherit'}
+          onChange={(e) => setContent(p, { marketingPopups: e.target.value as 'inherit' | 'off' })}
+          options={[
+            { value: 'inherit', label: 'Selon le réglage de chaque popup' },
+            { value: 'off', label: 'Aucune popup marketing' },
+          ]}
+          wrapClass="sm:max-w-sm"
+        />
+      </Card>
+
       <Card title="Urgence" description="Compte à rebours, stock limité, visiteurs : réglés dans Paramètres, Page de vente.">
         <div className="grid gap-3 sm:grid-cols-2">
           <Select

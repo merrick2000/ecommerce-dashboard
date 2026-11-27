@@ -1,8 +1,8 @@
 import { checkoutSettingsSchema, storeCloseSchema, storeCreateSchema, storePauseSchema, storeUpdateSchema, timezoneForCountry, trackingSettingsSchema } from '@zuri/shared'
-import { and, eq, ne, or } from 'drizzle-orm'
+import { and, count, eq, gte, inArray, ne, or, sql as dsql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { db } from '../db/client'
-import { checkoutSettings, deliveryZones, products, storeMembers, stores } from '../db/schema'
+import { checkoutSettings, deliveryZones, orders, pageEvents, products, promoCodes, storeMembers, stores } from '../db/schema'
 import { z } from 'zod'
 import { requireAuth, requirePermission, requireStore } from '../lib/auth'
 import { logActivity, tagApiOrderEvents } from '../services/activity'
@@ -120,6 +120,37 @@ const storeScoped = new Hono<AppEnv>()
         capiLog: row?.capiLog ?? [],
       },
     })
+  })
+  /** Popups marketing : vues, clics, numéros laissés et commandes passées avec leur code (30 derniers jours). */
+  .get('/marketing-popups/stats', requirePermission('store.settings'), async (c) => {
+    const store = c.get('store')
+    const since = new Date(Date.now() - 30 * 86400_000)
+    const [cfg] = await db.select({ settings: checkoutSettings.settings }).from(checkoutSettings).where(eq(checkoutSettings.storeId, store.id)).limit(1)
+    const popups = cfg?.settings.marketingPopups ?? []
+    const ev = await db
+      .select({ id: dsql<string | null>`${pageEvents.metadata}->>'popupId'`, type: pageEvents.eventType, n: dsql<number>`count(distinct ${pageEvents.sessionId})::int` })
+      .from(pageEvents)
+      .where(and(eq(pageEvents.storeId, store.id), gte(pageEvents.createdAt, since), inArray(pageEvents.eventType, ['popup_view', 'popup_click', 'popup_lead'])))
+      .groupBy(dsql`1`, pageEvents.eventType)
+    const codes = [...new Set(popups.map((p) => p.promoCode).filter((x): x is string => Boolean(x)))]
+    const used = codes.length
+      ? await db
+          .select({ code: promoCodes.code, n: count(orders.id) })
+          .from(promoCodes)
+          .innerJoin(orders, eq(orders.promoCodeId, promoCodes.id))
+          .where(and(eq(promoCodes.storeId, store.id), inArray(promoCodes.code, codes), gte(orders.createdAt, since)))
+          .groupBy(promoCodes.code)
+      : []
+    const out: Record<string, { views: number; clicks: number; leads: number; orders: number }> = {}
+    for (const p of popups) out[p.id] = { views: 0, clicks: 0, leads: 0, orders: used.find((u) => u.code === p.promoCode)?.n ?? 0 }
+    for (const r of ev) {
+      const row = r.id ? out[r.id] : undefined
+      if (!row) continue
+      if (r.type === 'popup_view') row.views = r.n
+      else if (r.type === 'popup_click') row.clicks = r.n
+      else row.leads = r.n
+    }
+    return c.json(out)
   })
   /** Messages de la popup de ventes rédigés par l'IA (réservé aux comptes avec l'IA ouverte, comme la rédaction). */
   .post(

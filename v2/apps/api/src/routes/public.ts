@@ -24,6 +24,7 @@ import { publicUrl, signedUrl } from '../services/storage'
 import { storeCatalog } from '../services/catalog-feed'
 import { checkPreviewToken } from '../services/preview'
 import { DEFAULT_CHECKOUT, withCheckoutDefaults } from './stores'
+import { popupsForProduct } from '../services/marketing-popups'
 
 /**
  * Position approximative transmise par le relais de la boutique (Cloudflare connaît la ville de chaque visiteur).
@@ -51,6 +52,7 @@ function geoOf(header: (name: string) => string | undefined) {
 const EVENT_TYPES = [
   'page_view', 'page_leave', 'scroll_25', 'scroll_50', 'scroll_75', 'scroll_100', 'cta_click', 'form_focus',
   'checkout_initiate', 'order_created', 'payment_started', 'payment_completed', 'js_error', 'video_play', 'whatsapp_click', 'offer_select',
+  'popup_view', 'popup_click', 'popup_lead', 'popup_close',
 ] as const
 const BOT_UA = /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|telegram|headless|lighthouse|pingdom|uptime|curl|wget|python|axios|node-fetch|go-http/i
 
@@ -262,7 +264,9 @@ export const publicRoutes = new Hono<AppEnv>()
       funnel,
       zones,
       // Panier en observation : masqué tant qu'il n'est pas ouvert pour le propriétaire de la boutique.
-      checkout: { ...withCheckoutDefaults(cfg?.settings), cart: { enabled: Boolean(cfg?.settings.cart?.enabled) && (await storeCartAllowed(store.id)) } },
+      checkout: { ...withCheckoutDefaults(cfg?.settings), marketingPopups: [], cart: { enabled: Boolean(cfg?.settings.cart?.enabled) && (await storeCartAllowed(store.id)) } },
+      /** Popups marketing qui visent ce produit, codes promo vérifiés. */
+      marketingPopups: await popupsForProduct(store.id, product.id, product.content, cfg?.settings),
       /** Formulaire effectif : celui du produit s'il est personnalisé, sinon celui de la boutique. */
       orderForm: parseOrderForm(product.content.orderForm ?? cfg?.settings.form),
       tracking: { facebookPixelId: cfg?.facebookPixelId ?? null, tiktokPixelId: cfg?.tiktokPixelId ?? null },

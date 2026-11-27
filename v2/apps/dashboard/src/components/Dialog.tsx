@@ -19,7 +19,7 @@ export function Dialog({
   title: ReactNode
   children: ReactNode
   footer?: ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
@@ -42,7 +42,7 @@ export function Dialog({
       }}
       className={cx(
         'm-0 mt-auto w-full max-w-none rounded-t-2xl border border-line bg-surface p-0 text-fg shadow-2xl sm:m-auto sm:rounded-2xl',
-        size === 'sm' ? 'sm:max-w-sm' : size === 'lg' ? 'sm:max-w-2xl' : 'sm:max-w-lg',
+        size === 'sm' ? 'sm:max-w-sm' : size === 'xl' ? 'sm:max-w-4xl' : size === 'lg' ? 'sm:max-w-2xl' : 'sm:max-w-lg',
       )}
     >
       {open && (

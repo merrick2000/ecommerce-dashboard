@@ -14,6 +14,7 @@ import { SaveBar } from '@/components/SaveBar'
 import { NumberField } from '../products/editor/fields'
 import { SalesPopupEditor } from './SalesPopupEditor'
 import { UrgencyEditor } from './UrgencyEditor'
+import { MarketingPopupsEditor } from './MarketingPopupsEditor'
 
 const PAYMENT_LOGOS = ['mtn', 'moov', 'orange', 'wave', 'free', 'airtel', 'mpesa', 'visa', 'mastercard', 'paypal', 'celtiis', 'togocom']
 
@@ -273,6 +274,10 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
 
         <Card title="Popup de ventes récentes">
           <SalesPopupEditor value={s.salesPopup} onChange={(salesPopup) => set({ salesPopup })} errors={errors} />
+        </Card>
+
+        <Card title="Popups marketing">
+          <MarketingPopupsEditor value={s.marketingPopups ?? []} onChange={(marketingPopups) => set({ marketingPopups })} />
         </Card>
 
         <Card title="Panier abandonné">

@@ -232,13 +232,23 @@ export function Segmented<T extends string>({
   options,
   label,
   className,
+  showLabel = false,
 }: {
   value: T
   onChange: (v: T) => void
   options: { value: T; label: ReactNode }[]
   label: string
   className?: string
+  /** Affiche le libellé au-dessus (comme un champ), sinon il reste pour les lecteurs d'écran. */
+  showLabel?: boolean
 }) {
+  if (showLabel)
+    return (
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[13px] font-medium text-fg">{label}</span>
+        <Segmented value={value} onChange={onChange} options={options} label={label} className={cx('max-w-full flex-wrap self-start', className)} />
+      </div>
+    )
   return (
     <div role="radiogroup" aria-label={label} className={cx('inline-flex rounded-lg border border-line-strong bg-surface-2 p-0.5', className)}>
       {options.map((o) => (
