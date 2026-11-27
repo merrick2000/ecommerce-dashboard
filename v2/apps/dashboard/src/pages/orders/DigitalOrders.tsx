@@ -4,7 +4,7 @@
  * et les actions utiles (renvoyer l'accès, copier le lien, relancer un paiement, relancer un panier).
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, BellOff, CheckCheck, ChevronLeft, ChevronRight, Copy, Download, LayoutGrid, List, Mail, MessageCircle, RotateCcw, Search, ShoppingBag, Table2, X } from 'lucide-react'
+import { Archive, ArchiveRestore, BellOff, CheckCheck, ChevronLeft, ChevronRight, Copy, Download, LayoutGrid, List, Mail, MessageCircle, RotateCcw, Search, ShoppingBag, Table2, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { Dialog } from '@/components/Dialog'
@@ -435,7 +435,7 @@ function CartsList({ q, view }: { q: string; view: 'cards' | 'compact' | 'table'
 }
 
 /** Actions en lot sur les ventes cochées : chaque action ne touche que les ventes concernées. */
-function BulkBar({ rows, onDone }: { rows: Row[]; onDone: () => void }) {
+function BulkBar({ rows, onDone, archivedView }: { rows: Row[]; onDone: () => void; archivedView: boolean }) {
   const storeId = useStoreId()
   const toast = useToast()
   const qc = useQueryClient()
@@ -471,7 +471,8 @@ function BulkBar({ rows, onDone }: { rows: Row[]; onDone: () => void }) {
     if (!window.confirm(`Annuler ${cancellable.length} vente(s) non payée(s) ? Leur lien de paiement ne fonctionnera plus.`)) return
     status.mutate({ ids: cancellable.map((o) => o.id), fulfillmentStatus: 'cancelled', note: 'Annulée (non payée)' }, { onSuccess: () => (toast.success('Ventes annulées'), onDone()), onError: (e) => toast.error(e) })
   }
-  const doArchive = () => archive.mutate({ ids: rows.map((o) => o.id), archived: true }, { onSuccess: (r) => (toast.success(`${r.updated} vente(s) archivée(s)`), onDone()), onError: (e) => toast.error(e) })
+  const doArchive = () =>
+    archive.mutate({ ids: rows.map((o) => o.id), archived: !archivedView }, { onSuccess: (r) => (toast.success(archivedView ? `${r.updated} vente(s) remise(s) dans la liste` : `${r.updated} vente(s) archivée(s)`), onDone()), onError: (e) => toast.error(e) })
 
   const act = (key: string, label: string, icon: ReactNode, count: number, onClick: () => void, variant: 'primary' | 'secondary' = 'secondary') =>
     count > 0 ? (
@@ -494,7 +495,7 @@ function BulkBar({ rows, onDone }: { rows: Row[]; onDone: () => void }) {
           void each('remind', remindable, (o) => api.post(`/stores/${storeId}/orders/${o.id}/send-payment-link`, { email: true }), (n) => `Relance envoyée à ${n} client${n > 1 ? 's' : ''}`),
         )}
         {act('cancel', 'Annuler', <X className="size-3.5" />, cancellable.length, cancel)}
-        {act('archive', 'Archiver', <Archive className="size-3.5" />, rows.length, doArchive)}
+        {archivedView ? act('archive', 'Désarchiver', <ArchiveRestore className="size-3.5" />, rows.length, doArchive) : act('archive', 'Archiver', <Archive className="size-3.5" />, rows.length, doArchive)}
         <Button size="sm" variant="ghost" className="ml-auto" onClick={onDone}>
           Désélectionner
         </Button>
@@ -508,6 +509,8 @@ export default function DigitalOrders() {
   const canExport = useCan('orders.export')
   const [params, setParams] = useSearchParams()
   const tab = (params.get('etat') ?? '') as Tab
+  // Archivées : rangées dans leur propre liste, hors de la liste principale.
+  const archivedView = params.get('archived') === '1'
   const [search, setSearch] = useState(params.get('q') ?? '')
   // Même choix d'affichage que les boutiques physiques (Cartes / Liste / Tableau), mémorisé par boutique.
   const wide = useMediaQuery('(min-width: 1024px)')
@@ -515,7 +518,7 @@ export default function DigitalOrders() {
   const view = prefs.view === 'table' && !wide ? 'compact' : prefs.view
   const q = useDebounced(search.trim(), 300)
   const page = Number(params.get('page') ?? 1) || 1
-  const query = { paymentState: tab && tab !== 'carts' ? tab : undefined, q: q || undefined, page, archived: 'all' as const }
+  const query = { paymentState: tab && tab !== 'carts' ? tab : undefined, q: q || undefined, page, archived: archivedView ? ('only' as const) : undefined }
   // Toujours chargé : les compteurs des onglets restent justes même sur l'onglet Paniers.
   const orders = useOrders(query)
   const leadsCount = useQuery({ queryKey: ['store', storeId, 'leads', 'count'], queryFn: () => api.get<{ total: number }>(`/stores/${storeId}/leads`, { page: 1 }) })
@@ -531,7 +534,7 @@ export default function DigitalOrders() {
   const rows = (orders.data?.data ?? []) as Row[]
   const canUpdate = useCan('orders.update')
   const [selected, setSelected] = useState<string[]>([])
-  useEffect(() => setSelected([]), [tab, q, page])
+  useEffect(() => setSelected([]), [tab, q, page, archivedView])
   const toggle = (id: string, v: boolean) => setSelected((s) => (v ? [...s, id] : s.filter((x) => x !== id)))
   const sel = (o: Row) => (canUpdate ? { selected: selected.includes(o.id), onSelect: (v: boolean) => toggle(o.id, v) } : {})
   const allOn = rows.length > 0 && rows.every((r) => selected.includes(r.id))
@@ -552,7 +555,7 @@ export default function DigitalOrders() {
       />
       <div className="scrollbar-none -mx-4 mb-3 overflow-x-auto px-4 sm:mx-0 sm:px-0" role="tablist" aria-label="État">
         <div className="flex w-max gap-1.5">
-          {TABS.map((t) => (
+          {TABS.filter((t) => !(archivedView && t.key === 'carts')).map((t) => (
             <button
               key={t.key || 'all'}
               role="tab"
@@ -567,6 +570,17 @@ export default function DigitalOrders() {
               <span className={cx('tabular rounded-full px-1.5 text-[11px]', tab === t.key ? 'bg-bg/20' : 'bg-surface-2')}>{n(t.key)}</span>
             </button>
           ))}
+          <button
+            role="tab"
+            aria-selected={archivedView}
+            onClick={() => set({ archived: archivedView ? '' : '1', etat: tab === 'carts' ? '' : tab })}
+            className={cx(
+              'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium whitespace-nowrap transition-colors',
+              archivedView ? 'border-fg bg-fg text-bg' : 'border-dashed border-line-strong bg-surface text-muted hover:text-fg',
+            )}
+          >
+            <Archive className="size-3.5" /> Archivées
+          </button>
         </div>
       </div>
       <div className="mb-3 flex justify-end">
@@ -593,7 +607,7 @@ export default function DigitalOrders() {
       ) : orders.isPending ? (
         <ListSkeleton rows={6} />
       ) : !rows.length ? (
-        <EmptyState icon={<ShoppingBag className="size-5" />} title={q || tab ? 'Aucune vente ne correspond' : 'Aucune vente pour le moment'} description={q || tab ? 'Essayez un autre onglet ou une autre recherche.' : 'Les ventes de vos pages arrivent ici dès qu’un client commande.'} />
+        <EmptyState icon={<ShoppingBag className="size-5" />} title={archivedView && !q ? 'Aucune vente archivée' : q || tab ? 'Aucune vente ne correspond' : 'Aucune vente pour le moment'} description={archivedView && !q ? 'Les ventes que vous archivez sont rangées ici, toujours comptées dans vos statistiques.' : q || tab ? 'Essayez un autre onglet ou une autre recherche.' : 'Les ventes de vos pages arrivent ici dès qu’un client commande.'} />
       ) : (
         <>
           {canUpdate && view !== 'table' && (
@@ -641,7 +655,7 @@ export default function DigitalOrders() {
               </table>
             </div>
           )}
-          {canUpdate && selected.length > 0 && <BulkBar rows={rows.filter((r) => selected.includes(r.id))} onDone={() => setSelected([])} />}
+          {canUpdate && selected.length > 0 && <BulkBar rows={rows.filter((r) => selected.includes(r.id))} archivedView={archivedView} onDone={() => setSelected([])} />}
           {pages > 1 && (
             <nav className="mt-4 flex items-center justify-center gap-3" aria-label="Pagination">
               <Button size="sm" disabled={page <= 1} onClick={() => set({ page: String(page - 1) })} aria-label="Page précédente">
