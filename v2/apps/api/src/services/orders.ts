@@ -347,6 +347,9 @@ export async function createPublicOrder(input: PublicOrderCreate, ctx: RequestCo
     // Avec des upsells, on attend la fin du tunnel (total final) ; filet de sécurité à 5 min si le client part.
     const hasUpsells = Boolean((await db.select({ funnel: products.funnel }).from(products).where(eq(products.id, input.productId)).limit(1))[0]?.funnel?.upsells.length)
     await enqueue('order.notify-new', { orderId: result.order.id }, hasUpsells ? { startAfter: 300 } : {})
+  } else if (result.order.paymentMethod !== 'external') {
+    // Paiement en ligne : si toujours impayé 10 min plus tard, prospect (Lead) pour Meta ; payé avant, seul l'achat part.
+    await enqueue('order.capi-lead', { orderId: result.order.id }, { startAfter: 600, singletonKey: `order.capi-lead:${result.order.id}` })
   }
   return { order: result.order, promoError: result.promoError }
 }

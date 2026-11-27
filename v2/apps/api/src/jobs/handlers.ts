@@ -7,6 +7,7 @@ import { abandonedCartEmail, formatMoney } from '../services/emails'
 import { notifyPlatformAdmins } from '../services/admin-notify'
 import { customerDigitalEmail, customerOrderEmail, customerStatusEmail, type EmailOrder, type SaleEmailData } from '../services/order-emails'
 import { publicUrl } from '../services/storage'
+import { displayPrice } from '../services/pricing'
 import { localMidnight } from '../routes/stats'
 import { sendCapiEvent, sendEmail } from '../services/notify'
 import { notify } from '../services/notifications'
@@ -93,13 +94,15 @@ async function todayStats(storeId: string, tz: string) {
  * quand le vendeur a choisi de ne déclarer l'achat qu'à la confirmation ou à la livraison (alors Lead).
  */
 export const arrivalEvent = (o: { paymentMethod: string }, codPurchaseOn: string | null | undefined): 'Purchase' | 'Lead' =>
-  o.paymentMethod === 'cod' && codPurchaseOn && codPurchaseOn !== 'created' ? 'Lead' : 'Purchase'
+  o.paymentMethod === 'cod' && (codPurchaseOn ?? 'delivered') !== 'created' ? 'Lead' : 'Purchase'
 
 async function capiPurchase(o: Loaded, eventName: 'Purchase' | 'Lead' = 'Purchase', eventTime: Date = o.order.createdAt) {
   const pixelId = o.cfg?.facebookPixelId
   const tokenEnc = o.cfg?.facebookAccessTokenEnc
   if (!pixelId || !tokenEnc) return
+  const products = o.items.filter((i) => i.productId)
   await sendCapiEvent({
+    storeId: o.store.id,
     pixelId,
     accessToken: decrypt(tokenEnc),
     testEventCode: o.cfg?.facebookTestEventCode,
@@ -112,12 +115,15 @@ async function capiPurchase(o: Loaded, eventName: 'Purchase' | 'Lead' = 'Purchas
     user: {
       email: o.order.customerEmail,
       phone: o.order.customerPhone,
-      firstName: o.order.customerName?.split(' ')[0],
+      name: o.order.customerName,
       city: o.order.city,
       country: o.store.country,
       ...o.order.trackingContext,
     },
-    contentIds: o.items.map((i) => String(i.productId)),
+    contentIds: [...new Set(products.map((i) => String(i.productId)))],
+    contents: products.map((i) => ({ id: String(i.productId), quantity: i.quantity, item_price: Number(i.unitPrice) })),
+    contentName: o.items.map((i) => i.name).join(', ').slice(0, 200),
+    orderId: o.order.orderNumber,
   })
 }
 
@@ -310,7 +316,11 @@ export async function handleCustomerStatus({ orderId, status }: { orderId: strin
  */
 export async function handleCapiPurchase({ orderId, stage }: { orderId: string; stage: 'confirmed' | 'delivered' }) {
   const o = await loadOrder(orderId)
-  if (!o || o.order.paymentMethod !== 'cod' || o.cfg?.codPurchaseOn !== stage) return
+  if (!o || o.order.paymentMethod !== 'cod') return
+  // Achat déclaré au moment choisi (livraison par défaut : argent encaissé) ; une commande livrée sans passer par
+  // « confirmée » déclenche aussi l'achat. Jamais deux fois (repère capiPurchase ci-dessous).
+  const when = o.cfg?.codPurchaseOn ?? 'delivered'
+  if (when === 'created' || !(when === stage || (when === 'confirmed' && stage === 'delivered'))) return
   const [claimed] = await db
     .update(orders)
     .set({ metadata: dsql`coalesce(${orders.metadata}, '{}'::jsonb) || '{"capiPurchase": true}'::jsonb` })
@@ -324,4 +334,37 @@ export async function handleCapiPurchase({ orderId, stage }: { orderId: string; 
     await db.update(orders).set({ metadata: dsql`coalesce(${orders.metadata}, '{}'::jsonb) - 'capiPurchase'` }).where(eq(orders.id, orderId))
     throw e
   }
+}
+
+/** Paiement en ligne commencé mais toujours impayé (10 min après la commande) : prospect pour Meta. */
+export async function handleOrderCapiLead({ orderId }: { orderId: string }) {
+  const o = await loadOrder(orderId)
+  if (!o || o.order.paymentMethod === 'cod' || o.order.paymentStatus === 'paid') return
+  await capiPurchase(o, 'Lead', o.order.createdAt)
+}
+
+/** Panier abandonné : coordonnées laissées sans commande 15 min plus tard, prospect pour Meta (une fois par panier). */
+export async function handleLeadCapi(d: { leadId: number; ip?: string; userAgent?: string; fbp?: string; fbc?: string; url?: string }) {
+  const [lead] = await db.select().from(leads).where(eq(leads.id, d.leadId)).limit(1)
+  if (!lead || lead.convertedAt || !lead.productId) return
+  const [cfg] = await db.select().from(checkoutSettings).where(eq(checkoutSettings.storeId, lead.storeId)).limit(1)
+  if (!cfg?.facebookPixelId || !cfg.facebookAccessTokenEnc) return
+  const [row] = await db.select({ p: products, s: stores }).from(products).innerJoin(stores, eq(stores.id, products.storeId)).where(eq(products.id, lead.productId!)).limit(1)
+  if (!row) return
+  const price = displayPrice(row.p, row.s.currency)
+  await sendCapiEvent({
+    storeId: lead.storeId,
+    pixelId: cfg.facebookPixelId,
+    accessToken: decrypt(cfg.facebookAccessTokenEnc),
+    testEventCode: cfg.facebookTestEventCode,
+    eventName: 'Lead',
+    eventId: `lead_${lead.id}`,
+    eventTime: lead.createdAt,
+    sourceUrl: d.url,
+    value: price.effective,
+    currency: price.currency,
+    user: { email: lead.email, phone: lead.phone, name: lead.name, country: row.s.country, ip: d.ip, userAgent: d.userAgent, fbp: d.fbp, fbc: d.fbc },
+    contentIds: [row.p.id],
+    contentName: row.p.name,
+  })
 }

@@ -237,7 +237,19 @@ export function initiateCheckout(): void {
   once.add('ic')
   track('form_focus')
   track('checkout_initiate')
-  pixel('InitiateCheckout', 'InitiateCheckout')
+  // Même identifiant pour le pixel du navigateur et l'API Conversions (serveur) : Meta déduplique.
+  const c = config()
+  const eventId = `ic_${(globalThis.crypto?.randomUUID?.() ?? `${Date.now()}${Math.random()}`).replace(/[^\w-]/g, '')}`.slice(0, 80)
+  pixel('InitiateCheckout', 'InitiateCheckout', {}, eventId)
+  if (c?.fb && c.productId && !noTrack()) {
+    const a = orderAttribution()
+    void fetch('/api/v1/capi/checkout', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ storeId: c.storeId, productId: String(c.productId), eventId, fbp: a.fbp, fbc: a.fbc, url: location.href.split('#')[0]!.slice(0, 2000) }),
+      keepalive: true,
+    }).catch(() => undefined)
+  }
 }
 
 /** Démarrage sur une page : page_view, ViewContent, scroll 50 %, clics CTA, chargement différé des pixels. */

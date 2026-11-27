@@ -24,11 +24,15 @@ export interface JobPayloads {
   'referral.check': { storeId: string }
   /** Annonce : notification sur le téléphone des vendeurs ciblés. */
   'announcement.push': { id: number }
+  /** Paiement en ligne toujours en attente : prospect (Lead) envoyé à Meta. */
+  'order.capi-lead': { orderId: string }
+  /** Panier abandonné (coordonnées sans commande) : prospect (Lead) envoyé à Meta. */
+  'lead.capi': { leadId: number; ip?: string; userAgent?: string; fbp?: string; fbc?: string; url?: string }
   /** Email « Ajoutez votre premier produit » à toutes les boutiques vides (une fois par vendeur). */
   'activation.campaign': Record<string, never>
 }
 export type JobName = keyof JobPayloads
-export const JOB_NAMES: JobName[] = ['order.paid', 'order.notify-new', 'order.customer-status', 'leads.remind', 'payments.reconcile', 'account.notify', 'notify.dispatch', 'onboarding.run', 'admin.notify', 'order.capi-purchase', 'referral.check', 'announcement.push', 'activation.campaign']
+export const JOB_NAMES: JobName[] = ['order.paid', 'order.notify-new', 'order.customer-status', 'leads.remind', 'payments.reconcile', 'account.notify', 'notify.dispatch', 'onboarding.run', 'admin.notify', 'order.capi-purchase', 'referral.check', 'announcement.push', 'activation.campaign', 'order.capi-lead', 'lead.capi']
 
 let boss: PgBoss | null = null
 let starting: Promise<PgBoss> | null = null

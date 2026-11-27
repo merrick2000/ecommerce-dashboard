@@ -223,7 +223,7 @@ export default function OrderForm(p: OrderFormProps) {
     const key = kind === 'phone' ? `p:${full}` : `e:${email.trim().toLowerCase()}`
     if (leadsSent.current.has(key)) return
     leadsSent.current.add(key)
-    api('/leads', { body: { storeSlug: p.slug, productId: p.productId, phone: full ?? undefined, email: okEmail ? email.trim() : undefined, name: name.trim().length >= 2 ? name.trim().slice(0, 120) : undefined } })
+    api('/leads', { body: { storeSlug: p.slug, productId: p.productId, phone: full ?? undefined, email: okEmail ? email.trim() : undefined, name: name.trim().length >= 2 ? name.trim().slice(0, 120) : undefined, fbp: orderAttribution().fbp, fbc: orderAttribution().fbc, url: location.href.split('#')[0]!.slice(0, 2000) } })
   }
 
   // ─── Validation ───

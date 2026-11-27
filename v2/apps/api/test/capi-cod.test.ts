@@ -16,14 +16,14 @@ describe('achat déclaré à Meta en paiement à la livraison', () => {
     expect(arrivalEvent({ paymentMethod: 'cod' }, 'confirmed')).toBe('Lead')
     expect(arrivalEvent({ paymentMethod: 'cod' }, 'delivered')).toBe('Lead')
     expect(arrivalEvent({ paymentMethod: 'mobile_money' }, 'delivered')).toBe('Purchase')
-    expect(arrivalEvent({ paymentMethod: 'cod' }, null)).toBe('Purchase')
+    expect(arrivalEvent({ paymentMethod: 'cod' }, null)).toBe('Lead')
   })
 
   test('réglage enregistré, prospect côté navigateur, achat envoyé à la confirmation', async () => {
     await db.insert(users).values({ email: 'capi-cod@test.dev', name: 'Capi', passwordHash: await Bun.password.hash('motdepasse-solide', { algorithm: 'argon2id' }) }).onConflictDoNothing()
     await owner.post('/api/auth/login', { email: 'capi-cod@test.dev', password: 'motdepasse-solide' })
     const s = (await owner.post('/api/stores', { name: 'Capi Cod', slug: 'capi-cod', currency: 'XOF' })).body.id
-    expect((await owner.get(`/api/stores/${s}/checkout-settings`)).body.tracking.codPurchaseOn).toBe('created')
+    expect((await owner.get(`/api/stores/${s}/checkout-settings`)).body.tracking.codPurchaseOn).toBe('confirmed')
     expect((await owner.put(`/api/stores/${s}/tracking`, { facebookPixelId: '123456789012', codPurchaseOn: 'confirmed' })).status).toBe(200)
     expect((await owner.get(`/api/stores/${s}/checkout-settings`)).body.tracking.codPurchaseOn).toBe('confirmed')
     expect((await owner.put(`/api/stores/${s}/tracking`, { facebookPixelId: '123456789012', codPurchaseOn: 'demain' })).status).toBe(422)

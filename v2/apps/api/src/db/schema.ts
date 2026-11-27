@@ -330,6 +330,19 @@ export const activityLog = pgTable(
   (t) => [index('activity_log_store_created_idx').on(t.storeId, t.createdAt)],
 )
 
+export interface CapiLogEntry {
+  at: string
+  event: string
+  /** Numéro de commande, ou « test ». */
+  ref: string | null
+  ok: boolean
+  status: number | null
+  eventsReceived: number | null
+  fbtraceId: string | null
+  error: string | null
+  test: boolean
+}
+
 export const checkoutSettings = pgTable('checkout_settings', {
   storeId: ref('store_id')
     .primaryKey()
@@ -343,7 +356,9 @@ export const checkoutSettings = pgTable('checkout_settings', {
    * created = dès la commande ; confirmed = quand l'équipe la confirme ; delivered = quand elle est livrée.
    * Avant ce moment, la commande est déclarée comme un prospect (Lead) : les pubs apprennent des vraies ventes.
    */
-  codPurchaseOn: varchar('cod_purchase_on', { length: 12 }).$type<'created' | 'confirmed' | 'delivered'>().notNull().default('created'),
+  codPurchaseOn: varchar('cod_purchase_on', { length: 12 }).$type<'created' | 'confirmed' | 'delivered'>().notNull().default('delivered'),
+  /** Derniers envois à l'API Conversions de Meta (réponse ou erreur), visibles dans Paramètres, Suivi. */
+  capiLog: jsonb('capi_log').$type<CapiLogEntry[]>().notNull().default([]),
   /** Chiffré (AES-256-GCM, voir lib/crypto.ts). */
   facebookAccessTokenEnc: text('facebook_access_token_enc'),
   updatedAt: updatedAt(),

@@ -183,6 +183,13 @@
       "when": 1795685580378,
       "tag": "0025_seller_activation",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1795781362158,
+      "tag": "0026_capi_log",
+      "breakpoints": true
     }
   ]
 }

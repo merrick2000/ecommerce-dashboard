@@ -9,7 +9,8 @@ import { activityRoutes } from './activity'
 import { teamRoutes } from './team'
 import { storeNotificationRoutes } from './notifications'
 import type { AppEnv } from '../lib/context'
-import { encrypt } from '../lib/crypto'
+import { decrypt, encrypt } from '../lib/crypto'
+import { clientIp } from '../lib/rate-limit'
 import { conflict } from '../lib/errors'
 import { v } from '../lib/validate'
 import { customerRoutes } from './customers'
@@ -112,10 +113,37 @@ const storeScoped = new Hono<AppEnv>()
         facebookPixelId: row?.facebookPixelId ?? null,
         facebookTestEventCode: row?.facebookTestEventCode ?? null,
         tiktokPixelId: row?.tiktokPixelId ?? null,
-        codPurchaseOn: row?.codPurchaseOn ?? 'created',
+        codPurchaseOn: row?.codPurchaseOn ?? 'delivered',
         hasFacebookAccessToken: Boolean(row?.facebookAccessTokenEnc),
+        /** Derniers envois serveur à Meta (réponse ou erreur, jamais le jeton). */
+        capiLog: row?.capiLog ?? [],
       },
     })
+  })
+  /** Test de l'API Conversions : un événement de test (code d'événement test obligatoire), réponse de Meta renvoyée. */
+  .post('/tracking/capi-test', requirePermission('store.settings'), async (c) => {
+    const store = c.get('store')
+    const [row] = await db.select().from(checkoutSettings).where(eq(checkoutSettings.storeId, store.id)).limit(1)
+    if (!row?.facebookPixelId) throw new HttpError(400, 'Renseignez d’abord l’ID du pixel Meta.', 'no_pixel')
+    if (!row.facebookAccessTokenEnc) throw new HttpError(400, 'Renseignez d’abord le jeton de l’API Conversions.', 'no_token')
+    if (!row.facebookTestEventCode) throw new HttpError(400, 'Renseignez le code d’événement test (Gestionnaire d’événements, onglet Événements de test) : le test n’apparaît que là, sans fausser vos statistiques.', 'no_test_code')
+    const { sendCapiEvent } = await import('../services/notify')
+    const result = await sendCapiEvent({
+      storeId: store.id,
+      pixelId: row.facebookPixelId,
+      accessToken: decrypt(row.facebookAccessTokenEnc),
+      testEventCode: row.facebookTestEventCode,
+      eventName: 'PageView',
+      eventId: `test_${crypto.randomUUID()}`,
+      eventTime: new Date(),
+      sourceUrl: `https://${store.subdomain || store.slug}.${env.BASE_DOMAIN}/`,
+      value: 0,
+      currency: store.currency,
+      user: { country: store.country, ip: clientIp((n) => c.req.header(n)), userAgent: c.req.header('user-agent')?.slice(0, 512) },
+      contentIds: [],
+      orderId: 'test',
+    }).catch((e: Error) => ({ ok: false, status: null, eventsReceived: null, fbtraceId: null, error: e.message }))
+    return c.json(result)
   })
   .put('/checkout-settings', requirePermission('store.settings'), v('json', checkoutSettingsSchema), async (c) => {
     const storeId = c.get('store').id

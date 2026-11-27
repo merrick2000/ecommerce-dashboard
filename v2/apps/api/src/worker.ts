@@ -3,7 +3,7 @@
  * Une seule planification cron, même avec plusieurs instances (pg-boss verrouille).
  */
 import { getBoss, type JobPayloads } from './jobs/queue'
-import { handleAccountNotify, handleCapiPurchase, handleLeadsNotifySellers, handleLeadsRemind, handleCustomerStatus, handleOrderNotifyNew, handleOrderPaid } from './jobs/handlers'
+import { handleAccountNotify, handleCapiPurchase, handleLeadCapi, handleLeadsNotifySellers, handleLeadsRemind, handleCustomerStatus, handleOrderCapiLead, handleOrderNotifyNew, handleOrderPaid } from './jobs/handlers'
 import { reconcilePendingPayments } from './payments/service'
 import { dispatchNotification } from './services/notifications'
 import { runOnboarding } from './services/onboarding'
@@ -30,6 +30,8 @@ await boss.work<JobPayloads['order.capi-purchase']>('order.capi-purchase', async
 await boss.work<JobPayloads['announcement.push']>('announcement.push', async ([job]) => job && pushAnnouncement(job.data.id))
 await boss.work<JobPayloads['referral.check']>('referral.check', async ([job]) => job && checkReferralReward(job.data.storeId))
 await boss.work<JobPayloads['admin.notify']>('admin.notify', async ([job]) => job && notifyPlatformAdmins(job.data))
+await boss.work<JobPayloads['order.capi-lead']>('order.capi-lead', async ([job]) => job && handleOrderCapiLead(job.data))
+await boss.work<JobPayloads['lead.capi']>('lead.capi', async ([job]) => job && handleLeadCapi(job.data))
 await boss.work('activation.campaign', async () => {
   const n = await sendFirstProductCampaign()
   console.log(`[démarrage] ${n} email(s) « premier produit » envoyé(s)`)

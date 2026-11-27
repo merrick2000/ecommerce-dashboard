@@ -51,6 +51,7 @@ export interface CheckoutSettingsResponse {
     tiktokPixelId: string | null
     hasFacebookAccessToken: boolean
     codPurchaseOn: 'created' | 'confirmed' | 'delivered'
+    capiLog?: { at: string; event: string; ref: string | null; ok: boolean; status: number | null; eventsReceived: number | null; fbtraceId: string | null; error: string | null; test: boolean }[]
   }
 }
 

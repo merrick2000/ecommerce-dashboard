@@ -16,6 +16,7 @@ import { clientIp, rateLimit } from '../lib/rate-limit'
 import { v } from '../lib/validate'
 import { answerFunnelOffer, createPublicOrder, normalizePhone } from '../services/orders'
 import { arrivalEvent } from '../jobs/handlers'
+import { enqueue } from '../jobs/queue'
 import { poAccount } from '../services/po'
 import { storeCartAllowed, storeOnlinePayments } from '../services/platform'
 import { displayPrice, evaluatePromoCode } from '../services/pricing'
@@ -349,7 +350,7 @@ export const publicRoutes = new Hono<AppEnv>()
     return c.json({ links, expiresIn: 1800 })
   })
   /** Panier abandonné : coordonnées laissées dans le formulaire. */
-  .post('/leads', rateLimit({ key: 'lead', limit: 20, windowSec: 600 }), v('json', z.object({ storeSlug: z.string(), productId: productIdSchema, email: z.string().trim().toLowerCase().email().optional(), phone: z.string().max(30).optional(), name: z.string().max(120).optional() })), async (c) => {
+  .post('/leads', rateLimit({ key: 'lead', limit: 20, windowSec: 600 }), v('json', z.object({ storeSlug: z.string(), productId: productIdSchema, email: z.string().trim().toLowerCase().email().optional(), phone: z.string().max(30).optional(), name: z.string().max(120).optional(), fbp: z.string().max(200).optional(), fbc: z.string().max(200).optional(), url: z.string().url().max(2000).optional() })), async (c) => {
     const body = c.req.valid('json')
     if (!body.email && !body.phone) throw badRequest('Email ou téléphone requis')
     const store = await storeBySlug(body.storeSlug)
@@ -365,7 +366,9 @@ export const publicRoutes = new Hono<AppEnv>()
     if (existing[0]) {
       await db.update(leads).set({ name: body.name, phone: phone ?? undefined, email: body.email ?? undefined }).where(eq(leads.id, existing[0].id))
     } else {
-      await db.insert(leads).values({ storeId: store.id, productId: product.id, email: body.email ?? null, phone, name: body.name ?? null, nextReminderAt: firstReminder }).onConflictDoNothing()
+      const [created] = await db.insert(leads).values({ storeId: store.id, productId: product.id, email: body.email ?? null, phone, name: body.name ?? null, nextReminderAt: firstReminder }).onConflictDoNothing().returning({ id: leads.id })
+      // Panier abandonné : prospect (Lead) pour Meta si aucune commande dans les 15 min.
+      if (created) await enqueue('lead.capi', { leadId: created.id, ip: clientIp((n) => c.req.header(n)), userAgent: c.req.header('user-agent')?.slice(0, 512), fbp: body.fbp, fbc: body.fbc, url: body.url }, { startAfter: 900, singletonKey: `lead.capi:${created.id}` })
     }
     return c.json({ ok: true }, 202)
   })
@@ -387,6 +390,44 @@ export const publicRoutes = new Hono<AppEnv>()
         select ${b.storeId}, p.id, ${b.eventType}, ${b.sessionId}, ${b.visitorId ?? null}, ${sha256(clientIp((n) => c.req.header(n)))}, ${b.referrer ?? null}, ${b.utmSource ?? null}, ${b.utmMedium ?? null}, ${b.utmCampaign ?? null}, ${device}, ${c.req.header('cf-ipcountry')?.slice(0, 2) ?? null}, ${geo.city}, ${geo.region}, ${geo.lat}, ${geo.lon}, ${metadata ? JSON.stringify(metadata) : null}::jsonb
         from ${stores} s left join ${products} p on p.id = ${b.productId ?? null} and p.store_id = s.id
         where s.id = ${b.storeId}`)
+      return c.body(null, 204)
+    },
+  )
+  /**
+   * InitiateCheckout côté serveur (API Conversions), avec le même event_id que le pixel du navigateur :
+   * Meta déduplique. Aucun effet si la boutique n'a pas de pixel et de jeton. Réponse immédiate.
+   */
+  .post(
+    '/capi/checkout',
+    rateLimit({ key: 'capi-checkout', limit: 30, windowSec: 600 }),
+    v('json', z.object({ storeId: storeIdSchema, productId: productIdSchema, eventId: z.string().regex(/^[\w-]{8,80}$/), fbp: z.string().max(200).optional(), fbc: z.string().max(200).optional(), url: z.string().url().max(2000).optional() })),
+    async (c) => {
+      const b = c.req.valid('json')
+      const ua = c.req.header('user-agent') ?? ''
+      if (!ua || BOT_UA.test(ua)) return c.body(null, 204)
+      const [cfg] = await db.select().from(checkoutSettings).where(eq(checkoutSettings.storeId, b.storeId)).limit(1)
+      if (!cfg?.facebookPixelId || !cfg.facebookAccessTokenEnc) return c.body(null, 204)
+      const [row] = await db.select({ p: products, s: stores }).from(products).innerJoin(stores, eq(stores.id, products.storeId)).where(and(eq(products.id, b.productId), eq(products.storeId, b.storeId))).limit(1)
+      if (!row) return c.body(null, 204)
+      const price = displayPrice(row.p, row.s.currency)
+      const { sendCapiEvent } = await import('../services/notify')
+      const { decrypt } = await import('../lib/crypto')
+      void sendCapiEvent({
+        storeId: b.storeId,
+        logMode: 'errors',
+        pixelId: cfg.facebookPixelId,
+        accessToken: decrypt(cfg.facebookAccessTokenEnc),
+        testEventCode: cfg.facebookTestEventCode,
+        eventName: 'InitiateCheckout',
+        eventId: b.eventId,
+        eventTime: new Date(),
+        sourceUrl: b.url,
+        value: price.effective,
+        currency: price.currency,
+        user: { country: row.s.country, ip: clientIp((n) => c.req.header(n)), userAgent: ua.slice(0, 512), fbp: b.fbp, fbc: b.fbc },
+        contentIds: [row.p.id],
+        contentName: row.p.name,
+      }).catch(() => undefined)
       return c.body(null, 204)
     },
   )
