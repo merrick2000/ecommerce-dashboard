@@ -137,6 +137,11 @@ function PromoDialog({ promo, open, onClose }: { promo: PromoCode | null; open: 
 }
 
 export default function PromoCodes() {
+  return <PromoCodesPanel />
+}
+
+/** Liste des codes promo ; `embedded` : dans l'onglet Marketing (pas de grand titre, juste le bouton). */
+export function PromoCodesPanel({ embedded = false }: { embedded?: boolean }) {
   const { store } = useCurrentStore()
   const currency = store?.currency ?? 'XOF'
   const toast = useToast()
@@ -146,14 +151,22 @@ export default function PromoCodes() {
 
   return (
     <>
-      <PageHeader
-        title="Codes promo"
-        actions={
+      {embedded ? (
+        <div className="mb-4 flex justify-end">
           <Button variant="primary" onClick={() => setEditing({ promo: null })}>
             <Plus className="size-4" /> Nouveau code
           </Button>
-        }
-      />
+        </div>
+      ) : (
+        <PageHeader
+          title="Codes promo"
+          actions={
+            <Button variant="primary" onClick={() => setEditing({ promo: null })}>
+              <Plus className="size-4" /> Nouveau code
+            </Button>
+          }
+        />
+      )}
       {list.error && !list.data ? (
         <ErrorState error={list.error} onRetry={() => void list.refetch()} />
       ) : list.isPending ? (

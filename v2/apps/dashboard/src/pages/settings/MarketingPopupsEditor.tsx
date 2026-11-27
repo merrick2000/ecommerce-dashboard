@@ -339,7 +339,7 @@ function PopupDialog({ initial, onClose, onSave }: { initial: P; onClose: () => 
               hint={
                 <>
                   Le code est vérifié à chaque visite : désactivé, expiré ou épuisé, il n’est pas montré.{' '}
-                  <Link to={`/stores/${storeId}/promo-codes`} target="_blank" className="font-medium text-accent hover:underline">
+                  <Link to={`/stores/${storeId}/marketing?tab=promos`} target="_blank" className="font-medium text-accent hover:underline">
                     Créer un code promo
                   </Link>
                 </>

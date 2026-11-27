@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { createBrowserRouter, type RouteObject } from 'react-router'
+import { createBrowserRouter, type RouteObject, Navigate } from 'react-router'
 import { AppShell } from '@/components/layout/AppShell'
 import { FullPageSpinner, HomeRedirect, NotFound, RequireAuth, RouteError, UpdatingNotice } from '@/components/layout/Guards'
 import { isStaleChunkError, reloadForNewVersion } from '@/lib/newVersion'
@@ -80,7 +80,9 @@ export const router = createBrowserRouter([
               { path: 'traffic/live', lazy: page(() => import('@/pages/LiveView')) },
               { path: 'customers/:customerId', lazy: page(() => import('@/pages/customers/CustomerDetail')) },
               { path: 'zones', lazy: page(() => import('@/pages/Zones')) },
-              { path: 'promo-codes', lazy: page(() => import('@/pages/PromoCodes')) },
+              { path: 'marketing', lazy: page(() => import('@/pages/Marketing')) },
+              // Ancienne adresse : les codes promo sont dans Marketing.
+              { path: 'promo-codes', element: <Navigate to="../marketing?tab=promos" replace relative="path" /> },
               { path: 'settings', lazy: page(() => import('@/pages/settings/Settings')) },
               { path: 'team', lazy: page(() => import('@/pages/team/Team')) },
               { path: 'activity', lazy: page(() => import('@/pages/Activity')) },

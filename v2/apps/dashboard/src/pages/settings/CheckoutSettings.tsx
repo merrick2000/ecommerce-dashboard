@@ -72,7 +72,10 @@ function normalize(s: CheckoutSettings): CheckoutSettings {
   return { ...s, cart: s.cart ?? { enabled: false }, desktopLayout: s.desktopLayout ?? 'form_side', titlePosition: s.titlePosition ?? 'beside', stickyCta: { ...STICKY_CTA_DEFAULTS, ...s.stickyCta }, pageLayout: [...s.pageLayout, ...PAGE_BLOCKS.filter((b) => !present.has(b)).map((block) => ({ block, visible: false }))] }
 }
 
-function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolean }) {
+export type CheckoutSection = 'page' | 'popups' | 'proof' | 'recovery'
+const SAVED: Record<CheckoutSection, string> = { page: 'Page de vente mise à jour', popups: 'Popups enregistrées', proof: 'Preuve sociale et urgence enregistrées', recovery: 'Relances enregistrées' }
+
+function Form({ initial, canEdit, section }: { initial: CheckoutSettings; canEdit: boolean; section: CheckoutSection }) {
   const save = useSaveCheckoutSettings()
   const promos = usePromoCodes().list
   // Panier en observation : visible seulement pour les comptes ouverts par le super admin.
@@ -101,7 +104,7 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
     save.mutate(v.data, {
       onSuccess: () => {
         setBase(JSON.stringify(s))
-        toast.success('Page de vente mise à jour')
+        toast.success(SAVED[section])
       },
       onError: (err) => {
         const fe = serverErrors(err)
@@ -114,6 +117,7 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
       <fieldset disabled={!canEdit} className="space-y-4">
+        {section === 'page' && <>
         <Card title="Mise en page sur ordinateur" description="Sur téléphone, tout s’affiche sur une colonne, le formulaire après le prix.">
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-3">
@@ -267,7 +271,9 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
             )}
           </div>
         </Card>
+        </>}
 
+        {section === 'proof' && <>
         <Card title="Urgence">
           <UrgencyEditor value={u} onChange={(urgency) => set({ urgency })} errors={errors} />
         </Card>
@@ -275,11 +281,15 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
         <Card title="Popup de ventes récentes">
           <SalesPopupEditor value={s.salesPopup} onChange={(salesPopup) => set({ salesPopup })} errors={errors} />
         </Card>
+        </>}
 
+        {section === 'popups' && <>
         <Card title="Popups marketing">
           <MarketingPopupsEditor value={s.marketingPopups ?? []} onChange={(marketingPopups) => set({ marketingPopups })} />
         </Card>
+        </>}
 
+        {section === 'recovery' && <>
         <Card title="Panier abandonné">
           <div className="space-y-4">
             <Switch checked={s.abandonedCart.enabled} onChange={(enabled) => set({ abandonedCart: { ...s.abandonedCart, enabled } })} label="Relancer les paniers abandonnés" description="Relance des visiteurs ayant laissé leurs coordonnées sans commander." />
@@ -295,6 +305,7 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
             )}
           </div>
         </Card>
+        </>}
       </fieldset>
 
       {canEdit && <SaveBar submit dirty={dirty} saving={save.isPending} onDiscard={() => setS(JSON.parse(base) as CheckoutSettings)} />}
@@ -302,12 +313,13 @@ function Form({ initial, canEdit }: { initial: CheckoutSettings; canEdit: boolea
   )
 }
 
-export function CheckoutSettingsForm({ canEdit }: { canEdit: boolean }) {
+/** Réglages de la page de vente, une section à la fois (Paramètres : page ; Marketing : popups, preuve sociale, relances). */
+export function CheckoutSettingsForm({ canEdit, section = 'page' }: { canEdit: boolean; section?: CheckoutSection }) {
   const { data, error, isPending, refetch } = useCheckoutSettings()
   if (error && !data) return <ErrorState error={error} onRetry={() => void refetch()} />
   if (isPending) return <Skeleton className="h-96 rounded-xl" />
   const parsed = checkoutSettingsSchema.safeParse(data.settings)
-  return <Form initial={parsed.success ? parsed.data : checkoutSettingsSchema.parse({})} canEdit={canEdit} />
+  return <Form initial={parsed.success ? parsed.data : checkoutSettingsSchema.parse({})} canEdit={canEdit} section={section} />
 }
 
 

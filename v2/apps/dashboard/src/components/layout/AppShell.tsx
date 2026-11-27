@@ -1,5 +1,6 @@
 import type { Permission } from '@zuri/shared'
-import { Activity, Bell, Bot, ChartLine, Check, ChevronsUpDown, Crown, LayoutDashboard, LogOut, Menu, Moon, Package, PanelLeftClose, PanelLeftOpen, PauseCircle, Plus, Receipt, Settings, Shield, ShoppingBag, Sun, Tag, Truck, UserPlus, Users, type LucideIcon, Gift } from 'lucide-react'
+import { MARKETING_PERMS } from '@/pages/Marketing'
+import { Activity, Bell, Bot, ChartLine, Check, ChevronsUpDown, Crown, LayoutDashboard, Megaphone, LogOut, Menu, Moon, Package, PanelLeftClose, PanelLeftOpen, PauseCircle, Plus, Receipt, Settings, Shield, ShoppingBag, Sun, Tag, Truck, UserPlus, Users, type LucideIcon, Gift } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Outlet, useLocation, useNavigate, useNavigation } from 'react-router'
 import { Announcements } from '@/components/Announcements'
@@ -39,7 +40,7 @@ const NAV: NavItem[] = [
   { to: 'traffic', label: 'Trafic', icon: ChartLine, perm: 'stats.view' },
   { to: 'zones', label: 'Livraison', icon: Truck, perm: 'delivery.edit', kind: 'physical' },
   { to: 'expenses', label: 'Dépenses', icon: Receipt, perm: 'stats.revenue' },
-  { to: 'promo-codes', label: 'Codes promo', icon: Tag, perm: 'marketing.edit' },
+  { to: 'marketing', label: 'Marketing', icon: Megaphone },
   { to: 'activity', label: 'Activité', icon: Activity, perm: 'activity.view' },
   { to: 'team', label: 'Équipe', icon: UserPlus, perm: 'team.manage' },
   { to: 'notifications', label: 'Notifications', icon: Bell },
@@ -161,7 +162,7 @@ export function AppShell() {
     })
   }
   const permissions = usePermissions()
-  const nav = NAV.filter((i) => (!i.kind || !store || store.kind === i.kind) && (i.to === 'settings' ? SETTINGS_PERMS.some((p) => permissions.includes(p)) : !i.perm || permissions.includes(i.perm)))
+  const nav = NAV.filter((i) => (!i.kind || !store || store.kind === i.kind) && (i.to === 'settings' ? SETTINGS_PERMS.some((p) => permissions.includes(p)) : i.to === 'marketing' ? MARKETING_PERMS.some((p) => permissions.includes(p)) : !i.perm || permissions.includes(i.perm)))
     .map((i) => (store?.kind === 'digital' && i.digitalLabel ? { ...i, label: i.digitalLabel } : i))
   const primaryMobile = nav.slice(0, 4)
   const moreMobile = nav.slice(4)

@@ -342,7 +342,7 @@ export function SalesPageSection(p: SectionProps) {
         />
       </Card>
 
-      <Card title="Popup de ventes récentes" description="« Awa de Cotonou vient de commander… ». Style et messages se règlent dans Paramètres, Page de vente.">
+      <Card title="Popup de ventes récentes" description="« Awa de Cotonou vient de commander… ». Style et messages se règlent dans Marketing, Preuve sociale et urgence.">
         <Select
           label="Sur ce produit"
           value={c.salesPopup ?? 'inherit'}
@@ -356,7 +356,7 @@ export function SalesPageSection(p: SectionProps) {
         />
       </Card>
 
-      <Card title="Popups marketing" description="Code promo à la sortie, formulaire abandonné… Elles se créent dans Paramètres, Page de vente.">
+      <Card title="Popups marketing" description="Code promo à la sortie, formulaire abandonné… Elles se créent dans Marketing, Popups.">
         <Select
           label="Sur ce produit"
           value={c.marketingPopups ?? 'inherit'}
@@ -369,7 +369,7 @@ export function SalesPageSection(p: SectionProps) {
         />
       </Card>
 
-      <Card title="Urgence" description="Compte à rebours, stock limité, visiteurs : réglés dans Paramètres, Page de vente.">
+      <Card title="Urgence" description="Compte à rebours, stock limité, visiteurs : réglés dans Marketing, Preuve sociale et urgence.">
         <div className="grid gap-3 sm:grid-cols-2">
           <Select
             label="Sur ce produit"

@@ -1,4 +1,4 @@
-import { useSearchParams } from 'react-router'
+import { Navigate, useSearchParams } from 'react-router'
 import { cx, PageHeader } from '@/components/ui'
 import { useCan, usePermissions } from '@/hooks/auth'
 import { CheckoutSettingsForm } from './CheckoutSettings'
@@ -6,13 +6,11 @@ import { FormSettings } from './FormSettings'
 import { IntegrationsSettings } from './IntegrationsSettings'
 import { PaymentsSettings } from './PaymentsSettings'
 import { StoreSettings } from './StoreSettings'
-import { TrackingSettings } from './TrackingSettings'
 
 const TABS = [
   { id: 'store', label: 'Boutique', perm: 'store.settings' },
   { id: 'checkout', label: 'Page de vente', perm: 'store.settings' },
   { id: 'form', label: 'Formulaire de commande', perm: 'store.settings' },
-  { id: 'tracking', label: 'Suivi publicitaire', perm: 'store.settings' },
   { id: 'payments', label: 'Paiements', perm: 'payments.manage' },
   { id: 'integrations', label: 'Intégrations', perm: 'integrations.manage' },
 ] as const
@@ -25,6 +23,8 @@ export default function Settings() {
   // Onglets visibles selon les permissions (un admin ne voit pas Paiements ni Intégrations).
   const tabs = TABS.filter((t) => permissions.includes(t.perm))
   const tab = (tabs.find((t) => t.id === params.get('tab'))?.id ?? tabs[0]?.id ?? 'store') as TabId
+  // Anciens liens : le suivi publicitaire est passé dans Marketing.
+  if (params.get('tab') === 'tracking') return <Navigate to="../marketing?tab=pixels" replace relative="path" />
 
   return (
     <>
@@ -52,7 +52,6 @@ export default function Settings() {
         {tab === 'store' && <StoreSettings canEdit={canEdit} />}
         {tab === 'checkout' && <CheckoutSettingsForm canEdit={canEdit} />}
         {tab === 'form' && <FormSettings canEdit={canEdit} />}
-        {tab === 'tracking' && <TrackingSettings canEdit={canEdit} />}
         {tab === 'payments' && <PaymentsSettings />}
         {tab === 'integrations' && <IntegrationsSettings />}
       </div>
