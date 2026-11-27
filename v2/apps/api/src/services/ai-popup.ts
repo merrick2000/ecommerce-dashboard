@@ -46,17 +46,21 @@ ${input.products.map((p) => `- ${p}`).join('\n')}
 ${input.cities.length ? `Villes livrées par la boutique (à privilégier) : ${input.cities.join(', ')}.` : ''}
 Pas de texte libre sauf si les consignes le demandent. Aucun emoji, aucun tiret long.
 ${input.instructions ? `Consignes du vendeur :\n${input.instructions}` : ''}`
-  let res: Response
-  try {
-    res = await fetch('https://api.kie.ai/claude/v1/messages', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${env.KIE_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: env.KIE_MODEL || 'claude-sonnet-5', stream: false, max_tokens: 3000, messages: [{ role: 'user', content: prompt }], tools: [TOOL], tool_choice: { type: 'tool', name: 'messages' } }),
-      signal: AbortSignal.timeout(45_000),
-    })
-  } catch {
-    throw new HttpError(504, 'L’IA met trop de temps à répondre. Réessayez.', 'ai_error')
+  // Appelé en tâche de fond : l'IA peut prendre son temps (temps de réponse très variable), un second essai si elle ne répond pas.
+  let res: Response | null = null
+  for (let attempt = 0; attempt < 2 && !res; attempt++) {
+    try {
+      res = await fetch('https://api.kie.ai/claude/v1/messages', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${env.KIE_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: env.KIE_MODEL || 'claude-sonnet-5', stream: false, max_tokens: 2500, messages: [{ role: 'user', content: prompt }], tools: [TOOL], tool_choice: { type: 'tool', name: 'messages' } }),
+        signal: AbortSignal.timeout(100_000),
+      })
+    } catch {
+      res = null
+    }
   }
+  if (!res) throw new HttpError(504, 'L’IA met trop de temps à répondre. Réessayez dans un instant.', 'ai_error')
   const body = (await res.json().catch(() => null)) as { code?: number; msg?: string; content?: { type: string; name?: string; input?: unknown }[] } | null
   if (!res.ok || !body || (body.code != null && body.code !== 200)) throw new HttpError(424, body?.msg ? `IA indisponible : ${body.msg}` : 'IA indisponible pour le moment.', 'ai_error')
   const parsed = popupEntriesSchema.safeParse(body.content?.find((b) => b.type === 'tool_use')?.input)

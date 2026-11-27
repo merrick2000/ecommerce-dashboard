@@ -123,7 +123,7 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
  * Opérations longues (rédaction IA, import par lien) : lancées en arrière-plan côté serveur, puis résultat
  * demandé toutes les 2 s. Aucune connexion ne reste ouverte longtemps (les relais coupent au-delà de 60 s).
  */
-const LONG_TASK = /^\/stores\/([^/]+)\/products\/(ai\/rewrite-description|import\/url\/(preview|preview-text|improve|commit))$/
+const LONG_TASK = /^\/stores\/([^/]+)\/(?:products\/(?:ai\/rewrite-description|import\/url\/(?:preview|preview-text|improve|commit))|sales-popup\/generate)$/
 
 type TaskState<T> = { status: 'pending'; taskId?: string } | { status: 'done'; httpStatus: number; result: T } | { status: 'error'; httpStatus: number; error: ApiErrorBody }
 

@@ -170,8 +170,17 @@ const storeScoped = new Hono<AppEnv>()
       const zones = await db.select({ cities: deliveryZones.cities }).from(deliveryZones).where(eq(deliveryZones.storeId, store.id))
       const cities = [...new Set(zones.flatMap((z) => z.cities ?? []))].slice(0, 40)
       const { generatePopupEntries } = await import('../services/ai-popup')
-      const entries = await generatePopupEntries({ count: b.count, country: store.country, locale: store.locale, products: chosen.map((p) => p.name), cities, instructions: b.instructions })
-      return c.json(entries.map((e) => ({ ...e, productId: chosen.find((p) => p.name === e.product)?.id })))
+      const { maybeTask } = await import('../services/tasks')
+      // Génération longue : en tâche de fond (le relais du tableau de bord coupe les requêtes trop longues).
+      return maybeTask(c, async () => {
+        const entries = await generatePopupEntries({ count: b.count, country: store.country, locale: store.locale, products: chosen.map((p) => p.name), cities, instructions: b.instructions })
+        // Rattachement au produit même si l'IA a changé un accent ou une majuscule ; nom exact du produit gardé.
+        const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim()
+        return entries.map((e) => {
+          const p = chosen.find((x) => x.name === e.product) ?? chosen.find((x) => norm(x.name) === norm(e.product)) ?? (chosen.length === 1 ? chosen[0] : undefined)
+          return { ...e, product: p?.name ?? e.product, productId: p?.id }
+        })
+      })
     },
   )
   /** Test de l'API Conversions : un événement de test (code d'événement test obligatoire), réponse de Meta renvoyée. */
